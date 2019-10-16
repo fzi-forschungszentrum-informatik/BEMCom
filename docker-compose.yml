@@ -1,0 +1,26 @@
+version: '3'
+
+services:
+    db:
+        container_name: db
+        ports:
+            - "${DB_PORT}:5432"
+        image: "postgres:${POSTGRES_TAG}"
+        user: "${USER_ID}:${GROUP_ID}"
+        volumes: 
+            - "${POSTGRES_VOLUME}:/var/lib/postgresql/data"
+            - "/etc/passwd:/etc/passwd:ro"  
+        restart: always
+        environment:
+            - POSTGRES_PASSWORD=aklsjdkajsd188271827kajs
+            - POSTGRES_USER=django
+    web:
+        build: .
+        command: python3 /code/booktime/manage.py runserver 0.0.0.0:8000
+        volumes:
+            - ./code:/code
+        ports:
+            - "8000:8000"
+        depends_on:
+            - db
+        user: "${USER_ID}:${GROUP_ID}"
