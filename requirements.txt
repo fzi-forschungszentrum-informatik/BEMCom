@@ -1,3 +1,10 @@
 Django
 psycopg2
 Pillow
+
+# For the http connector
+requests
+
+# For testing connectors
+pytest
+pytest-httpserver
