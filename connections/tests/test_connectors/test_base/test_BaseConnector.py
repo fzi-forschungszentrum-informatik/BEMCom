@@ -43,8 +43,9 @@ class Test_start_asynchronously(TestClassWithFixtures):
 
     def test_function_can_modify_class_attributes(self):
         """
-        Also test that args and kwargs are used as expected and the function
-        is executed.
+        Also test that args and kwargs are handled correctly, that the function
+        is actually executed and finally that class attributes can be changed
+        from the function run in background.
         """
 
         class tester():
@@ -83,6 +84,11 @@ class Test_start_asynchronously(TestClassWithFixtures):
         assert tester_instance.kwarg2 is None
 
     def test_function_can_write_log(self):
+        """
+        Verify that a method of a class can access the classes log attribute
+        to generate log messages (Which is obviously necassary in multi
+        processing).
+        """
 
         # Set up a new and empty logger for the test
         logger_name = str(id(self))
@@ -125,6 +131,11 @@ class Test_start_asynchronously(TestClassWithFixtures):
         assert records[4].message == 'CRITICAL'
 
     def test_function_can_throw_exception(self):
+        """
+        Verify that an exception occurred in a background process is passed
+        to the main application (which is also not necessarily the case while
+        usin threading).
+        """
 
         class tester():
 
@@ -133,10 +144,10 @@ class Test_start_asynchronously(TestClassWithFixtures):
                 raise RuntimeError('A test exception')
 
         tester_instance = tester()
-        tester_instance.throw()
-        self.base_connector.start_asynchronously(
-            function=tester_instance.throw,
-        )
+        with pytest.raises(RuntimeError):
+            self.base_connector.start_asynchronously(
+                function=tester_instance.throw,
+            )
 
 
 if __name__ == '__main__':
