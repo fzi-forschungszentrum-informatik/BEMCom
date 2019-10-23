@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+    x-to-mqtt-tester:
+        container_name: x-to-mqtt-tester
+
+        ports:
+            - "${X_TO_MQTT_NODE_RED_PORT}:1880"
+
+        build:
+            context: .
+            dockerfile: Dockerfile_Node-RED_with_custom_user_id
+            args: 
+                - USER_ID=${USER_ID}
+                - GROUP_ID=${GROUP_ID}
+                - NODE_RED_TAG=${NODE_RED_TAG}
+
+        volumes: 
+            - .:/data
+
+        restart: always
