@@ -5,9 +5,35 @@ class Connector(models.Model):
     name = models.TextField()
     mqtt_topic_logs = models.TextField()
     mqtt_topic_heartbeat = models.TextField()
-    mqtt_topic_new_datapoints = models.TextField()
+    mqtt_topic_available_datapoints = models.TextField()
     mqtt_topic_datapoint_map = models.TextField()
-    mqtt_topic_messages_prefix = models.TextField()
+
+
+class ConnectorLogEntry(models.Model):
+    connector = models.ForeignKey(
+        Connector, on_delete=models.CASCADE
+    )
+    timestamp = models.DateTimeField()
+    msg = models.TextField()
+    emitter = models.TextField()
+    level = models.SmallIntegerField()
+
+
+class ConnectorHearbeat(models.Model):
+    connector = models.ForeignKey(
+        Connector, on_delete=models.CASCADE
+    )
+    last_heartbeat = models.DateTimeField()
+    next_heartbeat = models.DateTimeField()
+
+
+class ConnectorAvailableDatapoints(models.Model):
+    connector = models.ForeignKey(
+        Connector, on_delete=models.CASCADE
+    )
+    datapoint_type = models.CharField(max_length=8)
+    datapoint_key_in_connector = models.TextField()
+    datapoint_example_value = models.TextField()
 
 
 class DeviceType(models.Model):
