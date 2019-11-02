@@ -2,6 +2,9 @@ from django.db import models
 
 
 class Connector(models.Model):
+    """
+    TODO: Ensure that all topics are unique.
+    """
     name = models.TextField()
     mqtt_topic_logs = models.TextField()
     mqtt_topic_heartbeat = models.TextField()

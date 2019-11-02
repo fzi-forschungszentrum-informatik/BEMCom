@@ -16,28 +16,8 @@ if __name__ == "__main__":
     setup()
 
 from core import models
-
-
-def datetime_from_timestamp(timestamp, tz_aware=True):
-    """
-    Convert timestamp to datetime object.
-
-    Arguments:
-    ----------
-    timestamp: int
-        Milliseconds since 1.1.1970 UTC
-    tz_aware: bool
-        If true make datetime object timezone aware, i.e. in UTC.
-
-    Returns:
-    --------
-    dt: datetime object
-        Corresponding datetime object
-    """
-    dt = datetime.fromtimestamp(timestamp / 1000.)
-    if tz_aware:
-        dt = dt.astimezone(timezone.utc)
-    return dt
+from core.connector_mqtt_integration import ConnectorMQTTIntegration
+from core.utils import datetime_from_timestamp
 
 
 class TestConnectorIntegration(TestCase):
@@ -45,7 +25,8 @@ class TestConnectorIntegration(TestCase):
     Test that all messages sent by a standard Connector a saved in the DB.
     """
 
-    def setUp(self):
+    @classmethod
+    def setUpTestData(self):
         """
         Set up if a message broker exists.
         """
@@ -61,8 +42,11 @@ class TestConnectorIntegration(TestCase):
         )
         self.test_connector.save()
 
-    def tearDown(self):
-        self.mqtt_client.disconnect()
+        self.cmi = ConnectorMQTTIntegration()
+
+#    def tearDown(self):
+#        self.mqtt_client.disconnect()
+#        self.cmi.disconnect()
 
     def test_log_msg_received(self):
         """
@@ -195,4 +179,4 @@ class TestConnectorIntegration(TestCase):
 if __name__ == "__main__":
     filename_no_extension = os.path.splitext(__file__)[0]
     this_file_as_module_str = '.'.join(filename_no_extension.split('/')[-3:])
-    execute_from_command_line(['', 'test', this_file_as_module_str])
+    execute_from_command_line(['', 'test', this_file_as_module_str, '--keepdb'])
