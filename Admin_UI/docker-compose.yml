@@ -16,7 +16,7 @@ services:
             - POSTGRES_USER=django
     web:
         build: .
-        command: python3 /code/booktime/manage.py runserver 0.0.0.0:8000
+        command: python3 /code/manager/manage.py runserver 0.0.0.0:8000
         volumes:
             - ./code:/code
         ports:

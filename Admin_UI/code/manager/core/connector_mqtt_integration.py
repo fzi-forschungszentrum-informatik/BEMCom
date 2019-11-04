@@ -37,17 +37,21 @@ class ConnectorMQTTIntegration():
         self.client.on_connect = self.on_connect
         self.client.on_disconnect = self.on_disconnect
         self.client.on_message = self.on_message
-
-        for topic in topics:
-            # use QOS=2, expect messages once and only once.
-            # No duplicates in log files etc.
-            self.client.subscribe(topic, 2)
+        self.client.on_subscribe = self.on_subscribe
 
         # Initial connection to broker.
         self.client.connect(**connect_kwargs)
 
         # Start look in background process.
         self.client.loop_start()
+
+        self.connected_topics = {}
+        for topic in topics:
+            logger.info('Topic: %s', topic)
+            # use QOS=2, expect messages once and only once.
+            # No duplicates in log files etc.
+            logger.info(self.client.subscribe(topic, 2))
+
 
     def disconnect(self):
         """
@@ -77,8 +81,9 @@ class ConnectorMQTTIntegration():
             'mqtt_topic_heartbeat',
             'mqtt_topic_available_datapoints',
         ]
-
+        logger.info('Entering compute topics')
         for connector in models.Connector.objects.all():
+            logger.info('Found connector %s', connector.name)
             for message_type in message_types:
                 topic = getattr(connector, message_type)
                 topics[topic] = (connector, message_type)
@@ -98,6 +103,8 @@ class ConnectorMQTTIntegration():
 
         connector, message_type = topics[msg.topic]
         payload = json.loads(msg.payload)
+
+        logger.info('Got message: %s\n%s', msg.topic, payload)
 
         if message_type == 'mqtt_topic_logs':
             _ = models.ConnectorLogEntry(
@@ -156,3 +163,5 @@ class ConnectorMQTTIntegration():
             )
             client.connect(**userdata['connect_kwargs'])
 
+    def on_subscribe(client, userdata, mid, granted_qos):
+        logger.info('Subscribed: %s, %s', mid, granted_qos)

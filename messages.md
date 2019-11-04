@@ -117,7 +117,7 @@ soap:Envelope__soap:Body__0__getMeterResponse__0__getMeterResult:__0__channel__0
 
 ### Format:
 
-Example values can be set to empty strings if no examples are provided.
+<span style="color:red;font-weight:bold">Revise here if it does not make more sense to transfer the expected message format with placeholders.</span>
 
 ```
 "payload": {
