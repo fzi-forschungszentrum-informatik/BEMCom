@@ -52,14 +52,14 @@ class TestModelOnDelete(TestCase):
             unit=self.unit
         )
 
-    def test_no_dataloss_on_unit_delete(self):
+    def west_no_dataloss_on_unit_delete(self):
         """
         After deleting a unit the datapoint should still exist.
         """
         self.unit.delete()
         assert models.Datapoint.objects.all()
 
-    def test_stuff(self):
+    def west_stuff(self):
         c1 = models.Connector.objects.all()[0]
         assert c1.name == 'Test connector'
 

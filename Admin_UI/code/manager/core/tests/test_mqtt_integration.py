@@ -1,10 +1,9 @@
 import os
 import json
 import time
-from datetime import datetime, timezone
 
 import paho.mqtt.client as mqtt
-from django.test import TestCase
+from django.test import TransactionTestCase
 
 # Sets path and django such that we can execute this file stand alone and
 # develop interactive too.
@@ -20,19 +19,19 @@ from core.connector_mqtt_integration import ConnectorMQTTIntegration
 from core.utils import datetime_from_timestamp
 
 
-class TestConnectorIntegration(TestCase):
+class TestConnectorIntegration(TransactionTestCase):
     """
-    Test that all messages sent by a standard Connector a saved in the DB.
+    Test that all messages sent by a standard Connector are saved in the DB.
     """
 
-    @classmethod
-    def setUpTestData(self):
+    def setUp(self):
         """
-        Set up if a message broker exists.
+        Set up message broker connection and test connector in DB.
         """
         self.mqtt_client = mqtt.Client()
         self.mqtt_client.connect('localhost', 1883)
 
+        self.mqtt_client.loop_start()
         self.test_connector = models.Connector(
             name='test_connector',
             mqtt_topic_logs='test_connector/logs',
@@ -42,11 +41,17 @@ class TestConnectorIntegration(TestCase):
         )
         self.test_connector.save()
 
-        self.cmi = ConnectorMQTTIntegration()
+        self.cmi = ConnectorMQTTIntegration(
+            mqtt_client=mqtt.Client
+        )
 
-#    def tearDown(self):
-#        self.mqtt_client.disconnect()
-#        self.cmi.disconnect()
+    def tearDown(self):
+        """
+        Close all connections after each test.
+        """
+        self.mqtt_client.disconnect()
+        self.mqtt_client.loop_stop()
+        self.cmi.disconnect()
 
     def test_log_msg_received(self):
         """
@@ -65,11 +70,11 @@ class TestConnectorIntegration(TestCase):
 
         # Wait for the data to reach the DB
         waited_seconds = 0
-        while models.ConnectorHearbeat.objects.count() == 0:
+        while models.ConnectorLogEntry.objects.count() == 0:
             time.sleep(0.005)
             waited_seconds += 0.005
 
-            if waited_seconds >= 1:
+            if waited_seconds >= 2:
                 raise RuntimeError('Expected Log Entry has not reached DB.')
 
         # Compare expected and stored data.
@@ -102,7 +107,7 @@ class TestConnectorIntegration(TestCase):
             time.sleep(0.005)
             waited_seconds += 0.005
 
-            if waited_seconds >= 1:
+            if waited_seconds >= 2:
                 raise RuntimeError('Expected heartbeat has not reached DB.')
 
         # Compare expected and stored data.
@@ -123,13 +128,16 @@ class TestConnectorIntegration(TestCase):
         Test that a available_datapoints message received via MQTT is stored
         correctly in the DB.
         """
+        # Numbers will be converted to strings by json.dumps and not converted
+        # back by json.loads. Hence use all strings here to prevent type errors
+        # while asserting below.
         test_available_datapoints = {
             "sensor": {
-                "Channel__P__value__0": 0.122,
+                "Channel__P__value__0": "0.122",
                 "Channel__P__unit__0": "kW",
             },
             "actuator": {
-                "Channel__P__setpoint__0": 0.4,
+                "Channel__P__setpoint__0": "0.4",
             },
         }
 
@@ -143,7 +151,7 @@ class TestConnectorIntegration(TestCase):
             time.sleep(0.005)
             waited_seconds += 0.005
 
-            if waited_seconds >= 1:
+            if waited_seconds >= 2:
                 raise RuntimeError(
                     'Expected message on available datapoints has not reached '
                     ' DB.'
@@ -172,11 +180,11 @@ class TestConnectorIntegration(TestCase):
             actual_rows.append(actual_row)
 
         # Finnaly check if the rows are identical.
-        assert expected_rows == actual_rows
+        self.assertListEqual(expected_rows, actual_rows)
 
 
 # Execute this, and only this test file if running this file directly.
 if __name__ == "__main__":
     filename_no_extension = os.path.splitext(__file__)[0]
     this_file_as_module_str = '.'.join(filename_no_extension.split('/')[-3:])
-    execute_from_command_line(['', 'test', this_file_as_module_str, '--keepdb'])
+    execute_from_command_line(['', 'test', this_file_as_module_str])

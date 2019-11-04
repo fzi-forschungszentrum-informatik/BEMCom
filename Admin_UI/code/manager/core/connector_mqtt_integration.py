@@ -3,6 +3,7 @@ import logging
 
 from paho.mqtt.client import Client
 from django.conf import settings
+from django.db import connection
 
 from core import models
 from core.utils import datetime_from_timestamp
@@ -47,10 +48,9 @@ class ConnectorMQTTIntegration():
 
         self.connected_topics = {}
         for topic in topics:
-            logger.info('Topic: %s', topic)
             # use QOS=2, expect messages once and only once.
             # No duplicates in log files etc.
-            logger.info(self.client.subscribe(topic, 2))
+            self.client.subscribe(topic, 2)
 
 
     def disconnect(self):
@@ -81,9 +81,8 @@ class ConnectorMQTTIntegration():
             'mqtt_topic_heartbeat',
             'mqtt_topic_available_datapoints',
         ]
-        logger.info('Entering compute topics')
+
         for connector in models.Connector.objects.all():
-            logger.info('Found connector %s', connector.name)
             for message_type in message_types:
                 topic = getattr(connector, message_type)
                 topics[topic] = (connector, message_type)
@@ -103,31 +102,39 @@ class ConnectorMQTTIntegration():
 
         connector, message_type = topics[msg.topic]
         payload = json.loads(msg.payload)
-
-        logger.info('Got message: %s\n%s', msg.topic, payload)
-
+        logger.info('got message on topic %s', msg.topic)
         if message_type == 'mqtt_topic_logs':
-            _ = models.ConnectorLogEntry(
-                connector=connector,
-                timestamp=datetime_from_timestamp(payload['timestamp']),
-                msg=payload['msg'],
-                emitter=payload['emitter'],
-                level=payload['level'],
-            ).save()
+            try:
+                _ = models.ConnectorLogEntry(
+                    connector=connector,
+                    timestamp=datetime_from_timestamp(payload['timestamp']),
+                    msg=payload['msg'],
+                    emitter=payload['emitter'],
+                    level=payload['level'],
+                ).save()
+            except Exception:
+                logger.exception('Exception while writing Log into DB.')
+                # This raise will be caught by paho mqtt. It should not though.
+                raise
 
         if message_type == 'mqtt_topic_heartbeat':
             """
             TODO: Update the entry Instead of inserting one.
             """
-            _ = models.ConnectorHearbeat(
-                connector=connector,
-                last_heartbeat=datetime_from_timestamp(
-                    payload['this_heartbeats_timestamp']
-                ),
-                next_heartbeat=datetime_from_timestamp(
-                    payload['next_heartbeats_timestamp']
-                ),
-            )
+            try:
+                _ = models.ConnectorHearbeat(
+                    connector=connector,
+                    last_heartbeat=datetime_from_timestamp(
+                        payload['this_heartbeats_timestamp']
+                    ),
+                    next_heartbeat=datetime_from_timestamp(
+                        payload['next_heartbeats_timestamp']
+                    ),
+                ).save()
+            except Exception:
+                logger.exception('Exception while writing heartbeat into DB.')
+                # This raise will be caught by paho mqtt. It should not though.
+                raise
 
         if message_type == 'mqtt_topic_available_datapoints':
             """
@@ -135,12 +142,18 @@ class ConnectorMQTTIntegration():
             """
             for datapoint_type in payload:
                 for key, example in payload[datapoint_type].items():
-                    _ = models.ConnectorAvailableDatapoints(
-                        connector=connector,
-                        datapoint_type=datapoint_type,
-                        datapoint_key_in_connector=key,
-                        datapoint_example_value=example,
-                    )
+                    try:
+                        _ = models.ConnectorAvailableDatapoints(
+                            connector=connector,
+                            datapoint_type=datapoint_type,
+                            datapoint_key_in_connector=key,
+                            datapoint_example_value=example,
+                        ).save()
+                    except Exception:
+                        logger.exception(
+                            'Exception while writing available datapoint into '
+                            'DB.'
+                        )
 
     @staticmethod
     def on_connect(client, userdata, flags, rc):
