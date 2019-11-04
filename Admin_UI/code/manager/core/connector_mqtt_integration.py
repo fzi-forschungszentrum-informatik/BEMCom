@@ -15,6 +15,7 @@ class ConnectorMQTTIntegration():
 
     def __init__(self, mqtt_client=Client):
         """
+        TODO: Use importlib.import_module('paho.mqtt.client.Client')
         """
         logger.info('Starting up Connector MQTT Integration.')
 

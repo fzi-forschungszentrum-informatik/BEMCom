@@ -2,6 +2,7 @@ import os
 import json
 import time
 
+import pytest
 import paho.mqtt.client as mqtt
 from django.test import TransactionTestCase
 
@@ -9,7 +10,6 @@ from django.test import TransactionTestCase
 # develop interactive too.
 if __name__ == "__main__":
     from django import setup
-    from django.core.management import execute_from_command_line
     os.environ['DJANGO_SETTINGS_MODULE'] = 'manager.settings'
     os.chdir('../..')
     setup()
@@ -22,6 +22,9 @@ from core.utils import datetime_from_timestamp
 class TestConnectorIntegration(TransactionTestCase):
     """
     Test that all messages sent by a standard Connector are saved in the DB.
+
+    The TransactionTestCase is necessary for the tests to be able to access
+    the connector defined in setUp.
     """
 
     def setUp(self):
@@ -74,7 +77,7 @@ class TestConnectorIntegration(TransactionTestCase):
             time.sleep(0.005)
             waited_seconds += 0.005
 
-            if waited_seconds >= 2:
+            if waited_seconds >= 3:
                 raise RuntimeError('Expected Log Entry has not reached DB.')
 
         # Compare expected and stored data.
@@ -107,7 +110,7 @@ class TestConnectorIntegration(TransactionTestCase):
             time.sleep(0.005)
             waited_seconds += 0.005
 
-            if waited_seconds >= 2:
+            if waited_seconds >= 3:
                 raise RuntimeError('Expected heartbeat has not reached DB.')
 
         # Compare expected and stored data.
@@ -151,7 +154,7 @@ class TestConnectorIntegration(TransactionTestCase):
             time.sleep(0.005)
             waited_seconds += 0.005
 
-            if waited_seconds >= 2:
+            if waited_seconds >= 3:
                 raise RuntimeError(
                     'Expected message on available datapoints has not reached '
                     ' DB.'
@@ -180,11 +183,10 @@ class TestConnectorIntegration(TransactionTestCase):
             actual_rows.append(actual_row)
 
         # Finnaly check if the rows are identical.
-        self.assertListEqual(expected_rows, actual_rows)
+        assert expected_rows == actual_rows
 
 
-# Execute this, and only this test file if running this file directly.
-if __name__ == "__main__":
-    filename_no_extension = os.path.splitext(__file__)[0]
-    this_file_as_module_str = '.'.join(filename_no_extension.split('/')[-3:])
-    execute_from_command_line(['', 'test', this_file_as_module_str])
+if __name__ == '__main__':
+    # Test this file only.
+    pytest.main(['-v', __file__])
+
