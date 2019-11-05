@@ -57,11 +57,10 @@ def connector_integration_setup(request, django_db_setup, django_db_blocker):
     request.cls.cmi = cmi
     yield
 
-    # Close connections and objects. The delete would also be done by django.
+    # Close connections and objects.
     mqtt_client.disconnect()
     mqtt_client.loop_stop()
     cmi.disconnect()
-    test_connector.delete()
 
     # Remove access to DB.
     django_db_blocker.block()
