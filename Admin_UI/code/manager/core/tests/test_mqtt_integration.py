@@ -19,42 +19,60 @@ from core.connector_mqtt_integration import ConnectorMQTTIntegration
 from core.utils import datetime_from_timestamp
 
 
-class TestConnectorIntegration(TransactionTestCase):
+@pytest.fixture(scope='class')
+def connector_integration_setup(request, django_db_setup, django_db_blocker):
+    """
+    SetUp Fake MQTT Broker and ConnectorMQTTIntegration for all tests in
+    TestConnectorIntegration.
+
+    This is significantly faster then using unittest's setUp and tearDown
+    as those are executed for every test function, here only for the class
+    as a whole.
+    """
+    # Allow access to the Test DB. See:
+    # https://pytest-django.readthedocs.io/en/latest/database.html#django-db-blocker
+    django_db_blocker.unblock()
+
+    # Setup Broker and Integration.
+    mqtt_client = mqtt.Client()
+    mqtt_client.connect('localhost', 1883)
+    mqtt_client.loop_start()
+
+    test_connector = models.Connector(
+        name='test_connector',
+        mqtt_topic_logs='test_connector/logs',
+        mqtt_topic_heartbeat='test_connector/heartbeat',
+        mqtt_topic_available_datapoints='test_connector/available_datapoints',
+        mqtt_topic_datapoint_map='test_connector/datapoint_map',
+    )
+    test_connector.save()
+
+    cmi = ConnectorMQTTIntegration(
+        mqtt_client=mqtt.Client
+    )
+
+    # Inject objects into test class.
+    request.cls.mqtt_client = mqtt_client
+    request.cls.test_connector = test_connector
+    request.cls.cmi = cmi
+    yield
+
+    # Close connections and objects. The delete would also be done by django.
+    mqtt_client.disconnect()
+    mqtt_client.loop_stop()
+    cmi.disconnect()
+    test_connector.delete()
+
+    # Remove access to DB.
+    django_db_blocker.block()
+    django_db_blocker.restore()
+
+
+@pytest.mark.usefixtures('connector_integration_setup')
+class TestConnectorIntegration():
     """
     Test that all messages sent by a standard Connector are saved in the DB.
-
-    The TransactionTestCase is necessary for the tests to be able to access
-    the connector defined in setUp.
     """
-
-    def setUp(self):
-        """
-        Set up message broker connection and test connector in DB.
-        """
-        self.mqtt_client = mqtt.Client()
-        self.mqtt_client.connect('localhost', 1883)
-
-        self.mqtt_client.loop_start()
-        self.test_connector = models.Connector(
-            name='test_connector',
-            mqtt_topic_logs='test_connector/logs',
-            mqtt_topic_heartbeat='test_connector/heartbeat',
-            mqtt_topic_available_datapoints='test_connector/available_datapoints',
-            mqtt_topic_datapoint_map='test_connector/datapoint_map',
-        )
-        self.test_connector.save()
-
-        self.cmi = ConnectorMQTTIntegration(
-            mqtt_client=mqtt.Client
-        )
-
-    def tearDown(self):
-        """
-        Close all connections after each test.
-        """
-        self.mqtt_client.disconnect()
-        self.mqtt_client.loop_stop()
-        self.cmi.disconnect()
 
     def test_log_msg_received(self):
         """
