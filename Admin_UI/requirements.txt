@@ -4,3 +4,4 @@ Pillow
 channels
 service_identity  # is required by channels.
 paho-mqtt
+pytest-django
