@@ -2,7 +2,7 @@ version: '3'
 
 services:
     x-to-mqtt-tester:
-        container_name: x-to-mqtt-tester
+        container_name: "${INSTANECE_NAME}"
 
         ports:
             - "${X_TO_MQTT_NODE_RED_PORT}:1880"
@@ -30,3 +30,5 @@ services:
         image: "eclipse-mosquitto:1.5.4"
         user: "${USER_ID}:${GROUP_ID}"
         restart: always
+        ports:
+            - 1883:1883

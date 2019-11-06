@@ -392,6 +392,24 @@
      "file": "/usr/src/node-red/node_modules/node-red-node-tail/28-tail.js"
     }
    }
+  },
+  "node-red-contrib-mongodb3": {
+   "name": "node-red-contrib-mongodb3",
+   "version": "2.0.1",
+   "local": true,
+   "nodes": {
+    "mongodb": {
+     "name": "mongodb",
+     "types": [
+      "mongodb3",
+      "mongodb3 in"
+     ],
+     "enabled": true,
+     "local": true,
+     "module": "node-red-contrib-mongodb3",
+     "file": "/data/node_modules/node-red-contrib-mongodb3/mongodb/mongodb.js"
+    }
+   }
   }
  },
  "_credentialSecret": "3376f913eaaa5e80d6e15ae3878ee1f8c3b8019b743b34503e15f3ce321c0ae3",
