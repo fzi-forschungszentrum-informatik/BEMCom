@@ -155,7 +155,7 @@ class FakeMQTTClient():
         granted_qos = 0
         self.on_subscribe(client, userdata, mid, granted_qos)
 
-    def publish(self, topic, payload):
+    def publish(self, topic, payload=None, qos=0, retain=False):
         """
         Publish message on fake_broker. Similar to paho.mqtt clients method.
         """

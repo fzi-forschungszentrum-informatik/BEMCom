@@ -17,6 +17,7 @@ if __name__ == "__main__":
 from admin_interface import models
 from admin_interface.connector_mqtt_integration import ConnectorMQTTIntegration
 from admin_interface.utils import datetime_from_timestamp
+from admin_interface.tests.fake_mqtt import FakeMQTTBroker, FakeMQTTClient
 
 
 @pytest.fixture(scope='class')
@@ -33,8 +34,12 @@ def connector_integration_setup(request, django_db_setup, django_db_blocker):
     # https://pytest-django.readthedocs.io/en/latest/database.html#django-db-blocker
     django_db_blocker.unblock()
 
+    fake_broker = FakeMQTTBroker()
+    fake_client_1 = FakeMQTTClient(fake_broker=fake_broker)
+    fake_client_2 = FakeMQTTClient(fake_broker=fake_broker)
+
     # Setup Broker and Integration.
-    mqtt_client = mqtt.Client()
+    mqtt_client = fake_client_1()
     mqtt_client.connect('localhost', 1883)
     mqtt_client.loop_start()
 
@@ -48,7 +53,7 @@ def connector_integration_setup(request, django_db_setup, django_db_blocker):
     test_connector.save()
 
     cmi = ConnectorMQTTIntegration(
-        mqtt_client=mqtt.Client
+        mqtt_client=fake_client_2
     )
 
     # Inject objects into test class.

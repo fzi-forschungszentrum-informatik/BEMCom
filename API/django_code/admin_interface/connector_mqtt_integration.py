@@ -53,7 +53,6 @@ class ConnectorMQTTIntegration():
             # No duplicates in log files etc.
             self.client.subscribe(topic, 2)
 
-
     def disconnect(self):
         """
         Shutdown gracefully -> Disconnect from broker and stop background loop.
@@ -177,5 +176,6 @@ class ConnectorMQTTIntegration():
             )
             client.connect(**userdata['connect_kwargs'])
 
+    @staticmethod
     def on_subscribe(client, userdata, mid, granted_qos):
         logger.info('Subscribed: %s, %s', mid, granted_qos)
