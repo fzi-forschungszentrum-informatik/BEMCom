@@ -1,7 +1,7 @@
 import pytest
 
-from core.tests.fake_mqtt import FakeMQTTBroker, FakeMQTTClient
-from core.tests.helpers import TestClassWithFixtures
+from admin_interface.tests.fake_mqtt import FakeMQTTBroker, FakeMQTTClient
+from admin_interface.tests.helpers import TestClassWithFixtures
 
 
 class TestFakeMQTTClient(TestClassWithFixtures):

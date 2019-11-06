@@ -10,13 +10,13 @@ from django.test import TransactionTestCase
 # develop interactive too.
 if __name__ == "__main__":
     from django import setup
-    os.environ['DJANGO_SETTINGS_MODULE'] = 'manager.settings'
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'general_configuration.settings'
     os.chdir('../..')
     setup()
 
-from core import models
-from core.connector_mqtt_integration import ConnectorMQTTIntegration
-from core.utils import datetime_from_timestamp
+from admin_interface import models
+from admin_interface.connector_mqtt_integration import ConnectorMQTTIntegration
+from admin_interface.utils import datetime_from_timestamp
 
 
 @pytest.fixture(scope='class')

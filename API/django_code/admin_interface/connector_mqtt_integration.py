@@ -5,8 +5,8 @@ from paho.mqtt.client import Client
 from django.conf import settings
 from django.db import connection
 
-from core import models
-from core.utils import datetime_from_timestamp
+from admin_interface import models
+from admin_interface.utils import datetime_from_timestamp
 
 logger = logging.getLogger(__name__)
 

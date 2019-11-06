@@ -68,7 +68,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'channels',
-    'core.apps.CoreConfig',
+    'admin_interface.apps.AdminInterfaceConfig',
 ]
 
 MIDDLEWARE = [
@@ -81,7 +81,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'manager.urls'
+ROOT_URLCONF = 'general_configuration.urls'
 
 TEMPLATES = [
     {
@@ -99,7 +99,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'manager.wsgi.application'
+WSGI_APPLICATION = 'general_configuration.wsgi.application'
 
 
 # Database
@@ -156,7 +156,7 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 # Settings for channels
-ASGI_APPLICATION = "manager.routing.application"
+ASGI_APPLICATION = "general_configuration.routing.application"
 
 # Settings for connection to MQTT broker.
 MQTT_BROKER = {

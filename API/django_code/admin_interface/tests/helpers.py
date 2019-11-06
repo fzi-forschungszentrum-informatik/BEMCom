@@ -5,7 +5,6 @@ Some generic code relevant for all tests.
 """
 
 import unittest
-
 import pytest
 
 
