@@ -1,4 +1,6 @@
- 
+ Format of messages between connectors and the API.
+
+<span style="color:red;font-weight:bold">Connect connectors and Raw Message logging over MQTT too?</span>
 
 # Log messages (from Connector)
 
