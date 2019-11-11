@@ -1,3 +1,4 @@
 __pycache__
 .pytest_cache
+mqtt_broker_credentials.env
 postgres_data/

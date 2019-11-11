@@ -155,7 +155,7 @@ soap:Envelope__soap:Body__0__getMeterResponse__0__getMeterResult:__0__channel__0
 ### Topic:
 
 ```
-<Connector_name>/msgs/<datapoint_id>
+<Connector_name>/messages/<datapoint_id>
 ```
 
 ### Format:
