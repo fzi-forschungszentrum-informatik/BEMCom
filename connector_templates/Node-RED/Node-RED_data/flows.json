@@ -1,1 +1,1223 @@
-[{"id":"927c9b3e.6d8038","type":"tab","label":"Main","disabled":false,"info":""},{"id":"a1058abf.d7f1d8","type":"subflow","name":"Subflow 2","info":"","category":"","in":[{"x":40,"y":120,"wires":[{"id":"52fd0e81.fa125"}]}],"out":[{"x":580,"y":120,"wires":[{"id":"2c9b902f.a4563","port":0}]}],"env":[{"name":"REQUEST_URL","type":"str","value":"https://example.com"}],"color":"#DDAA99"},{"id":"2f246a38.edf956","type":"subflow","name":"Log handler","info":"A central log handler that sends all log messages of Node-REDs internal logger via MQTT. The messages are published on the topic defined by the `MQTT_TOPIC_LOGS` environment variable.\nThe log handler uses a TCP socket to connect Node-REDs internal logger with the flow.\n\n# Usage\nDeploy one (and only one) instance of the node in a Node-RED instance. If you deploy more than one node the following error will occur:\n```\n\"unable to listen on port 1337, error: Error: listen EADDRINUSE: address already in use :::1338\"\n```\n\nAll log messages will be caught automatically, this includes the warn and error messages displayed in Node-REDs debug message log but also the internal info messages not shown there. \n\nTo explicitly log in function nodes use the `node` attribute as explained [here](https://nodered.org/docs/user-guide/writing-functions#logging-events), i.e. use: \n\n```\nnode.log(..)\nnode.warn(..)\nnode.error(..)\nnode.debug(..)\nnode.trace(..)\n```\n\n# Log levels\n\n... are converted to python standard, that is:\n\n* 10 (DEBUG) Something happened which is only relevant for developers of the application.\n* 20 (INFO) Something happened.\n* 30 (WARN) Something happened, which is not a problem a the moment but may become one in future. No data is lost.\n* 40 (ERROR) An error occurred, the processing of one or more messages failed. Some data is lost and/or has not reached the end of the flow. Node-RED and the flows still work.\n* 50 (FATAL) A flow or Node-RED crashed and does not operation as intended. You should not expect that FATAL logs are forwarded as the flow may already be halted.\n\n# Known bugs\nAfter a redeploy (not the first startup) of the application it may take 5-10 seconds until the connection is reestablished. Log messages may be lost within that time.\n\n# Preliminaries\n\nIn order to make this flow work one needs to append the following code into `settings.js` in the `logging` section:\n\n```\n// Custom log handler that forwards log messages via tcp socket.\n        logforwarder: {\n            // Node red logger configuration see https://nodered.org/docs/user-guide/runtime/logging\n            level: 'info',\n            metrics: false,\n            audit: false,\n            handler: function(conf) {\n                var net = require('net')\n                var logPort = 1337\n                var logHost = 'localhost'\n                var message_cache = []\n                var client_connected = false\n                var client = new net.Socket()\n\n                // Send all cached messages once the connection is established.\n                client.on('connect', function() {\n                    console.log(\"LogForwarder connected\")\n                    client_connected = true\n                    while(message_cache.length) {\n                        client.write(JSON.stringify(message_cache.shift())+\"\\n\")\n                    }\n\n                })\n\n                // Handle connection errors, flag connection inactive and issue reconnect.\n                client.on('error', function() {\n                    // Ignore errors that occurred while the socket was not connected.\n                    if (client_connected === true) {\n                        console.log(\"LogForwarder connection error, Reconnecting.\")\n                        client.destroy()\n                        client = new net.Socket()\n                        client_connected = false\n                        client.setTimeout(2000, function() {\n                            client.connect(logPort, logHost)\n                        })\n                    }\n                })\n\n                // Return the function that will do the actual logging to the logging system.\n                return function(msg) {\n                    if (client_connected === true) {\n                        try {\n                            client.write(JSON.stringify(msg)+\"\\n\")\n                        } catch(err) {\n                            // Trigger caching and reconnecting on error.\n                            client.destroy()\n                            client = new net.Socket()\n                            client_connected = false\n                        }\n                    } \n                    // Cache messages if connection is lost.\n                    if (client_connected === false) {\n                        message_cache.push(msg)\n                        // Only trigger reconnect if a message is waiting to be sent.\n                        if (client.connecting === false) {\n                            client.connect(logPort, logHost)\n                        }\n                    }\n                }\n            }\n        }\n```","category":"","in":[],"out":[],"env":[],"color":"#7bb27f","icon":"node-red/envelope.svg","status":{"x":800,"y":280,"wires":[{"id":"d09fe5cf.357788","port":0}]}},{"id":"4b055c82.2ce1b4","type":"subflow","name":"Heartbeat","info":"This node sends a periodic heartbeat every `heartbeat_period` seconds via MQTT to the topic defined in the environment variable `MQTT_TOPIC_HEARTBEAT`. \n\nThe `heartbeat_period` defaults to 5 seconds and can be changed as subflow property. \n\nThe heartbeat message object looks e.g. like this:\n\n```\n\"payload\": {\n\t\"this_heartbeats_timestamp\": 1571927361261,\n \t\"next_heartbeats_timestamp\": 1571927366261\n}\n```","category":"","in":[],"out":[],"env":[{"name":"heartbeat_period","type":"num","value":"5","ui":{"type":"input","opts":{"types":["num"]},"label":{}}}],"color":"#FF0000","icon":"node-red/status.svg","status":{"x":400,"y":200,"wires":[{"id":"60fdc941.ed1208","port":0}]}},{"id":"a96a98ee.ee4868","type":"subflow","name":"Receive and store datapoint_map","info":"","category":"","in":[],"out":[],"env":[],"color":"#D8BFD8","icon":"node-red/arrow-in.svg"},{"id":"babaf5c6.a407d8","type":"subflow","name":"Store raw_msg in Mongo DB","info":"","category":"","in":[{"x":80,"y":100,"wires":[{"id":"b0fcae73.496e8"}]}],"out":[],"env":[],"color":"#40c266","icon":"node-red/mongodb.png"},{"id":"751919a4.2b89e8","type":"subflow","name":"Receive availbe datapoints from X and send to Admin","info":"","category":"","in":[],"out":[],"env":[],"color":"#DDAA99"},{"id":"24480cc.24690f4","type":"subflow","name":"Parse object from raw_msg","info":"Parse an object from the raw data.\n# Returns\nShould return the a message with the parsed data.\n```\nmsg = {\n    \"payload\": {\n        \"parsed_message\": <the parsed data as object>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"parsed_message\": {\n            \"device_1\": {\n                \"sensor_1\": \"2.12\",\n                \"sensor_2\": \"3.12\"\n            }\n        },\n        \"timestamp\": 1573680749000\n    }\n}\n```","category":"","in":[{"x":40,"y":40,"wires":[{"id":"9386656f.5f4ee8"}]}],"out":[{"x":640,"y":40,"wires":[]}],"env":[],"color":"#FDD0A2","icon":"font-awesome/fa-cube"},{"id":"630ce853.304e48","type":"subflow","name":"Receive raw_message","info":"All logic necessary to receive data from device or data source.\n\n# Returns\nShould return the received message as raw message in the format:\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": <the raw data>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": \"device_1:{sensor_1:2.12,sensor_2:3.12}\"\n    }\n}\n```","category":"","in":[],"out":[{"x":640,"y":140,"wires":[]}],"env":[],"color":"#a3b9d0","icon":"node-red/arrow-in.svg"},{"id":"bc89d4f9.14c848","type":"tls-config","z":"","name":"","cert":"","key":"","ca":"","certname":"","keyname":"","caname":"","servername":"","verifyservercert":true},{"id":"879bee.da78c41","type":"mqtt-broker","z":"2f246a38.edf956","name":"environment variable broker","broker":"$(MQTT_BROKER_HOST)","port":"$(MQTT_BROKER_PORT)","clientid":"","usetls":false,"compatmode":false,"keepalive":"60","cleansession":true,"birthTopic":"","birthQos":"0","birthPayload":"","closeTopic":"","closeQos":"0","closePayload":"","willTopic":"","willQos":"0","willPayload":""},{"id":"f0d21eb0.93967","type":"mqtt-broker","z":"","name":"environment variable broker","broker":"$(MQTT_BROKER_HOST)","port":"$(MQTT_BROKER_PORT)","clientid":"","usetls":false,"compatmode":false,"keepalive":"60","cleansession":true,"birthTopic":"","birthQos":"0","birthPayload":"","closeTopic":"","closeQos":"0","closePayload":"","willTopic":"","willQos":"0","willPayload":""},{"id":"2c9b902f.a4563","type":"http request","z":"a1058abf.d7f1d8","name":"","method":"GET","ret":"txt","paytoqs":false,"url":"","tls":"bc89d4f9.14c848","persist":false,"proxy":"","authType":"","x":430,"y":120,"wires":[[]]},{"id":"52fd0e81.fa125","type":"change","z":"a1058abf.d7f1d8","name":"","rules":[{"t":"set","p":"url2","pt":"msg","to":"REQUEST_URL","tot":"env"}],"action":"","property":"","from":"","to":"","reg":false,"x":190,"y":120,"wires":[["2c9b902f.a4563"]]},{"id":"f4ae9d15.9bca9","type":"catch","z":"a1058abf.d7f1d8","name":"","scope":null,"uncaught":false,"x":80,"y":40,"wires":[[]]},{"id":"1980e6e1.5dc979","type":"change","z":"927c9b3e.6d8038","name":"Add receival timestamp","rules":[{"t":"set","p":"payload.timestamp","pt":"msg","to":"","tot":"date"}],"action":"","property":"","from":"","to":"","reg":false,"x":390,"y":120,"wires":[["7e5140d4.21391","a1edfeff.9f416"]],"info":"Append the timestamp.\n# Returns\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": <the raw data>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": \"device_1:{sensor_1:2.12,sensor_2:3.12}\",\n        \"timestamp\": 1573680749000\n    }\n}\n```"},{"id":"70a8cfef.b75c5","type":"subflow:2f246a38.edf956","z":"a1058abf.d7f1d8","name":"","x":290,"y":40,"wires":[]},{"id":"a680cff8.31c22","type":"inject","z":"927c9b3e.6d8038","name":"","topic":"","payload":"{\"parsed_message\":{\"device_1\":{\"sensor_1\":\"2.12\",\"sensor_2\":\"3.12\"}},\"timestamp\":1573680749000}","payloadType":"json","repeat":"","crontab":"","once":false,"onceDelay":0.1,"x":210,"y":380,"wires":[["4167d4ab.a3237c"]]},{"id":"ac872115.7ebd2","type":"tcp in","z":"2f246a38.edf956","name":"","server":"server","host":"","port":"1337","datamode":"stream","datatype":"utf8","newline":"\\n","topic":"","base64":false,"x":100,"y":80,"wires":[["7cba1842.0813a8"]]},{"id":"d4772456.48c0d8","type":"comment","z":"2f246a38.edf956","name":"Display the combined status of the tcp connection with the Node-RED logger and mqtt connection as subflow status.","info":"","x":430,"y":240,"wires":[]},{"id":"a7489345.cc4ee","type":"function","z":"2f246a38.edf956","name":"Format log msg","func":"/*\nThe incomming object looks like:\n\ntopic: \"\"\npayload: \n    level: 40\n    id: \"21b82c2e.44d1e4\"\n    type: \"function\"\n    msg: \"TEest 112233\"\n    _alias: \"cd54c61d.3064d8\"\n    z: \"81cb38e5.a724b8\"\n    timestamp: 1571843907448\nip: \"::ffff:127.0.0.1\"\nport: 54404\n_session:\n    type: \"tcp\"\n    id: \"b4c68458.f1e368\"\n_msgid: \"ef84fdce.533b1\"\n\nThe outgoing msg should look like:\npayload: \n    timestamp: 1571843907448\n    msg: \"TEest 112233\"\n    emitter: \"cd54c61d.3064d8\"\n    level: 20\n*/ \n\n// The node id of the emitting node is stored in _alias if the node is within a\n// subflow. Else it's the id field\nlet emitter\nif ('_alias' in msg.payload) {\n    emitter = msg.payload._alias\n} else {\n    emitter = msg.payload.id\n}\n\n// Parse the log levels to Python convention\nlet level\nswitch (msg.payload.level) {\n    case 10:\n        level = 50\n        break\n    case 20:\n        level = 40\n        break\n    case 30:\n        level = 30\n        break\n    case 40:\n        level = 20\n        break\n    case 50:\n        level = 10\n        break\n    default:\n        level = null\n}\n\npayload = {\n    \"timestamp\": msg.payload.timestamp,\n    \"msg\": msg.payload.msg,\n    \"emitter\": emitter,\n    \"level\": level\n}\n\nreturn {\"payload\": payload}","outputs":1,"noerr":0,"x":560,"y":80,"wires":[["f18f0326.62d8b"]]},{"id":"7cba1842.0813a8","type":"json","z":"2f246a38.edf956","name":"String to JSON objecet","property":"payload","action":"obj","pretty":false,"x":320,"y":80,"wires":[["a7489345.cc4ee"]]},{"id":"8c4b1179.2783d","type":"comment","z":"2f246a38.edf956","name":"The pipe line for the log msgs. Append other endpoints as required.","info":"","x":280,"y":40,"wires":[]},{"id":"f18f0326.62d8b","type":"mqtt out","z":"2f246a38.edf956","name":"","topic":"$(MQTT_TOPIC_LOGS)","qos":"2","retain":"false","broker":"879bee.da78c41","x":830,"y":80,"wires":[]},{"id":"2b6a2982.2201b6","type":"mqtt in","z":"927c9b3e.6d8038","name":"","topic":"$(MQTT_TOPIC_LOGS)","qos":"2","datatype":"auto","broker":"f0d21eb0.93967","x":270,"y":480,"wires":[[]]},{"id":"269a9da2.6ce062","type":"status","z":"2f246a38.edf956","name":"","scope":["ac872115.7ebd2","f18f0326.62d8b"],"x":100,"y":280,"wires":[["d09fe5cf.357788"]]},{"id":"d09fe5cf.357788","type":"function","z":"2f246a38.edf956","name":"Compute subflow status","func":"/* This node will receive status messages from \"tcp in\" node and \"mqtt out\".\n\nThe \"tcp in\" status looks like this:\nstatus:\n    text: \"1 connection\"\n    event: \"connect\"\n    ip: \"::ffff:127.0.0.1\"\n    port: 57886\n_session:\n    type: \"tcp\"\n    id: \"4a30194f.2d0008\"\nsource:\n    id: \"51c67f81.6eaad\"\n    type: \"tcp in\"\n_msgid: \"bb2b70c5.abf9f\"\n\nThe \"mqtt out\" status like this:\nstatus:\n    fill: \"yellow\"\n    shape: \"ring\"\n    text: \"node-red:common.status.connecting\"\nsource:\n    id: \"9a6c9ede.e185c\"\n    type: \"mqtt out\"\n_msgid: \"45a3aa0f.960234\"\n\nThe following code will compute the following status:\n* green (connected): if both ends are connected.\n* yellow ring (connecting): if any of both ends are still connecting.\n* grey ring (unknown): for undefined states, especially if more than\n  one endpoint is connected to \"tcp in\"\n* red (disconnected): If one of both nodes is not connected.\n*/\n\n// Store the last status for each of the two nodes, as only one is received\n// at a time but both are required to compute the status.\nif (msg.status.source.type === \"mqtt out\") {\n    context.set('mqtt_status_text', msg.status.text)\n}\nif (msg.status.source.type === \"tcp in\") {\n    context.set('tcp_status_text', msg.status.text)\n}\n\n// Compute the status assume disconnected as default value.\nlet status\nlet mqtt_status_text = context.get(\"mqtt_status_text\") || \"node-red:common.status.disconnected\"\nlet tcp_status_text = context.get(\"tcp_status_text\") || \"0 connection\"\n\nif (mqtt_status_text === \"node-red:common.status.connected\" && \n        tcp_status_text === \"1 connection\") {\n    status = {\n        \"fill\": \"green\",\n        \"shape\": \"dot\",\n        \"text\": \"node-red:common.status.connected\"\n    }\n    return {\"status\": status}\n}\n\nif (mqtt_status_text === \"node-red:common.status.disconnected\" || \n        tcp_status_text === \"0 connection\") {\n    status = {\n        \"fill\": \"red\",\n        \"shape\": \"ring\",\n        \"text\": \"node-red:common.status.disconnected\",\n        \"tcp status\": tcp_status_text\n    }\n    return {\"status\": status}\n}\n\n// TCP in has no connecting phase. Hence only connecting status\n// if already connected to tcp in.\nif (mqtt_status_text === \"node-red:common.status.connecting\" && \n        tcp_status_text === \"1 connection\") {\n    status = {\n        \"fill\": \"yellow\",\n        \"shape\": \"ring\",\n        \"text\": \"node-red:common.status.connecting\"\n    }\n    return {\"status\": status}\n}\n\n// For every other state, which should \nstatus = {\n    \"fill\": \"grey\",\n    \"shape\": \"ring\",\n    \"text\": \"unknown\"\n}\n\nreturn {\"status\": status}","outputs":1,"noerr":0,"x":470,"y":280,"wires":[[]]},{"id":"f3d7689a.7f5be8","type":"inject","z":"4b055c82.2ce1b4","name":"","topic":"","payload":"","payloadType":"date","repeat":"$(heartbeat_period)","crontab":"","once":true,"onceDelay":0.1,"x":130,"y":80,"wires":[["66e8a12a.91483"]]},{"id":"1c3a8d6.3407573","type":"mqtt out","z":"4b055c82.2ce1b4","name":"","topic":"$(MQTT_TOPIC_HEARTBEAT)","qos":"","retain":"","broker":"f0d21eb0.93967","x":750,"y":80,"wires":[]},{"id":"66e8a12a.91483","type":"function","z":"4b055c82.2ce1b4","name":"Format heartbeat msg","func":"let heartbeat_period = env.get(\"heartbeat_period\")\n\n//timestamps as usual in milliseconds, hearbeat period in seconds\npayload = {\n    \"this_heartbeats_timestamp\": msg.payload,\n    \"next_heartbeats_timestamp\": msg.payload + heartbeat_period * 1000\n}\nreturn {\"payload\": payload}","outputs":1,"noerr":0,"x":420,"y":80,"wires":[["1c3a8d6.3407573"]]},{"id":"a6b20f83.8bb9d","type":"comment","z":"4b055c82.2ce1b4","name":"Periodically send the heartbeat messages.","info":"","x":200,"y":40,"wires":[]},{"id":"60fdc941.ed1208","type":"status","z":"4b055c82.2ce1b4","name":"","scope":["1c3a8d6.3407573"],"x":100,"y":200,"wires":[[]]},{"id":"b58bf767.ab87a8","type":"comment","z":"4b055c82.2ce1b4","name":"Display MQTT connection status as subflow status","info":"","x":230,"y":160,"wires":[]},{"id":"2e5b1c4.20be3e4","type":"subflow:4b055c82.2ce1b4","z":"927c9b3e.6d8038","name":"","env":[],"x":260,"y":40,"wires":[]},{"id":"d9bfa648.e879e8","type":"subflow:a96a98ee.ee4868","z":"927c9b3e.6d8038","name":"","env":[],"x":970,"y":40,"wires":[]},{"id":"b0fcae73.496e8","type":"function","z":"babaf5c6.a407d8","name":"Throw not implemented error","func":"throw \"Not implemented.\"","outputs":0,"noerr":0,"x":400,"y":100,"wires":[]},{"id":"33cdccc8.ddbca4","type":"subflow:751919a4.2b89e8","z":"927c9b3e.6d8038","name":"","env":[],"x":560,"y":40,"wires":[]},{"id":"c7e7438b.9eab","type":"comment","z":"751919a4.2b89e8","name":"Combine reading the input datastream and a manual list as default.","info":"","x":400,"y":100,"wires":[]},{"id":"b7064af6.613328","type":"mqtt out","z":"927c9b3e.6d8038","name":"","topic":"$(MQTT_TOPIC_RAW_MESSAGE_TO_DB)","qos":"2","retain":"false","broker":"f0d21eb0.93967","x":1170,"y":120,"wires":[]},{"id":"7e5140d4.21391","type":"switch","z":"927c9b3e.6d8038","name":"if ${SEND_RAW_MESSAGE_TO_DB} == TRUE","property":"SEND_RAW_MESSAGE_TO_DB","propertyType":"env","rules":[{"t":"eq","v":"TRUE","vt":"str"}],"checkall":"true","repair":false,"outputs":1,"x":760,"y":120,"wires":[["b7064af6.613328"]]},{"id":"2ee2fa20.944a36","type":"mqtt in","z":"927c9b3e.6d8038","name":"","topic":"$(MQTT_TOPIC_RAW_MESSAGE_REPROCESS)","qos":"1","datatype":"json","broker":"f0d21eb0.93967","x":210,"y":200,"wires":[["a1edfeff.9f416"]]},{"id":"a1edfeff.9f416","type":"subflow:24480cc.24690f4","z":"927c9b3e.6d8038","name":"","env":[],"x":700,"y":200,"wires":[["4167d4ab.a3237c"]]},{"id":"4167d4ab.a3237c","type":"function","z":"927c9b3e.6d8038","name":"Flatten object","func":"// from https://stackoverflow.com/questions/44134212/best-way-to-flatten-js-object-keys-and-values-to-a-single-depth-array\nfunction flattenObject(ob) {\n    var toReturn = {};\n\n    for (var i in ob) {\n        if (!ob.hasOwnProperty(i)) continue;\n\n        if ((typeof ob[i]) == 'object' && ob[i] !== null) {\n            var flatObject = flattenObject(ob[i]);\n            for (var x in flatObject) {\n                if (!flatObject.hasOwnProperty(x)) continue;\n\n                toReturn[i + '__' + x] = flatObject[x];\n            }\n        } else {\n            toReturn[i] = ob[i];\n        }\n    }\n    return toReturn;\n}\n\nlet parsed_message = msg.payload.parsed_message\nlet flattened_message = flattenObject(parsed_message)\ndelete msg.payload.parsed_message\nmsg.payload[\"flattened_message\"] = flattened_message\n\nreturn msg","outputs":1,"noerr":0,"x":980,"y":200,"wires":[["72ba97e1.72be38"]],"info":"Flattens the incomming object to depth 1, i.e that every leaf of the incomming object can be accessed with a unique key directly from flat_message object.\n# Returns\nShould return the a message with the flattend data like:\n```\nmsg = {\n    \"payload\": {\n        \"flattened_message\": <the parsed data as flattend object>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"flattened_message\": {\n            \"device_1__sensor_1\": \"2.12\"\n            \"device_1__sensor_2\": \"3.12\"\n        },\n        \"timestamp\": 1573680749000\n    }\n}\n```"},{"id":"9386656f.5f4ee8","type":"function","z":"24480cc.24690f4","name":"Throw not implemented error","func":"node.error(\"Logic in subflow \\\"Parse object from raw_message\\\" not implemented\")","outputs":0,"noerr":0,"x":260,"y":40,"wires":[]},{"id":"2deac0e3.ad371","type":"mqtt in","z":"a96a98ee.ee4868","name":"","topic":"$(MQTT_TOPIC_DATAPOINT_MAP)","qos":"2","datatype":"json","broker":"f0d21eb0.93967","x":170,"y":40,"wires":[[]]},{"id":"72ba97e1.72be38","type":"debug","z":"927c9b3e.6d8038","name":"","active":true,"tosidebar":true,"console":false,"tostatus":false,"complete":"true","targetType":"full","x":990,"y":300,"wires":[]},{"id":"b56d5210.4ed39","type":"subflow:630ce853.304e48","z":"927c9b3e.6d8038","name":"","env":[],"x":120,"y":120,"wires":[["1980e6e1.5dc979"]]},{"id":"f6adda79.b02428","type":"function","z":"630ce853.304e48","name":"Throw not implemented error","func":"node.error(\"Logic in subflow \\\"Receive raw_message\\\" not implemented\")","outputs":0,"noerr":0,"x":400,"y":140,"wires":[]},{"id":"c618c384.0a03e","type":"inject","z":"630ce853.304e48","name":"","topic":"","payload":"","payloadType":"date","repeat":"","crontab":"","once":false,"onceDelay":0.1,"x":120,"y":140,"wires":[["f6adda79.b02428"]]},{"id":"c09a02a.1f4d9","type":"debug","z":"927c9b3e.6d8038","name":"","active":true,"tosidebar":true,"console":false,"tostatus":false,"complete":"true","targetType":"full","x":550,"y":340,"wires":[]}]
+[
+    {
+        "id": "927c9b3e.6d8038",
+        "type": "tab",
+        "label": "Main",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "68dfd515.661f7c",
+        "type": "tab",
+        "label": "Specify additional available_datapoints",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "219558b7.844058",
+        "type": "tab",
+        "label": "Receive raw_message",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "545ec5f2.a5913c",
+        "type": "tab",
+        "label": "Parse raw_message",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "a1058abf.d7f1d8",
+        "type": "subflow",
+        "name": "Subflow 2",
+        "info": "",
+        "category": "",
+        "in": [
+            {
+                "x": 40,
+                "y": 120,
+                "wires": [
+                    {
+                        "id": "52fd0e81.fa125"
+                    }
+                ]
+            }
+        ],
+        "out": [
+            {
+                "x": 580,
+                "y": 120,
+                "wires": [
+                    {
+                        "id": "2c9b902f.a4563",
+                        "port": 0
+                    }
+                ]
+            }
+        ],
+        "env": [
+            {
+                "name": "REQUEST_URL",
+                "type": "str",
+                "value": "https://example.com"
+            }
+        ],
+        "color": "#DDAA99"
+    },
+    {
+        "id": "2f246a38.edf956",
+        "type": "subflow",
+        "name": "Log handler",
+        "info": "A central log handler that sends all log messages of Node-REDs internal logger via MQTT. The messages are published on the topic defined by the `MQTT_TOPIC_LOGS` environment variable.\nThe log handler uses a TCP socket to connect Node-REDs internal logger with the flow.\n\n# Usage\nDeploy one (and only one) instance of the node in a Node-RED instance. If you deploy more than one node the following error will occur:\n```\n\"unable to listen on port 1337, error: Error: listen EADDRINUSE: address already in use :::1338\"\n```\n\nAll log messages will be caught automatically, this includes the warn and error messages displayed in Node-REDs debug message log but also the internal info messages not shown there. \n\nTo explicitly log in function nodes use the `node` attribute as explained [here](https://nodered.org/docs/user-guide/writing-functions#logging-events), i.e. use: \n\n```\nnode.log(..)\nnode.warn(..)\nnode.error(..)\nnode.debug(..)\nnode.trace(..)\n```\n\n# Log levels\n\n... are converted to python standard, that is:\n\n* 10 (DEBUG) Something happened which is only relevant for developers of the application.\n* 20 (INFO) Something happened.\n* 30 (WARN) Something happened, which is not a problem a the moment but may become one in future. No data is lost.\n* 40 (ERROR) An error occurred, the processing of one or more messages failed. Some data is lost and/or has not reached the end of the flow. Node-RED and the flows still work.\n* 50 (FATAL) A flow or Node-RED crashed and does not operation as intended. You should not expect that FATAL logs are forwarded as the flow may already be halted.\n\n# Known bugs\nAfter a redeploy (not the first startup) of the application it may take 5-10 seconds until the connection is reestablished. Log messages may be lost within that time.\n\n# Preliminaries\n\nIn order to make this flow work one needs to append the following code into `settings.js` in the `logging` section:\n\n```\n// Custom log handler that forwards log messages via tcp socket.\n        logforwarder: {\n            // Node red logger configuration see https://nodered.org/docs/user-guide/runtime/logging\n            level: 'info',\n            metrics: false,\n            audit: false,\n            handler: function(conf) {\n                var net = require('net')\n                var logPort = 1337\n                var logHost = 'localhost'\n                var message_cache = []\n                var client_connected = false\n                var client = new net.Socket()\n\n                // Send all cached messages once the connection is established.\n                client.on('connect', function() {\n                    console.log(\"LogForwarder connected\")\n                    client_connected = true\n                    while(message_cache.length) {\n                        client.write(JSON.stringify(message_cache.shift())+\"\\n\")\n                    }\n\n                })\n\n                // Handle connection errors, flag connection inactive and issue reconnect.\n                client.on('error', function() {\n                    // Ignore errors that occurred while the socket was not connected.\n                    if (client_connected === true) {\n                        console.log(\"LogForwarder connection error, Reconnecting.\")\n                        client.destroy()\n                        client = new net.Socket()\n                        client_connected = false\n                        client.setTimeout(2000, function() {\n                            client.connect(logPort, logHost)\n                        })\n                    }\n                })\n\n                // Return the function that will do the actual logging to the logging system.\n                return function(msg) {\n                    if (client_connected === true) {\n                        try {\n                            client.write(JSON.stringify(msg)+\"\\n\")\n                        } catch(err) {\n                            // Trigger caching and reconnecting on error.\n                            client.destroy()\n                            client = new net.Socket()\n                            client_connected = false\n                        }\n                    } \n                    // Cache messages if connection is lost.\n                    if (client_connected === false) {\n                        message_cache.push(msg)\n                        // Only trigger reconnect if a message is waiting to be sent.\n                        if (client.connecting === false) {\n                            client.connect(logPort, logHost)\n                        }\n                    }\n                }\n            }\n        }\n```",
+        "category": "",
+        "in": [],
+        "out": [],
+        "env": [],
+        "color": "#7bb27f",
+        "icon": "node-red/envelope.svg",
+        "status": {
+            "x": 800,
+            "y": 280,
+            "wires": [
+                {
+                    "id": "d09fe5cf.357788",
+                    "port": 0
+                }
+            ]
+        }
+    },
+    {
+        "id": "4b055c82.2ce1b4",
+        "type": "subflow",
+        "name": "Heartbeat",
+        "info": "This node sends a periodic heartbeat every `heartbeat_period` seconds via MQTT to the topic defined in the environment variable `MQTT_TOPIC_HEARTBEAT`. \n\nThe `heartbeat_period` defaults to 5 seconds and can be changed as subflow property. \n\nThe heartbeat message object looks e.g. like this:\n\n```\n\"payload\": {\n\t\"this_heartbeats_timestamp\": 1571927361261,\n \t\"next_heartbeats_timestamp\": 1571927366261\n}\n```",
+        "category": "",
+        "in": [],
+        "out": [],
+        "env": [
+            {
+                "name": "heartbeat_period",
+                "type": "num",
+                "value": "5",
+                "ui": {
+                    "type": "input",
+                    "opts": {
+                        "types": [
+                            "num"
+                        ]
+                    },
+                    "label": {}
+                }
+            }
+        ],
+        "color": "#FF0000",
+        "icon": "node-red/status.svg",
+        "status": {
+            "x": 400,
+            "y": 200,
+            "wires": [
+                {
+                    "id": "60fdc941.ed1208",
+                    "port": 0
+                }
+            ]
+        }
+    },
+    {
+        "id": "a96a98ee.ee4868",
+        "type": "subflow",
+        "name": "datapoint_map receiver",
+        "info": "",
+        "category": "",
+        "in": [],
+        "out": [],
+        "env": [],
+        "color": "#D8BFD8",
+        "icon": "node-red/arrow-in.svg",
+        "status": {
+            "x": 240,
+            "y": 140,
+            "wires": [
+                {
+                    "id": "89c51b97.13a598",
+                    "port": 0
+                }
+            ]
+        }
+    },
+    {
+        "id": "babaf5c6.a407d8",
+        "type": "subflow",
+        "name": "Store raw_msg in Mongo DB",
+        "info": "",
+        "category": "",
+        "in": [
+            {
+                "x": 80,
+                "y": 100,
+                "wires": [
+                    {
+                        "id": "b0fcae73.496e8"
+                    }
+                ]
+            }
+        ],
+        "out": [],
+        "env": [],
+        "color": "#40c266",
+        "icon": "node-red/mongodb.png"
+    },
+    {
+        "id": "751919a4.2b89e8",
+        "type": "subflow",
+        "name": "Receive availbe datapoints from X and send to Admin",
+        "info": "",
+        "category": "",
+        "in": [],
+        "out": [],
+        "env": [],
+        "color": "#DDAA99"
+    },
+    {
+        "id": "24480cc.24690f4",
+        "type": "subflow",
+        "name": "Parse object from raw_msg",
+        "info": "Parse an object from the raw data.\n# Returns\nShould return the a message with the parsed data.\n```\nmsg = {\n    \"payload\": {\n        \"parsed_message\": <the parsed data as object>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"parsed_message\": {\n            \"device_1\": {\n                \"sensor_1\": \"2.12\",\n                \"sensor_2\": \"3.12\"\n            }\n        },\n        \"timestamp\": 1573680749000\n    }\n}\n```",
+        "category": "",
+        "in": [
+            {
+                "x": 40,
+                "y": 40,
+                "wires": [
+                    {
+                        "id": "9386656f.5f4ee8"
+                    }
+                ]
+            }
+        ],
+        "out": [
+            {
+                "x": 640,
+                "y": 40,
+                "wires": []
+            }
+        ],
+        "env": [],
+        "color": "#FDD0A2",
+        "icon": "font-awesome/fa-cube"
+    },
+    {
+        "id": "630ce853.304e48",
+        "type": "subflow",
+        "name": "Receive raw_message",
+        "info": "All logic necessary to receive data from device or data source.\n\n# Returns\nShould return the received message as raw message in the format:\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": <the raw data>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": \"device_1:{sensor_1:2.12,sensor_2:3.12}\"\n    }\n}\n```",
+        "category": "",
+        "in": [],
+        "out": [
+            {
+                "x": 640,
+                "y": 140,
+                "wires": []
+            }
+        ],
+        "env": [],
+        "color": "#a3b9d0",
+        "icon": "node-red/arrow-in.svg"
+    },
+    {
+        "id": "3674b7d8.02a168",
+        "type": "subflow",
+        "name": "Update available_datapoints",
+        "info": "",
+        "category": "",
+        "in": [
+            {
+                "x": 40,
+                "y": 40,
+                "wires": [
+                    {
+                        "id": "e740f12a.0dc05"
+                    }
+                ]
+            }
+        ],
+        "out": [],
+        "env": [],
+        "color": "#3FADB5",
+        "icon": "node-red/bridge.svg"
+    },
+    {
+        "id": "bc89d4f9.14c848",
+        "type": "tls-config",
+        "z": "",
+        "name": "",
+        "cert": "",
+        "key": "",
+        "ca": "",
+        "certname": "",
+        "keyname": "",
+        "caname": "",
+        "servername": "",
+        "verifyservercert": true
+    },
+    {
+        "id": "879bee.da78c41",
+        "type": "mqtt-broker",
+        "z": "2f246a38.edf956",
+        "name": "environment variable broker",
+        "broker": "$(MQTT_BROKER_HOST)",
+        "port": "$(MQTT_BROKER_PORT)",
+        "clientid": "",
+        "usetls": false,
+        "compatmode": false,
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": ""
+    },
+    {
+        "id": "f0d21eb0.93967",
+        "type": "mqtt-broker",
+        "z": "",
+        "name": "environment variable broker",
+        "broker": "$(MQTT_BROKER_HOST)",
+        "port": "$(MQTT_BROKER_PORT)",
+        "clientid": "",
+        "usetls": false,
+        "compatmode": false,
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": ""
+    },
+    {
+        "id": "2c9b902f.a4563",
+        "type": "http request",
+        "z": "a1058abf.d7f1d8",
+        "name": "",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": false,
+        "url": "",
+        "tls": "bc89d4f9.14c848",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "x": 430,
+        "y": 120,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "52fd0e81.fa125",
+        "type": "change",
+        "z": "a1058abf.d7f1d8",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "url2",
+                "pt": "msg",
+                "to": "REQUEST_URL",
+                "tot": "env"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 190,
+        "y": 120,
+        "wires": [
+            [
+                "2c9b902f.a4563"
+            ]
+        ]
+    },
+    {
+        "id": "f4ae9d15.9bca9",
+        "type": "catch",
+        "z": "a1058abf.d7f1d8",
+        "name": "",
+        "scope": null,
+        "uncaught": false,
+        "x": 80,
+        "y": 40,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "1980e6e1.5dc979",
+        "type": "change",
+        "z": "927c9b3e.6d8038",
+        "name": "Add receival timestamp",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload.timestamp",
+                "pt": "msg",
+                "to": "",
+                "tot": "date"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 430,
+        "y": 180,
+        "wires": [
+            [
+                "7e5140d4.21391",
+                "5d6ccddc.75fcd4"
+            ]
+        ],
+        "info": "Append the timestamp.\n# Returns\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": <the raw data>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": \"device_1:{sensor_1:2.12,sensor_2:3.12}\",\n        \"timestamp\": 1573680749000\n    }\n}\n```"
+    },
+    {
+        "id": "70a8cfef.b75c5",
+        "type": "subflow:2f246a38.edf956",
+        "z": "a1058abf.d7f1d8",
+        "name": "",
+        "x": 290,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "a680cff8.31c22",
+        "type": "inject",
+        "z": "927c9b3e.6d8038",
+        "name": "",
+        "topic": "",
+        "payload": "{\"parsed_message\":{\"device_1\":{\"sensor_1\":\"2.12\",\"sensor_2\":\"3.12\"}},\"timestamp\":1573680749000}",
+        "payloadType": "json",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 930,
+        "y": 220,
+        "wires": [
+            [
+                "4167d4ab.a3237c"
+            ]
+        ]
+    },
+    {
+        "id": "ac872115.7ebd2",
+        "type": "tcp in",
+        "z": "2f246a38.edf956",
+        "name": "",
+        "server": "server",
+        "host": "",
+        "port": "1337",
+        "datamode": "stream",
+        "datatype": "utf8",
+        "newline": "\\n",
+        "topic": "",
+        "base64": false,
+        "x": 100,
+        "y": 80,
+        "wires": [
+            [
+                "7cba1842.0813a8"
+            ]
+        ]
+    },
+    {
+        "id": "d4772456.48c0d8",
+        "type": "comment",
+        "z": "2f246a38.edf956",
+        "name": "Display the combined status of the tcp connection with the Node-RED logger and mqtt connection as subflow status.",
+        "info": "",
+        "x": 430,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "a7489345.cc4ee",
+        "type": "function",
+        "z": "2f246a38.edf956",
+        "name": "Format log msg",
+        "func": "/*\nThe incomming object looks like:\n\ntopic: \"\"\npayload: \n    level: 40\n    id: \"21b82c2e.44d1e4\"\n    type: \"function\"\n    msg: \"TEest 112233\"\n    _alias: \"cd54c61d.3064d8\"\n    z: \"81cb38e5.a724b8\"\n    timestamp: 1571843907448\nip: \"::ffff:127.0.0.1\"\nport: 54404\n_session:\n    type: \"tcp\"\n    id: \"b4c68458.f1e368\"\n_msgid: \"ef84fdce.533b1\"\n\nThe outgoing msg should look like:\npayload: \n    timestamp: 1571843907448\n    msg: \"TEest 112233\"\n    emitter: \"cd54c61d.3064d8\"\n    level: 20\n*/ \n\n// The node id of the emitting node is stored in _alias if the node is within a\n// subflow. Else it's the id field\nlet emitter\nif ('_alias' in msg.payload) {\n    emitter = msg.payload._alias\n} else {\n    emitter = msg.payload.id\n}\n\n// Parse the log levels to Python convention\nlet level\nswitch (msg.payload.level) {\n    case 10:\n        level = 50\n        break\n    case 20:\n        level = 40\n        break\n    case 30:\n        level = 30\n        break\n    case 40:\n        level = 20\n        break\n    case 50:\n        level = 10\n        break\n    default:\n        level = null\n}\n\npayload = {\n    \"timestamp\": msg.payload.timestamp,\n    \"msg\": msg.payload.msg,\n    \"emitter\": emitter,\n    \"level\": level\n}\n\nreturn {\"payload\": payload}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 560,
+        "y": 80,
+        "wires": [
+            [
+                "f18f0326.62d8b"
+            ]
+        ]
+    },
+    {
+        "id": "7cba1842.0813a8",
+        "type": "json",
+        "z": "2f246a38.edf956",
+        "name": "String to JSON objecet",
+        "property": "payload",
+        "action": "obj",
+        "pretty": false,
+        "x": 320,
+        "y": 80,
+        "wires": [
+            [
+                "a7489345.cc4ee"
+            ]
+        ]
+    },
+    {
+        "id": "8c4b1179.2783d",
+        "type": "comment",
+        "z": "2f246a38.edf956",
+        "name": "The pipe line for the log msgs. Append other endpoints as required.",
+        "info": "",
+        "x": 280,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "f18f0326.62d8b",
+        "type": "mqtt out",
+        "z": "2f246a38.edf956",
+        "name": "",
+        "topic": "$(MQTT_TOPIC_LOGS)",
+        "qos": "2",
+        "retain": "false",
+        "broker": "879bee.da78c41",
+        "x": 830,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "269a9da2.6ce062",
+        "type": "status",
+        "z": "2f246a38.edf956",
+        "name": "",
+        "scope": [
+            "ac872115.7ebd2",
+            "f18f0326.62d8b"
+        ],
+        "x": 100,
+        "y": 280,
+        "wires": [
+            [
+                "d09fe5cf.357788"
+            ]
+        ]
+    },
+    {
+        "id": "d09fe5cf.357788",
+        "type": "function",
+        "z": "2f246a38.edf956",
+        "name": "Compute subflow status",
+        "func": "/* This node will receive status messages from \"tcp in\" node and \"mqtt out\".\n\nThe \"tcp in\" status looks like this:\nstatus:\n    text: \"1 connection\"\n    event: \"connect\"\n    ip: \"::ffff:127.0.0.1\"\n    port: 57886\n_session:\n    type: \"tcp\"\n    id: \"4a30194f.2d0008\"\nsource:\n    id: \"51c67f81.6eaad\"\n    type: \"tcp in\"\n_msgid: \"bb2b70c5.abf9f\"\n\nThe \"mqtt out\" status like this:\nstatus:\n    fill: \"yellow\"\n    shape: \"ring\"\n    text: \"node-red:common.status.connecting\"\nsource:\n    id: \"9a6c9ede.e185c\"\n    type: \"mqtt out\"\n_msgid: \"45a3aa0f.960234\"\n\nThe following code will compute the following status:\n* green (connected): if both ends are connected.\n* yellow ring (connecting): if any of both ends are still connecting.\n* grey ring (unknown): for undefined states, especially if more than\n  one endpoint is connected to \"tcp in\"\n* red (disconnected): If one of both nodes is not connected.\n*/\n\n// Store the last status for each of the two nodes, as only one is received\n// at a time but both are required to compute the status.\nif (msg.status.source.type === \"mqtt out\") {\n    context.set('mqtt_status_text', msg.status.text)\n}\nif (msg.status.source.type === \"tcp in\") {\n    context.set('tcp_status_text', msg.status.text)\n}\n\n// Compute the status assume disconnected as default value.\nlet status\nlet mqtt_status_text = context.get(\"mqtt_status_text\") || \"node-red:common.status.disconnected\"\nlet tcp_status_text = context.get(\"tcp_status_text\") || \"0 connection\"\n\nif (mqtt_status_text === \"node-red:common.status.connected\" && \n        tcp_status_text === \"1 connection\") {\n    status = {\n        \"fill\": \"green\",\n        \"shape\": \"dot\",\n        \"text\": \"node-red:common.status.connected\"\n    }\n    return {\"status\": status}\n}\n\nif (mqtt_status_text === \"node-red:common.status.disconnected\" || \n        tcp_status_text === \"0 connection\") {\n    status = {\n        \"fill\": \"red\",\n        \"shape\": \"ring\",\n        \"text\": \"node-red:common.status.disconnected\",\n        \"tcp status\": tcp_status_text\n    }\n    return {\"status\": status}\n}\n\n// TCP in has no connecting phase. Hence only connecting status\n// if already connected to tcp in.\nif (mqtt_status_text === \"node-red:common.status.connecting\" && \n        tcp_status_text === \"1 connection\") {\n    status = {\n        \"fill\": \"yellow\",\n        \"shape\": \"ring\",\n        \"text\": \"node-red:common.status.connecting\"\n    }\n    return {\"status\": status}\n}\n\n// For every other state, which should \nstatus = {\n    \"fill\": \"grey\",\n    \"shape\": \"ring\",\n    \"text\": \"unknown\"\n}\n\nreturn {\"status\": status}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 470,
+        "y": 280,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "f3d7689a.7f5be8",
+        "type": "inject",
+        "z": "4b055c82.2ce1b4",
+        "name": "",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "$(heartbeat_period)",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "x": 130,
+        "y": 80,
+        "wires": [
+            [
+                "66e8a12a.91483"
+            ]
+        ]
+    },
+    {
+        "id": "1c3a8d6.3407573",
+        "type": "mqtt out",
+        "z": "4b055c82.2ce1b4",
+        "name": "",
+        "topic": "$(MQTT_TOPIC_HEARTBEAT)",
+        "qos": "",
+        "retain": "",
+        "broker": "f0d21eb0.93967",
+        "x": 750,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "66e8a12a.91483",
+        "type": "function",
+        "z": "4b055c82.2ce1b4",
+        "name": "Format heartbeat msg",
+        "func": "let heartbeat_period = env.get(\"heartbeat_period\")\n\n//timestamps as usual in milliseconds, hearbeat period in seconds\npayload = {\n    \"this_heartbeats_timestamp\": msg.payload,\n    \"next_heartbeats_timestamp\": msg.payload + heartbeat_period * 1000\n}\nreturn {\"payload\": payload}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 420,
+        "y": 80,
+        "wires": [
+            [
+                "1c3a8d6.3407573"
+            ]
+        ]
+    },
+    {
+        "id": "a6b20f83.8bb9d",
+        "type": "comment",
+        "z": "4b055c82.2ce1b4",
+        "name": "Periodically send the heartbeat messages.",
+        "info": "",
+        "x": 200,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "60fdc941.ed1208",
+        "type": "status",
+        "z": "4b055c82.2ce1b4",
+        "name": "",
+        "scope": [
+            "1c3a8d6.3407573"
+        ],
+        "x": 100,
+        "y": 200,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "b58bf767.ab87a8",
+        "type": "comment",
+        "z": "4b055c82.2ce1b4",
+        "name": "Display MQTT connection status as subflow status",
+        "info": "",
+        "x": 230,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "2e5b1c4.20be3e4",
+        "type": "subflow:4b055c82.2ce1b4",
+        "z": "927c9b3e.6d8038",
+        "name": "",
+        "env": [],
+        "x": 260,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "d9bfa648.e879e8",
+        "type": "subflow:a96a98ee.ee4868",
+        "z": "927c9b3e.6d8038",
+        "name": "",
+        "env": [],
+        "x": 460,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "b0fcae73.496e8",
+        "type": "function",
+        "z": "babaf5c6.a407d8",
+        "name": "Throw not implemented error",
+        "func": "throw \"Not implemented.\"",
+        "outputs": 0,
+        "noerr": 0,
+        "x": 400,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "c7e7438b.9eab",
+        "type": "comment",
+        "z": "751919a4.2b89e8",
+        "name": "Combine reading the input datastream and a manual list as default.",
+        "info": "",
+        "x": 400,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "b7064af6.613328",
+        "type": "mqtt out",
+        "z": "927c9b3e.6d8038",
+        "name": "",
+        "topic": "$(MQTT_TOPIC_RAW_MESSAGE_TO_DB)",
+        "qos": "2",
+        "retain": "false",
+        "broker": "f0d21eb0.93967",
+        "x": 1170,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "7e5140d4.21391",
+        "type": "switch",
+        "z": "927c9b3e.6d8038",
+        "name": "if ${SEND_RAW_MESSAGE_TO_DB} == TRUE",
+        "property": "SEND_RAW_MESSAGE_TO_DB",
+        "propertyType": "env",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "TRUE",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 780,
+        "y": 180,
+        "wires": [
+            [
+                "b7064af6.613328"
+            ]
+        ]
+    },
+    {
+        "id": "2ee2fa20.944a36",
+        "type": "mqtt in",
+        "z": "927c9b3e.6d8038",
+        "name": "",
+        "topic": "$(MQTT_TOPIC_RAW_MESSAGE_REPROCESS)",
+        "qos": "1",
+        "datatype": "json",
+        "broker": "f0d21eb0.93967",
+        "x": 210,
+        "y": 260,
+        "wires": [
+            [
+                "5d6ccddc.75fcd4"
+            ]
+        ]
+    },
+    {
+        "id": "4167d4ab.a3237c",
+        "type": "function",
+        "z": "927c9b3e.6d8038",
+        "name": "Flatten object",
+        "func": "// from https://stackoverflow.com/questions/44134212/best-way-to-flatten-js-object-keys-and-values-to-a-single-depth-array\nfunction flattenObject(ob) {\n    var toReturn = {};\n\n    for (var i in ob) {\n        if (!ob.hasOwnProperty(i)) continue;\n\n        if ((typeof ob[i]) == 'object' && ob[i] !== null) {\n            var flatObject = flattenObject(ob[i]);\n            for (var x in flatObject) {\n                if (!flatObject.hasOwnProperty(x)) continue;\n\n                toReturn[i + '__' + x] = flatObject[x];\n            }\n        } else {\n            toReturn[i] = ob[i];\n        }\n    }\n    return toReturn;\n}\n\nlet parsed_message = msg.payload.parsed_message\nlet flattened_message = flattenObject(parsed_message)\ndelete msg.payload.parsed_message\nmsg.payload[\"flattened_message\"] = flattened_message\n\nreturn msg",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1080,
+        "y": 260,
+        "wires": [
+            [
+                "72ba97e1.72be38",
+                "961689eb.6df078",
+                "5a8f8f58.d3c16"
+            ]
+        ],
+        "info": "Flattens the incomming object to depth 1, i.e that every leaf of the incomming object can be accessed with a unique key directly from flat_message object.\n# Returns\nShould return the a message with the flattend data like:\n```\nmsg = {\n    \"payload\": {\n        \"flattened_message\": <the parsed data as flattend object>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"flattened_message\": {\n            \"device_1__sensor_1\": \"2.12\"\n            \"device_1__sensor_2\": \"3.12\"\n        },\n        \"timestamp\": 1573680749000\n    }\n}\n```"
+    },
+    {
+        "id": "9386656f.5f4ee8",
+        "type": "function",
+        "z": "24480cc.24690f4",
+        "name": "Throw not implemented error",
+        "func": "node.error(\"Logic in subflow \\\"Parse object from raw_message\\\" not implemented\")",
+        "outputs": 0,
+        "noerr": 0,
+        "x": 260,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "2deac0e3.ad371",
+        "type": "mqtt in",
+        "z": "a96a98ee.ee4868",
+        "name": "",
+        "topic": "$(MQTT_TOPIC_DATAPOINT_MAP)",
+        "qos": "1",
+        "datatype": "json",
+        "broker": "f0d21eb0.93967",
+        "x": 170,
+        "y": 40,
+        "wires": [
+            [
+                "b667759e.2c1018"
+            ]
+        ]
+    },
+    {
+        "id": "72ba97e1.72be38",
+        "type": "debug",
+        "z": "927c9b3e.6d8038",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "x": 1310,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "f6adda79.b02428",
+        "type": "function",
+        "z": "630ce853.304e48",
+        "name": "Throw not implemented error",
+        "func": "node.error(\"Logic in subflow \\\"Receive raw_message\\\" not implemented\")",
+        "outputs": 0,
+        "noerr": 0,
+        "x": 400,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "c618c384.0a03e",
+        "type": "inject",
+        "z": "630ce853.304e48",
+        "name": "",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 120,
+        "y": 140,
+        "wires": [
+            [
+                "f6adda79.b02428"
+            ]
+        ]
+    },
+    {
+        "id": "3462eee9.913372",
+        "type": "subflow:2f246a38.edf956",
+        "z": "927c9b3e.6d8038",
+        "name": "",
+        "env": [],
+        "x": 90,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "109d9d31.a7bed3",
+        "type": "function",
+        "z": "219558b7.844058",
+        "name": "Throw not implemented error",
+        "func": "node.error(\"Logic in flow \\\"Receive raw_message\\\" not implemented\")",
+        "outputs": 0,
+        "noerr": 0,
+        "x": 380,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "bcadc615.60c708",
+        "type": "inject",
+        "z": "219558b7.844058",
+        "name": "",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 100,
+        "y": 40,
+        "wires": [
+            [
+                "109d9d31.a7bed3"
+            ]
+        ]
+    },
+    {
+        "id": "6aae28b2.fb2688",
+        "type": "link out",
+        "z": "219558b7.844058",
+        "name": "Receive raw_message output",
+        "links": [
+            "b6c60262.69fb9"
+        ],
+        "x": 635,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "b6c60262.69fb9",
+        "type": "link in",
+        "z": "927c9b3e.6d8038",
+        "name": "main input after receive raw_message",
+        "links": [
+            "6aae28b2.fb2688"
+        ],
+        "x": 275,
+        "y": 180,
+        "wires": [
+            [
+                "1980e6e1.5dc979"
+            ]
+        ]
+    },
+    {
+        "id": "2a627646.87bc4a",
+        "type": "comment",
+        "z": "927c9b3e.6d8038",
+        "name": "Processing of sensor datapoint messages",
+        "info": "",
+        "x": 180,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "5d6ccddc.75fcd4",
+        "type": "link out",
+        "z": "927c9b3e.6d8038",
+        "name": "main out before parse raw_message",
+        "links": [
+            "6a1342ab.73305c"
+        ],
+        "x": 615,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "6a1342ab.73305c",
+        "type": "link in",
+        "z": "545ec5f2.a5913c",
+        "name": "Parse raw_message in",
+        "links": [
+            "5d6ccddc.75fcd4"
+        ],
+        "x": 155,
+        "y": 60,
+        "wires": [
+            [
+                "c3e26a30.4a4b08"
+            ]
+        ]
+    },
+    {
+        "id": "376a4260.2d545e",
+        "type": "link out",
+        "z": "545ec5f2.a5913c",
+        "name": "Parse raw_message out",
+        "links": [
+            "498bc454.265e5c"
+        ],
+        "x": 515,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "498bc454.265e5c",
+        "type": "link in",
+        "z": "927c9b3e.6d8038",
+        "name": "main in after parse raw_message",
+        "links": [
+            "376a4260.2d545e"
+        ],
+        "x": 855,
+        "y": 260,
+        "wires": [
+            [
+                "4167d4ab.a3237c"
+            ]
+        ]
+    },
+    {
+        "id": "3f718945.ab8206",
+        "type": "comment",
+        "z": "927c9b3e.6d8038",
+        "name": "Flow: Parse raw_message",
+        "info": "",
+        "x": 730,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "c3e26a30.4a4b08",
+        "type": "function",
+        "z": "545ec5f2.a5913c",
+        "name": "Throw not implemented error",
+        "func": "node.error(\"Logic in flow \\\"Parse raw_message\\\" not implemented\")",
+        "outputs": 0,
+        "noerr": 0,
+        "x": 340,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "113065f1.cbdada",
+        "type": "comment",
+        "z": "927c9b3e.6d8038",
+        "name": "Flow: Receive raw_message",
+        "info": "",
+        "x": 140,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "961689eb.6df078",
+        "type": "change",
+        "z": "927c9b3e.6d8038",
+        "name": "convert to format expected by update available_datapoints",
+        "rules": [
+            {
+                "t": "move",
+                "p": "payload.flattened_message",
+                "pt": "msg",
+                "to": "payload.sensor",
+                "tot": "msg"
+            },
+            {
+                "t": "delete",
+                "p": "payload.timestamp",
+                "pt": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 530,
+        "y": 360,
+        "wires": [
+            [
+                "a5ae1e6e.e530a"
+            ]
+        ]
+    },
+    {
+        "id": "a5ae1e6e.e530a",
+        "type": "subflow:3674b7d8.02a168",
+        "z": "927c9b3e.6d8038",
+        "name": "",
+        "env": [],
+        "x": 440,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "7a6371a0.fa4da",
+        "type": "change",
+        "z": "3674b7d8.02a168",
+        "name": "Set available_datapoints as payload",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "available_datapoints",
+                "tot": "global"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 550,
+        "y": 140,
+        "wires": [
+            [
+                "b53eeea3.4c627"
+            ]
+        ]
+    },
+    {
+        "id": "e740f12a.0dc05",
+        "type": "function",
+        "z": "3674b7d8.02a168",
+        "name": "Check if new datapoints have been found and update global.available_datapoints if so.",
+        "func": "/*\nThe structure of the incomming msg and the available datapoints object \nshould be generally like:\n\"payload\": {\n\t\"sensor\": {\n\t\t\"Channel__P__value__0\": 0.122,\n        \"Channel__P__unit__0\": \"kW\",\n\t},\n\t\"actuator\": {\n\t\t\"Channel__P__setpoint__0\": 0.4,\n\t}\n}\n*/\nnode.error(\"Logic in subflow \\\"Update available_datapoints\\\" not implemented\")\n\nlet available_datapoints = global.get('available_datapoints') || {}\n\n// Check for each sensor/actuator datapoint if it is already known to \n// available_datapoints. Trigger sending an update if so. Update the values of \n// the datapoints every time so next time we send available_datapoints it will\n// carry examples of the most recent values.\nlet available_datapoints_update = msg.payload\nfor (let datapoint_type of [\"sensor\", \"actuator\"]) {\n    if ( !(datapoint_type in available_datapoints_update) ){\n        continue\n    }\n    //for (let datapoint_update )\n    \n}\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 420,
+        "y": 40,
+        "wires": [
+            [
+                "2fe7b0c4.bfb28"
+            ]
+        ]
+    },
+    {
+        "id": "2fe7b0c4.bfb28",
+        "type": "switch",
+        "z": "3674b7d8.02a168",
+        "name": "If new datapoints have been found",
+        "property": "payload.new_datapoints",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 200,
+        "y": 140,
+        "wires": [
+            [
+                "7a6371a0.fa4da"
+            ]
+        ]
+    },
+    {
+        "id": "b53eeea3.4c627",
+        "type": "mqtt out",
+        "z": "3674b7d8.02a168",
+        "name": "",
+        "topic": "$(MQTT_TOPIC_AVAILABLE_DATAPOINTS)",
+        "qos": "2",
+        "retain": "true",
+        "broker": "f0d21eb0.93967",
+        "x": 960,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "a6b2b66d.c475a8",
+        "type": "comment",
+        "z": "3674b7d8.02a168",
+        "name": "Maybe restore available datapoints from mqtt",
+        "info": "",
+        "x": 950,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "b667759e.2c1018",
+        "type": "change",
+        "z": "a96a98ee.ee4868",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "datapoint_map",
+                "pt": "global",
+                "to": "payload",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 510,
+        "y": 40,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "89c51b97.13a598",
+        "type": "status",
+        "z": "a96a98ee.ee4868",
+        "name": "",
+        "scope": [
+            "2deac0e3.ad371"
+        ],
+        "x": 80,
+        "y": 140,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "5a8f8f58.d3c16",
+        "type": "function",
+        "z": "927c9b3e.6d8038",
+        "name": "Filter datapoints and build sensor messages",
+        "func": "node.error(\"Logic in node \\\"Filter datapoints and build sensor messages\\\" not implemented\")\n",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1070,
+        "y": 360,
+        "wires": [
+            [
+                "517add71.6239e4"
+            ]
+        ]
+    },
+    {
+        "id": "517add71.6239e4",
+        "type": "mqtt out",
+        "z": "927c9b3e.6d8038",
+        "name": "MQTT datapoint message topics",
+        "topic": "",
+        "qos": "1",
+        "retain": "false",
+        "broker": "f0d21eb0.93967",
+        "x": 1030,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "9d68458f.255748",
+        "type": "comment",
+        "z": "927c9b3e.6d8038",
+        "name": "Processing of actuator datapoint messages",
+        "info": "",
+        "x": 180,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "f5ba72cb.d2e31",
+        "type": "mqtt in",
+        "z": "927c9b3e.6d8038",
+        "name": "",
+        "topic": "$(MQTT_TOPIC_MESSAGE_WILDCARD)",
+        "qos": "1",
+        "datatype": "json",
+        "broker": "f0d21eb0.93967",
+        "x": 180,
+        "y": 540,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "14995022.9f798",
+        "type": "function",
+        "z": "927c9b3e.6d8038",
+        "name": "Filter for actuator messages",
+        "func": "\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 520,
+        "y": 540,
+        "wires": [
+            []
+        ]
+    }
+]
