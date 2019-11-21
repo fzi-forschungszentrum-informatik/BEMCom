@@ -35,6 +35,13 @@
         "info": ""
     },
     {
+        "id": "b5a451b4.6e45c",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": ""
+    },
+    {
         "id": "a1058abf.d7f1d8",
         "type": "subflow",
         "name": "Subflow 2",
@@ -236,15 +243,15 @@
         "id": "3674b7d8.02a168",
         "type": "subflow",
         "name": "Update available_datapoints",
-        "info": "",
+        "info": "# General\nThis subflow can be used to manage which datapoints are available and send respective messages to the admin panel. It is not necessary to define all available datapoints at a time, instead it is ok to send in information on one/many available datatpoints in seperate messages. The later is useful to automatically generate the list of available datapoints while listening to incoming sensor messages. \n\nThe subflow will maintain a backup of the latest list of available messages in `available_messages.json`. This prevents sending false alarms to the admin panel that datapoints are no longer available after restarting the flow. If you have removed datapoints you should delete the file to forward the information.\n\n# Receives\n... a message formated like: \n```\nmsg = {\n    \"payload\": {\n    \t\"sensor\": {\n    \t\t<internal id of sensor 1>: <example value of sensor 1>,\n            <internal id of sensor 2>: <example value of sensor 2>,\n            ...\n    \t},\n    \t\"actuator\": {\n    \t\t<internal id of actuator 1>: <example value of actuator 1>,\n    \t\t<internal id of actuator 2>: <example value of actuator 2>,\n    \t\t...\n    \t}\n    }\n}\n```\nE.g. \n```\nmsg = {\n    \"payload\": {\n    \t\"sensor\": {\n    \t\t\"Channel__P__value__0\": 0.122,\n            \"Channel__P__unit__0\": \"kW\",\n    \t},\n    \t\"actuator\": {\n    \t\t\"Channel__P__setpoint__0\": 0.4,\n    \t}\n    }\n}\n```",
         "category": "",
         "in": [
             {
-                "x": 40,
-                "y": 40,
+                "x": 60,
+                "y": 280,
                 "wires": [
                     {
-                        "id": "e740f12a.0dc05"
+                        "id": "c3f25d9b.9f1f7"
                     }
                 ]
             }
@@ -998,42 +1005,15 @@
         "wires": []
     },
     {
-        "id": "7a6371a0.fa4da",
-        "type": "change",
-        "z": "3674b7d8.02a168",
-        "name": "Set available_datapoints as payload",
-        "rules": [
-            {
-                "t": "set",
-                "p": "payload",
-                "pt": "msg",
-                "to": "available_datapoints",
-                "tot": "global"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 550,
-        "y": 140,
-        "wires": [
-            [
-                "b53eeea3.4c627"
-            ]
-        ]
-    },
-    {
         "id": "e740f12a.0dc05",
         "type": "function",
         "z": "3674b7d8.02a168",
         "name": "Check if new datapoints have been found and update global.available_datapoints if so.",
-        "func": "/*\nThe structure of the incomming msg and the available datapoints object \nshould be generally like:\n\"payload\": {\n\t\"sensor\": {\n\t\t\"Channel__P__value__0\": 0.122,\n        \"Channel__P__unit__0\": \"kW\",\n\t},\n\t\"actuator\": {\n\t\t\"Channel__P__setpoint__0\": 0.4,\n\t}\n}\n*/\nnode.error(\"Logic in subflow \\\"Update available_datapoints\\\" not implemented\")\n\nlet available_datapoints = global.get('available_datapoints') || {}\n\n// Check for each sensor/actuator datapoint if it is already known to \n// available_datapoints. Trigger sending an update if so. Update the values of \n// the datapoints every time so next time we send available_datapoints it will\n// carry examples of the most recent values.\nlet available_datapoints_update = msg.payload\nfor (let datapoint_type of [\"sensor\", \"actuator\"]) {\n    if ( !(datapoint_type in available_datapoints_update) ){\n        continue\n    }\n    //for (let datapoint_update )\n    \n}\nreturn msg;",
+        "func": "/*\nThe structure of the incomming msg and the available datapoints object \nshould be generally like:\n\"payload\": {\n\t\"sensor\": {\n\t\t\"Channel__P__value__0\": 0.122,\n        \"Channel__P__unit__0\": \"kW\",\n\t},\n\t\"actuator\": {\n\t\t\"Channel__P__setpoint__0\": 0.4,\n\t}\n}\n*/\n\n// Check for each sensor/actuator datapoint if it is already known to \n// available_datapoints. Trigger sending an update if so. Update the values of \n// the datapoints every time so next time we send available_datapoints it will\n// carry examples of the most recent values.\nlet new_datapoints = false\nlet available_datapoints = global.get(\"available_datapoints\")\nlet available_datapoints_update = msg.payload\n\nfor (let datapoint_type of [\"sensor\", \"actuator\"]) {\n\n    // Default to empty dict in case no datapoints of this type are known yet.\n    let ad_per_type = available_datapoints[datapoint_type] || {}\n    let ad_update_per_type = available_datapoints_update[datapoint_type] || {}\n\n    for (let datapoint_id_update in ad_update_per_type) {\n        \n        if ( ! (datapoint_id_update in ad_per_type) ) {\n            new_datapoints = true\n        }\n        \n        // Store the latest datapoint value.\n        ad_per_type[datapoint_id_update] = ad_update_per_type[datapoint_id_update]\n        \n    }\n    \n    // Store the type related sub_object back to the main object.\n    available_datapoints[datapoint_type] = ad_per_type\n}\n\n// Store and return the updated available_datapoints.\nglobal.set(\"available_datapoints\", available_datapoints)\n\nmsg = {\n    \"payload\": available_datapoints, \n    \"new_datapoints\": new_datapoints\n}\n\nreturn msg",
         "outputs": 1,
         "noerr": 0,
-        "x": 420,
-        "y": 40,
+        "x": 980,
+        "y": 280,
         "wires": [
             [
                 "2fe7b0c4.bfb28"
@@ -1045,7 +1025,7 @@
         "type": "switch",
         "z": "3674b7d8.02a168",
         "name": "If new datapoints have been found",
-        "property": "payload.new_datapoints",
+        "property": "new_datapoints",
         "propertyType": "msg",
         "rules": [
             {
@@ -1055,11 +1035,12 @@
         "checkall": "true",
         "repair": false,
         "outputs": 1,
-        "x": 200,
-        "y": 140,
+        "x": 220,
+        "y": 420,
         "wires": [
             [
-                "7a6371a0.fa4da"
+                "b53eeea3.4c627",
+                "c7d69be6.186988"
             ]
         ]
     },
@@ -1072,18 +1053,8 @@
         "qos": "2",
         "retain": "true",
         "broker": "f0d21eb0.93967",
-        "x": 960,
-        "y": 140,
-        "wires": []
-    },
-    {
-        "id": "a6b2b66d.c475a8",
-        "type": "comment",
-        "z": "3674b7d8.02a168",
-        "name": "Maybe restore available datapoints from mqtt",
-        "info": "",
-        "x": 950,
-        "y": 40,
+        "x": 1110,
+        "y": 420,
         "wires": []
     },
     {
@@ -1261,8 +1232,8 @@
         "crontab": "",
         "once": false,
         "onceDelay": 0.1,
-        "x": 2190,
-        "y": 120,
+        "x": 1570,
+        "y": 180,
         "wires": [
             []
         ]
@@ -1314,6 +1285,506 @@
         "y": 60,
         "wires": [
             []
+        ]
+    },
+    {
+        "id": "f2750649.36eb58",
+        "type": "inject",
+        "z": "927c9b3e.6d8038",
+        "name": "",
+        "topic": "",
+        "payload": "{\"parsed_message\":{\"device_1\":{\"sensor_1\":\"2.12\",\"sensor_2\":\"3.12\"}},\"timestamp\":1573680749000}",
+        "payloadType": "json",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 90,
+        "y": 420,
+        "wires": [
+            [
+                "4167d4ab.a3237c"
+            ]
+        ]
+    },
+    {
+        "id": "5a79947f.a849fc",
+        "type": "mqtt in",
+        "z": "b5a451b4.6e45c",
+        "name": "",
+        "topic": "#",
+        "qos": "2",
+        "datatype": "json",
+        "broker": "f0d21eb0.93967",
+        "x": 130,
+        "y": 120,
+        "wires": [
+            [
+                "6a8747b4.e5cdd8"
+            ]
+        ]
+    },
+    {
+        "id": "1037d1c7.83ed5e",
+        "type": "debug",
+        "z": "b5a451b4.6e45c",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "x": 550,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "6a8747b4.e5cdd8",
+        "type": "switch",
+        "z": "b5a451b4.6e45c",
+        "name": "",
+        "property": "topic",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "neq",
+                "v": "node-red-connector-template/heartbeat",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 330,
+        "y": 120,
+        "wires": [
+            [
+                "1037d1c7.83ed5e"
+            ]
+        ]
+    },
+    {
+        "id": "f87c8d8f.12b57",
+        "type": "delay",
+        "z": "3674b7d8.02a168",
+        "name": "",
+        "pauseType": "delay",
+        "timeout": "1",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "x": 360,
+        "y": 340,
+        "wires": [
+            [
+                "c3f25d9b.9f1f7"
+            ]
+        ]
+    },
+    {
+        "id": "c3f25d9b.9f1f7",
+        "type": "switch",
+        "z": "3674b7d8.02a168",
+        "name": "Delay message until available datapoints is loaded from disk.",
+        "property": "available_datapoints_loaded",
+        "propertyType": "global",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 360,
+        "y": 280,
+        "wires": [
+            [
+                "e740f12a.0dc05"
+            ],
+            [
+                "f87c8d8f.12b57"
+            ]
+        ]
+    },
+    {
+        "id": "e2bc1b36.de9178",
+        "type": "inject",
+        "z": "b5a451b4.6e45c",
+        "name": "On flow init",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "x": 250,
+        "y": 460,
+        "wires": [
+            [
+                "b6c150e2.cf8f4"
+            ]
+        ]
+    },
+    {
+        "id": "b6c150e2.cf8f4",
+        "type": "file in",
+        "z": "b5a451b4.6e45c",
+        "name": "",
+        "filename": "/data/available_datapoints.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "none",
+        "x": 630,
+        "y": 460,
+        "wires": [
+            [
+                "5095381e.c036b8"
+            ]
+        ]
+    },
+    {
+        "id": "31168443.c8efec",
+        "type": "switch",
+        "z": "b5a451b4.6e45c",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 630,
+        "y": 260,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "75d07d54.94b974",
+        "type": "catch",
+        "z": "b5a451b4.6e45c",
+        "name": "Catch available_datapoints.json does not exist",
+        "scope": [
+            "b6c150e2.cf8f4"
+        ],
+        "uncaught": false,
+        "x": 330,
+        "y": 520,
+        "wires": [
+            [
+                "5db3bb21.6cd424"
+            ]
+        ]
+    },
+    {
+        "id": "5db3bb21.6cd424",
+        "type": "change",
+        "z": "b5a451b4.6e45c",
+        "name": "Use empty object as default value for available_datapoints",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "{}",
+                "tot": "json"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 750,
+        "y": 520,
+        "wires": [
+            [
+                "d57b51d5.67ec9"
+            ]
+        ]
+    },
+    {
+        "id": "d1902de.009e2d",
+        "type": "file",
+        "z": "b5a451b4.6e45c",
+        "name": "",
+        "filename": "/data/available_datapoints.json",
+        "appendNewline": true,
+        "createDir": false,
+        "overwriteFile": "true",
+        "encoding": "none",
+        "x": 510,
+        "y": 400,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "2f15eb55.1f43a4",
+        "type": "inject",
+        "z": "b5a451b4.6e45c",
+        "name": "On flow init",
+        "topic": "",
+        "payload": "{\"sensor\":{\"device_1__sensor_1\":\"2.12\",\"device_1__sensor_2\":\"3.12\"}}",
+        "payloadType": "json",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 240,
+        "y": 400,
+        "wires": [
+            [
+                "d1902de.009e2d"
+            ]
+        ]
+    },
+    {
+        "id": "5095381e.c036b8",
+        "type": "json",
+        "z": "b5a451b4.6e45c",
+        "name": "",
+        "property": "payload",
+        "action": "obj",
+        "pretty": false,
+        "x": 910,
+        "y": 460,
+        "wires": [
+            [
+                "d57b51d5.67ec9"
+            ]
+        ]
+    },
+    {
+        "id": "d57b51d5.67ec9",
+        "type": "change",
+        "z": "b5a451b4.6e45c",
+        "name": "Store available_datapoints in global and mark loaded",
+        "rules": [
+            {
+                "t": "set",
+                "p": "available_datapoints",
+                "pt": "global",
+                "to": "payload",
+                "tot": "msg"
+            },
+            {
+                "t": "set",
+                "p": "available_datapoints_loaded",
+                "pt": "global",
+                "to": "true",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1240,
+        "y": 460,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "7bfa1941.a93cb8",
+        "type": "inject",
+        "z": "3674b7d8.02a168",
+        "name": "On flow init",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "x": 130,
+        "y": 80,
+        "wires": [
+            [
+                "a0e85ecb.fce12"
+            ]
+        ]
+    },
+    {
+        "id": "bedcc1f5.e56e5",
+        "type": "catch",
+        "z": "3674b7d8.02a168",
+        "name": "Catch available_datapoints.json does not exist",
+        "scope": [
+            "a0e85ecb.fce12"
+        ],
+        "uncaught": false,
+        "x": 210,
+        "y": 140,
+        "wires": [
+            [
+                "dbca598c.21c8a8"
+            ]
+        ]
+    },
+    {
+        "id": "a0e85ecb.fce12",
+        "type": "file in",
+        "z": "3674b7d8.02a168",
+        "name": "",
+        "filename": "/data/available_datapoints.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "none",
+        "x": 510,
+        "y": 80,
+        "wires": [
+            [
+                "c38da571.9bb178"
+            ]
+        ]
+    },
+    {
+        "id": "dbca598c.21c8a8",
+        "type": "change",
+        "z": "3674b7d8.02a168",
+        "name": "Use empty object as default value for available_datapoints",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "{}",
+                "tot": "json"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 630,
+        "y": 140,
+        "wires": [
+            [
+                "40ba839.94a5f7c"
+            ]
+        ]
+    },
+    {
+        "id": "c38da571.9bb178",
+        "type": "json",
+        "z": "3674b7d8.02a168",
+        "name": "",
+        "property": "payload",
+        "action": "obj",
+        "pretty": false,
+        "x": 790,
+        "y": 80,
+        "wires": [
+            [
+                "40ba839.94a5f7c"
+            ]
+        ]
+    },
+    {
+        "id": "40ba839.94a5f7c",
+        "type": "change",
+        "z": "3674b7d8.02a168",
+        "name": "Store available_datapoints in global and mark loaded",
+        "rules": [
+            {
+                "t": "set",
+                "p": "available_datapoints",
+                "pt": "global",
+                "to": "payload",
+                "tot": "msg"
+            },
+            {
+                "t": "set",
+                "p": "available_datapoints_loaded",
+                "pt": "global",
+                "to": "true",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1120,
+        "y": 80,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "8531168b.41c518",
+        "type": "comment",
+        "z": "3674b7d8.02a168",
+        "name": "Load the last version of available_datapoints from disk on flow init.",
+        "info": "",
+        "x": 280,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "53dbc0f1.2bcc4",
+        "type": "file",
+        "z": "3674b7d8.02a168",
+        "name": "",
+        "filename": "/data/available_datapoints.json",
+        "appendNewline": true,
+        "createDir": false,
+        "overwriteFile": "true",
+        "encoding": "none",
+        "x": 1150,
+        "y": 460,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "48dc7753.985558",
+        "type": "comment",
+        "z": "3674b7d8.02a168",
+        "name": "Update the available_datapoints object and publish if new datapoints have been found.",
+        "info": "",
+        "x": 340,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "c7d69be6.186988",
+        "type": "json",
+        "z": "3674b7d8.02a168",
+        "name": "Pretty print json string",
+        "property": "payload",
+        "action": "str",
+        "pretty": true,
+        "x": 880,
+        "y": 460,
+        "wires": [
+            [
+                "53dbc0f1.2bcc4"
+            ]
         ]
     }
 ]
