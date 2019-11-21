@@ -9,7 +9,7 @@
     {
         "id": "68dfd515.661f7c",
         "type": "tab",
-        "label": "Specify additional available_datapoints",
+        "label": "Specify available_datapoints",
         "disabled": false,
         "info": ""
     },
@@ -18,12 +18,19 @@
         "type": "tab",
         "label": "Receive raw_message",
         "disabled": false,
-        "info": ""
+        "info": "All logic necessary to receive data (sensor datapoints) from the device, gateway or data source.\n\n# Should return\n... the received message as raw message in the format:\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": <the raw data>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": \"device_1:{sensor_1:2.12,sensor_2:3.12}\"\n    }\n}\n```"
     },
     {
         "id": "545ec5f2.a5913c",
         "type": "tab",
         "label": "Parse raw_message",
+        "disabled": false,
+        "info": "Parse an object from the received raw sensor datapoint data.\n\n# Receives\n... a message structured like this:\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": <the raw data>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": \"device_1:{sensor_1:2.12,sensor_2:3.12}\",\n        \"timestamp\": 1573680749000\n    }\n}\n```\n\n# Should return\n... a message containing the a parsed version of the raw data, structured like this:\n```\nmsg = {\n    \"payload\": {\n        \"parsed_message\": <the parsed data as object>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"parsed_message\": {\n            \"device_1\": {\n                \"sensor_1\": \"2.12\",\n                \"sensor_2\": \"3.12\"\n            }\n        },\n        \"timestamp\": 1573680749000\n    }\n}\n```"
+    },
+    {
+        "id": "9f1169a9.8e23c8",
+        "type": "tab",
+        "label": "Send command",
         "disabled": false,
         "info": ""
     },
@@ -128,7 +135,7 @@
         "id": "a96a98ee.ee4868",
         "type": "subflow",
         "name": "datapoint_map receiver",
-        "info": "",
+        "info": "This subflow will listen to the MQTT topic defined in the environment variable `MQTT_TOPIC_DATAPOINT_MAP` for datapoint mappings, that is the information which datapoint should be read/written from/to which MQTT topic. The datapoint mappings are stored in the global variable `datapoint_map`.\n\nThe expected and stored datapoint map is formated as follows:\n```\n\"sensor\": {\n\t\"Channel__P__value__0\": \"example-connector/msgs/0001\",\n    \"Channel__P__unit__0\": \"example-connector/msgs/0002\",\n},\n\"actuator\": {\n\t\"example-connector/msgs/0003\": \"Channel__P__setpoint__0\",\n}\n```",
         "category": "",
         "in": [],
         "out": [],
@@ -136,8 +143,8 @@
         "color": "#D8BFD8",
         "icon": "node-red/arrow-in.svg",
         "status": {
-            "x": 240,
-            "y": 140,
+            "x": 260,
+            "y": 240,
             "wires": [
                 {
                     "id": "89c51b97.13a598",
@@ -384,7 +391,7 @@
         "to": "",
         "reg": false,
         "x": 430,
-        "y": 180,
+        "y": 220,
         "wires": [
             [
                 "7e5140d4.21391",
@@ -401,26 +408,6 @@
         "x": 290,
         "y": 40,
         "wires": []
-    },
-    {
-        "id": "a680cff8.31c22",
-        "type": "inject",
-        "z": "927c9b3e.6d8038",
-        "name": "",
-        "topic": "",
-        "payload": "{\"parsed_message\":{\"device_1\":{\"sensor_1\":\"2.12\",\"sensor_2\":\"3.12\"}},\"timestamp\":1573680749000}",
-        "payloadType": "json",
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "x": 930,
-        "y": 220,
-        "wires": [
-            [
-                "4167d4ab.a3237c"
-            ]
-        ]
     },
     {
         "id": "ac872115.7ebd2",
@@ -674,8 +661,9 @@
         "retain": "false",
         "broker": "f0d21eb0.93967",
         "x": 1170,
-        "y": 180,
-        "wires": []
+        "y": 220,
+        "wires": [],
+        "info": "Send raw_message content to raw_message DB."
     },
     {
         "id": "7e5140d4.21391",
@@ -695,7 +683,7 @@
         "repair": false,
         "outputs": 1,
         "x": 780,
-        "y": 180,
+        "y": 220,
         "wires": [
             [
                 "b7064af6.613328"
@@ -712,12 +700,13 @@
         "datatype": "json",
         "broker": "f0d21eb0.93967",
         "x": 210,
-        "y": 260,
+        "y": 280,
         "wires": [
             [
                 "5d6ccddc.75fcd4"
             ]
-        ]
+        ],
+        "info": "Yields old messages stored in the raw_message DB scheduled for reprocessing."
     },
     {
         "id": "4167d4ab.a3237c",
@@ -727,11 +716,10 @@
         "func": "// from https://stackoverflow.com/questions/44134212/best-way-to-flatten-js-object-keys-and-values-to-a-single-depth-array\nfunction flattenObject(ob) {\n    var toReturn = {};\n\n    for (var i in ob) {\n        if (!ob.hasOwnProperty(i)) continue;\n\n        if ((typeof ob[i]) == 'object' && ob[i] !== null) {\n            var flatObject = flattenObject(ob[i]);\n            for (var x in flatObject) {\n                if (!flatObject.hasOwnProperty(x)) continue;\n\n                toReturn[i + '__' + x] = flatObject[x];\n            }\n        } else {\n            toReturn[i] = ob[i];\n        }\n    }\n    return toReturn;\n}\n\nlet parsed_message = msg.payload.parsed_message\nlet flattened_message = flattenObject(parsed_message)\ndelete msg.payload.parsed_message\nmsg.payload[\"flattened_message\"] = flattened_message\n\nreturn msg",
         "outputs": 1,
         "noerr": 0,
-        "x": 1080,
-        "y": 260,
+        "x": 140,
+        "y": 340,
         "wires": [
             [
-                "72ba97e1.72be38",
                 "961689eb.6df078",
                 "5a8f8f58.d3c16"
             ]
@@ -759,28 +747,13 @@
         "qos": "1",
         "datatype": "json",
         "broker": "f0d21eb0.93967",
-        "x": 170,
-        "y": 40,
+        "x": 190,
+        "y": 80,
         "wires": [
             [
                 "b667759e.2c1018"
             ]
         ]
-    },
-    {
-        "id": "72ba97e1.72be38",
-        "type": "debug",
-        "z": "927c9b3e.6d8038",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "true",
-        "targetType": "full",
-        "x": 1310,
-        "y": 240,
-        "wires": []
     },
     {
         "id": "f6adda79.b02428",
@@ -877,7 +850,7 @@
             "6aae28b2.fb2688"
         ],
         "x": 275,
-        "y": 180,
+        "y": 220,
         "wires": [
             [
                 "1980e6e1.5dc979"
@@ -891,7 +864,7 @@
         "name": "Processing of sensor datapoint messages",
         "info": "",
         "x": 180,
-        "y": 140,
+        "y": 180,
         "wires": []
     },
     {
@@ -903,7 +876,7 @@
             "6a1342ab.73305c"
         ],
         "x": 615,
-        "y": 260,
+        "y": 280,
         "wires": []
     },
     {
@@ -943,7 +916,7 @@
             "376a4260.2d545e"
         ],
         "x": 855,
-        "y": 260,
+        "y": 280,
         "wires": [
             [
                 "4167d4ab.a3237c"
@@ -955,9 +928,9 @@
         "type": "comment",
         "z": "927c9b3e.6d8038",
         "name": "Flow: Parse raw_message",
-        "info": "",
+        "info": "Parse an object from the raw data.\n\n# Receives\n... a message structured like this:\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": <the raw data>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": \"device_1:{sensor_1:2.12,sensor_2:3.12}\",\n        \"timestamp\": 1573680749000\n    }\n}\n```\n\n# Should return\n... a message containing the a parsed version of the raw data, structured like this:\n```\nmsg = {\n    \"payload\": {\n        \"parsed_message\": <the parsed data as object>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"parsed_message\": {\n            \"device_1\": {\n                \"sensor_1\": \"2.12\",\n                \"sensor_2\": \"3.12\"\n            }\n        },\n        \"timestamp\": 1573680749000\n    }\n}\n```",
         "x": 730,
-        "y": 260,
+        "y": 280,
         "wires": []
     },
     {
@@ -977,16 +950,16 @@
         "type": "comment",
         "z": "927c9b3e.6d8038",
         "name": "Flow: Receive raw_message",
-        "info": "",
+        "info": "All logic necessary to receive data from device, gateway or data source.\n\n# Should return\n... the received message as raw message in the format:\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": <the raw data>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": \"device_1:{sensor_1:2.12,sensor_2:3.12}\"\n    }\n}\n```",
         "x": 140,
-        "y": 180,
+        "y": 220,
         "wires": []
     },
     {
         "id": "961689eb.6df078",
         "type": "change",
         "z": "927c9b3e.6d8038",
-        "name": "convert to format expected by update available_datapoints",
+        "name": "convert format to update available_datapoints with the currently processed sensor datapoints",
         "rules": [
             {
                 "t": "move",
@@ -1006,8 +979,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 530,
-        "y": 360,
+        "x": 640,
+        "y": 340,
         "wires": [
             [
                 "a5ae1e6e.e530a"
@@ -1020,8 +993,8 @@
         "z": "927c9b3e.6d8038",
         "name": "",
         "env": [],
-        "x": 440,
-        "y": 420,
+        "x": 1220,
+        "y": 340,
         "wires": []
     },
     {
@@ -1117,7 +1090,7 @@
         "id": "b667759e.2c1018",
         "type": "change",
         "z": "a96a98ee.ee4868",
-        "name": "",
+        "name": "Store to global.datapoint_map",
         "rules": [
             {
                 "t": "set",
@@ -1132,8 +1105,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 510,
-        "y": 40,
+        "x": 550,
+        "y": 80,
         "wires": [
             []
         ]
@@ -1146,8 +1119,8 @@
         "scope": [
             "2deac0e3.ad371"
         ],
-        "x": 80,
-        "y": 140,
+        "x": 100,
+        "y": 240,
         "wires": [
             []
         ]
@@ -1160,8 +1133,8 @@
         "func": "node.error(\"Logic in node \\\"Filter datapoints and build sensor messages\\\" not implemented\")\n",
         "outputs": 1,
         "noerr": 0,
-        "x": 1070,
-        "y": 360,
+        "x": 490,
+        "y": 400,
         "wires": [
             [
                 "517add71.6239e4"
@@ -1177,8 +1150,8 @@
         "qos": "1",
         "retain": "false",
         "broker": "f0d21eb0.93967",
-        "x": 1030,
-        "y": 420,
+        "x": 1210,
+        "y": 400,
         "wires": []
     },
     {
@@ -1188,7 +1161,7 @@
         "name": "Processing of actuator datapoint messages",
         "info": "",
         "x": 180,
-        "y": 500,
+        "y": 540,
         "wires": []
     },
     {
@@ -1201,9 +1174,130 @@
         "datatype": "json",
         "broker": "f0d21eb0.93967",
         "x": 180,
-        "y": 540,
+        "y": 580,
+        "wires": [
+            [
+                "14995022.9f798"
+            ]
+        ]
+    },
+    {
+        "id": "14995022.9f798",
+        "type": "function",
+        "z": "927c9b3e.6d8038",
+        "name": "Filter for actuator messages",
+        "func": "node.error(\"Logic in node \\\"Filter for actuator messages\\\" not implemented\")\n",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 580,
+        "y": 580,
+        "wires": [
+            [
+                "3ed4277f.ed75d8"
+            ]
+        ]
+    },
+    {
+        "id": "5e4aacbf.6c95d4",
+        "type": "subflow:3674b7d8.02a168",
+        "z": "68dfd515.661f7c",
+        "name": "",
+        "env": [],
+        "x": 520,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "b01f4077.79689",
+        "type": "inject",
+        "z": "68dfd515.661f7c",
+        "name": "Manuelly define additional datapoints",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 180,
+        "y": 40,
+        "wires": [
+            [
+                "5e4aacbf.6c95d4"
+            ]
+        ]
+    },
+    {
+        "id": "3ed4277f.ed75d8",
+        "type": "link out",
+        "z": "927c9b3e.6d8038",
+        "name": "",
+        "links": [],
+        "x": 815,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "5f0c81ba.d6873",
+        "type": "comment",
+        "z": "927c9b3e.6d8038",
+        "name": "Flow: Send command",
+        "info": "Parse an object from the raw data.\n\n# Receives\n... a message structured like this:\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": <the raw data>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": \"device_1:{sensor_1:2.12,sensor_2:3.12}\",\n        \"timestamp\": 1573680749000\n    }\n}\n```\n\n# Should return\n... a message containing the a parsed version of the raw data, structured like this:\n```\nmsg = {\n    \"payload\": {\n        \"parsed_message\": <the parsed data as object>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"parsed_message\": {\n            \"device_1\": {\n                \"sensor_1\": \"2.12\",\n                \"sensor_2\": \"3.12\"\n            }\n        },\n        \"timestamp\": 1573680749000\n    }\n}\n```",
+        "x": 920,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "ba0780ad.e171b",
+        "type": "inject",
+        "z": "927c9b3e.6d8038",
+        "name": "",
+        "topic": "",
+        "payload": "{\"parsed_message\":{\"device_1\":{\"sensor_1\":\"2.12\",\"sensor_2\":\"3.12\"}},\"timestamp\":1573680749000}",
+        "payloadType": "json",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 2190,
+        "y": 120,
         "wires": [
             []
         ]
+    },
+    {
+        "id": "2aafb87.2b3f548",
+        "type": "debug",
+        "z": "927c9b3e.6d8038",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "x": 2350,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "3ce1950f.35b4ca",
+        "type": "comment",
+        "z": "a96a98ee.ee4868",
+        "name": "Display the status MQTT connection as subflow status.",
+        "info": "",
+        "x": 240,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "f1221d92.14291",
+        "type": "comment",
+        "z": "a96a98ee.ee4868",
+        "name": "Receive and store the datapoint mapping",
+        "info": "",
+        "x": 200,
+        "y": 40,
+        "wires": []
     }
 ]
