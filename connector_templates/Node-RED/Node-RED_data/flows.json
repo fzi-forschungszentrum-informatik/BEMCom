@@ -4,14 +4,14 @@
         "type": "tab",
         "label": "Main",
         "disabled": false,
-        "info": ""
+        "info": "**Do not edit this flow.**\n\nThis is the main data processing logic for the connectors, the connector template. This flow matches the expected communication pattern of the central API. Hence, again: \n\n**Do not edit this flow.**"
     },
     {
         "id": "68dfd515.661f7c",
         "type": "tab",
         "label": "Specify available_datapoints",
         "disabled": false,
-        "info": ""
+        "info": "This flow should be used to specify available_datapoints. This can be useful to\n* Define available actuators, as these will not be detected automatically by default.\n* Some logic in the flow \"Receive raw_message\" needs to explicitly requiest the data, e.g. by polling some API.\n* If you can simply detect all available datapoints, e.g. by calling some API of the gateway.\n\nDepending on the situation one can simply manually add the data on available datapoints to the \"Manually define additional datapoint\" node, or implement some more advanced logic here that does the sensing automatically.\n\n"
     },
     {
         "id": "219558b7.844058",
@@ -37,9 +37,9 @@
     {
         "id": "b5a451b4.6e45c",
         "type": "tab",
-        "label": "Flow 1",
+        "label": "Devl stuff",
         "disabled": false,
-        "info": ""
+        "info": "Some unsorted stuff used for development. "
     },
     {
         "id": "a1058abf.d7f1d8",
@@ -83,7 +83,7 @@
         "id": "2f246a38.edf956",
         "type": "subflow",
         "name": "Log handler",
-        "info": "A central log handler that sends all log messages of Node-REDs internal logger via MQTT. The messages are published on the topic defined by the `MQTT_TOPIC_LOGS` environment variable.\nThe log handler uses a TCP socket to connect Node-REDs internal logger with the flow.\n\n# Usage\nDeploy one (and only one) instance of the node in a Node-RED instance. If you deploy more than one node the following error will occur:\n```\n\"unable to listen on port 1337, error: Error: listen EADDRINUSE: address already in use :::1338\"\n```\n\nAll log messages will be caught automatically, this includes the warn and error messages displayed in Node-REDs debug message log but also the internal info messages not shown there. \n\nTo explicitly log in function nodes use the `node` attribute as explained [here](https://nodered.org/docs/user-guide/writing-functions#logging-events), i.e. use: \n\n```\nnode.log(..)\nnode.warn(..)\nnode.error(..)\nnode.debug(..)\nnode.trace(..)\n```\n\n# Log levels\n\n... are converted to python standard, that is:\n\n* 10 (DEBUG) Something happened which is only relevant for developers of the application.\n* 20 (INFO) Something happened.\n* 30 (WARN) Something happened, which is not a problem a the moment but may become one in future. No data is lost.\n* 40 (ERROR) An error occurred, the processing of one or more messages failed. Some data is lost and/or has not reached the end of the flow. Node-RED and the flows still work.\n* 50 (FATAL) A flow or Node-RED crashed and does not operation as intended. You should not expect that FATAL logs are forwarded as the flow may already be halted.\n\n# Preliminaries\n\nIn order to make this flow work one needs to append the following code into `settings.js` in the `logging` section:\n\n```\n        // Custom log handler that forwards log messages via tcp socket.\n        logforwarder: {\n            // Node red logger configuration see https://nodered.org/docs/user-guide/runtime/logging\n            level: 'info',\n            metrics: false,\n            audit: false,\n            handler: function(conf) {\n                var net = require('net')\n                var logPort = 1337\n                var logHost = 'localhost'\n                var message_cache = []\n                var client_connected = false\n                var client_connecting_scheduled = false\n                var client = new net.Socket()\n\n                // Send message to console, similar format as Node-RED does.\n                // These will not be caught by the logforwarder.\n                function console_log(message){\n                    let now = new Date()\n                    // Add something like \"25 Nov\"\n                    let formated = now.toUTCString().slice(5, 11)\n                    // This should add something like \" 14:24:13\"\n                    formated += now.toUTCString().slice(16, -4)\n                    formated += \" - [info] [LogForwarder] \"\n                    formated += message\n                    console.log(formated)\n                }\n\n                // Send all cached messages once the connection is established.\n                client.on('connect', function() {\n                    console_log(\"LogForwarder: Connected\")\n                    client_connected = true\n                    client_connecting_scheduled = false\n                    while(message_cache.length) {\n                        client.write(JSON.stringify(message_cache.shift())+\"\\n\")\n                    }\n                })\n\n                client.on('error', function(err){\n                    if (client_connected === true){\n                        console_log(\n                          \"LogForwarder: Experienced error. Reconnecting.\"\n                        )\n                        console_log(err)\n                        client_connected = false\n                    }\n                    if (client_connecting_scheduled === false){\n                        client_connecting_scheduled = true\n                        // Delay connecting to allow Node-Red to list to\n                        // TCP port first.\n                        setTimeout(function(){\n                            client.connect(logPort, logHost)\n                        }, 2500)\n                    }\n                })\n\n                // Return the function that will do the actual logging to the\n                // logging system.\n                return function(msg) {\n                    // Store message so it won't get lost on error\n                    message_cache.push(msg)\n                    if (client_connected === true) {\n                            client.write(JSON.stringify(msg)+\"\\n\")\n                            // Remove message if send successfully.\n                    } else {\n\n                        if (client_connecting_scheduled === false){\n                            client_connecting_scheduled = true\n                            // Delay connecting to allow Node-Red to list to\n                            // TCP port first.\n                            setTimeout(function(){\n                                client.connect(logPort, logHost)\n                            }, 2500)\n                        }\n                    }\n                }\n            }\n        }\n```",
+        "info": "A central log handler that sends all log messages of Node-REDs internal logger via MQTT. The messages are published on the topic defined by the `MQTT_TOPIC_LOGS` environment variable.\nThe log handler uses a TCP socket to connect Node-REDs internal logger with the flow.\n\n# Usage\nDeploy one (and only one) instance of the node in a Node-RED instance. If you deploy more than one node the following error will occur:\n```\n\"unable to listen on port 1337, error: Error: listen EADDRINUSE: address already in use :::1338\"\n```\nYou may have to restart Node-RED (or the container) after inserting the node in the flow.\n\nAll log messages will be caught automatically, this includes the warn and error messages displayed in Node-REDs debug message log but also the internal info messages not shown there. \n\nTo explicitly log in function nodes use the `node` attribute as explained [here](https://nodered.org/docs/user-guide/writing-functions#logging-events), i.e. use: \n\n```\nnode.log(..)\nnode.warn(..)\nnode.error(..)\nnode.debug(..)\nnode.trace(..)\n```\n\n# Log levels\n\n... are converted to python standard, that is:\n\n* 10 (DEBUG) Something happened which is only relevant for developers of the application.\n* 20 (INFO) Something happened.\n* 30 (WARN) Something happened, which is not a problem a the moment but may become one in future. No data is lost.\n* 40 (ERROR) An error occurred, the processing of one or more messages failed. Some data is lost and/or has not reached the end of the flow. Node-RED and the flows still work.\n* 50 (FATAL) A flow or Node-RED crashed and does not operation as intended. You should not expect that FATAL logs are forwarded as the flow may already be halted.\n\n# Preliminaries\n\nIn order to make this flow work one needs to append the following code into `settings.js` in the `logging` section:\n\n```\n        // Custom log handler that forwards log messages via tcp socket.\n        logforwarder: {\n            // Node red logger configuration see https://nodered.org/docs/user-guide/runtime/logging\n            level: 'info',\n            metrics: false,\n            audit: false,\n            handler: function(conf) {\n                var net = require('net')\n                var logPort = 1337\n                var logHost = 'localhost'\n                var message_cache = []\n                var client_connected = false\n                var client_connecting_scheduled = false\n                var client = new net.Socket()\n\n                // Send message to console, similar format as Node-RED does.\n                // These will not be caught by the logforwarder.\n                function console_log(message){\n                    let now = new Date()\n                    // Add something like \"25 Nov\"\n                    let formated = now.toUTCString().slice(5, 11)\n                    // This should add something like \" 14:24:13\"\n                    formated += now.toUTCString().slice(16, -4)\n                    formated += \" - [info] [LogForwarder] \"\n                    formated += message\n                    console.log(formated)\n                }\n\n                // Send all cached messages once the connection is established.\n                client.on('connect', function() {\n                    console_log(\"LogForwarder: Connected\")\n                    client_connected = true\n                    client_connecting_scheduled = false\n                    while(message_cache.length) {\n                        client.write(JSON.stringify(message_cache.shift())+\"\\n\")\n                    }\n                })\n\n                client.on('error', function(err){\n                    if (client_connected === true){\n                        console_log(\n                          \"LogForwarder: Experienced error. Reconnecting.\"\n                        )\n                        console_log(err)\n                        client_connected = false\n                    }\n                    if (client_connecting_scheduled === false){\n                        client_connecting_scheduled = true\n                        // Delay connecting to allow Node-Red to list to\n                        // TCP port first.\n                        setTimeout(function(){\n                            client.connect(logPort, logHost)\n                        }, 2500)\n                    }\n                })\n\n                // Return the function that will do the actual logging to the\n                // logging system.\n                return function(msg) {\n                    // Store message so it won't get lost on error\n                    message_cache.push(msg)\n                    if (client_connected === true) {\n                            client.write(JSON.stringify(msg)+\"\\n\")\n                            // Remove message if send successfully.\n                    } else {\n\n                        if (client_connecting_scheduled === false){\n                            client_connecting_scheduled = true\n                            // Delay connecting to allow Node-Red to list to\n                            // TCP port first.\n                            setTimeout(function(){\n                                client.connect(logPort, logHost)\n                            }, 2500)\n                        }\n                    }\n                }\n            }\n        }\n```",
         "category": "",
         "in": [],
         "out": [],
@@ -515,8 +515,7 @@
         "y": 280,
         "wires": [
             [
-                "d09fe5cf.357788",
-                "ce48b1f6.63c3e"
+                "d09fe5cf.357788"
             ]
         ]
     },
@@ -729,8 +728,7 @@
         "wires": [
             [
                 "961689eb.6df078",
-                "5a8f8f58.d3c16",
-                "1b346ab6.5b6b05"
+                "5a8f8f58.d3c16"
             ]
         ],
         "info": "Flattens the incomming object to depth 1, i.e that every leaf of the incomming object can be accessed with a unique key directly from flat_message object.\n# Returns\nShould return the a message with the flattend data like:\n```\nmsg = {\n    \"payload\": {\n        \"flattened_message\": <the parsed data as flattend object>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"flattened_message\": {\n            \"device_1__sensor_1\": \"2.12\"\n            \"device_1__sensor_2\": \"3.12\"\n        },\n        \"timestamp\": 1573680749000\n    }\n}\n```"
@@ -887,7 +885,7 @@
             "5d6ccddc.75fcd4"
         ],
         "x": 155,
-        "y": 60,
+        "y": 40,
         "wires": [
             [
                 "c3e26a30.4a4b08"
@@ -903,7 +901,7 @@
             "498bc454.265e5c"
         ],
         "x": 515,
-        "y": 60,
+        "y": 40,
         "wires": []
     },
     {
@@ -941,7 +939,7 @@
         "outputs": 0,
         "noerr": 0,
         "x": 340,
-        "y": 60,
+        "y": 40,
         "wires": []
     },
     {
@@ -1093,7 +1091,7 @@
         "type": "function",
         "z": "927c9b3e.6d8038",
         "name": "Filter datapoints and build sensor messages",
-        "func": "node.error(\"Logic in node \\\"Filter datapoints and build sensor messages\\\" not implemented\")\n",
+        "func": "let datapoint_map = global.get(\"datapoint_map\")\nlet sensor_map = datapoint_map[\"sensor\"]\n\nlet datapoint_msgs = []\nlet sensor_data_flat = msg.payload.flattened_message\n\n// We could also iterate over all entries of sensor map, but this should be more\n// efficient if we expect many messages with only some datapoints, as e.g. is\n// the case for homematic.\nfor (let internal_sensor_id in sensor_data_flat){\n    // Only process messages of datapoints which have been selected for sending\n    // via MQTT in the central admin UI.\n    if (internal_sensor_id in sensor_map){\n        let datapoint_msg = {\n            \"payload\": {\n                \"value\": sensor_data_flat[internal_sensor_id],\n                \"timestamp\": msg.payload.timestamp,\n            },\n            \"topic\": sensor_map[internal_sensor_id],\n        }\n        datapoint_msgs.push(datapoint_msg)\n    }\n    \n}\n\nreturn [datapoint_msgs]",
         "outputs": 1,
         "noerr": 0,
         "x": 490,
@@ -1102,7 +1100,8 @@
             [
                 "517add71.6239e4"
             ]
-        ]
+        ],
+        "info": "This function block will create one message for every entry in the input msg that has been selected for sending to the message broker, that is an entry for which a datapoint_map entry exists.\n\n# Given \n... that a datapoint_map is stored in global context with content:\n```\n{\n    \"sensor\": {\n        \"device_1__sensor_1\": \"example-connector/msgs/0001\",\n        \"device_1__sensor_2\": \"example-connector/msgs/0002\"\n    },\n    \"actuator\": {\n        \"example-connector/msgs/0003\": \"device_1__actuator_1\"\n    }\n}\n```\n\n# Receives\nAnd this block would receive the following input: \n```\nmsg = {\n    \"payload\": {\n        \"flattened_message\": {\n            \"device_1__sensor_1\": \"2.12\",\n            \"device_1__sensor_2\": \"3.12\",\n            \"device_2__sensor_2\": \"88822\"\n        },\n        \"timestamp\": 1573680749000\n    }\n}\n```\n\n# Returns\nThe node would return the following two messages:\n```\nmsg = {\n    \"payload\": {\n        \"value\": \"2.12\",\n        \"timestamp\": 1573680749000,\n    },\n    \"topic\": \"example-connector/msgs/0001\",\n}\n\nmsg = {\n    \"payload\": {\n        \"value\": \"3.12\",\n        \"timestamp\": 1573680749000,\n    },\n    \"topic\": \"example-connector/msgs/0002\",\n}\n\n```\n"
     },
     {
         "id": "517add71.6239e4",
@@ -1111,7 +1110,7 @@
         "name": "MQTT datapoint message topics",
         "topic": "",
         "qos": "1",
-        "retain": "false",
+        "retain": "true",
         "broker": "f0d21eb0.93967",
         "x": 1210,
         "y": 400,
@@ -1132,11 +1131,11 @@
         "type": "mqtt in",
         "z": "927c9b3e.6d8038",
         "name": "",
-        "topic": "$(MQTT_TOPIC_MESSAGE_WILDCARD)",
+        "topic": "$(MQTT_TOPIC_DATAPOINT_MESSAGE_WILDCARD)",
         "qos": "1",
         "datatype": "json",
         "broker": "f0d21eb0.93967",
-        "x": 180,
+        "x": 230,
         "y": 580,
         "wires": [
             [
@@ -1149,16 +1148,17 @@
         "type": "function",
         "z": "927c9b3e.6d8038",
         "name": "Filter for actuator messages",
-        "func": "node.error(\"Logic in node \\\"Filter for actuator messages\\\" not implemented\")\n",
+        "func": "let datapoint_map = global.get(\"datapoint_map\")\nlet actuator_map = datapoint_map[\"actuator\"]\n\nif (msg.topic in actuator_map){\n    return msg\n}",
         "outputs": 1,
         "noerr": 0,
-        "x": 580,
+        "x": 760,
         "y": 580,
         "wires": [
             [
                 "3ed4277f.ed75d8"
             ]
-        ]
+        ],
+        "info": "This notes lets only these messages through that are actuator messages for this particular connector. This filtering is necessary as there is no way (known to the author) of using dynmic topic lists for receiving MQTT messages in Node-RED.\n\n# Given \n... that a datapoint_map is stored in global context with content:\n```\n{\n    \"sensor\": {\n        \"device_1__sensor_1\": \"example-connector/msgs/0001\",\n        \"device_1__sensor_2\": \"example-connector/msgs/0002\"\n    },\n    \"actuator\": {\n        \"example-connector/msgs/0003\": \"device_1__actuator_1\"\n    }\n}\n```\n\n# Returns\nThis node would only let messages pass through that have been received on topic `example-connector/msgs/0003`."
     },
     {
         "id": "5e4aacbf.6c95d4",
@@ -1176,8 +1176,8 @@
         "z": "68dfd515.661f7c",
         "name": "Manuelly define additional datapoints",
         "topic": "",
-        "payload": "",
-        "payloadType": "date",
+        "payload": "{\"sensor\":{},\"actuator\":{}}",
+        "payloadType": "json",
         "repeat": "",
         "crontab": "",
         "once": false,
@@ -1188,7 +1188,8 @@
             [
                 "5e4aacbf.6c95d4"
             ]
-        ]
+        ],
+        "info": "This node allows you to manually define which datapoints are available (additonally to the automatically found sensor datapoints).\n# Should return\n... a message formated to match the expected input of Update available_datapoints. E.g.\n```\nmsg = {\n    \"payload\": {\n    \t\"sensor\": {\n    \t\t\"Channel__P__value__0\": 0.122,\n            \"Channel__P__unit__0\": \"kW\",\n    \t},\n    \t\"actuator\": {\n    \t\t\"Channel__P__setpoint__0\": 0.4,\n    \t}\n    }\n}\n```"
     },
     {
         "id": "3ed4277f.ed75d8",
@@ -1198,7 +1199,7 @@
         "links": [
             "3b3d9738.5b6e88"
         ],
-        "x": 815,
+        "x": 1135,
         "y": 580,
         "wires": []
     },
@@ -1207,28 +1208,10 @@
         "type": "comment",
         "z": "927c9b3e.6d8038",
         "name": "Flow: Send command",
-        "info": "Parse an object from the raw data.\n\n# Receives\n... a message structured like this:\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": <the raw data>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": \"device_1:{sensor_1:2.12,sensor_2:3.12}\",\n        \"timestamp\": 1573680749000\n    }\n}\n```\n\n# Should return\n... a message containing the a parsed version of the raw data, structured like this:\n```\nmsg = {\n    \"payload\": {\n        \"parsed_message\": <the parsed data as object>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"parsed_message\": {\n            \"device_1\": {\n                \"sensor_1\": \"2.12\",\n                \"sensor_2\": \"3.12\"\n            }\n        },\n        \"timestamp\": 1573680749000\n    }\n}\n```",
-        "x": 920,
+        "info": "Send a value to the corresponding actuator. \n\n# Receives\n... a message structured like this:\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": <the raw data>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": \"device_1:{sensor_1:2.12,sensor_2:3.12}\",\n        \"timestamp\": 1573680749000\n    }\n}\n```\n\n# Should return\n.. generally nothing. If you want to return status messages about the last/or accepted value of the actuator you might want to inject a respecitve message directly after the \"Parse raw_message\" flow. Consider the expected message format.",
+        "x": 1240,
         "y": 580,
         "wires": []
-    },
-    {
-        "id": "ba0780ad.e171b",
-        "type": "inject",
-        "z": "927c9b3e.6d8038",
-        "name": "",
-        "topic": "",
-        "payload": "{\"parsed_message\":{\"device_1\":{\"sensor_1\":\"2.12\",\"sensor_2\":\"3.12\"}},\"timestamp\":1573680749000}",
-        "payloadType": "json",
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "x": 1570,
-        "y": 180,
-        "wires": [
-            []
-        ]
     },
     {
         "id": "3ce1950f.35b4ca",
@@ -1259,28 +1242,10 @@
             "3ed4277f.ed75d8"
         ],
         "x": 155,
-        "y": 60,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "f2750649.36eb58",
-        "type": "inject",
-        "z": "927c9b3e.6d8038",
-        "name": "",
-        "topic": "",
-        "payload": "{\"parsed_message\":{\"device_1\":{\"sensor_1\":\"2.12\",\"sensor_2\":\"3.12\"}},\"timestamp\":1573680749000}",
-        "payloadType": "json",
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "x": 110,
-        "y": 420,
+        "y": 40,
         "wires": [
             [
-                "4167d4ab.a3237c"
+                "1c26ecc6.986e53"
             ]
         ]
     },
@@ -1293,8 +1258,8 @@
         "qos": "2",
         "datatype": "json",
         "broker": "f0d21eb0.93967",
-        "x": 130,
-        "y": 180,
+        "x": 170,
+        "y": 60,
         "wires": [
             [
                 "6a8747b4.e5cdd8"
@@ -1312,8 +1277,8 @@
         "tostatus": false,
         "complete": "true",
         "targetType": "full",
-        "x": 550,
-        "y": 120,
+        "x": 530,
+        "y": 60,
         "wires": []
     },
     {
@@ -1333,8 +1298,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 1,
-        "x": 330,
-        "y": 120,
+        "x": 350,
+        "y": 60,
         "wires": [
             [
                 "1037d1c7.83ed5e"
@@ -1765,37 +1730,85 @@
         ]
     },
     {
-        "id": "1b346ab6.5b6b05",
-        "type": "debug",
-        "z": "927c9b3e.6d8038",
+        "id": "ac60878f.2ed378",
+        "type": "mqtt out",
+        "z": "b5a451b4.6e45c",
         "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "true",
-        "targetType": "full",
-        "x": 350,
-        "y": 480,
+        "topic": "$(MQTT_TOPIC_DATAPOINT_MAP)",
+        "qos": "2",
+        "retain": "true",
+        "broker": "f0d21eb0.93967",
+        "x": 610,
+        "y": 140,
         "wires": []
     },
     {
-        "id": "ce48b1f6.63c3e",
-        "type": "debug",
-        "z": "2f246a38.edf956",
+        "id": "cc9f41ed.ffab9",
+        "type": "inject",
+        "z": "b5a451b4.6e45c",
         "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "true",
-        "targetType": "full",
-        "x": 310,
-        "y": 380,
+        "topic": "",
+        "payload": "{\"sensor\":{\"device_1__sensor_1\":\"example-connector/msgs/0001\",\"device_1__sensor_2\":\"example-connector/msgs/0002\"},\"actuator\":{\"node-red-connector-template/messages/0003\":\"device_1__actuator_1\"}}",
+        "payloadType": "json",
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "x": 230,
+        "y": 140,
+        "wires": [
+            [
+                "ac60878f.2ed378"
+            ]
+        ]
+    },
+    {
+        "id": "1c26ecc6.986e53",
+        "type": "function",
+        "z": "9f1169a9.8e23c8",
+        "name": "Throw not implemented error",
+        "func": "node.error(\"Logic in flow \\\"Send command\\\" not implemented\")",
+        "outputs": 0,
+        "noerr": 0,
+        "x": 340,
+        "y": 40,
         "wires": []
     },
     {
-        "id": "cf6b628f.1bf2b",
+        "id": "c4227986.9ae838",
+        "type": "inject",
+        "z": "b5a451b4.6e45c",
+        "name": "",
+        "topic": "node-red-connector-template/messages/0003",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 200,
+        "y": 200,
+        "wires": [
+            [
+                "f270d925.1074a8"
+            ]
+        ]
+    },
+    {
+        "id": "f270d925.1074a8",
+        "type": "mqtt out",
+        "z": "b5a451b4.6e45c",
+        "name": "MQTT datapoint message topics",
+        "topic": "",
+        "qos": "1",
+        "retain": "true",
+        "broker": "f0d21eb0.93967",
+        "x": 470,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "43d13ddb.00ffd4",
         "type": "subflow:2f246a38.edf956",
         "z": "927c9b3e.6d8038",
         "name": "",
