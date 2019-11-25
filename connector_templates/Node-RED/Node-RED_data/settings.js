@@ -275,50 +275,67 @@ module.exports = {
                 var logHost = 'localhost'
                 var message_cache = []
                 var client_connected = false
+                var client_connecting_scheduled = false
                 var client = new net.Socket()
+
+                // Send message to console, similar format as Node-RED does.
+                // These will not be caught by the logforwarder.
+                function console_log(message){
+                    let now = new Date()
+                    // Add something like "25 Nov"
+                    let formated = now.toUTCString().slice(5, 11)
+                    // This should add something like " 14:24:13"
+                    formated += now.toUTCString().slice(16, -4)
+                    formated += " - [info] [LogForwarder] "
+                    formated += message
+                    console.log(formated)
+                }
 
                 // Send all cached messages once the connection is established.
                 client.on('connect', function() {
-                    console.log("LogForwarder connected")
+                    console_log("LogForwarder: Connected")
                     client_connected = true
+                    client_connecting_scheduled = false
                     while(message_cache.length) {
                         client.write(JSON.stringify(message_cache.shift())+"\n")
                     }
-
                 })
 
-                // Handle connection errors, flag connection inactive and issue reconnect.
-                client.on('error', function() {
-                    // Ignore errors that occurred while the socket was not connected.
-                    if (client_connected === true) {
-                        console.log("LogForwarder connection error, Reconnecting.")
-                        client.destroy()
-                        client = new net.Socket()
+                client.on('error', function(err){
+                    if (client_connected === true){
+                        console_log(
+                          "LogForwarder: Experienced error. Reconnecting."
+                        )
+                        console_log(err)
                         client_connected = false
-                        client.setTimeout(2000, function() {
+                    }
+                    if (client_connecting_scheduled === false){
+                        client_connecting_scheduled = true
+                        // Delay connecting to allow Node-Red to list to
+                        // TCP port first.
+                        setTimeout(function(){
                             client.connect(logPort, logHost)
-                        })
+                        }, 2500)
                     }
                 })
 
-                // Return the function that will do the actual logging to the logging system.
+                // Return the function that will do the actual logging to the
+                // logging system.
                 return function(msg) {
+                    // Store message so it won't get lost on error
+                    message_cache.push(msg)
                     if (client_connected === true) {
-                        try {
                             client.write(JSON.stringify(msg)+"\n")
-                        } catch(err) {
-                            // Trigger caching and reconnecting on error.
-                            client.destroy()
-                            client = new net.Socket()
-                            client_connected = false
-                        }
-                    } 
-                    // Cache messages if connection is lost.
-                    if (client_connected === false) {
-                        message_cache.push(msg)
-                        // Only trigger reconnect if a message is waiting to be sent.
-                        if (client.connecting === false) {
-                            client.connect(logPort, logHost)
+                            // Remove message if send successfully.
+                    } else {
+
+                        if (client_connecting_scheduled === false){
+                            client_connecting_scheduled = true
+                            // Delay connecting to allow Node-Red to list to
+                            // TCP port first.
+                            setTimeout(function(){
+                                client.connect(logPort, logHost)
+                            }, 2500)
                         }
                     }
                 }

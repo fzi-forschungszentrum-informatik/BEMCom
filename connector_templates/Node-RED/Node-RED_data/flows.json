@@ -83,7 +83,7 @@
         "id": "2f246a38.edf956",
         "type": "subflow",
         "name": "Log handler",
-        "info": "A central log handler that sends all log messages of Node-REDs internal logger via MQTT. The messages are published on the topic defined by the `MQTT_TOPIC_LOGS` environment variable.\nThe log handler uses a TCP socket to connect Node-REDs internal logger with the flow.\n\n# Usage\nDeploy one (and only one) instance of the node in a Node-RED instance. If you deploy more than one node the following error will occur:\n```\n\"unable to listen on port 1337, error: Error: listen EADDRINUSE: address already in use :::1338\"\n```\n\nAll log messages will be caught automatically, this includes the warn and error messages displayed in Node-REDs debug message log but also the internal info messages not shown there. \n\nTo explicitly log in function nodes use the `node` attribute as explained [here](https://nodered.org/docs/user-guide/writing-functions#logging-events), i.e. use: \n\n```\nnode.log(..)\nnode.warn(..)\nnode.error(..)\nnode.debug(..)\nnode.trace(..)\n```\n\n# Log levels\n\n... are converted to python standard, that is:\n\n* 10 (DEBUG) Something happened which is only relevant for developers of the application.\n* 20 (INFO) Something happened.\n* 30 (WARN) Something happened, which is not a problem a the moment but may become one in future. No data is lost.\n* 40 (ERROR) An error occurred, the processing of one or more messages failed. Some data is lost and/or has not reached the end of the flow. Node-RED and the flows still work.\n* 50 (FATAL) A flow or Node-RED crashed and does not operation as intended. You should not expect that FATAL logs are forwarded as the flow may already be halted.\n\n# Known bugs\nAfter a redeploy (not the first startup) of the application it may take 5-10 seconds until the connection is reestablished. Log messages may be lost within that time.\n\n# Preliminaries\n\nIn order to make this flow work one needs to append the following code into `settings.js` in the `logging` section:\n\n```\n// Custom log handler that forwards log messages via tcp socket.\n        logforwarder: {\n            // Node red logger configuration see https://nodered.org/docs/user-guide/runtime/logging\n            level: 'info',\n            metrics: false,\n            audit: false,\n            handler: function(conf) {\n                var net = require('net')\n                var logPort = 1337\n                var logHost = 'localhost'\n                var message_cache = []\n                var client_connected = false\n                var client = new net.Socket()\n\n                // Send all cached messages once the connection is established.\n                client.on('connect', function() {\n                    console.log(\"LogForwarder connected\")\n                    client_connected = true\n                    while(message_cache.length) {\n                        client.write(JSON.stringify(message_cache.shift())+\"\\n\")\n                    }\n\n                })\n\n                // Handle connection errors, flag connection inactive and issue reconnect.\n                client.on('error', function() {\n                    // Ignore errors that occurred while the socket was not connected.\n                    if (client_connected === true) {\n                        console.log(\"LogForwarder connection error, Reconnecting.\")\n                        client.destroy()\n                        client = new net.Socket()\n                        client_connected = false\n                        client.setTimeout(2000, function() {\n                            client.connect(logPort, logHost)\n                        })\n                    }\n                })\n\n                // Return the function that will do the actual logging to the logging system.\n                return function(msg) {\n                    if (client_connected === true) {\n                        try {\n                            client.write(JSON.stringify(msg)+\"\\n\")\n                        } catch(err) {\n                            // Trigger caching and reconnecting on error.\n                            client.destroy()\n                            client = new net.Socket()\n                            client_connected = false\n                        }\n                    } \n                    // Cache messages if connection is lost.\n                    if (client_connected === false) {\n                        message_cache.push(msg)\n                        // Only trigger reconnect if a message is waiting to be sent.\n                        if (client.connecting === false) {\n                            client.connect(logPort, logHost)\n                        }\n                    }\n                }\n            }\n        }\n```",
+        "info": "A central log handler that sends all log messages of Node-REDs internal logger via MQTT. The messages are published on the topic defined by the `MQTT_TOPIC_LOGS` environment variable.\nThe log handler uses a TCP socket to connect Node-REDs internal logger with the flow.\n\n# Usage\nDeploy one (and only one) instance of the node in a Node-RED instance. If you deploy more than one node the following error will occur:\n```\n\"unable to listen on port 1337, error: Error: listen EADDRINUSE: address already in use :::1338\"\n```\n\nAll log messages will be caught automatically, this includes the warn and error messages displayed in Node-REDs debug message log but also the internal info messages not shown there. \n\nTo explicitly log in function nodes use the `node` attribute as explained [here](https://nodered.org/docs/user-guide/writing-functions#logging-events), i.e. use: \n\n```\nnode.log(..)\nnode.warn(..)\nnode.error(..)\nnode.debug(..)\nnode.trace(..)\n```\n\n# Log levels\n\n... are converted to python standard, that is:\n\n* 10 (DEBUG) Something happened which is only relevant for developers of the application.\n* 20 (INFO) Something happened.\n* 30 (WARN) Something happened, which is not a problem a the moment but may become one in future. No data is lost.\n* 40 (ERROR) An error occurred, the processing of one or more messages failed. Some data is lost and/or has not reached the end of the flow. Node-RED and the flows still work.\n* 50 (FATAL) A flow or Node-RED crashed and does not operation as intended. You should not expect that FATAL logs are forwarded as the flow may already be halted.\n\n# Preliminaries\n\nIn order to make this flow work one needs to append the following code into `settings.js` in the `logging` section:\n\n```\n        // Custom log handler that forwards log messages via tcp socket.\n        logforwarder: {\n            // Node red logger configuration see https://nodered.org/docs/user-guide/runtime/logging\n            level: 'info',\n            metrics: false,\n            audit: false,\n            handler: function(conf) {\n                var net = require('net')\n                var logPort = 1337\n                var logHost = 'localhost'\n                var message_cache = []\n                var client_connected = false\n                var client_connecting_scheduled = false\n                var client = new net.Socket()\n\n                // Send message to console, similar format as Node-RED does.\n                // These will not be caught by the logforwarder.\n                function console_log(message){\n                    let now = new Date()\n                    // Add something like \"25 Nov\"\n                    let formated = now.toUTCString().slice(5, 11)\n                    // This should add something like \" 14:24:13\"\n                    formated += now.toUTCString().slice(16, -4)\n                    formated += \" - [info] [LogForwarder] \"\n                    formated += message\n                    console.log(formated)\n                }\n\n                // Send all cached messages once the connection is established.\n                client.on('connect', function() {\n                    console_log(\"LogForwarder: Connected\")\n                    client_connected = true\n                    client_connecting_scheduled = false\n                    while(message_cache.length) {\n                        client.write(JSON.stringify(message_cache.shift())+\"\\n\")\n                    }\n                })\n\n                client.on('error', function(err){\n                    if (client_connected === true){\n                        console_log(\n                          \"LogForwarder: Experienced error. Reconnecting.\"\n                        )\n                        console_log(err)\n                        client_connected = false\n                    }\n                    if (client_connecting_scheduled === false){\n                        client_connecting_scheduled = true\n                        // Delay connecting to allow Node-Red to list to\n                        // TCP port first.\n                        setTimeout(function(){\n                            client.connect(logPort, logHost)\n                        }, 2500)\n                    }\n                })\n\n                // Return the function that will do the actual logging to the\n                // logging system.\n                return function(msg) {\n                    // Store message so it won't get lost on error\n                    message_cache.push(msg)\n                    if (client_connected === true) {\n                            client.write(JSON.stringify(msg)+\"\\n\")\n                            // Remove message if send successfully.\n                    } else {\n\n                        if (client_connecting_scheduled === false){\n                            client_connecting_scheduled = true\n                            // Delay connecting to allow Node-Red to list to\n                            // TCP port first.\n                            setTimeout(function(){\n                                client.connect(logPort, logHost)\n                            }, 2500)\n                        }\n                    }\n                }\n            }\n        }\n```",
         "category": "",
         "in": [],
         "out": [],
@@ -515,7 +515,8 @@
         "y": 280,
         "wires": [
             [
-                "d09fe5cf.357788"
+                "d09fe5cf.357788",
+                "ce48b1f6.63c3e"
             ]
         ]
     },
@@ -728,7 +729,8 @@
         "wires": [
             [
                 "961689eb.6df078",
-                "5a8f8f58.d3c16"
+                "5a8f8f58.d3c16",
+                "1b346ab6.5b6b05"
             ]
         ],
         "info": "Flattens the incomming object to depth 1, i.e that every leaf of the incomming object can be accessed with a unique key directly from flat_message object.\n# Returns\nShould return the a message with the flattend data like:\n```\nmsg = {\n    \"payload\": {\n        \"flattened_message\": <the parsed data as flattend object>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"flattened_message\": {\n            \"device_1__sensor_1\": \"2.12\"\n            \"device_1__sensor_2\": \"3.12\"\n        },\n        \"timestamp\": 1573680749000\n    }\n}\n```"
@@ -793,16 +795,6 @@
                 "f6adda79.b02428"
             ]
         ]
-    },
-    {
-        "id": "3462eee9.913372",
-        "type": "subflow:2f246a38.edf956",
-        "z": "927c9b3e.6d8038",
-        "name": "",
-        "env": [],
-        "x": 90,
-        "y": 40,
-        "wires": []
     },
     {
         "id": "109d9d31.a7bed3",
@@ -1239,21 +1231,6 @@
         ]
     },
     {
-        "id": "2aafb87.2b3f548",
-        "type": "debug",
-        "z": "927c9b3e.6d8038",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "true",
-        "targetType": "full",
-        "x": 2350,
-        "y": 120,
-        "wires": []
-    },
-    {
         "id": "3ce1950f.35b4ca",
         "type": "comment",
         "z": "a96a98ee.ee4868",
@@ -1299,7 +1276,7 @@
         "crontab": "",
         "once": false,
         "onceDelay": 0.1,
-        "x": 90,
+        "x": 110,
         "y": 420,
         "wires": [
             [
@@ -1317,7 +1294,7 @@
         "datatype": "json",
         "broker": "f0d21eb0.93967",
         "x": 130,
-        "y": 120,
+        "y": 180,
         "wires": [
             [
                 "6a8747b4.e5cdd8"
@@ -1786,5 +1763,45 @@
                 "53dbc0f1.2bcc4"
             ]
         ]
+    },
+    {
+        "id": "1b346ab6.5b6b05",
+        "type": "debug",
+        "z": "927c9b3e.6d8038",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "x": 350,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "ce48b1f6.63c3e",
+        "type": "debug",
+        "z": "2f246a38.edf956",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "x": 310,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "cf6b628f.1bf2b",
+        "type": "subflow:2f246a38.edf956",
+        "z": "927c9b3e.6d8038",
+        "name": "",
+        "env": [],
+        "x": 90,
+        "y": 40,
+        "wires": []
     }
 ]
