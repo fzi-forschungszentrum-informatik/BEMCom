@@ -26,10 +26,6 @@ services:
 
         restart: always
 
-        # Load credentials.
-        env_file:
-            - mqtt_broker_credentials.env
-
         # Pass connector configuration in container.
         # See additional documentation and default values in .env file
         environment:
