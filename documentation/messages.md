@@ -62,6 +62,12 @@ The emitter field allows the identification of the logging node in Node-RED, whi
 
 # Available Datapoints (from Connector)
 
+### Requirements on Connector
+
+* Must publish a list of available datapoints 
+* Connector can do so in an iterative fashion, e.g. by just listening to the stream of incoming messages and send an update for every message that contains a new datapoint.
+* The connector should only remove a datapoint (that has been send to the admin panel before) from the list if the datapoint is not available any more, b/c that is what the admin panel will assume happend.
+
 #### Topic:
 
 ```
@@ -155,7 +161,7 @@ soap:Envelope__soap:Body__0__getMeterResponse__0__getMeterResult:__0__channel__0
 ### Topic:
 
 ```
-<Connector_name>/msgs/<datapoint_id>
+<Connector_name>/messages/<datapoint_id>
 ```
 
 ### Format:
