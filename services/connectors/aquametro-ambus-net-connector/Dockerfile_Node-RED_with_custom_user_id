@@ -1,0 +1,19 @@
+ARG NODE_RED_TAG
+FROM nodered/node-red:${NODE_RED_TAG}
+
+USER root
+
+# Change the user/group id in etc/passwd to the ids specfied trough the 
+# evirnoment variables. This is necessary to  ensure that the container 
+# user has a valid home directory, which is required for the Node-RED package
+# node-red-contrib-mongodb3
+ARG USER_ID
+ARG GROUP_ID
+RUN mkdir /home/node && \
+    echo "root:x:0:0:root:/root:/bin/bash" > /etc/passwd && \
+    echo "node:x:${USER_ID}:${GROUP_ID}::/home/node:/bin/bash" >> /etc/passwd && \
+    chown ${USER_ID}:${GROUP_ID} /home/node -R
+
+USER ${USER_ID}:${GROUP_ID}
+
+

@@ -1,0 +1,16 @@
+{
+    "converter": {
+        "label": {
+            "name": "Name",
+            "from": "Encoding"
+        },
+        "input":{
+            "from":"win1252"
+        },
+        "error": {
+            "type":"This node only handles buffers.",
+            "payload":"Payload is missing",
+            "encoding":"Encoding not found: "
+        }
+    }
+}

@@ -125,8 +125,6 @@ soap:Envelope__soap:Body__0__getMeterResponse__0__getMeterResult:__0__channel__0
 
 ### Format:
 
-<span style="color:red;font-weight:bold">Revise here if it does not make more sense to transfer the expected message format with placeholders.</span>
-
 ```
 "payload": {
 	"sensor": {
@@ -166,8 +164,6 @@ soap:Envelope__soap:Body__0__getMeterResponse__0__getMeterResult:__0__channel__0
 
 ### Format:
 
-Numeric Values:
-
 ```
 "payload": {
 	"value": <numeric value>,
@@ -175,18 +171,7 @@ Numeric Values:
 }
 ```
 
-Data/Strings: 
-
-```
-"payload": {
-	"data": <data or string>,
-	"timestamp": <unix timestamp in ms>,
-}
-```
-
 ### Format:
-
-Numeric Values:
 
 ```
 "payload": {
@@ -195,12 +180,12 @@ Numeric Values:
 }
 ```
 
-Data/Strings: 
+# Store Datapoints (to Database)
 
-```
-"payload": {
-	"data": "ok",
-	"timestamp": 1564489613491,
-}
-```
+Defines which Datapoints a Database should store.
 
+# Raw Message (from Connector)
+
+
+
+# Restore Raw Message (to Database)
