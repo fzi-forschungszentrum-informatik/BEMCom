@@ -6,11 +6,21 @@ class Connector(models.Model):
     """
     TODO: Ensure that all topics are unique.
     """
-    name = models.TextField()
-    mqtt_topic_logs = models.TextField()
-    mqtt_topic_heartbeat = models.TextField()
-    mqtt_topic_available_datapoints = models.TextField()
-    mqtt_topic_datapoint_map = models.TextField()
+    name = models.TextField(
+        default='',
+    )
+    mqtt_topic_logs = models.TextField(
+        default='',
+    )
+    mqtt_topic_heartbeat = models.TextField(
+        default='',
+    )
+    mqtt_topic_available_datapoints = models.TextField(
+        default='',
+    )
+    mqtt_topic_datapoint_map = models.TextField(
+        default='',
+    )
 
 
 class ConnectorLogEntry(models.Model):
@@ -18,8 +28,12 @@ class ConnectorLogEntry(models.Model):
         Connector, on_delete=models.CASCADE
     )
     timestamp = models.DateTimeField()
-    msg = models.TextField()
-    emitter = models.TextField()
+    msg = models.TextField(
+        default='',
+    )
+    emitter = models.TextField(
+        default='',
+    )
     level = models.SmallIntegerField()
 
 
@@ -36,12 +50,17 @@ class ConnectorAvailableDatapoints(models.Model):
         Connector, on_delete=models.CASCADE
     )
     datapoint_type = models.CharField(max_length=8)
-    datapoint_key_in_connector = models.TextField()
-    datapoint_example_value = models.TextField()
+    datapoint_key_in_connector = models.TextField(
+        default='',
+    )
+    datapoint_example_value = models.TextField(
+        default='',
+    )
 
 
 class DeviceType(models.Model):
     friendly_name = models.TextField(
+        default='',
         help_text="Human readable device description. "
                   "E.g. room thermostat or heat meter"
     )
@@ -49,6 +68,7 @@ class DeviceType(models.Model):
 
 class DeviceLocationFriendlyName(models.Model):
     friendly_name = models.TextField(
+        default='',
         help_text="Human readable device location. "
                   "E.g. 3.1.12 or heating cellar"
     )
@@ -68,7 +88,7 @@ class Device(models.Model):
         on_delete=models.SET('')
     )
     device_location_friendly_name = models.ForeignKey(
-        DeviceType,
+        DeviceLocationFriendlyName,
         on_delete=models.SET('')
     )
     is_virtual = models.BooleanField(
@@ -141,6 +161,7 @@ class Datapoint(models.Model):
         on_delete=models.SET('')
     )
     mqtt_topic = models.TextField(
+        null=True,
         editable=False,
         help_text=(
             "The MQTT topic on which the values of this datapoint "
@@ -165,7 +186,7 @@ class Datapoint(models.Model):
             "carry numeric values."
         )
     )
-    default_value = models.Float_field(
+    default_value = models.FloatField(
         default='--.-',
         blank=True,
         help_text=(

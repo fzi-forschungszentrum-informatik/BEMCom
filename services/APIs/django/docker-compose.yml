@@ -16,9 +16,9 @@ services:
             - POSTGRES_USER=django
     web:
         build: .
-        command: python3 /code/manager/manage.py runserver 0.0.0.0:8000
+        command: bash /code/start_django_devl_server.sh
         volumes:
-            - ./code:/code
+            - ./django_code:/code
         ports:
             - "8000:8000"
         depends_on:
