@@ -6,4 +6,5 @@ application = ProtocolTypeRouter({
     # Empty for now (http->django views is added by default)
 })
 
-cmi = ConnectorMQTTIntegration()
+#TODO: Uncomment to integrate MQTT-Broker
+#cmi = ConnectorMQTTIntegration()

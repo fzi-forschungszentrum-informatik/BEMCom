@@ -7,7 +7,7 @@ class Connector(models.Model):
     TODO: Ensure that all topics are unique.
     """
     name = models.TextField(
-        default='',
+        default=''
     )
     mqtt_topic_logs = models.TextField(
         default='',
@@ -37,7 +37,7 @@ class ConnectorLogEntry(models.Model):
     level = models.SmallIntegerField()
 
 
-class ConnectorHearbeat(models.Model):
+class ConnectorHeartbeat(models.Model):
     connector = models.ForeignKey(
         Connector, on_delete=models.CASCADE
     )
@@ -58,12 +58,58 @@ class ConnectorAvailableDatapoints(models.Model):
     )
 
 
+class ProviderManager(models.Manager):
+    def get_by_natural_key(self, slug):
+        return self.get(slug=slug)
+
+
+class Provider(models.Model):
+    friendly_name = models.TextField(
+        default='',
+        help_text="Human readable device manufacturer or service provider. "
+                  "E.g. Aquametro",
+        max_length=30
+    )
+    slug = models.SlugField(
+        default='',
+        max_length=40
+    )
+    manager = ProviderManager()
+
+    def __str__(self):
+        return self.friendly_name
+
+    def natural_key(self):
+        return self.slug
+
+
 class DeviceType(models.Model):
     friendly_name = models.TextField(
         default='',
         help_text="Human readable device description. "
-                  "E.g. room thermostat or heat meter"
+                  "E.g. room thermostat or heat meter",
+        max_length=30
+
     )
+    slug = models.SlugField(
+        default='',
+        max_length=40
+    )
+
+
+class DeviceVersion(models.Model):
+    version = models.TextField(
+        default='',
+        help_text="Version/model of device, e.g. 2.1",
+        max_length=30
+    )
+    slug = models.SlugField(
+        default='',
+        max_length=40
+    )
+
+    def __str__(self):
+        return self.version
 
 
 class DeviceLocationFriendlyName(models.Model):
@@ -72,6 +118,11 @@ class DeviceLocationFriendlyName(models.Model):
         help_text="Human readable device location. "
                   "E.g. 3.1.12 or heating cellar"
     )
+
+
+class DeviceManager(models.Manager):
+    def get_by_natural_key(self, slug):
+        return self.get(slug=slug)
 
 
 class Device(models.Model):
@@ -85,12 +136,22 @@ class Device(models.Model):
     )
     device_type_friendly_name = models.ForeignKey(
         DeviceType,
-        on_delete=models.SET('')
+        on_delete=models.SET(''),
+        name='Device_type'
     )
     device_location_friendly_name = models.ForeignKey(
         DeviceLocationFriendlyName,
-        on_delete=models.SET('')
+        on_delete=models.SET(''),
+        name='Device_location'
     )
+    device_name = models.TextField(
+        default='',
+        max_length=30,
+        help_text="Name of device, e.g. Dachs"
+    )
+    # device_slug = models.SlugField(
+    #     default="{}_{}_{}".format(Provider.slug, device_name, DeviceVersion.slug),
+    # )
     is_virtual = models.BooleanField(
         help_text="True for virtual devices like e.g. a webservice."
     )
@@ -109,17 +170,23 @@ class Device(models.Model):
         default=None,
         help_text="Z Position in 3D Model"
     )
+    manager = DeviceManager()
+    #datapoint = models.ManyToManyField(Datapoint, blank=False)
+
+    def __str__(self):
+        return self.device_type_friendly_name
+
+    # def natural_key(self):
+    #     return self.device_slug
 
 
 class DatapointUnit(models.Model):
 
     def __str__(self):
-        return self.unit_qunatity + " [" + self.unit_symbol + "]"
+        return self.unit_quantity + " [" + self.unit_symbol + "]"
 
-    unit_qunatity = models.TextField(
-        help_text=(
-            "The quantity of the unit, e.g. Temperature or Power"
-        )
+    unit_quantity = models.TextField(
+        help_text="The quantity of the unit, e.g. Temperature or Power"
     )
     unit_symbol = models.TextField(
         help_text="The short symbol of the unit, e.g. °C or kW"
@@ -128,6 +195,7 @@ class DatapointUnit(models.Model):
 
 class Datapoint(models.Model):
     """
+    TODO: Flag if already integrated or new (e.g. because of having installed a new device)
     TODO: How about dynamic meta data?
     TODO: Fix on_delete to set a meaningful default value.
     """
@@ -194,3 +262,10 @@ class Datapoint(models.Model):
             "have been received via MQTT."
         )
     )
+
+
+
+
+
+
+

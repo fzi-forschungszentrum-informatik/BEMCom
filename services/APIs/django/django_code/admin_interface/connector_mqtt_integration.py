@@ -24,6 +24,7 @@ class ConnectorMQTTIntegration():
             'host': settings.MQTT_BROKER['host'],
             'port': settings.MQTT_BROKER['port'],
         }
+        #print('host: {}, port: {}'.format(connect_kwargs['host'], connect_kwargs['port']))
 
         # The topics dict used for subscribing and message routing.
         topics = self.compute_topics()
