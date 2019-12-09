@@ -20,3 +20,9 @@
 * Use docker-compose down to remove containers, images and networks of the application. This will delete all files/state of the application that is stored in the containers of the service.
 * Call remove-application to delete all locally saved files.
 
+# Application Template
+
+* Contains folder of the service to start, will expect a service-definition.yml
+* Mode, prod or devl.
+* name of the Instance.
+
