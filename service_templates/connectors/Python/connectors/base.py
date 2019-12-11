@@ -74,7 +74,7 @@ class BaseConnector():
 
 class PollConnector(BaseConnector):
     """
-    A connector that receives data by peridically polling the endpoint.
+    A connector that receives data by periodically polling the endpoint.
     """
 
     def __init__(self):

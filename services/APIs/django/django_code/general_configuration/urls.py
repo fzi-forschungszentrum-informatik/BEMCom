@@ -15,7 +15,12 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from admin_interface.views import AddConnectorView, ConnectorListView, EditConnectorView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('connectors/', ConnectorListView.as_view(), name="connector_list"),
+    path('connectors/add', AddConnectorView.as_view(), name="add_connector"),
+    path('connectors/edit', EditConnectorView.as_view(), name="edit_connector"),
+
 ]

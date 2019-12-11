@@ -1,27 +1,51 @@
+from datetime import date
 from django.db import models
 from django.utils.html import format_html
-
+from django.utils.text import slugify
 
 class Connector(models.Model):
     """
     TODO: Ensure that all topics are unique.
     """
-    name = models.TextField(
-        default=''
-    )
-    mqtt_topic_logs = models.TextField(
+    name = models.CharField(
         default='',
+        max_length=50
     )
-    mqtt_topic_heartbeat = models.TextField(
+    mqtt_topic_logs = models.CharField(
         default='',
+        max_length=100
     )
-    mqtt_topic_available_datapoints = models.TextField(
-        default='',
+    mqtt_topic_heartbeat = models.CharField(
+        #default='{}/heartbeat'.format(slugify(name)),
+        max_length=100
     )
-    mqtt_topic_datapoint_map = models.TextField(
+    # Available_datapoints as MQTT topic?
+    mqtt_topic_available_datapoints = models.CharField(
         default='',
+        max_length=100
+    )
+    mqtt_topic_datapoint_map = models.CharField(
+        default='',
+        max_length=100
+    )
+    date_created = models.DateField(
+        default=date.today()
     )
 
+    def __str__(self):
+        return self.name
+
+    def natural_key(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.id: # New instance
+            self.mqtt_topic_logs = self.name + "/logs"
+            self.mqtt_topic_heartbeat = self.name + "/heartbeat"
+            self.mqtt_topic_available_datapoints = self.name + "/available_datapoints"
+            self.mqtt_topic_datapoint_map = self.name + "/datapoint_map"
+            self.date_created = date.today()
+        super(Connector, self).save(*args, **kwargs)
 
 class ConnectorLogEntry(models.Model):
     connector = models.ForeignKey(
@@ -56,14 +80,16 @@ class ConnectorAvailableDatapoints(models.Model):
     datapoint_example_value = models.TextField(
         default='',
     )
+    active = models.BooleanField(default=False)
 
 
-class ProviderManager(models.Manager):
+
+class DeviceMakerManager(models.Manager):
     def get_by_natural_key(self, slug):
         return self.get(slug=slug)
 
 
-class Provider(models.Model):
+class DeviceMaker(models.Model):
     friendly_name = models.TextField(
         default='',
         help_text="Human readable device manufacturer or service provider. "
@@ -74,10 +100,10 @@ class Provider(models.Model):
         default='',
         max_length=40
     )
-    manager = ProviderManager()
+    manager = DeviceMakerManager()
 
     def __str__(self):
-        return self.friendly_name
+        return self.slug
 
     def natural_key(self):
         return self.slug
@@ -109,7 +135,7 @@ class DeviceVersion(models.Model):
     )
 
     def __str__(self):
-        return self.version
+        return self.slug
 
 
 class DeviceLocationFriendlyName(models.Model):
@@ -149,9 +175,22 @@ class Device(models.Model):
         max_length=30,
         help_text="Name of device, e.g. Dachs"
     )
-    # device_slug = models.SlugField(
-    #     default="{}_{}_{}".format(Provider.slug, device_name, DeviceVersion.slug),
-    # )
+    device_maker = models.ForeignKey(
+        DeviceMaker,
+        on_delete=models.SET(''),
+        default=''
+    )
+    device_version = models.ForeignKey(
+        DeviceVersion,
+        on_delete=models.SET(''),
+        blank=True,
+        default=''
+        #limit_choices_to=....
+    )
+    device_slug = models.SlugField(
+        max_length=150,
+        default="{}_{}_{}".format(device_maker, device_name, device_version),
+    )
     is_virtual = models.BooleanField(
         help_text="True for virtual devices like e.g. a webservice."
     )
@@ -262,9 +301,6 @@ class Datapoint(models.Model):
             "have been received via MQTT."
         )
     )
-
-
-
 
 
 

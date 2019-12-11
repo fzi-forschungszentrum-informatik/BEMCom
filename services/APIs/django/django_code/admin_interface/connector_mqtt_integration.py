@@ -123,7 +123,7 @@ class ConnectorMQTTIntegration():
             TODO: Update the entry Instead of inserting one.
             """
             try:
-                _ = models.ConnectorHearbeat(
+                _ = models.ConnectorHeartbeat(
                     connector=connector,
                     last_heartbeat=datetime_from_timestamp(
                         payload['this_heartbeats_timestamp']

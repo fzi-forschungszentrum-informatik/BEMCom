@@ -128,7 +128,7 @@ class TestConnectorIntegration():
 
         # Wait for the data to reach the DB
         waited_seconds = 0
-        while models.ConnectorHearbeat.objects.count() == 0:
+        while models.ConnectorHeartbeat.objects.count() == 0:
             time.sleep(0.005)
             waited_seconds += 0.005
 
@@ -136,7 +136,7 @@ class TestConnectorIntegration():
                 raise RuntimeError('Expected heartbeat has not reached DB.')
 
         # Compare expected and stored data.
-        heartbeat_db = models.ConnectorHearbeat.objects.first()
+        heartbeat_db = models.ConnectorHeartbeat.objects.first()
 
         # DB stores timestamp as datetime objects, convert here accordingly.
         last_heartbeat_as_datetime = datetime_from_timestamp(
