@@ -7,7 +7,7 @@ class ConnectorForm(forms.ModelForm):
         model = models.Connector
         fields = "__all__"
 
-    def save(self):
-        connector = super(ConnectorForm, self).save(commit=False)
-        connector.save()
-        return connector
+    # def save(self):
+    #     connector = super(ConnectorForm, self).save(commit=False)
+    #     connector.save()
+    #     return connector

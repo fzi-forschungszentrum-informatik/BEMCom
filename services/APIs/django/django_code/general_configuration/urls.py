@@ -21,6 +21,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('connectors/', ConnectorListView.as_view(), name="connector_list"),
     path('connectors/add', AddConnectorView.as_view(), name="add_connector"),
-    path('connectors/edit', EditConnectorView.as_view(), name="edit_connector"),
+    path('connectors/edit/<int:id>', EditConnectorView.as_view(), name="edit_connector"),
 
 ]

@@ -8,13 +8,13 @@ from django.shortcuts import get_object_or_404, reverse
 from . import models, forms
 
 """
-TODO: Everything below is just conceptual -> needs 'working code' or to be removed
+TODO: Combine add and edit views -> single form and template
 """
 
 
 class ConnectorListView(ListView):
     template_name = "connector_list.html"
-    queryset = models.Connector.objects.all().order_by("name")
+    queryset = models.Connector.objects.all().order_by("-date_created")
 
 
 class AddConnectorView(CreateView):
@@ -24,20 +24,28 @@ class AddConnectorView(CreateView):
     #queryset = models.Connector.objects.order_by("name")
     fields = ['name']#"__all__"
     context_object_name = "Connectors"
-    success_url = "/connectors"
+    #success_url = "/connectors"
 
     # def get_success_url(self, *args, **kwargs):
     #     return reverse("connector_list")
 
+    def get_object(self):
+        object_id = self.kwargs.get("id")
+        return get_object_or_404(models.Connector, id=object_id)
 
 class EditConnectorView(UpdateView):
     template_name = "edit_connector.html"
-    model = models.Connector
+    queryset = models.Connector.objects.all()
+    fields = "__all__"
     # form_class = forms.ConnectorForm
 
-    # def get_object(self, queryset=None):
-    #     connector = get_object_or_404(models.Connector, pk=self.kwargs['pk'])
-    #     return connector
+    def get_object(self):
+        object_id = self.kwargs.get("id")
+        return get_object_or_404(models.Connector, id=object_id)
+
+    def get_success_url(self, *args, **kwargs):
+        return reverse("connector_list")
+
 
 # class AddDatapointView(ListView):
 #     template_name = "add_datapoint.html"
