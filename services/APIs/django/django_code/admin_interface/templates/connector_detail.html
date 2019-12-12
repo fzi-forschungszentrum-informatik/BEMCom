@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>{{object.name}}</h1>
+  <table class="table table-striped table-responsive-lg">
+      {% for name, value in object.get_fields.items %}
+          <tr>
+              <th>{{name}}</th>
+              <td>{{value}}</td>
+          </tr>
+      {% endfor %}
+  </table>
+
+
+{% endblock content %}

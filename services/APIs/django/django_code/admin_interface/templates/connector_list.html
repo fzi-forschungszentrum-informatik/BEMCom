@@ -9,11 +9,8 @@
     <thead>
       <tr>
           <th>Name</th>
-          <th>MQTT topic logs</th>
-          <th>MQTT topic heartbeat</th>
-          <th>MQTT topic available datapoints</th>
-          <th>MQTT topic datapoint map</th>
           <th>Created</th>
+          <th>ID</th>
           <th></th>
 
       </tr>
@@ -22,12 +19,13 @@
        {% for connector in object_list %}
           <tr>
               <td>{{ connector.name }}</td>
-              <td>{{ connector.mqtt_topic_logs }}</td>
-              <td>{{ connector.mqtt_topic_heartbeat }}</td>
-              <td>{{ connector.mqtt_topic_available_datapoints }}</td>
-              <td>{{ connector.mqtt_topic_datapoint_map }}</td>
               <td>{{ connector.date_created }}</td>
-              <td> <a href="{% url "edit_connector" connector.id %}" class="btn btn-warning" role="button">Edit</a></td>
+              <td>{{ connector.id }}</td>
+              <td>
+                  <a href="{% url "connector_detail" connector.name %}" class="btn btn-info" role="button">Details</a>
+                  <a href="{% url "edit_connector" connector.id %}" class="btn btn-warning" role="button">Edit</a>
+                  <a href="{% url "delete_connector" connector.id %}" class="btn btn-danger" role="button">Delete</a>
+              </td>
 
           </tr>
         {% endfor %}

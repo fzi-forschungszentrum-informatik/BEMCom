@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block content %}
+	<h2>Delete Connector</h2>
+	<form method="POST"> {% csrf_token %}
+		<h4>Do you really want to delete connector "{{object.name}}"? This action cannot be undone.</h4>
+		<button type="submit" class="btn btn-danger">Yes, I confirm that I am in a healthy mental state and that I want to delete it forever. </button>
+		<a href="{% url "connector_list" %}" class="btn btn-primary" role="button" >No, this would be stupid!</a>
+	</form>
+{% endblock content %}

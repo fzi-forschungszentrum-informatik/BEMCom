@@ -43,7 +43,7 @@ class Connector(models.Model):
         max_length=100
     )
     date_created = models.DateField(
-        default=date.today()
+        default=''#date.today()
     )
 
     def __str__(self):
@@ -51,6 +51,15 @@ class Connector(models.Model):
 
     def natural_key(self):
         return self.name
+
+    def get_fields(self):
+        connector_fields = {}
+        fields = self._meta.get_fields(include_parents=False)[-len(self.__dict__)+1:]
+        print(fields)
+        for field in fields:
+            connector_fields[field.name] = getattr(self, field.name)
+        print(connector_fields)
+        return connector_fields
 
     # Automatically set MQTT topics to 'connector_name/mqtt_topic'
     def set_mqtt_topics(self):
