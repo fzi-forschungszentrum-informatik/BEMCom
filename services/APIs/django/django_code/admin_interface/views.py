@@ -23,17 +23,8 @@ class AddConnectorView(CreateView):
     template_name = "add_connector.html"
     # form_class = forms.ConnectorForm
     model = models.Connector
-    #queryset = models.Connector.objects.order_by("name")
     fields = ['name'] #"__all__"
     context_object_name = "Connectors"
-    #success_url = "/connectors"
-
-    # def get_success_url(self, *args, **kwargs):
-    #     return reverse("connector_list")
-
-    def get_object(self):
-        object_id = self.kwargs.get("id")
-        return get_object_or_404(models.Connector, id=object_id)
 
 
 class EditConnectorView(UpdateView):
@@ -64,17 +55,10 @@ class DeleteConnectorView(DeleteView):
 class ConnectorDetailView(DetailView):
     template_name = "connector_detail.html"
     model = models.Connector
-    connector_attr = model.__dict__
-    #all_connector_data = serializers.serialize("python", models.Connector.objects.all())
 
     def get_object(self):
-        object_name = self.kwargs.get("name")
-        return get_object_or_404(models.Connector, name=object_name)
-    #
-    # def show(self, request):
-    #     connector = models.Connector.objects.filter(id=self.id).values()[0]
-    #     print(connector)
-    #     return render_to(request,'connector_detail.html', {'object': connector}, context_instance=RequestContext(request))
+        object_id = self.kwargs.get("id")
+        return get_object_or_404(models.Connector, id=object_id)
 
 
 

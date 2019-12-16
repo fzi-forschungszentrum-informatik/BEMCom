@@ -22,7 +22,7 @@
               <td>{{ connector.date_created }}</td>
               <td>{{ connector.id }}</td>
               <td>
-                  <a href="{% url "connector_detail" connector.name %}" class="btn btn-info" role="button">Details</a>
+                  <a href="{% url "connector_detail" connector.id %}" class="btn btn-info" role="button">Details</a>
                   <a href="{% url "edit_connector" connector.id %}" class="btn btn-warning" role="button">Edit</a>
                   <a href="{% url "delete_connector" connector.id %}" class="btn btn-danger" role="button">Delete</a>
               </td>
@@ -31,7 +31,4 @@
         {% endfor %}
     </tbody>
   </table>
-
-
-
 {% endblock content %}

@@ -52,13 +52,12 @@ class Connector(models.Model):
     def natural_key(self):
         return self.name
 
+    # Get dictionary of the fields defined above with their connector-specific value
     def get_fields(self):
         connector_fields = {}
         fields = self._meta.get_fields(include_parents=False)[-len(self.__dict__)+1:]
-        print(fields)
         for field in fields:
             connector_fields[field.name] = getattr(self, field.name)
-        print(connector_fields)
         return connector_fields
 
     # Automatically set MQTT topics to 'connector_name/mqtt_topic'
@@ -122,7 +121,6 @@ class ConnectorAvailableDatapoints(models.Model):
         default='',
     )
     active = models.BooleanField(default=False)
-
 
 
 class DeviceMakerManager(models.Manager):
