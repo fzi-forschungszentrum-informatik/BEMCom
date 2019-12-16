@@ -16,7 +16,7 @@ TODO: Combine add and edit views -> single form and template
 
 class ConnectorListView(ListView):
     template_name = "connector_list.html"
-    queryset = models.Connector.objects.all().order_by("-date_created")
+    queryset = models.Connector.objects.all().order_by("-id")
 
 
 class AddConnectorView(CreateView):

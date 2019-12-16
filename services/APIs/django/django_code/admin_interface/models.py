@@ -2,7 +2,7 @@ from datetime import date
 from django.db import models
 from django.shortcuts import reverse
 from django.utils.html import format_html
-from django.utils.text import slugify
+from django.utils import timezone
 
 
 class Connector(models.Model):
@@ -11,39 +11,48 @@ class Connector(models.Model):
     """
     name = models.CharField(
         default='test-connector',
-        max_length=50
+        max_length=50,
+        verbose_name="Connector name"
     )
     mqtt_topic_logs = models.CharField(
         default='',
-        max_length=100
+        max_length=100,
+        verbose_name="MQTT topic for logs"
     )
     mqtt_topic_heartbeat = models.CharField(
         default='',
-        max_length=100
+        max_length=100,
+        verbose_name="MQTT topic for heartbeat"
     )
     # Available_datapoints as MQTT topic?
     mqtt_topic_available_datapoints = models.CharField(
         default='',
-        max_length=100
+        max_length=100,
+        verbose_name="MQTT topic for available datapoints"
     )
     mqtt_topic_datapoint_map = models.CharField(
         default='',
-        max_length=100
+        max_length=100,
+        verbose_name="MQTT topic for datapoint map"
     )
     mqtt_topic_raw_message_to_db = models.CharField(
         default='',
-        max_length=100
+        max_length=100,
+        verbose_name="MQTT topic for raw message to database"
     )
     mqtt_topic_raw_message_reprocess = models.CharField(
         default='',
-        max_length=100
+        max_length=100,
+        verbose_name="MQTT topic for reprocess"
     )
     mqtt_topic_datapoint_message_wildcard = models.CharField(
         default='',
-        max_length=100
+        max_length=100,
+        verbose_name="MQTT topic for all datapoint messages (wildcard)"
     )
     date_created = models.DateField(
-        default=''#date.today()
+        default=timezone.now(), #date.today(),
+        verbose_name="Date of creation"
     )
 
     def __str__(self):
@@ -52,12 +61,12 @@ class Connector(models.Model):
     def natural_key(self):
         return self.name
 
-    # Get dictionary of the fields defined above with their connector-specific value
+    # Get dictionary of the fields defined above with verbose (human-readable) name and connector-specific value
     def get_fields(self):
         connector_fields = {}
         fields = self._meta.get_fields(include_parents=False)[-len(self.__dict__)+1:]
         for field in fields:
-            connector_fields[field.name] = getattr(self, field.name)
+            connector_fields[field.verbose_name] = getattr(self, field.name)
         return connector_fields
 
     # Automatically set MQTT topics to 'connector_name/mqtt_topic'
@@ -72,7 +81,7 @@ class Connector(models.Model):
     def save(self, *args, **kwargs):
         if not self.id:  # New instance
             self.set_mqtt_topics()
-            self.date_created = date.today()
+            self.date_created = timezone.now()#date.today()
 
             # self.mqtt_topic_logs = self.name + "/logs"
             # self.mqtt_topic_heartbeat = self.name + "/heartbeat"
