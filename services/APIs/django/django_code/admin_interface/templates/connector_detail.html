@@ -10,8 +10,8 @@
           </tr>
       {% endfor %}
   </table>
-  <a href="{% url "edit_connector" connector.id %}" class="btn btn-warning" role="button">Edit</a>
   <a href="{% url "connector_list" %}" class="btn btn-info" role="button" >Back to list</a>
+  <a href="{% url "edit_connector" connector.id %}" class="btn btn-warning" role="button">Edit</a>
 
 
 {% endblock content %}

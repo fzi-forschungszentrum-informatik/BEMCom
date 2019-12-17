@@ -51,7 +51,7 @@ class Connector(models.Model):
         verbose_name="MQTT topic for all datapoint messages (wildcard)"
     )
     date_created = models.DateField(
-        default=timezone.now(), #date.today(),
+        default=date.today(),
         verbose_name="Date of creation"
     )
 
@@ -81,7 +81,7 @@ class Connector(models.Model):
     def save(self, *args, **kwargs):
         if not self.id:  # New instance
             self.set_mqtt_topics()
-            self.date_created = timezone.now()#date.today()
+            self.date_created = date.today()
 
             # self.mqtt_topic_logs = self.name + "/logs"
             # self.mqtt_topic_heartbeat = self.name + "/heartbeat"
