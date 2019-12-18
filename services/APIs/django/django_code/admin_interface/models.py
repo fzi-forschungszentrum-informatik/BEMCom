@@ -2,6 +2,7 @@ from datetime import date
 from django.db import models
 from django.shortcuts import reverse
 from django.utils.html import format_html
+from django.utils.text import slugify
 
 
 class Connector(models.Model):
@@ -138,6 +139,10 @@ class ConnectorAvailableDatapoints(models.Model):
         default='',
     )
     active = models.BooleanField(default=False)
+
+    # TODO: set meaningful string representation
+    def __str__(self):
+        return slugify(self.datapoint_type)
 
 
 class DeviceMakerManager(models.Manager):

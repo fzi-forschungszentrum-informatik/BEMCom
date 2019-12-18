@@ -7,4 +7,4 @@ application = ProtocolTypeRouter({
 })
 
 #TODO: Uncomment to integrate MQTT-Broker
-#cmi = ConnectorMQTTIntegration()
+cmi = ConnectorMQTTIntegration()

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.text import slugify
-from .models import Connector, Device
+from .models import Connector, Device, ConnectorAvailableDatapoints
 
 """
 Add actions to be performed on selected objects.
@@ -14,6 +14,9 @@ Below: example to change the heartbeat topic to "beat":
 """
 
 
+class AvDPInline(admin.TabularInline):
+    model = ConnectorAvailableDatapoints
+
 @admin.register(Connector)
 class ConnectorAdmin(admin.ModelAdmin):
     # prepopulated_fields = {}
@@ -26,7 +29,7 @@ class ConnectorAdmin(admin.ModelAdmin):
     List view customizations
     """
     # Attributes to be displayed
-    list_display = ('name', 'date_created')
+    list_display = ('name', 'date_created', 'available_datapoints')
 
     # Ordering of objects
     ordering = ('-date_created',)
@@ -41,19 +44,21 @@ class ConnectorAdmin(admin.ModelAdmin):
     # actions = [change_mqtt_topic_heartbeat]
 
     """
-    Add view customizations
+    Add/Change object view customizations
     """
-    # Fields to be displayed in add view
+    # Fields to be displayed
     # fields = ('name',)
 
-    # Fields to be hidden in add view
-    # exclude = ('attr', )
+    # Fields to be hidden
+    # exclude = ('name', )
+
+    #inlines = [AvDPInline]
 
     # Fieldsets allow grouping of fields with corresponding title & description
     # Doc: https://docs.djangoproject.com/en/3.0/ref/contrib/admin/#django.contrib.admin.ModelAdmin.fieldsets
     # fieldsets = (
-    #     ('Field group 1 title', {
-    #         'fields': ('name', 'date_created')
+    #     ('Datapoints', {
+    #         'fields': ('available_datapoints', '')
     #     }),
     #     ('Field group 2 title', {
     #         'description': 'Further info for this group.',
@@ -62,7 +67,15 @@ class ConnectorAdmin(admin.ModelAdmin):
     #     })
     # )
 
-    # Things that shall be displayed in add model view, but not change model view
+    def available_datapoints(self, obj):
+        datapoints = []
+        for dp in ConnectorAvailableDatapoints.objects.filter(connector=obj.id):
+            datapoints.append(dp.__str__())
+        if datapoints:
+            return ", ".join(datapoints)  # return list as string
+        return "-"
+
+    # Things that shall be displayed in add object view, but not change object view
     def add_view(self, request, form_url='', extra_context=None):
         self.fieldsets = (
             ('Basic information', {
@@ -73,11 +86,11 @@ class ConnectorAdmin(admin.ModelAdmin):
                                'with <i>connector-name/topic</i>.</h3>',
                 'classes': ('collapse',),
                 'fields': [topic for topic in Connector.get_mqtt_topics(Connector()).keys()]
-            })
+            }),
         )
         return super(ConnectorAdmin, self).add_view(request)
 
-    # Things that shall be displayed in change model view, but not add model view
+    # Things that shall be displayed in change object view, but not add object view
     def change_view(self, request, object_id, form_url='', extra_context=None):
         self.fieldsets = (
             ('Basic information', {
@@ -85,9 +98,20 @@ class ConnectorAdmin(admin.ModelAdmin):
             }),
             ('MQTT topics', {
                 'fields': [topic for topic in Connector.get_mqtt_topics(Connector()).keys()]
-            })
+            }),
+            ('Data', {
+                'fields': ('available_datapoints', )
+            }),
         )
+        self.readonly_fields = ('available_datapoints', )  # Necessary to display the field
         return super(ConnectorAdmin, self).change_view(request, object_id)
+
+@admin.register(ConnectorAvailableDatapoints)
+class ConnectorAvailableDatapointsAdmin(admin.ModelAdmin):
+    list_display = ('connector', 'datapoint_type', 'datapoint_example_value', 'active', )
+
+    def connector(self, obj):
+        return obj.connector.name
 
 
 # Register your models here.
