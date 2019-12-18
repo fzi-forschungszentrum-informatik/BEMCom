@@ -2,7 +2,6 @@ from datetime import date
 from django.db import models
 from django.shortcuts import reverse
 from django.utils.html import format_html
-from django.utils import timezone
 
 
 class Connector(models.Model):
@@ -12,42 +11,49 @@ class Connector(models.Model):
     name = models.CharField(
         default='test-connector',
         max_length=50,
+        blank=True,
         verbose_name="Connector name"
     )
     mqtt_topic_logs = models.CharField(
-        default='',
+        default='/logs',
         max_length=100,
+        blank=True,
         verbose_name="MQTT topic for logs"
     )
     mqtt_topic_heartbeat = models.CharField(
-        default='',
+        default='/heartbeat',
         max_length=100,
+        blank=True,
         verbose_name="MQTT topic for heartbeat"
     )
-    # Available_datapoints as MQTT topic?
     mqtt_topic_available_datapoints = models.CharField(
-        default='',
+        default='/available_datapoints',
         max_length=100,
+        blank=True,
         verbose_name="MQTT topic for available datapoints"
     )
     mqtt_topic_datapoint_map = models.CharField(
-        default='',
+        default='/datapoint_map',
         max_length=100,
+        blank=True,
         verbose_name="MQTT topic for datapoint map"
     )
     mqtt_topic_raw_message_to_db = models.CharField(
-        default='',
+        default='/raw_message_to_db',
         max_length=100,
+        blank=True,
         verbose_name="MQTT topic for raw message to database"
     )
     mqtt_topic_raw_message_reprocess = models.CharField(
-        default='',
+        default='/raw_message_reprocess',
         max_length=100,
+        blank=True,
         verbose_name="MQTT topic for reprocess"
     )
     mqtt_topic_datapoint_message_wildcard = models.CharField(
-        default='',
+        default='messages/#',
         max_length=100,
+        blank=True,
         verbose_name="MQTT topic for all datapoint messages (wildcard)"
     )
     date_created = models.DateField(
@@ -69,12 +75,22 @@ class Connector(models.Model):
             connector_fields[field.verbose_name] = getattr(self, field.name)
         return connector_fields
 
+    def get_mqtt_topics(self):
+        mqtt_topics = {}
+        for attr in self.__dict__:
+            if attr.startswith("mqtt_topic"):
+                mqtt_topics[attr] = attr[len("mqtt_topic_"):]
+        return mqtt_topics
+
     # Automatically set MQTT topics to 'connector_name/mqtt_topic'
     def set_mqtt_topics(self):
         connector_attr = self.__dict__
         for attr in connector_attr:
             if attr.startswith("mqtt"):
-                connector_attr[attr] = self.name + "/" + attr[len("mqtt_topic_"):]
+                if attr.endswith("datapoint_message_wildcard"):
+                    connector_attr[attr] = self.name + "/messages/#"
+                else:
+                    connector_attr[attr] = self.name + "/" + attr[len("mqtt_topic_"):]
         return connector_attr
 
     # Set MQTT topics and set current day as date_created upon saving of connector name of new connector
@@ -82,14 +98,6 @@ class Connector(models.Model):
         if not self.id:  # New instance
             self.set_mqtt_topics()
             self.date_created = date.today()
-
-            # self.mqtt_topic_logs = self.name + "/logs"
-            # self.mqtt_topic_heartbeat = self.name + "/heartbeat"
-            # self.mqtt_topic_available_datapoints = self.name + "/available_datapoints"
-            # self.mqtt_topic_datapoint_map = self.name + "/datapoint_map"
-            # self.mqtt_topic_raw_message_to_db =
-            # self.mqtt_topic_raw_message_reprocess
-            # self.mqtt_topic_datapoint_message_wildcard
         super(Connector, self).save(*args, **kwargs)
 
     def get_absolute_url(self):

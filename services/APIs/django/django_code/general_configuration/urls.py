@@ -19,6 +19,7 @@ from admin_interface.views import \
     AddConnectorView, ConnectorListView, EditConnectorView, \
     DeleteConnectorView, ConnectorDetailView
 
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('connectors/', ConnectorListView.as_view(), name="connector_list"),
