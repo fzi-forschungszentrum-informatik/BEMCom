@@ -57,7 +57,7 @@ class Connector(models.Model):
         blank=True,
         verbose_name="MQTT topic for all datapoint messages (wildcard)"
     )
-    date_created = models.DateField(
+    date_added = models.DateField(
         default=date.today(),
         verbose_name="Date of creation"
     )
@@ -94,11 +94,11 @@ class Connector(models.Model):
                     connector_attr[attr] = self.name + "/" + attr[len("mqtt_topic_"):]
         return connector_attr
 
-    # Set MQTT topics and set current day as date_created upon saving of connector name of new connector
+    # Set MQTT topics and set current day as date_added upon saving of connector name of new connector
     def save(self, *args, **kwargs):
         if not self.id:  # New instance
             self.set_mqtt_topics()
-            self.date_created = date.today()
+            self.date_added = date.today()
         super(Connector, self).save(*args, **kwargs)
 
     def get_absolute_url(self):
@@ -147,7 +147,7 @@ class ConnectorAvailableDatapoints(models.Model):
     datapoint_type = models.CharField(max_length=8)
     datapoint_key_in_connector = models.TextField(default='')
     datapoint_example_value = models.TextField(default='')
-    active = models.BooleanField(default=False)
+    subscribed = models.BooleanField(default=False)
 
     def __str__(self):
         return slugify(self.datapoint_key_in_connector)

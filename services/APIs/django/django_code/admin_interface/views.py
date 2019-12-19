@@ -73,7 +73,7 @@ class ConnectorDetailView(DetailView):
 #         connector_name = self.kwargs['name']
 #         connector = get_object_or_404(models.Connector, name=connector_name)
 #         available_datapoints = models.ConnectorAvailableDatapoints.objects.filter(connector=connector_name)
-#         return available_datapoints.order_by(active=False)
+#         return available_datapoints.order_by(subscribed=False)
 
 
 

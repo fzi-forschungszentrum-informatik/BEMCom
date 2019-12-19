@@ -159,9 +159,8 @@ class ConnectorMQTTIntegration():
                             'DB.'
                         )
         if message_type == 'mqtt_topic_datapoint_map':
-            print(payload)
             for datapoint_type in payload:
-                for key,topic in payload[datapoint_type].items():
+                for key, topic in payload[datapoint_type].items():
                     try:
                         _ = models.ConnectorDatapointMapper(
                             connector=connector,

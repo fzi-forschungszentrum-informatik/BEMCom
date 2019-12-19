@@ -23,20 +23,14 @@ class AvDPInline(admin.TabularInline):
 
 @admin.register(Connector)
 class ConnectorAdmin(admin.ModelAdmin):
-    # prepopulated_fields = {}
-    # mqtt_topics = Connector.get_mqtt_topics(Connector)
-    # for topic in mqtt_topics:
-    #     prepopulated_fields[topic] = ("name", mqtt_topics[topic])
-    # prepopulated_fields = {"mqtt_topic_heartbeat": ("name", )}
-
     """
     List view customizations
     """
     # Attributes to be displayed
-    list_display = ('name', 'date_created', 'alive', )
+    list_display = ('name', 'date_added', 'alive', )
 
     # Ordering of objects
-    ordering = ('-date_created',)
+    ordering = ('-date_added',)
 
     # Filter
     # list_filter = ('attr', )
@@ -106,15 +100,32 @@ class ConnectorAdmin(admin.ModelAdmin):
         return True if current_time <= next_hb else False
     alive.boolean = True
 
+    """
+    TODO: Managing mapping and subscription in connector change view
+            - human-readable name instead of key?
+            - Selection of topics I want to subscribe to (dropdown with human-readable names)
+            - Set subscribed status of corresponding available datapoint to true
+            - Saving of subscribed topics to connector object
+    """
+    @staticmethod
+    def mqtt_message_topics(obj):
+        key_topic_mappings = {}
+        mappers = ConnectorDatapointMapper.objects.filter(connector=obj.id)
+        for mapper in mappers:
+            av_dp = ConnectorAvailableDatapoints.objects.filter(connector=obj.id, datapoint_key_in_connector=mapper.datapoint_key_in_connector)[0]
+            key_topic_mappings[av_dp.datapoint_key_in_connector] = mapper.mqtt_topic
+        return key_topic_mappings
+
+
     # Things that shall be displayed in add object view, but not change object view
     def add_view(self, request, form_url='', extra_context=None):
         self.fieldsets = (
             ('Basic information', {
-                'fields': ('name', 'date_created')
+                'fields': ('name', 'date_added')
             }),
             ('MQTT topics', {
                 'description': '<h3>Click "Save and continue editing" to prefill the MQTT topics '
-                               'with <i><connector-name>/<topic></i>.</h3>',
+                               'with <i>connector-name/topic</i>.</h3>',
                 'classes': ('collapse',),
                 'fields': [topic for topic in Connector.get_mqtt_topics(Connector()).keys()]
             }),
@@ -125,25 +136,25 @@ class ConnectorAdmin(admin.ModelAdmin):
     def change_view(self, request, object_id, form_url='', extra_context=None):
         self.fieldsets = (
             ('Basic information', {
-                'fields': ('name', 'date_created')
+                'fields': ('name', 'date_added')
             }),
             ('MQTT topics', {
                 'fields': [topic for topic in Connector.get_mqtt_topics(Connector()).keys()]
             }),
             ('Data', {
-                'fields': (('last_heartbeat', 'next_heartbeat', 'alive'), 'available_datapoints')
+                'fields': (('last_heartbeat', 'next_heartbeat', 'alive'), 'mqtt_message_topics')
 
             }),
         )
-        self.readonly_fields = ('last_heartbeat', 'next_heartbeat', 'alive', 'available_datapoints', )  # Necessary to display the field
+        self.readonly_fields = ('last_heartbeat', 'next_heartbeat', 'alive', 'mqtt_message_topics', )  # Necessary to display the field
 
         return super(ConnectorAdmin, self).change_view(request, object_id)
 
 
 @admin.register(ConnectorAvailableDatapoints)
 class ConnectorAvailableDatapointsAdmin(admin.ModelAdmin):
-    list_display = ('id', 'datapoint_key_in_connector', 'connector', 'datapoint_type', 'datapoint_example_value', 'active', )
-    list_filter = ('datapoint_key_in_connector', 'connector', 'datapoint_type', 'datapoint_example_value', )
+    list_display = ('id', 'datapoint_key_in_connector', 'connector', 'datapoint_type', 'datapoint_example_value', 'subscribed', )
+    list_filter = ('subscribed', )#('datapoint_key_in_connector', 'connector', 'datapoint_type', 'datapoint_example_value', )
 
     @staticmethod
     def connector(obj):
