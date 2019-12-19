@@ -72,14 +72,16 @@ class ConnectorAdmin(admin.ModelAdmin):
 
     @staticmethod
     def available_datapoints(obj):
-        datapoints = []
-        for dp in ConnectorAvailableDatapoints.objects.filter(connector=obj.id):
-            if dp not in datapoints:
-                datapoints.append(dp.__str__())
-
-        if datapoints:
-            return ", ".join(datapoints)  # return list as string
-        return "-"
+        # datapoints = []
+        # for dp in ConnectorAvailableDatapoints.objects.filter(connector=obj.id).last():
+        #     if dp not in datapoints:
+        #         datapoints.append(dp.__str__())
+        #
+        # if datapoints:
+        #     return ", ".join(datapoints)  # return list as string
+        datapoints = ConnectorAvailableDatapoints.objects.filter(connector=obj.id)
+        keys = [dp.datapoint_key_in_connector for dp in datapoints]
+        return len(keys)
 
     @staticmethod
     def last_heartbeat(obj, pretty=True):
@@ -128,22 +130,58 @@ class ConnectorAdmin(admin.ModelAdmin):
                 'fields': [topic for topic in Connector.get_mqtt_topics(Connector()).keys()]
             }),
             ('Data', {
-                'fields': (('last_heartbeat', 'next_heartbeat', 'alive'), )
+                'fields': (('last_heartbeat', 'next_heartbeat', 'alive'), 'available_datapoints')
 
             }),
         )
-        self.readonly_fields = ('last_heartbeat', 'next_heartbeat', 'alive')  # Necessary to display the field
+        self.readonly_fields = ('last_heartbeat', 'next_heartbeat', 'alive', 'available_datapoints', )  # Necessary to display the field
 
         return super(ConnectorAdmin, self).change_view(request, object_id)
 
 
 @admin.register(ConnectorAvailableDatapoints)
 class ConnectorAvailableDatapointsAdmin(admin.ModelAdmin):
-    list_display = ('connector', 'datapoint_type', 'datapoint_example_value', 'active', )
+    list_display = ('id', 'datapoint_key_in_connector', 'connector', 'datapoint_type', 'datapoint_example_value', 'active', )
+    list_filter = ('datapoint_key_in_connector', 'connector', 'datapoint_type', 'datapoint_example_value', )
 
     @staticmethod
     def connector(obj):
         return obj.connector.name
+
+
+@admin.register(ConnectorHeartbeat)
+class ConnectorHeartbeatAdmin(admin.ModelAdmin):
+    list_display = ('connector', 'last_hb_iso', 'next_hb_iso', )
+    list_filter = ('connector', )
+
+    @staticmethod
+    def connector(obj):
+        return obj.connector.name
+
+    def last_hb_iso(self, obj):
+        return obj.last_heartbeat.isoformat(sep=' ')
+    last_hb_iso.admin_order_field = 'last_heartbeat'
+    last_hb_iso.short_description = "Last heartbeat"
+
+    def next_hb_iso(self, obj):
+        return obj.next_heartbeat.isoformat(sep=' ')
+    next_hb_iso.admin_order_field = 'next_heartbeat'
+    next_hb_iso.short_description = "Next heartbeat"
+
+
+@admin.register(ConnectorLogEntry)
+class ConnectorLogsAdmin(admin.ModelAdmin):
+    list_display = ('id', 'connector', 'timestamp_iso', 'msg', 'emitter', 'level')
+    list_filter = ('connector', 'emitter', )
+
+    @staticmethod
+    def connector(obj):
+        return obj.connector.name
+
+    def timestamp_iso(self, obj):
+        return obj.timestamp.isoformat(sep=' ')
+    timestamp_iso.admin_order_field = 'timestamp'
+    timestamp_iso.short_description = "Timestamp"
 
 
 # Register your models here.

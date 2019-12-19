@@ -112,11 +112,19 @@ class ConnectorLogEntry(models.Model):
     timestamp = models.DateTimeField()
     msg = models.TextField(
         default='',
+        verbose_name="Message"
     )
     emitter = models.TextField(
         default='',
     )
     level = models.SmallIntegerField()
+
+    def save(self, *args, **kwargs):
+        if not ConnectorLogEntry.objects.filter(timestamp=self.timestamp).exists():
+            super(ConnectorLogEntry, self).save(*args, **kwargs)
+
+    class Meta:
+        verbose_name_plural = "Connector log entries"
 
 
 class ConnectorHeartbeat(models.Model):
@@ -125,6 +133,9 @@ class ConnectorHeartbeat(models.Model):
     )
     last_heartbeat = models.DateTimeField()
     next_heartbeat = models.DateTimeField()
+
+    class Meta:
+        verbose_name_plural = "Connector heartbeats"
 
 
 class ConnectorAvailableDatapoints(models.Model):
@@ -143,6 +154,12 @@ class ConnectorAvailableDatapoints(models.Model):
     def __str__(self):
         return slugify(self.datapoint_key_in_connector)
 
+    def save(self, *args, **kwargs):
+        if not ConnectorAvailableDatapoints.objects.filter(datapoint_key_in_connector=self.datapoint_key_in_connector).exists():
+            super(ConnectorAvailableDatapoints, self).save(*args, **kwargs)
+
+    class Meta:
+        verbose_name_plural = "Connector available datapoints"
 
 class DeviceMakerManager(models.Manager):
     def get_by_natural_key(self, slug):
