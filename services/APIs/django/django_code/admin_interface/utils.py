@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+
 def datetime_from_timestamp(timestamp, tz_aware=True):
     """
     Convert timestamp to datetime object.
@@ -20,3 +21,10 @@ def datetime_from_timestamp(timestamp, tz_aware=True):
     if tz_aware:
         dt = dt.astimezone(timezone.utc)
     return dt
+
+
+def datetime_iso_format(dt, hide_microsec=True):
+    if hide_microsec:
+        dt = dt.replace(microsecond=0)
+    dt = dt.astimezone(timezone.utc).replace(tzinfo=None).isoformat(sep=' ')
+    return dt + " (UTC)"

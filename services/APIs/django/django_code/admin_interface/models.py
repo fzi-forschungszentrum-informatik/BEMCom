@@ -140,9 +140,8 @@ class ConnectorAvailableDatapoints(models.Model):
     )
     active = models.BooleanField(default=False)
 
-    # TODO: set meaningful string representation
     def __str__(self):
-        return slugify(self.datapoint_type)
+        return slugify(self.datapoint_key_in_connector)
 
 
 class DeviceMakerManager(models.Manager):

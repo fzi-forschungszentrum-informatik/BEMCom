@@ -1,6 +1,8 @@
 from django.contrib import admin
 from django.utils.text import slugify
-from .models import Connector, Device, ConnectorAvailableDatapoints
+from .models import Connector, Device, ConnectorAvailableDatapoints, ConnectorHeartbeat, ConnectorLogEntry
+from .utils import datetime_iso_format
+from datetime import datetime, timezone
 
 """
 Add actions to be performed on selected objects.
@@ -17,6 +19,7 @@ Below: example to change the heartbeat topic to "beat":
 class AvDPInline(admin.TabularInline):
     model = ConnectorAvailableDatapoints
 
+
 @admin.register(Connector)
 class ConnectorAdmin(admin.ModelAdmin):
     # prepopulated_fields = {}
@@ -29,7 +32,7 @@ class ConnectorAdmin(admin.ModelAdmin):
     List view customizations
     """
     # Attributes to be displayed
-    list_display = ('name', 'date_created', 'available_datapoints')
+    list_display = ('name', 'date_created', 'alive', )
 
     # Ordering of objects
     ordering = ('-date_created',)
@@ -67,13 +70,38 @@ class ConnectorAdmin(admin.ModelAdmin):
     #     })
     # )
 
-    def available_datapoints(self, obj):
+    @staticmethod
+    def available_datapoints(obj):
         datapoints = []
         for dp in ConnectorAvailableDatapoints.objects.filter(connector=obj.id):
-            datapoints.append(dp.__str__())
+            if dp not in datapoints:
+                datapoints.append(dp.__str__())
+
         if datapoints:
             return ", ".join(datapoints)  # return list as string
         return "-"
+
+    @staticmethod
+    def last_heartbeat(obj, pretty=True):
+        latest_hb_message = ConnectorHeartbeat.objects.filter(connector=obj.id).latest('last_heartbeat')
+        last_hb = latest_hb_message.last_heartbeat
+        if pretty:
+            last_hb = datetime_iso_format(last_hb, hide_microsec=True)
+        return last_hb
+
+    @staticmethod
+    def next_heartbeat(obj, pretty=True):
+        latest_hb_message = ConnectorHeartbeat.objects.filter(connector=obj.id).latest('next_heartbeat')
+        next_hb = latest_hb_message.next_heartbeat
+        if pretty:
+            next_hb = datetime_iso_format(next_hb, hide_microsec=True)
+        return next_hb
+
+    def alive(self, obj):
+        current_time = datetime.now(timezone.utc)
+        next_hb = ConnectorHeartbeat.objects.filter(connector=obj.id).latest('next_heartbeat').next_heartbeat
+        return True if current_time <= next_hb else False
+    alive.boolean = True
 
     # Things that shall be displayed in add object view, but not change object view
     def add_view(self, request, form_url='', extra_context=None):
@@ -83,7 +111,7 @@ class ConnectorAdmin(admin.ModelAdmin):
             }),
             ('MQTT topics', {
                 'description': '<h3>Click "Save and continue editing" to prefill the MQTT topics '
-                               'with <i>connector-name/topic</i>.</h3>',
+                               'with <i><connector-name>/<topic></i>.</h3>',
                 'classes': ('collapse',),
                 'fields': [topic for topic in Connector.get_mqtt_topics(Connector()).keys()]
             }),
@@ -100,17 +128,21 @@ class ConnectorAdmin(admin.ModelAdmin):
                 'fields': [topic for topic in Connector.get_mqtt_topics(Connector()).keys()]
             }),
             ('Data', {
-                'fields': ('available_datapoints', )
+                'fields': (('last_heartbeat', 'next_heartbeat', 'alive'), )
+
             }),
         )
-        self.readonly_fields = ('available_datapoints', )  # Necessary to display the field
+        self.readonly_fields = ('last_heartbeat', 'next_heartbeat', 'alive')  # Necessary to display the field
+
         return super(ConnectorAdmin, self).change_view(request, object_id)
+
 
 @admin.register(ConnectorAvailableDatapoints)
 class ConnectorAvailableDatapointsAdmin(admin.ModelAdmin):
     list_display = ('connector', 'datapoint_type', 'datapoint_example_value', 'active', )
 
-    def connector(self, obj):
+    @staticmethod
+    def connector(obj):
         return obj.connector.name
 
 
