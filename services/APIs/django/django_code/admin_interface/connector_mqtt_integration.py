@@ -75,12 +75,15 @@ class ConnectorMQTTIntegration():
             - mqtt_topic_logs
             - mqtt_topic_heartbeat
             - mqtt_topic_available_datapoints
+            - mqtt_topic_datapoint_map
+
         """
         topics = {}
         message_types = [
             'mqtt_topic_logs',
             'mqtt_topic_heartbeat',
             'mqtt_topic_available_datapoints',
+            'mqtt_topic_datapoint_map'
         ]
 
         for connector in models.Connector.objects.all():
@@ -154,6 +157,21 @@ class ConnectorMQTTIntegration():
                         logger.exception(
                             'Exception while writing available datapoint into '
                             'DB.'
+                        )
+        if message_type == 'mqtt_topic_datapoint_map':
+            print(payload)
+            for datapoint_type in payload:
+                for key,topic in payload[datapoint_type].items():
+                    try:
+                        _ = models.ConnectorDatapointMapper(
+                            connector=connector,
+                            datapoint_type=datapoint_type,
+                            datapoint_key_in_connector=key,
+                            mqtt_topic=topic
+                        ).save()
+                    except Exception:
+                        logger.exception(
+                            'Exception while writing datapoint map into DB.'
                         )
 
     @staticmethod

@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.utils.text import slugify
-from .models import Connector, Device, ConnectorAvailableDatapoints, ConnectorHeartbeat, ConnectorLogEntry
+from .models import Connector, Device, ConnectorAvailableDatapoints, ConnectorHeartbeat, \
+    ConnectorLogEntry, ConnectorDatapointMapper
 from .utils import datetime_iso_format
 from datetime import datetime, timezone
 
@@ -182,6 +183,16 @@ class ConnectorLogsAdmin(admin.ModelAdmin):
         return obj.timestamp.isoformat(sep=' ')
     timestamp_iso.admin_order_field = 'timestamp'
     timestamp_iso.short_description = "Timestamp"
+
+
+@admin.register(ConnectorDatapointMapper)
+class ConnectorDatapointMapperAdmin(admin.ModelAdmin):
+    list_display = ('id', 'connector', 'datapoint_key_in_connector', 'datapoint_type', 'mqtt_topic', )
+    #list_filter = ('datapoint_key_in_connector', 'connector', 'datapoint_type', 'datapoint_example_value', )
+
+    @staticmethod
+    def connector(obj):
+        return obj.connector.name
 
 
 # Register your models here.

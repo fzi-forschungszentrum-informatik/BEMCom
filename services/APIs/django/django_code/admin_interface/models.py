@@ -129,7 +129,8 @@ class ConnectorLogEntry(models.Model):
 
 class ConnectorHeartbeat(models.Model):
     connector = models.ForeignKey(
-        Connector, on_delete=models.CASCADE
+        Connector,
+        on_delete=models.CASCADE
     )
     last_heartbeat = models.DateTimeField()
     next_heartbeat = models.DateTimeField()
@@ -140,26 +141,56 @@ class ConnectorHeartbeat(models.Model):
 
 class ConnectorAvailableDatapoints(models.Model):
     connector = models.ForeignKey(
-        Connector, on_delete=models.CASCADE
+        Connector,
+        on_delete=models.CASCADE
     )
     datapoint_type = models.CharField(max_length=8)
-    datapoint_key_in_connector = models.TextField(
-        default='',
-    )
-    datapoint_example_value = models.TextField(
-        default='',
-    )
+    datapoint_key_in_connector = models.TextField(default='')
+    datapoint_example_value = models.TextField(default='')
     active = models.BooleanField(default=False)
 
     def __str__(self):
         return slugify(self.datapoint_key_in_connector)
-
+    """
+    TODO: Handle saving to DB in connector_mqtt_integration.on_message
+    """
     def save(self, *args, **kwargs):
-        if not ConnectorAvailableDatapoints.objects.filter(datapoint_key_in_connector=self.datapoint_key_in_connector).exists():
+        key = self.datapoint_key_in_connector
+        if not ConnectorAvailableDatapoints.objects.filter(datapoint_key_in_connector=key).exists():
             super(ConnectorAvailableDatapoints, self).save(*args, **kwargs)
 
     class Meta:
         verbose_name_plural = "Connector available datapoints"
+
+
+class ConnectorDatapointMapper(models.Model):
+    connector = models.ForeignKey(
+        Connector,
+        on_delete=models.CASCADE
+    )
+    # available_datapoints = models.ForeignKey(
+    #     ConnectorAvailableDatapoints,
+    #     on_delete=models.CASCADE
+    # )
+    datapoint_type = models.CharField(max_length=8)
+    datapoint_key_in_connector = models.TextField(default='')
+    mqtt_topic = models.TextField(default='')
+
+    """
+    TODO: Update entry if mapping changes
+    """
+    def save(self, *args, **kwargs):
+        dp_type = self.datapoint_type
+        key = self.datapoint_key_in_connector
+        topic = self.mqtt_topic
+        if not ConnectorDatapointMapper.objects.filter(
+                datapoint_type=dp_type,
+                datapoint_key_in_connector=key,
+                mqtt_topic=topic).exists():
+            super(ConnectorDatapointMapper, self).save(*args, **kwargs)
+
+
+
 
 class DeviceMakerManager(models.Manager):
     def get_by_natural_key(self, slug):
