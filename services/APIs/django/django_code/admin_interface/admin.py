@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.text import slugify
 from .models import Connector, Device, ConnectorAvailableDatapoints, ConnectorHeartbeat, \
-    ConnectorLogEntry, ConnectorDatapointMapper
+    ConnectorLogEntry, ConnectorDatapointTopicMapper
 from .utils import datetime_iso_format
 from datetime import datetime, timezone
 
@@ -18,7 +18,7 @@ Below: example to change the heartbeat topic to "beat":
 
 
 class DatapointMappingInline(admin.TabularInline):
-    model = ConnectorDatapointMapper
+    model = ConnectorDatapointTopicMapper
     extra = 0
     fields = ('datapoint_key_in_connector', 'mqtt_topic', 'datapoint_type', 'subscribed', )
     readonly_fields = ('datapoint_key_in_connector', 'mqtt_topic', 'datapoint_type', )
@@ -38,7 +38,7 @@ class ConnectorAdmin(admin.ModelAdmin):
     List view customizations
     """
     # Attributes to be displayed
-    list_display = ('name', 'date_added', 'alive', )
+    list_display = ('name', 'date_added','num_subscribed_datapoints', 'alive', )
 
     # Ordering of objects
     ordering = ('-date_added',)
@@ -76,18 +76,23 @@ class ConnectorAdmin(admin.ModelAdmin):
 
     inlines = ()
 
-    @staticmethod
-    def available_datapoints(obj):
-        # datapoints = []
-        # for dp in ConnectorAvailableDatapoints.objects.filter(connector=obj.id).last():
-        #     if dp not in datapoints:
-        #         datapoints.append(dp.__str__())
-        #
-        # if datapoints:
-        #     return ", ".join(datapoints)  # return list as string
-        datapoints = ConnectorAvailableDatapoints.objects.filter(connector=obj.id)
-        keys = [dp.datapoint_key_in_connector for dp in datapoints]
-        return len(keys)
+    # @staticmethod
+    # def available_datapoints(obj):
+    #     # datapoints = []
+    #     # for dp in ConnectorAvailableDatapoints.objects.filter(connector=obj.id).last():
+    #     #     if dp not in datapoints:
+    #     #         datapoints.append(dp.__str__())
+    #     #
+    #     # if datapoints:
+    #     #     return ", ".join(datapoints)  # return list as string
+    #     datapoints = ConnectorAvailableDatapoints.objects.filter(connector=obj.id)
+    #     keys = [dp.datapoint_key_in_connector for dp in datapoints]
+    #     return len(keys)
+
+    def num_subscribed_datapoints(self, obj):
+        num = ConnectorDatapointTopicMapper.objects.filter(connector=obj.id, subscribed=True).count()
+        return num
+    num_subscribed_datapoints.short_description = "Number of subscribed datapoints"
 
     @staticmethod
     def last_heartbeat(obj, pretty=True):
@@ -121,7 +126,7 @@ class ConnectorAdmin(admin.ModelAdmin):
     @staticmethod
     def mqtt_message_topics(obj):
         key_topic_mappings = {}
-        mappers = ConnectorDatapointMapper.objects.filter(connector=obj.id)
+        mappers = ConnectorDatapointTopicMapper.objects.filter(connector=obj.id)
         for mapper in mappers:
             av_dp = ConnectorAvailableDatapoints.objects.filter(connector=obj.id, datapoint_key_in_connector=mapper.datapoint_key_in_connector)[0]
             key_topic_mappings[av_dp.datapoint_key_in_connector] = mapper.mqtt_topic
@@ -151,12 +156,7 @@ class ConnectorAdmin(admin.ModelAdmin):
         self.inlines = [DatapointMappingInline]
         self.fieldsets = (
             ('Basic information', {
-                'fields': ('name', 'date_added')
-            }),
-
-            ('Data', {
-                'fields': (('alive', 'last_heartbeat', 'next_heartbeat'),)
-
+                'fields': ('name', 'date_added', ('alive', 'last_heartbeat', 'next_heartbeat'), )
             }),
             ('MQTT topics', {
                 'fields': [topic for topic in Connector.get_mqtt_topics(Connector()).keys()]
@@ -212,8 +212,8 @@ class ConnectorLogsAdmin(admin.ModelAdmin):
     timestamp_iso.short_description = "Timestamp"
 
 
-@admin.register(ConnectorDatapointMapper)
-class ConnectorDatapointMapperAdmin(admin.ModelAdmin):
+@admin.register(ConnectorDatapointTopicMapper)
+class ConnectorDatapointTopicMapperAdmin(admin.ModelAdmin):
     list_display = ('id', 'connector', 'datapoint_key_in_connector', 'datapoint_type', 'mqtt_topic', )
     #list_filter = ('datapoint_key_in_connector', 'connector', 'datapoint_type', 'datapoint_example_value', )
 

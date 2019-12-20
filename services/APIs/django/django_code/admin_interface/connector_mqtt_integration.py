@@ -162,12 +162,15 @@ class ConnectorMQTTIntegration():
             for datapoint_type in payload:
                 for key, topic in payload[datapoint_type].items():
                     # Check if this mapping already exists in database
-                    if not models.ConnectorDatapointMapper.objects.filter(
+                    """
+                     TODO: Update entry if mapping changes instead of creating a new object
+                     """
+                    if not models.ConnectorDatapointTopicMapper.objects.filter(
                             datapoint_type=datapoint_type,
                             datapoint_key_in_connector=key,
                             mqtt_topic=topic).exists():
                         try:
-                            _ = models.ConnectorDatapointMapper(
+                            _ = models.ConnectorDatapointTopicMapper(
                                 connector=connector,
                                 datapoint_type=datapoint_type,
                                 datapoint_key_in_connector=key,

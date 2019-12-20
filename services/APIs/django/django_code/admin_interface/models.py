@@ -57,9 +57,7 @@ class Connector(models.Model):
         blank=True,
         verbose_name="MQTT topic for all datapoint messages (wildcard)"
     )
-    date_added = models.DateField(
-        default='',
-    )
+    date_added = models.DateField()
 
     # def get_mapped_av_datapoints(self):
     #     pass
@@ -170,7 +168,7 @@ class ConnectorAvailableDatapoints(models.Model):
         verbose_name_plural = "Connector available datapoints"
 
 
-class ConnectorDatapointMapper(models.Model):
+class ConnectorDatapointTopicMapper(models.Model):
     connector = models.ForeignKey(
         Connector,
         on_delete=models.CASCADE
@@ -189,26 +187,22 @@ class ConnectorDatapointMapper(models.Model):
 
     def get_mapping(self):
         conn_id = self.connector.id
-        mappers = ConnectorDatapointMapper.objects.filter(connector=conn_id)
+        mappers = ConnectorDatapointTopicMapper.objects.filter(connector=conn_id)
         key_topic_mappings = {}
         for mapper in mappers:
             av_dp = ConnectorAvailableDatapoints.objects.filter(connector=conn_id, datapoint_key_in_connector=mapper.datapoint_key_in_connector)[0]
             key_topic_mappings[av_dp.datapoint_key_in_connector] = mapper.mqtt_topic
         return key_topic_mappings
 
-
-    """
-    TODO: Update entry if mapping changes instead of creating a new object
-    """
     # def save(self, *args, **kwargs):
     #     dp_type = self.datapoint_type
     #     key = self.datapoint_key_in_connector
     #     topic = self.mqtt_topic
-    #     if not ConnectorDatapointMapper.objects.filter(
+    #     if not ConnectorDatapointTopicMapper.objects.filter(
     #             datapoint_type=dp_type,
     #             datapoint_key_in_connector=key,
     #             mqtt_topic=topic).exists():
-    #         super(ConnectorDatapointMapper, self).save(*args, **kwargs)
+    #         super(ConnectorDatapointTopicMapper, self).save(*args, **kwargs)
 
     def __str__(self):
         return ""
