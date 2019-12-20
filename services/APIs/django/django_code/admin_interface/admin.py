@@ -17,8 +17,12 @@ Below: example to change the heartbeat topic to "beat":
 """
 
 
-class AvDPInline(admin.TabularInline):
-    model = ConnectorAvailableDatapoints
+class DatapointMappingInline(admin.TabularInline):
+    model = ConnectorDatapointMapper
+    extra = 0
+    fields = ('datapoint_key_in_connector', 'mqtt_topic', 'datapoint_type', )
+    readonly_fields = ('datapoint_key_in_connector', 'mqtt_topic', 'datapoint_type', )
+    can_delete = False
 
 
 @admin.register(Connector)
@@ -50,8 +54,6 @@ class ConnectorAdmin(admin.ModelAdmin):
     # Fields to be hidden
     # exclude = ('name', )
 
-    #inlines = [AvDPInline]
-
     # Fieldsets allow grouping of fields with corresponding title & description
     # Doc: https://docs.djangoproject.com/en/3.0/ref/contrib/admin/#django.contrib.admin.ModelAdmin.fieldsets
     # fieldsets = (
@@ -64,6 +66,8 @@ class ConnectorAdmin(admin.ModelAdmin):
     #         'fields': ()
     #     })
     # )
+
+    inlines = ()
 
     @staticmethod
     def available_datapoints(obj):
@@ -116,12 +120,11 @@ class ConnectorAdmin(admin.ModelAdmin):
             key_topic_mappings[av_dp.datapoint_key_in_connector] = mapper.mqtt_topic
         return key_topic_mappings
 
-
     # Things that shall be displayed in add object view, but not change object view
     def add_view(self, request, form_url='', extra_context=None):
         self.fieldsets = (
             ('Basic information', {
-                'fields': ('name', 'date_added')
+                'fields': ('name', )
             }),
             ('MQTT topics', {
                 'description': '<h3>Click "Save and continue editing" to prefill the MQTT topics '
@@ -147,13 +150,14 @@ class ConnectorAdmin(admin.ModelAdmin):
             }),
         )
         self.readonly_fields = ('last_heartbeat', 'next_heartbeat', 'alive', 'mqtt_message_topics', )  # Necessary to display the field
+        self.inlines = [DatapointMappingInline]
 
         return super(ConnectorAdmin, self).change_view(request, object_id)
 
 
 @admin.register(ConnectorAvailableDatapoints)
 class ConnectorAvailableDatapointsAdmin(admin.ModelAdmin):
-    list_display = ('id', 'datapoint_key_in_connector', 'connector', 'datapoint_type', 'datapoint_example_value', 'subscribed', )
+    list_display = ('id', 'connector', 'datapoint_type', 'datapoint_example_value',  'datapoint_key_in_connector', 'subscribed', )
     list_filter = ('subscribed', )#('datapoint_key_in_connector', 'connector', 'datapoint_type', 'datapoint_example_value', )
 
     @staticmethod

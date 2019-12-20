@@ -59,8 +59,15 @@ class Connector(models.Model):
     )
     date_added = models.DateField(
         default=date.today(),
-        verbose_name="Date of creation"
     )
+
+    # def get_mapped_av_datapoints(self):
+    #     pass
+
+    # available_datapoints = models.CharField(
+    #     choices=[],
+    #     blank=True
+    # )
 
     def __str__(self):
         return self.name
@@ -176,6 +183,16 @@ class ConnectorDatapointMapper(models.Model):
     datapoint_key_in_connector = models.TextField(default='')
     mqtt_topic = models.TextField(default='')
 
+    def get_mapping(self):
+        conn_id = self.connector.id
+        mappers = ConnectorDatapointMapper.objects.filter(connector=conn_id)
+        key_topic_mappings = {}
+        for mapper in mappers:
+            av_dp = ConnectorAvailableDatapoints.objects.filter(connector=conn_id, datapoint_key_in_connector=mapper.datapoint_key_in_connector)[0]
+            key_topic_mappings[av_dp.datapoint_key_in_connector] = mapper.mqtt_topic
+        return key_topic_mappings
+
+
     """
     TODO: Update entry if mapping changes
     """
@@ -189,7 +206,8 @@ class ConnectorDatapointMapper(models.Model):
                 mqtt_topic=topic).exists():
             super(ConnectorDatapointMapper, self).save(*args, **kwargs)
 
-
+    def __str__(self):
+        return ""
 
 
 class DeviceMakerManager(models.Manager):
