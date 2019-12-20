@@ -58,7 +58,7 @@ class Connector(models.Model):
         verbose_name="MQTT topic for all datapoint messages (wildcard)"
     )
     date_added = models.DateField(
-        default=date.today(),
+        default='',
     )
 
     # def get_mapped_av_datapoints(self):
@@ -182,6 +182,10 @@ class ConnectorDatapointMapper(models.Model):
     datapoint_type = models.CharField(max_length=8)
     datapoint_key_in_connector = models.TextField(default='')
     mqtt_topic = models.TextField(default='')
+    subscribed = models.BooleanField(
+        default=False,
+        verbose_name="subscribe/ unsubscribe"
+    )
 
     def get_mapping(self):
         conn_id = self.connector.id
@@ -194,20 +198,24 @@ class ConnectorDatapointMapper(models.Model):
 
 
     """
-    TODO: Update entry if mapping changes
+    TODO: Update entry if mapping changes instead of creating a new object
     """
-    def save(self, *args, **kwargs):
-        dp_type = self.datapoint_type
-        key = self.datapoint_key_in_connector
-        topic = self.mqtt_topic
-        if not ConnectorDatapointMapper.objects.filter(
-                datapoint_type=dp_type,
-                datapoint_key_in_connector=key,
-                mqtt_topic=topic).exists():
-            super(ConnectorDatapointMapper, self).save(*args, **kwargs)
+    # def save(self, *args, **kwargs):
+    #     dp_type = self.datapoint_type
+    #     key = self.datapoint_key_in_connector
+    #     topic = self.mqtt_topic
+    #     if not ConnectorDatapointMapper.objects.filter(
+    #             datapoint_type=dp_type,
+    #             datapoint_key_in_connector=key,
+    #             mqtt_topic=topic).exists():
+    #         super(ConnectorDatapointMapper, self).save(*args, **kwargs)
 
     def __str__(self):
         return ""
+
+    class Meta:
+        verbose_name = "Connector datapoint to MQTT topic mapping"
+        verbose_name_plural = "Connector datapoint to MQTT topic mapping"
 
 
 class DeviceMakerManager(models.Manager):

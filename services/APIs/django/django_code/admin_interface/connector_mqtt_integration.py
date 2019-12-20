@@ -161,17 +161,23 @@ class ConnectorMQTTIntegration():
         if message_type == 'mqtt_topic_datapoint_map':
             for datapoint_type in payload:
                 for key, topic in payload[datapoint_type].items():
-                    try:
-                        _ = models.ConnectorDatapointMapper(
-                            connector=connector,
+                    # Check if this mapping already exists in database
+                    if not models.ConnectorDatapointMapper.objects.filter(
                             datapoint_type=datapoint_type,
                             datapoint_key_in_connector=key,
-                            mqtt_topic=topic
-                        ).save()
-                    except Exception:
-                        logger.exception(
-                            'Exception while writing datapoint map into DB.'
-                        )
+                            mqtt_topic=topic).exists():
+                        try:
+                            _ = models.ConnectorDatapointMapper(
+                                connector=connector,
+                                datapoint_type=datapoint_type,
+                                datapoint_key_in_connector=key,
+                                mqtt_topic=topic,
+                                subscribed=False
+                            ).save()
+                        except Exception:
+                            logger.exception(
+                                'Exception while writing datapoint map into DB.'
+                            )
 
     @staticmethod
     def on_connect(client, userdata, flags, rc):

@@ -20,9 +20,16 @@ Below: example to change the heartbeat topic to "beat":
 class DatapointMappingInline(admin.TabularInline):
     model = ConnectorDatapointMapper
     extra = 0
-    fields = ('datapoint_key_in_connector', 'mqtt_topic', 'datapoint_type', )
+    fields = ('datapoint_key_in_connector', 'mqtt_topic', 'datapoint_type', 'subscribed', )
     readonly_fields = ('datapoint_key_in_connector', 'mqtt_topic', 'datapoint_type', )
+    ordering = ('subscribed', )
+    verbose_name_plural = "Available datapoints subscription management"
     can_delete = False
+
+    # Uncomment to only display unsubscribed datapoints
+    # def get_queryset(self, request):
+    #     queryset = super(DatapointMappingInline, self).get_queryset(request)
+    #     return queryset.filter(subscribed=False)
 
 
 @admin.register(Connector)
@@ -123,34 +130,39 @@ class ConnectorAdmin(admin.ModelAdmin):
     # Things that shall be displayed in add object view, but not change object view
     def add_view(self, request, form_url='', extra_context=None):
         self.fieldsets = (
-            ('Basic information', {
+            (None, {
+                'description': '<h3>After entering the connector name, '
+                               'click "Save and continue editing" to proceed with the connector integration.</h3>',
                 'fields': ('name', )
             }),
-            ('MQTT topics', {
-                'description': '<h3>Click "Save and continue editing" to prefill the MQTT topics '
-                               'with <i>connector-name/topic</i>.</h3>',
-                'classes': ('collapse',),
-                'fields': [topic for topic in Connector.get_mqtt_topics(Connector()).keys()]
-            }),
+            # ('MQTT topics', {
+            #     'description': '<h3>Click "Save and continue editing" to prefill the MQTT topics '
+            #                    'with <i>connector-name/topic</i>.</h3>',
+            #     'classes': ('collapse',),
+            #     'fields': [topic for topic in Connector.get_mqtt_topics(Connector()).keys()]
+            # }),
         )
         return super(ConnectorAdmin, self).add_view(request)
-
+    """
+    TODO: Display datapoint mapping after the basic information
+    """
     # Things that shall be displayed in change object view, but not add object view
     def change_view(self, request, object_id, form_url='', extra_context=None):
+        self.inlines = [DatapointMappingInline]
         self.fieldsets = (
             ('Basic information', {
                 'fields': ('name', 'date_added')
             }),
+
+            ('Data', {
+                'fields': (('alive', 'last_heartbeat', 'next_heartbeat'),)
+
+            }),
             ('MQTT topics', {
                 'fields': [topic for topic in Connector.get_mqtt_topics(Connector()).keys()]
             }),
-            ('Data', {
-                'fields': (('last_heartbeat', 'next_heartbeat', 'alive'), 'mqtt_message_topics')
-
-            }),
         )
-        self.readonly_fields = ('last_heartbeat', 'next_heartbeat', 'alive', 'mqtt_message_topics', )  # Necessary to display the field
-        self.inlines = [DatapointMappingInline]
+        self.readonly_fields = ('date_added', 'last_heartbeat', 'next_heartbeat', 'alive', )
 
         return super(ConnectorAdmin, self).change_view(request, object_id)
 
