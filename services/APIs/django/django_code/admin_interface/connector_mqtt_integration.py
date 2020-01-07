@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 class ConnectorMQTTIntegration():
 
+    _brokers = list()
+
     def __init__(self, mqtt_client=Client):
         """
         TODO: Use importlib.import_module('paho.mqtt.client.Client')
@@ -27,14 +29,15 @@ class ConnectorMQTTIntegration():
         #print('host: {}, port: {}'.format(connect_kwargs['host'], connect_kwargs['port']))
 
         # The topics dict used for subscribing and message routing.
-        topics = self.compute_topics()
+        self.topics = self.compute_topics()
 
         # The private userdata, used by the callbacks.
         userdata = {
             'models': models,
             'connect_kwargs': connect_kwargs,
-            'topics': topics,
+            'topics': self.topics,
         }
+        self.userdata = userdata
 
         self.client = mqtt_client(userdata=userdata)
         self.client.on_connect = self.on_connect
@@ -49,10 +52,16 @@ class ConnectorMQTTIntegration():
         self.client.loop_start()
 
         self.connected_topics = {}
-        for topic in topics:
+        for topic in self.topics:
             # use QOS=2, expect messages once and only once.
             # No duplicates in log files etc.
             self.client.subscribe(topic, 2)
+
+        ConnectorMQTTIntegration._brokers.append(self)
+
+    @classmethod
+    def get_broker(cls):
+        return cls._brokers
 
     def disconnect(self):
         """
@@ -83,7 +92,8 @@ class ConnectorMQTTIntegration():
             'mqtt_topic_logs',
             'mqtt_topic_heartbeat',
             'mqtt_topic_available_datapoints',
-            'mqtt_topic_datapoint_map'
+            'mqtt_topic_datapoint_map',
+            'mqtt_topic_datapoint_message_wildcard'
         ]
 
         for connector in models.Connector.objects.all():
@@ -91,6 +101,12 @@ class ConnectorMQTTIntegration():
                 topic = getattr(connector, message_type)
                 topics[topic] = (connector, message_type)
         return topics
+
+    def integrate_new_connector(self, connector, message_types):
+        for message_type in message_types:
+            topic = getattr(connector, message_type)
+            self.topics[topic] = (connector, message_type)
+            self.client.subscribe(topic, 2)
 
     @staticmethod
     def on_message(client, userdata, msg):
@@ -146,18 +162,25 @@ class ConnectorMQTTIntegration():
             """
             for datapoint_type in payload:
                 for key, example in payload[datapoint_type].items():
-                    try:
-                        _ = models.ConnectorAvailableDatapoints(
+                    # Check if this available datapoint already exists in database
+                    """
+                     TODO: Update entry if type or example value changes for a given key instead of creating a new object
+                     """
+                    if not models.ConnectorAvailableDatapoints.objects.filter(
                             connector=connector,
-                            datapoint_type=datapoint_type,
-                            datapoint_key_in_connector=key,
-                            datapoint_example_value=example,
-                        ).save()
-                    except Exception:
-                        logger.exception(
-                            'Exception while writing available datapoint into '
-                            'DB.'
-                        )
+                            datapoint_key_in_connector=key).exists():
+                        try:
+                            _ = models.ConnectorAvailableDatapoints(
+                                connector=connector,
+                                datapoint_type=datapoint_type,
+                                datapoint_key_in_connector=key,
+                                datapoint_example_value=example,
+                            ).save()
+                        except Exception:
+                            logger.exception(
+                                'Exception while writing available datapoint into '
+                                'DB.'
+                            )
         if message_type == 'mqtt_topic_datapoint_map':
             for datapoint_type in payload:
                 for key, topic in payload[datapoint_type].items():
@@ -181,6 +204,9 @@ class ConnectorMQTTIntegration():
                             logger.exception(
                                 'Exception while writing datapoint map into DB.'
                             )
+            if message_type == 'mqtt_topic_datapoint_message_wildcard':
+                print(payload)
+
 
     @staticmethod
     def on_connect(client, userdata, flags, rc):

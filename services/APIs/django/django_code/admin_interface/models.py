@@ -4,6 +4,7 @@ from django.shortcuts import reverse
 from django.utils.html import format_html
 from django.utils.text import slugify
 
+from admin_interface import connector_mqtt_integration
 
 class Connector(models.Model):
     """
@@ -104,6 +105,8 @@ class Connector(models.Model):
         if not self.id:  # New instance
             self.set_mqtt_topics()
             self.date_added = date.today()
+            cmi = connector_mqtt_integration.ConnectorMQTTIntegration.get_broker()[0]
+            cmi.integrate_new_connector(connector=self, message_types=(self.get_mqtt_topics().keys()))
         super(Connector, self).save(*args, **kwargs)
 
     def get_absolute_url(self):
@@ -111,6 +114,10 @@ class Connector(models.Model):
 
 
 class ConnectorLogEntry(models.Model):
+    """
+    TODO: Handle saving to DB in connector_mqtt_integration.on_message
+    TODO: Why not keeping the log entries when deleting the connector?
+    """
     connector = models.ForeignKey(
         Connector, on_delete=models.CASCADE
     )
@@ -156,13 +163,6 @@ class ConnectorAvailableDatapoints(models.Model):
 
     def __str__(self):
         return slugify(self.datapoint_key_in_connector)
-    """
-    TODO: Handle saving to DB in connector_mqtt_integration.on_message
-    """
-    def save(self, *args, **kwargs):
-        key = self.datapoint_key_in_connector
-        if not ConnectorAvailableDatapoints.objects.filter(datapoint_key_in_connector=key).exists():
-            super(ConnectorAvailableDatapoints, self).save(*args, **kwargs)
 
     class Meta:
         verbose_name_plural = "Connector available datapoints"
