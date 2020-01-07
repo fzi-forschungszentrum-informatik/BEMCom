@@ -115,7 +115,6 @@ class Connector(models.Model):
 
 class ConnectorLogEntry(models.Model):
     """
-    TODO: Handle saving to DB in connector_mqtt_integration.on_message
     TODO: Why not keeping the log entries when deleting the connector?
     """
     connector = models.ForeignKey(
@@ -130,10 +129,6 @@ class ConnectorLogEntry(models.Model):
         default='',
     )
     level = models.SmallIntegerField()
-
-    def save(self, *args, **kwargs):
-        if not ConnectorLogEntry.objects.filter(timestamp=self.timestamp).exists():
-            super(ConnectorLogEntry, self).save(*args, **kwargs)
 
     class Meta:
         verbose_name_plural = "Connector log entries"

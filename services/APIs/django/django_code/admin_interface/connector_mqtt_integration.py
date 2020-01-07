@@ -124,18 +124,22 @@ class ConnectorMQTTIntegration():
         payload = json.loads(msg.payload)
         logger.info('got message on topic %s', msg.topic)
         if message_type == 'mqtt_topic_logs':
-            try:
-                _ = models.ConnectorLogEntry(
+            timestamp = datetime_from_timestamp(payload['timestamp'])
+            if not models.ConnectorLogEntry.objects.filter(
                     connector=connector,
-                    timestamp=datetime_from_timestamp(payload['timestamp']),
-                    msg=payload['msg'],
-                    emitter=payload['emitter'],
-                    level=payload['level'],
-                ).save()
-            except Exception:
-                logger.exception('Exception while writing Log into DB.')
-                # This raise will be caught by paho mqtt. It should not though.
-                raise
+                    timestamp=timestamp).exists():
+                try:
+                    _ = models.ConnectorLogEntry(
+                        connector=connector,
+                        timestamp=timestamp,
+                        msg=payload['msg'],
+                        emitter=payload['emitter'],
+                        level=payload['level'],
+                    ).save()
+                except Exception:
+                    logger.exception('Exception while writing Log into DB.')
+                    # This raise will be caught by paho mqtt. It should not though.
+                    raise
 
         if message_type == 'mqtt_topic_heartbeat':
             """
