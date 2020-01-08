@@ -1,7 +1,9 @@
 from django.contrib import admin
 from django.utils.text import slugify
+from django.contrib.admin.models import LogEntry
 from .models import Connector, Device, ConnectorAvailableDatapoints, ConnectorHeartbeat, \
     ConnectorLogEntry, ConnectorDatapointTopicMapper
+from .signals import subscription_status
 from .utils import datetime_iso_format
 from datetime import datetime, timezone
 
@@ -34,6 +36,15 @@ class DatapointMappingInline(admin.TabularInline):
 
 @admin.register(Connector)
 class ConnectorAdmin(admin.ModelAdmin):
+    """
+    TODO: Managing mapping and subscription in connector change view
+            - human-readable name instead of key?
+            - Selection of topics I want to subscribe to (dropdown with human-readable names)
+            - Set subscribed status of corresponding available datapoint to true
+            - Saving of subscribed topics to connector object
+    TODO: Display datapoint mapping after the basic information
+
+    """
     """
     List view customizations
     """
@@ -116,13 +127,6 @@ class ConnectorAdmin(admin.ModelAdmin):
         return True if current_time <= next_hb else False
     alive.boolean = True
 
-    """
-    TODO: Managing mapping and subscription in connector change view
-            - human-readable name instead of key?
-            - Selection of topics I want to subscribe to (dropdown with human-readable names)
-            - Set subscribed status of corresponding available datapoint to true
-            - Saving of subscribed topics to connector object
-    """
     @staticmethod
     def mqtt_message_topics(obj):
         key_topic_mappings = {}
@@ -148,9 +152,7 @@ class ConnectorAdmin(admin.ModelAdmin):
             # }),
         )
         return super(ConnectorAdmin, self).add_view(request)
-    """
-    TODO: Display datapoint mapping after the basic information
-    """
+
     # Things that shall be displayed in change object view, but not add object view
     def change_view(self, request, object_id, form_url='', extra_context=None):
         self.inlines = [DatapointMappingInline]
@@ -166,15 +168,83 @@ class ConnectorAdmin(admin.ModelAdmin):
 
         return super(ConnectorAdmin, self).change_view(request, object_id)
 
+    def save_related(self, request, form, formsets, change):
+        all_saved = False
+        for inlines in formsets:
+            if inlines.has_changed() and str(inlines).__contains__("connectordatapointtopicmapper"):
+                old_subscription_status = {}
+                # Save old subscription status before saving the new ones
+                for mapping in ConnectorDatapointTopicMapper.objects.filter(connector=form.instance.id):
+                    old_subscription_status[mapping.id] = mapping.subscribed
+                print(old_subscription_status)
+
+                # Save all inline objects
+                super().save_related(request, form, formsets, change)
+                all_saved = True
+
+                # Save mapper object again if subscription status has changed to trigger update
+                for mapping_id, status in old_subscription_status.items():
+                    mapping = ConnectorDatapointTopicMapper.objects.get(pk=mapping_id)
+                    if mapping.subscribed != status:
+                        mapping.save(update_fields=['subscribed'])
+        if not all_saved:
+            super().save_related(request, form, formsets, change)
+
+        # last_log = LogEntry.objects.latest('action_time')
+        # print(last_log.get_edited_object())
+        # for form in formsets:
+        #     print(type(form))
+        #     print(form)
+        #     new_data = form.cleaned_data
+        #     print(new_data)
+        #
+        #
+        #     for new_object_data in new_data:
+        #         print(new_object_data['id'])
+        #         #old_subscription_status
+        #         #print("Subscription status has changed!")
+
+
+            # # form.cleaned_data : list of dictionaries for each inline object with (key,val) = (attribute,value)
+            # for field, new_value in form.cleaned_data.items():
+            #     #print(field)
+            #     if new_value != form.initial[field]:
+            #         print("Old value: {}, New value: {}".format(form.initial[field], new_value))
+            # # for field, new_value in form.cleaned_data.items():
+            # #     print(field)
+
+
+        # mappings = ConnectorDatapointTopicMapper.objects.filter(connector=form.instance.id)
+        # for map in mappings:
+        #     print('{}: {}'. format(getattr(map, 'mqtt_topic'), getattr(map, 'subscribed')))
+
+    # def save_model(self, request, obj, form, change):
+    #     update_fields = []
+    #     print(obj)
+    #     print(change)
+    #     print(request)
+    #
+    #     # True if something changed in model, False if model is added
+    #     if change:
+    #         for field, new_value in form.cleaned_data.items():
+    #             print(field)
+    #             if new_value != form.initial[field]:
+    #                 print("Old value: {}, New value: {}".format(form.initial[field], new_value))
+    #
+    #                 update_fields.append(field)
+    #     print(update_fields)
+    #     obj.save(update_fields=update_fields)
 
 @admin.register(ConnectorAvailableDatapoints)
 class ConnectorAvailableDatapointsAdmin(admin.ModelAdmin):
     list_display = ('id', 'connector', 'datapoint_type', 'datapoint_example_value',  'datapoint_key_in_connector', 'subscribed', )
     list_filter = ('subscribed', )#('datapoint_key_in_connector', 'connector', 'datapoint_type', 'datapoint_example_value', )
+    search_fields = ('datapoint_key_in_connector', )
 
     @staticmethod
     def connector(obj):
         return obj.connector.name
+
 
 
 @admin.register(ConnectorHeartbeat)
@@ -220,6 +290,18 @@ class ConnectorDatapointTopicMapperAdmin(admin.ModelAdmin):
     @staticmethod
     def connector(obj):
         return obj.connector.name
+
+    def save_model(self, request, obj, form, change):
+        update_fields = []
+
+        # True if something changed in model
+        # Note that change is False at the very first time
+        if change:
+            for field, new_value in form.cleaned_data.items():
+                if new_value != form.initial[field]:
+                    update_fields.append(field)
+        obj.save(update_fields=update_fields)
+
 
 
 # Register your models here.

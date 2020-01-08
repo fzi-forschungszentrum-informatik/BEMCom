@@ -142,9 +142,7 @@ class ConnectorMQTTIntegration():
                     raise
 
         if message_type == 'mqtt_topic_heartbeat':
-            """
-            TODO: Update the entry Instead of inserting one.
-            """
+            # TODO: Update the entry Instead of inserting one.
             try:
                 _ = models.ConnectorHeartbeat(
                     connector=connector,
@@ -161,15 +159,11 @@ class ConnectorMQTTIntegration():
                 raise
 
         if message_type == 'mqtt_topic_available_datapoints':
-            """
-            TODO: Check how many of those entries exist already.
-            """
+            # TODO: Check how many of those entries exist already.
             for datapoint_type in payload:
                 for key, example in payload[datapoint_type].items():
                     # Check if this available datapoint already exists in database
-                    """
-                     TODO: Update entry if type or example value changes for a given key instead of creating a new object
-                     """
+                    # TODO: Update entry if type or example value changes for a given key instead of creating a new object
                     if not models.ConnectorAvailableDatapoints.objects.filter(
                             connector=connector,
                             datapoint_key_in_connector=key).exists():
@@ -189,9 +183,7 @@ class ConnectorMQTTIntegration():
             for datapoint_type in payload:
                 for key, topic in payload[datapoint_type].items():
                     # Check if this mapping already exists in database
-                    """
-                     TODO: Update entry if mapping changes instead of creating a new object
-                     """
+                    # TODO: Update entry if mapping changes instead of creating a new object
                     if not models.ConnectorDatapointTopicMapper.objects.filter(
                             datapoint_type=datapoint_type,
                             datapoint_key_in_connector=key,
@@ -236,3 +228,4 @@ class ConnectorMQTTIntegration():
     @staticmethod
     def on_subscribe(client, userdata, mid, granted_qos):
         logger.info('Subscribed: %s, %s', mid, granted_qos)
+        # TODO: Set subscription status of av. datapoint here?

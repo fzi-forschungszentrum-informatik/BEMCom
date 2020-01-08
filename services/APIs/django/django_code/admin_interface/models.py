@@ -1,5 +1,6 @@
 from datetime import date
 from django.db import models
+from django.db.models.query import QuerySet
 from django.shortcuts import reverse
 from django.utils.html import format_html
 from django.utils.text import slugify
@@ -105,6 +106,7 @@ class Connector(models.Model):
         if not self.id:  # New instance
             self.set_mqtt_topics()
             self.date_added = date.today()
+            # TODO: Scenario with multiple MQTT broker possible?
             cmi = connector_mqtt_integration.ConnectorMQTTIntegration.get_broker()[0]
             cmi.integrate_new_connector(connector=self, message_types=(self.get_mqtt_topics().keys()))
         super(Connector, self).save(*args, **kwargs)
@@ -146,32 +148,25 @@ class ConnectorHeartbeat(models.Model):
         verbose_name_plural = "Connector heartbeats"
 
 
-class ConnectorAvailableDatapoints(models.Model):
-    connector = models.ForeignKey(
-        Connector,
-        on_delete=models.CASCADE
-    )
-    datapoint_type = models.CharField(max_length=8)
-    datapoint_key_in_connector = models.TextField(default='')
-    datapoint_example_value = models.TextField(default='')
-    subscribed = models.BooleanField(default=False)
+# class ConnectorMessages(models.Model):
+#     connector = models.ForeignKey(
+#         Connector,
+#         on_delete=models.CASCADE
+#     )
 
-    def __str__(self):
-        return slugify(self.datapoint_key_in_connector)
-
-    class Meta:
-        verbose_name_plural = "Connector available datapoints"
+# class MapperQuerySet(QuerySet):
+#     def update(self, **kwargs):
+#         print("being updated")
+#         super().update(**kwargs)
 
 
 class ConnectorDatapointTopicMapper(models.Model):
+    #objects = MapperQuerySet.as_manager()
+
     connector = models.ForeignKey(
         Connector,
         on_delete=models.CASCADE
     )
-    # available_datapoints = models.ForeignKey(
-    #     ConnectorAvailableDatapoints,
-    #     on_delete=models.CASCADE
-    # )
     datapoint_type = models.CharField(max_length=8)
     datapoint_key_in_connector = models.TextField(default='')
     mqtt_topic = models.TextField(default='')
@@ -189,22 +184,38 @@ class ConnectorDatapointTopicMapper(models.Model):
             key_topic_mappings[av_dp.datapoint_key_in_connector] = mapper.mqtt_topic
         return key_topic_mappings
 
-    # def save(self, *args, **kwargs):
-    #     dp_type = self.datapoint_type
-    #     key = self.datapoint_key_in_connector
-    #     topic = self.mqtt_topic
-    #     if not ConnectorDatapointTopicMapper.objects.filter(
-    #             datapoint_type=dp_type,
-    #             datapoint_key_in_connector=key,
-    #             mqtt_topic=topic).exists():
-    #         super(ConnectorDatapointTopicMapper, self).save(*args, **kwargs)
-
     def __str__(self):
-        return ""
+        return str(self.id)
 
     class Meta:
         verbose_name = "Connector datapoint to MQTT topic mapping"
         verbose_name_plural = "Connector datapoint to MQTT topic mapping"
+
+
+class ConnectorAvailableDatapoints(models.Model):
+    """
+    TODO: Actually subscribe to topics
+    TODO: Set subscription status of corresponding available datapoint accordingly -> maybe in conn. mqtt integration (see TODO there)?
+    """
+    connector = models.ForeignKey(
+        Connector,
+        on_delete=models.CASCADE
+    )
+
+    datapoint_type = models.CharField(max_length=8)
+    datapoint_key_in_connector = models.TextField(default='')
+    datapoint_example_value = models.TextField(default='')
+    subscribed = models.BooleanField(default=False)
+
+    # TODO: Delete the following two lines
+    # mapping = ConnectorDatapointTopicMapper.objects.filter(connector=connector, datapoint_key_in_connector=datapoint_key_in_connector)
+    # subscribed = getattr(mapping, 'subscribed')  #
+
+    def __str__(self):
+        return slugify(self.datapoint_key_in_connector)
+
+    class Meta:
+        verbose_name_plural = "Connector available datapoints"
 
 
 class DeviceMakerManager(models.Manager):
