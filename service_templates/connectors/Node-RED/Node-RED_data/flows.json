@@ -110,17 +110,7 @@
         "out": [],
         "env": [],
         "color": "#D8BFD8",
-        "icon": "node-red/arrow-in.svg",
-        "status": {
-            "x": 260,
-            "y": 240,
-            "wires": [
-                {
-                    "id": "89c51b97.13a598",
-                    "port": 0
-                }
-            ]
-        }
+        "icon": "node-red/arrow-in.svg"
     },
     {
         "id": "3674b7d8.02a168",
@@ -513,23 +503,6 @@
         "info": "Flattens the incomming object to depth 1, i.e that every leaf of the incomming object can be accessed with a unique key directly from flat_message object.\n# Returns\nShould return the a message with the flattend data like:\n```\nmsg = {\n    \"payload\": {\n        \"flattened_message\": <the parsed data as flattend object>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"flattened_message\": {\n            \"device_1__sensor_1\": \"2.12\"\n            \"device_1__sensor_2\": \"3.12\"\n        },\n        \"timestamp\": 1573680749000\n    }\n}\n```"
     },
     {
-        "id": "2deac0e3.ad371",
-        "type": "mqtt in",
-        "z": "a96a98ee.ee4868",
-        "name": "",
-        "topic": "$(MQTT_TOPIC_DATAPOINT_MAP)",
-        "qos": "1",
-        "datatype": "json",
-        "broker": "f0d21eb0.93967",
-        "x": 190,
-        "y": 80,
-        "wires": [
-            [
-                "b667759e.2c1018"
-            ]
-        ]
-    },
-    {
         "id": "109d9d31.a7bed3",
         "type": "function",
         "z": "219558b7.844058",
@@ -783,50 +756,11 @@
         "wires": []
     },
     {
-        "id": "b667759e.2c1018",
-        "type": "change",
-        "z": "a96a98ee.ee4868",
-        "name": "Store to global.datapoint_map",
-        "rules": [
-            {
-                "t": "set",
-                "p": "datapoint_map",
-                "pt": "global",
-                "to": "payload",
-                "tot": "msg"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 550,
-        "y": 80,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "89c51b97.13a598",
-        "type": "status",
-        "z": "a96a98ee.ee4868",
-        "name": "",
-        "scope": [
-            "2deac0e3.ad371"
-        ],
-        "x": 100,
-        "y": 240,
-        "wires": [
-            []
-        ]
-    },
-    {
         "id": "5a8f8f58.d3c16",
         "type": "function",
         "z": "927c9b3e.6d8038",
         "name": "Filter datapoints and build sensor messages",
-        "func": "let datapoint_map = global.get(\"datapoint_map\")\nlet sensor_map = datapoint_map[\"sensor\"]\n\nlet datapoint_msgs = []\nlet sensor_data_flat = msg.payload.flattened_message\n\n// We could also iterate over all entries of sensor map, but this should be more\n// efficient if we expect many messages with only some datapoints, as e.g. is\n// the case for homematic.\nfor (let internal_sensor_id in sensor_data_flat){\n    // Only process messages of datapoints which have been selected for sending\n    // via MQTT in the central admin UI.\n    if (internal_sensor_id in sensor_map){\n        let datapoint_msg = {\n            \"payload\": {\n                \"value\": sensor_data_flat[internal_sensor_id],\n                \"timestamp\": msg.payload.timestamp,\n            },\n            \"topic\": sensor_map[internal_sensor_id],\n        }\n        datapoint_msgs.push(datapoint_msg)\n    }\n    \n}\n\nreturn [datapoint_msgs]",
+        "func": "// Use an empty datapoint map if none has been received via MQTT yet to prevent\n// the script from throwing errors.\nlet datapoint_map = global.get(\"datapoint_map\") || {\"sensor\": {}, \"actuator\": {}}\nlet sensor_map = datapoint_map[\"sensor\"]\n\nlet datapoint_msgs = []\nlet sensor_data_flat = msg.payload.flattened_message\n\n// We could also iterate over all entries of sensor map, but this should be more\n// efficient if we expect many messages with only some datapoints, as e.g. is\n// the case for homematic.\nfor (let internal_sensor_id in sensor_data_flat){\n    // Only process messages of datapoints which have been selected for sending\n    // via MQTT in the central admin UI.\n    if (internal_sensor_id in sensor_map){\n        let datapoint_msg = {\n            \"payload\": {\n                \"value\": sensor_data_flat[internal_sensor_id],\n                \"timestamp\": msg.payload.timestamp,\n            },\n            \"topic\": sensor_map[internal_sensor_id],\n        }\n        datapoint_msgs.push(datapoint_msg)\n    }\n    \n}\n\nreturn [datapoint_msgs]",
         "outputs": 1,
         "noerr": 0,
         "x": 490,
@@ -946,26 +880,6 @@
         "info": "Send a value to the corresponding actuator. \n\n# Receives\n... a message structured like this:\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": <the raw data>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": \"device_1:{sensor_1:2.12,sensor_2:3.12}\",\n        \"timestamp\": 1573680749000\n    }\n}\n```\n\n# Should return\n.. generally nothing. If you want to return status messages about the last/or accepted value of the actuator you might want to inject a respecitve message directly after the \"Parse raw_message\" flow. Consider the expected message format.",
         "x": 1240,
         "y": 580,
-        "wires": []
-    },
-    {
-        "id": "3ce1950f.35b4ca",
-        "type": "comment",
-        "z": "a96a98ee.ee4868",
-        "name": "Display the status MQTT connection as subflow status.",
-        "info": "",
-        "x": 240,
-        "y": 200,
-        "wires": []
-    },
-    {
-        "id": "f1221d92.14291",
-        "type": "comment",
-        "z": "a96a98ee.ee4868",
-        "name": "Receive and store the datapoint mapping",
-        "info": "",
-        "x": 200,
-        "y": 40,
         "wires": []
     },
     {
@@ -1551,5 +1465,97 @@
         "x": 90,
         "y": 40,
         "wires": []
+    },
+    {
+        "id": "c9b44c2d.83d04",
+        "type": "mqtt in",
+        "z": "a96a98ee.ee4868",
+        "name": "",
+        "topic": "$(MQTT_TOPIC_DATAPOINT_MAP)",
+        "qos": "1",
+        "datatype": "json",
+        "broker": "f0d21eb0.93967",
+        "x": 190,
+        "y": 80,
+        "wires": [
+            [
+                "b27dc53d.e7c4e8"
+            ]
+        ]
+    },
+    {
+        "id": "db7c7072.957c4",
+        "type": "change",
+        "z": "a96a98ee.ee4868",
+        "name": "Store to global.datapoint_map",
+        "rules": [
+            {
+                "t": "set",
+                "p": "datapoint_map",
+                "pt": "global",
+                "to": "payload",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 870,
+        "y": 80,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "2612c66a.8fd3fa",
+        "type": "status",
+        "z": "a96a98ee.ee4868",
+        "name": "",
+        "scope": [
+            "c9b44c2d.83d04"
+        ],
+        "x": 100,
+        "y": 240,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "f02e361a.91cf38",
+        "type": "comment",
+        "z": "a96a98ee.ee4868",
+        "name": "Display the status MQTT connection as subflow status.",
+        "info": "",
+        "x": 240,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "dc9ec415.681fb8",
+        "type": "comment",
+        "z": "a96a98ee.ee4868",
+        "name": "Receive and store the datapoint mapping",
+        "info": "",
+        "x": 200,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "b27dc53d.e7c4e8",
+        "type": "function",
+        "z": "a96a98ee.ee4868",
+        "name": "Validate received datapoint_map",
+        "func": "/*\nCheck that the datapoint map is structured as follows:\n{\"sensor\": {}, \"actuator\": {}}\nThe empty objects above may contain the actuall mappings or not in reality, but\nmust exist. Else the filter nodes in the Main flow will fail and throw erros.\n*/\n\n// Based on an anwser here: \n// https://stackoverflow.com/questions/8511281/check-if-a-value-is-an-object-in-javascript\nisObject = function(a) {\n    return Object.prototype.toString.call(a) === \"[object Object]\"\n}\n\nlet reject_datapoint_map_reason = \"\"\n\nlet datapoint_map = msg.payload\n\nif ( ! isObject(datapoint_map) ) {\n    reject_datapoint_map_reason = \"Datapoint_map is no object.\"\n} else if ( ! (\"sensor\" in datapoint_map) ) {\n    reject_datapoint_map_reason = \"No sensor key in datapoint_map.\"\n} else if ( ! (\"actuator\" in datapoint_map) ) {\n    reject_datapoint_map_reason = \"No actuator key in datapoint_map.\"\n} else if ( ! isObject(datapoint_map[\"sensor\"]) ) {\n    reject_datapoint_map_reason = \"Sensor key in datapoint_map contains no object.\"\n} else if ( ! isObject(datapoint_map[\"actuator\"]) ) {\n    reject_datapoint_map_reason = \"Actuator key in datapoint_map contains no object.\"\n}\n\nif ( reject_datapoint_map_reason !== \"\" ){\n    node.error(\"Rejecting datapoint_map with reason: \" + reject_datapoint_map_reason)\n} else {\n    node.warn(\"got datapoint map\", msg)\n    return msg\n}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 550,
+        "y": 80,
+        "wires": [
+            [
+                "db7c7072.957c4"
+            ]
+        ]
     }
 ]
