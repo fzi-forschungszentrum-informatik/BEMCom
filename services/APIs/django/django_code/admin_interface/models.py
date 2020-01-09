@@ -449,6 +449,97 @@ class Datapoint(models.Model):
     datapoint_key_in_connector = models.TextField(default='')
 
 
+class GenericDatapoint(models.Model):
+
+    def html_element_id(self):
+        """
+        Return the id of the datapoint element.
+        """
+        return "datapoint_" + str(self.pk)
+
+    def html_element(self):
+        """
+        Generates the html element to display the value of the datapoint with
+        the primary key as id and the default_value field as initial value.
+        E.g:
+            <div id=datapoint_21>--.-</div>
+        """
+        element = format_html(
+            "<div id={}>{}</div>",
+            self.html_element_id(),
+            self.default_value,
+        )
+        return element
+
+    # TODO: uncomment again
+    # device = models.ForeignKey(
+    #     Device,
+    #     on_delete=models.CASCADE
+    # )
+    mqtt_topic = models.TextField(
+        null=True,
+        blank=True,
+        editable=False,
+        help_text=(
+            "The MQTT topic on which the values of this datapoint "
+            "are published. Is auto generated for consistency."
+        )
+    )
+    datapoint_key_in_connector = models.TextField(default='')
+
+    last_value = models.TextField(
+        default='',
+        blank=True,
+        help_text=(
+            "The last value django is aware of. This is used as an initial "
+            "value in pages before updating from MQTT."
+            )
+        )
+    last_timestamp = models.BigIntegerField(
+        default=None,
+        null=True,
+        help_text=(
+            "The last timestamp corresponding to last_value above. This is "
+            "used as an initial value in pages before updating from MQTT."
+        )
+    )
+    descriptor = models.TextField(default='')
 
 
+class TextDatapoint(GenericDatapoint):
+    pass
+    # TODO: uncomment again
+    # device = models.ForeignKey(
+    #     Device,
+    #     on_delete=models.CASCADE
+    # )
 
+
+class NumericDatapoint(GenericDatapoint):
+    # TODO: uncomment again
+    # unit = models.ForeignKey(
+    #     DatapointUnit,
+    #     on_delete=models.SET('')
+    # )
+    # TODO: remove blank if not optional
+    min_value = models.FloatField(
+        blank=True,
+        null=True,
+        default=None,
+        help_text=(
+            "The minimal expected value of the datapoint. Is uesed for "
+            "automatically scaling plots. Only applicable to datapoints that"
+            "carry numeric values."
+        )
+    )
+    # TODO: remove blank if not optional
+    max_value = models.FloatField(
+        blank=True,
+        null=True,
+        default=None,
+        help_text=(
+            "The maximal expected value of the datapoint. Is uesed for "
+            "automatically scaling plots. Only applicable to datapoints that"
+            "carry numeric values."
+        )
+    )
