@@ -35,11 +35,11 @@
         "info": ""
     },
     {
-        "id": "b5a451b4.6e45c",
+        "id": "72d61467.c7c86c",
         "type": "tab",
-        "label": "Devl stuff",
+        "label": "Flow 1",
         "disabled": false,
-        "info": "Some unsorted stuff used for development. "
+        "info": ""
     },
     {
         "id": "2f246a38.edf956",
@@ -507,7 +507,8 @@
         "wires": [
             [
                 "961689eb.6df078",
-                "5a8f8f58.d3c16"
+                "5a8f8f58.d3c16",
+                "284cd3db.1f53dc"
             ]
         ],
         "info": "Flattens the incomming object to depth 1, i.e that every leaf of the incomming object can be accessed with a unique key directly from flat_message object.\n# Returns\nShould return the a message with the flattend data like:\n```\nmsg = {\n    \"payload\": {\n        \"flattened_message\": <the parsed data as flattend object>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"flattened_message\": {\n            \"device_1__sensor_1\": \"2.12\"\n            \"device_1__sensor_2\": \"3.12\"\n        },\n        \"timestamp\": 1573680749000\n    }\n}\n```"
@@ -525,7 +526,7 @@
         "y": 80,
         "wires": [
             [
-                "b667759e.2c1018"
+                "bc388144.0d621"
             ]
         ]
     },
@@ -537,8 +538,8 @@
         "links": [
             "b6c60262.69fb9"
         ],
-        "x": 1155,
-        "y": 440,
+        "x": 1135,
+        "y": 620,
         "wires": []
     },
     {
@@ -592,8 +593,7 @@
         "y": 40,
         "wires": [
             [
-                "1af4cf17.b34d41",
-                "2d41e4b1.c6310c"
+                "1af4cf17.b34d41"
             ]
         ]
     },
@@ -605,7 +605,7 @@
         "links": [
             "498bc454.265e5c"
         ],
-        "x": 835,
+        "x": 915,
         "y": 120,
         "wires": []
     },
@@ -759,7 +759,7 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 550,
+        "x": 870,
         "y": 80,
         "wires": [
             []
@@ -784,7 +784,7 @@
         "type": "function",
         "z": "927c9b3e.6d8038",
         "name": "Filter datapoints and build sensor messages",
-        "func": "let datapoint_map = global.get(\"datapoint_map\")\nlet sensor_map = datapoint_map[\"sensor\"]\n\nlet datapoint_msgs = []\nlet sensor_data_flat = msg.payload.flattened_message\n\n// We could also iterate over all entries of sensor map, but this should be more\n// efficient if we expect many messages with only some datapoints, as e.g. is\n// the case for homematic.\nfor (let internal_sensor_id in sensor_data_flat){\n    // Only process messages of datapoints which have been selected for sending\n    // via MQTT in the central admin UI.\n    if (internal_sensor_id in sensor_map){\n        let datapoint_msg = {\n            \"payload\": {\n                \"value\": sensor_data_flat[internal_sensor_id],\n                \"timestamp\": msg.payload.timestamp,\n            },\n            \"topic\": sensor_map[internal_sensor_id],\n        }\n        datapoint_msgs.push(datapoint_msg)\n    }\n    \n}\n\nreturn [datapoint_msgs]",
+        "func": "// Use an empty datapoint map if none has been received via MQTT yet to prevent\n// the script from throwing errors.\nlet datapoint_map = global.get(\"datapoint_map\") || {\"sensor\": {}, \"actuator\": {}}\nlet sensor_map = datapoint_map[\"sensor\"]\n\nlet datapoint_msgs = []\nlet sensor_data_flat = msg.payload.flattened_message\n\n// We could also iterate over all entries of sensor map, but this should be more\n// efficient if we expect many messages with only some datapoints, as e.g. is\n// the case for homematic.\nfor (let internal_sensor_id in sensor_data_flat){\n    // Only process messages of datapoints which have been selected for sending\n    // via MQTT in the central admin UI.\n    if (internal_sensor_id in sensor_map){\n        let datapoint_msg = {\n            \"payload\": {\n                \"value\": sensor_data_flat[internal_sensor_id],\n                \"timestamp\": msg.payload.timestamp,\n            },\n            \"topic\": sensor_map[internal_sensor_id],\n        }\n        datapoint_msgs.push(datapoint_msg)\n    }\n    \n}\n\nreturn [datapoint_msgs]",
         "outputs": 1,
         "noerr": 0,
         "x": 490,
@@ -943,38 +943,6 @@
         ]
     },
     {
-        "id": "5a79947f.a849fc",
-        "type": "mqtt in",
-        "z": "b5a451b4.6e45c",
-        "name": "",
-        "topic": "$(MQTT_TOPIC_AVAILABLE_DATAPOINTS)",
-        "qos": "2",
-        "datatype": "json",
-        "broker": "f0d21eb0.93967",
-        "x": 230,
-        "y": 60,
-        "wires": [
-            [
-                "1037d1c7.83ed5e"
-            ]
-        ]
-    },
-    {
-        "id": "1037d1c7.83ed5e",
-        "type": "debug",
-        "z": "b5a451b4.6e45c",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "true",
-        "targetType": "full",
-        "x": 530,
-        "y": 60,
-        "wires": []
-    },
-    {
         "id": "f87c8d8f.12b57",
         "type": "delay",
         "z": "3674b7d8.02a168",
@@ -1024,195 +992,6 @@
             [
                 "f87c8d8f.12b57"
             ]
-        ]
-    },
-    {
-        "id": "e2bc1b36.de9178",
-        "type": "inject",
-        "z": "b5a451b4.6e45c",
-        "name": "On flow init",
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "repeat": "",
-        "crontab": "",
-        "once": true,
-        "onceDelay": 0.1,
-        "x": 250,
-        "y": 460,
-        "wires": [
-            [
-                "b6c150e2.cf8f4"
-            ]
-        ]
-    },
-    {
-        "id": "b6c150e2.cf8f4",
-        "type": "file in",
-        "z": "b5a451b4.6e45c",
-        "name": "",
-        "filename": "/data/available_datapoints.json",
-        "format": "utf8",
-        "chunk": false,
-        "sendError": false,
-        "encoding": "none",
-        "x": 630,
-        "y": 460,
-        "wires": [
-            [
-                "5095381e.c036b8"
-            ]
-        ]
-    },
-    {
-        "id": "31168443.c8efec",
-        "type": "switch",
-        "z": "b5a451b4.6e45c",
-        "name": "",
-        "property": "payload",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "",
-                "vt": "str"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 1,
-        "x": 590,
-        "y": 260,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "75d07d54.94b974",
-        "type": "catch",
-        "z": "b5a451b4.6e45c",
-        "name": "Catch available_datapoints.json does not exist",
-        "scope": [
-            "b6c150e2.cf8f4"
-        ],
-        "uncaught": false,
-        "x": 330,
-        "y": 520,
-        "wires": [
-            [
-                "5db3bb21.6cd424"
-            ]
-        ]
-    },
-    {
-        "id": "5db3bb21.6cd424",
-        "type": "change",
-        "z": "b5a451b4.6e45c",
-        "name": "Use empty object as default value for available_datapoints",
-        "rules": [
-            {
-                "t": "set",
-                "p": "payload",
-                "pt": "msg",
-                "to": "{}",
-                "tot": "json"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 750,
-        "y": 520,
-        "wires": [
-            [
-                "d57b51d5.67ec9"
-            ]
-        ]
-    },
-    {
-        "id": "d1902de.009e2d",
-        "type": "file",
-        "z": "b5a451b4.6e45c",
-        "name": "",
-        "filename": "/data/available_datapoints.json",
-        "appendNewline": true,
-        "createDir": false,
-        "overwriteFile": "true",
-        "encoding": "none",
-        "x": 510,
-        "y": 400,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "2f15eb55.1f43a4",
-        "type": "inject",
-        "z": "b5a451b4.6e45c",
-        "name": "On flow init",
-        "topic": "",
-        "payload": "{\"sensor\":{\"device_1__sensor_1\":\"2.12\",\"device_1__sensor_2\":\"3.12\"}}",
-        "payloadType": "json",
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "x": 240,
-        "y": 400,
-        "wires": [
-            [
-                "d1902de.009e2d"
-            ]
-        ]
-    },
-    {
-        "id": "5095381e.c036b8",
-        "type": "json",
-        "z": "b5a451b4.6e45c",
-        "name": "",
-        "property": "payload",
-        "action": "obj",
-        "pretty": false,
-        "x": 910,
-        "y": 460,
-        "wires": [
-            [
-                "d57b51d5.67ec9"
-            ]
-        ]
-    },
-    {
-        "id": "d57b51d5.67ec9",
-        "type": "change",
-        "z": "b5a451b4.6e45c",
-        "name": "Store available_datapoints in global and mark loaded",
-        "rules": [
-            {
-                "t": "set",
-                "p": "available_datapoints",
-                "pt": "global",
-                "to": "payload",
-                "tot": "msg"
-            },
-            {
-                "t": "set",
-                "p": "available_datapoints_loaded",
-                "pt": "global",
-                "to": "true",
-                "tot": "bool"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 1240,
-        "y": 460,
-        "wires": [
-            []
         ]
     },
     {
@@ -1398,39 +1177,6 @@
         ]
     },
     {
-        "id": "ac60878f.2ed378",
-        "type": "mqtt out",
-        "z": "b5a451b4.6e45c",
-        "name": "",
-        "topic": "$(MQTT_TOPIC_DATAPOINT_MAP)",
-        "qos": "2",
-        "retain": "true",
-        "broker": "f0d21eb0.93967",
-        "x": 610,
-        "y": 140,
-        "wires": []
-    },
-    {
-        "id": "cc9f41ed.ffab9",
-        "type": "inject",
-        "z": "b5a451b4.6e45c",
-        "name": "",
-        "topic": "",
-        "payload": "{\"sensor\":{\"device_1__sensor_1\":\"example-connector/msgs/0001\",\"device_1__sensor_2\":\"example-connector/msgs/0002\"},\"actuator\":{\"node-red-connector-template/messages/0003\":\"device_1__actuator_1\"}}",
-        "payloadType": "json",
-        "repeat": "",
-        "crontab": "",
-        "once": true,
-        "onceDelay": 0.1,
-        "x": 230,
-        "y": 140,
-        "wires": [
-            [
-                "ac60878f.2ed378"
-            ]
-        ]
-    },
-    {
         "id": "1c26ecc6.986e53",
         "type": "function",
         "z": "9f1169a9.8e23c8",
@@ -1440,39 +1186,6 @@
         "noerr": 0,
         "x": 340,
         "y": 40,
-        "wires": []
-    },
-    {
-        "id": "c4227986.9ae838",
-        "type": "inject",
-        "z": "b5a451b4.6e45c",
-        "name": "",
-        "topic": "node-red-connector-template/messages/0003",
-        "payload": "",
-        "payloadType": "date",
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "x": 200,
-        "y": 200,
-        "wires": [
-            [
-                "f270d925.1074a8"
-            ]
-        ]
-    },
-    {
-        "id": "f270d925.1074a8",
-        "type": "mqtt out",
-        "z": "b5a451b4.6e45c",
-        "name": "MQTT datapoint message topics",
-        "topic": "",
-        "qos": "1",
-        "retain": "true",
-        "broker": "f0d21eb0.93967",
-        "x": 470,
-        "y": 200,
         "wires": []
     },
     {
@@ -1555,8 +1268,8 @@
         "func": "var meter_number = msg.payload\nvar xml_req = `\n<?xml version='1.0' encoding='UTF-8'?>\n<S:Envelope xmlns:S=\"http://schemas.xmlsoap.org/soap/envelope/\">\n    <S:Body>\n        <getMeter xmlns=\"http://tempuri.org/\">\n            <primAddr>\n                ${meter_number}\n            </primAddr>\n        </getMeter>\n    </S:Body>\n</S:Envelope>\n`\nvar headers = {}\nheaders['content-type'] = 'text/xml; charset=utf-8'\nheaders['SOAPAction'] = '\"http://tempuri.org/getMeter\"'\n//headers['Connection'] = 'keep-alive'\n//headers['Accept'] = 'text/xml, multipart/related'\n\nreturn {payload: xml_req,\n        headers: headers}",
         "outputs": 1,
         "noerr": 0,
-        "x": 180,
-        "y": 440,
+        "x": 160,
+        "y": 620,
         "wires": [
             [
                 "d220c78b.a28098"
@@ -1572,8 +1285,8 @@
         "ret": "bin",
         "url": "http://141.21.47.85/AmbusNetWS/Service1.asmx",
         "tls": "",
-        "x": 510,
-        "y": 440,
+        "x": 490,
+        "y": 620,
         "wires": [
             [
                 "4ff06620.b07ba8"
@@ -1766,11 +1479,11 @@
         "property": "payload",
         "attr": "",
         "chr": "",
-        "x": 330,
-        "y": 120,
+        "x": 930,
+        "y": 40,
         "wires": [
             [
-                "d4cc8ac5.10cae8"
+                "2938b61a.a594fa"
             ]
         ]
     },
@@ -1827,6 +1540,11 @@
                 "pt": "msg",
                 "to": "payload_store",
                 "tot": "msg"
+            },
+            {
+                "t": "delete",
+                "p": "payload_store",
+                "pt": "msg"
             }
         ],
         "action": "",
@@ -1834,57 +1552,13 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 630,
+        "x": 690,
         "y": 120,
         "wires": [
             [
                 "376a4260.2d545e"
             ]
         ]
-    },
-    {
-        "id": "ebd6ff21.aeede",
-        "type": "function",
-        "z": "b5a451b4.6e45c",
-        "name": "",
-        "func": "\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "x": 830,
-        "y": 60,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "2d41e4b1.c6310c",
-        "type": "debug",
-        "z": "545ec5f2.a5913c",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "true",
-        "targetType": "full",
-        "x": 270,
-        "y": 260,
-        "wires": []
-    },
-    {
-        "id": "e4c6e27b.bbbc5",
-        "type": "debug",
-        "z": "219558b7.844058",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "true",
-        "targetType": "full",
-        "x": 990,
-        "y": 520,
-        "wires": []
     },
     {
         "id": "4ff06620.b07ba8",
@@ -1905,11 +1579,123 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 900,
-        "y": 440,
+        "x": 880,
+        "y": 620,
         "wires": [
             [
                 "6aae28b2.fb2688"
+            ]
+        ]
+    },
+    {
+        "id": "2938b61a.a594fa",
+        "type": "function",
+        "z": "545ec5f2.a5913c",
+        "name": "Add meter number and reduce bloat",
+        "func": "/*\nThe JSON object received at this point starts with something like this:\n{\n    \"soap:Envelope\": {\n        \"$\": {\n            \"xmlns:soap\": \"http://schemas.xmlsoap.org/soap/envelope/\",\n            \"xmlns:xsi\": \"http://www.w3.org/2001/XMLSchema-instance\",\n            \"xmlns:xsd\": \"http://www.w3.org/2001/XMLSchema\"\n        },\n        \"soap:Body\": [\n            {\n                \"getMeterResponse\": [\n                    {\n                        \"$\": {\n                            \"xmlns\": \"http://tempuri.org/\"\n                        },\n                        \"getMeterResult\": [\n                            {\n                                \"primAddr\": [\n                                    \"2\"\n                                ],\n                                \"deviceName\": [\n                                    \"FZI  Forschugszentrum Informatik Karlsr\"\n                                ],\n                                \"desc\": [\n                                    \"WMZ Rueck\"\n                                ],\n                                \"type\": [\n                                    \"CALEC ST\"\n                                ],\n                                \"info\": [\n                                    \"AQUAMETRO MESSTECHNIK GmbH\"\n                                ],\n                                \"supplier\": [\n                                    \"AMT\"\n                                ],\n                                \"serial\": [\n                                    \"05331543\"\n                                ],\n                                \"medium\": [\n                                    \"Heat\"\n                                ],\n                                \"instPoint\": [\n                                    \"Cold side\"\n                                ],\n                                \"readout\": [\n                                    \"09.01.20 17:33\"\n                                ],\n                                \"status\": [\n                                    \"ok\"\n                                ],\n                                \"opTime\": [\n                                    {\n                                        \"value\": [\n                                            \"   46753\"\n                                        ],\n                                        \"unit\": [\n                                            \"h\"\n                                        ]\n                                    }\n                                ],\n                                \"errorTime\": [\n                                    {\n                                        \"value\": [\n                                            \"       0\"\n                                        ],\n                                        \"unit\": [\n                                            \"h\"\n                                        ]\n                                    }\n                                ],\n                                \"channel\": [\n                                    {\n                                        \"Channel\": [\n                                            {\n                                                \"P\": [\n                                                    {\n                                                        \"value\": [\n                                                            \"    0.000\"\n                                                        ],\n\n\nThis message has two issues.\n1) It will generate a lot of bloat keys in the flat message, e.g. starting with\n\"soap:Envelope__soap:Body__0__getMeterResponse__0__getMeterResult\"\n2) The meter number is not part of the flattend keys, which makes the values \nof all meters have identical keys.\n\nThe following code fixes both issues.\n*/\nlet payload = msg.payload\nlet meter_result = payload[\"soap:Envelope\"][\"soap:Body\"][0][\"getMeterResponse\"][0][\"getMeterResult\"][0]\nlet meter_number = meter_result[\"primAddr\"]\n\n// Erase the old dict and add the shortend one with the meter number.\nmsg.payload = {}\nmsg.payload[\"meter_\" + meter_number] = meter_result\n\nreturn msg",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 330,
+        "y": 120,
+        "wires": [
+            [
+                "d4cc8ac5.10cae8"
+            ]
+        ]
+    },
+    {
+        "id": "284cd3db.1f53dc",
+        "type": "debug",
+        "z": "927c9b3e.6d8038",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "x": 350,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "dc971a11.e237a8",
+        "type": "inject",
+        "z": "72d61467.c7c86c",
+        "name": "",
+        "topic": "",
+        "payload": "111",
+        "payloadType": "str",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 170,
+        "y": 120,
+        "wires": [
+            [
+                "62898994.d74878"
+            ]
+        ]
+    },
+    {
+        "id": "432b1aa1.f45864",
+        "type": "mqtt in",
+        "z": "72d61467.c7c86c",
+        "name": "",
+        "topic": "$(MQTT_TOPIC_DATAPOINT_MAP)",
+        "qos": "1",
+        "datatype": "json",
+        "broker": "f0d21eb0.93967",
+        "x": 490,
+        "y": 160,
+        "wires": [
+            [
+                "d8495355.cf2e2"
+            ]
+        ]
+    },
+    {
+        "id": "62898994.d74878",
+        "type": "mqtt out",
+        "z": "72d61467.c7c86c",
+        "name": "",
+        "topic": "$(MQTT_TOPIC_DATAPOINT_MAP)",
+        "qos": "2",
+        "retain": "true",
+        "broker": "f0d21eb0.93967",
+        "x": 600,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "d8495355.cf2e2",
+        "type": "debug",
+        "z": "72d61467.c7c86c",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "x": 790,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "bc388144.0d621",
+        "type": "function",
+        "z": "a96a98ee.ee4868",
+        "name": "Validate received datapoint_map",
+        "func": "/*\nCheck that the datapoint map is structured as follows:\n{\"sensor\": {}, \"actuator\": {}}\nThe empty objects above may contain the actuall mappings or not in reality, but\nmust exist. Else the filter nodes in the Main flow will fail and throw erros.\n*/\n\n// Based on an anwser here: \n// https://stackoverflow.com/questions/8511281/check-if-a-value-is-an-object-in-javascript\nisObject = function(a) {\n    return Object.prototype.toString.call(a) === \"[object Object]\"\n}\n\nlet reject_datapoint_map_reason = \"\"\n\nlet datapoint_map = msg.payload\n\nif ( ! isObject(datapoint_map) ) {\n    reject_datapoint_map_reason = \"Datapoint_map is no object.\"\n} else if ( ! (\"sensor\" in datapoint_map) ) {\n    reject_datapoint_map_reason = \"No sensor key in datapoint_map.\"\n} else if ( ! (\"actuator\" in datapoint_map) ) {\n    reject_datapoint_map_reason = \"No actuator key in datapoint_map.\"\n} else if ( ! isObject(datapoint_map[\"sensor\"]) ) {\n    reject_datapoint_map_reason = \"Sensor key in datapoint_map contains no object.\"\n} else if ( ! isObject(datapoint_map[\"actuator\"]) ) {\n    reject_datapoint_map_reason = \"Actuator key in datapoint_map contains no object.\"\n}\n\nif ( reject_datapoint_map_reason !== \"\" ){\n    node.error(\"Rejecting datapoint_map with reason: \" + reject_datapoint_map_reason)\n} else {\n    node.warn(\"got datapoint map\", msg)\n    return msg\n}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 550,
+        "y": 80,
+        "wires": [
+            [
+                "b667759e.2c1018"
             ]
         ]
     }
