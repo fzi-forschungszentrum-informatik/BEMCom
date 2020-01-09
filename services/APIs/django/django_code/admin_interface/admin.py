@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.text import slugify
 from django.contrib.admin.models import LogEntry
 from .models import Connector, Device, ConnectorAvailableDatapoints, ConnectorHeartbeat, \
-    ConnectorLogEntry, ConnectorDatapointTopicMapper
+    ConnectorLogEntry, ConnectorDatapointTopicMapper, Datapoint
 from .signals import subscription_status
 from .utils import datetime_iso_format
 from datetime import datetime, timezone
@@ -39,10 +39,10 @@ class ConnectorAdmin(admin.ModelAdmin):
     """
     TODO: Managing mapping and subscription in connector change view
             - human-readable name instead of key?
-            - Selection of topics I want to subscribe to (dropdown with human-readable names)
-            - Set subscribed status of corresponding available datapoint to true
-            - Saving of subscribed topics to connector object
-    TODO: Display datapoint mapping after the basic information
+            - Set subscribed status of corresponding available datapoint accordingly
+            - Saving of subscribed topics to connector object (?)
+    TODO: Display datapoint mapping directly after the basic information (might not be possible)
+    TODO: If possible: "Subscribe to all" button if possible
 
     """
     """
@@ -190,6 +190,7 @@ class ConnectorAdmin(admin.ModelAdmin):
         if not all_saved:
             super().save_related(request, form, formsets, change)
 
+        # TODO: Delete stuff below if it's definitely not needed again
         # last_log = LogEntry.objects.latest('action_time')
         # print(last_log.get_edited_object())
         # for form in formsets:
@@ -302,6 +303,11 @@ class ConnectorDatapointTopicMapperAdmin(admin.ModelAdmin):
                     update_fields.append(field)
         obj.save(update_fields=update_fields)
 
+
+@admin.register(Datapoint)
+class DatapointAdmin(admin.ModelAdmin):
+    list_display = ('datapoint_key_in_connector', )
+    search_fields = ('datapoint_key_in_connector', )
 
 
 # Register your models here.

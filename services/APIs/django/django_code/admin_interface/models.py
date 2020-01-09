@@ -101,12 +101,14 @@ class Connector(models.Model):
                     connector_attr[attr] = self.name + "/" + attr[len("mqtt_topic_"):]
         return connector_attr
 
-    # Set MQTT topics and set current day as date_added upon saving of connector name of new connector
     def save(self, *args, **kwargs):
         if not self.id:  # New instance
+            # Set MQTT topics and set current day as date_added upon saving of connector name of new connector
             self.set_mqtt_topics()
             self.date_added = date.today()
+
             # TODO: Scenario with multiple MQTT broker possible?
+            # Subscribe to the connector topics
             cmi = connector_mqtt_integration.ConnectorMQTTIntegration.get_broker()[0]
             cmi.integrate_new_connector(connector=self, message_types=(self.get_mqtt_topics().keys()))
         super(Connector, self).save(*args, **kwargs)
@@ -287,6 +289,7 @@ class DeviceManager(models.Manager):
 
 class Device(models.Model):
     """
+    TODO: Uncomment attributes below
     TODO: How about dynamic meta data?
     TODO: Fix on_delete to set a meaningful default value.
     """
@@ -294,60 +297,60 @@ class Device(models.Model):
         Connector,
         on_delete=models.CASCADE
     )
-    device_type_friendly_name = models.ForeignKey(
-        DeviceType,
-        on_delete=models.SET(''),
-        name='Device_type'
-    )
-    device_location_friendly_name = models.ForeignKey(
-        DeviceLocationFriendlyName,
-        on_delete=models.SET(''),
-        name='Device_location'
-    )
+    # device_type_friendly_name = models.ForeignKey(
+    #     DeviceType,
+    #     on_delete=models.SET(''),
+    #     name='Device_type'
+    # )
+    # device_location_friendly_name = models.ForeignKey(
+    #     DeviceLocationFriendlyName,
+    #     on_delete=models.SET(''),
+    #     name='Device_location'
+    # )
     device_name = models.TextField(
         default='',
         max_length=30,
         help_text="Name of device, e.g. Dachs"
     )
-    device_maker = models.ForeignKey(
-        DeviceMaker,
-        on_delete=models.SET(''),
-        default=''
-    )
-    device_version = models.ForeignKey(
-        DeviceVersion,
-        on_delete=models.SET(''),
-        blank=True,
-        default=''
-        #limit_choices_to=....
-    )
-    device_slug = models.SlugField(
-        max_length=150,
-        default="{}_{}_{}".format(device_maker, device_name, device_version),
-    )
-    is_virtual = models.BooleanField(
-        help_text="True for virtual devices like e.g. a webservice."
-    )
-    x = models.FloatField(
-        null=True,
-        default=None,
-        help_text="X Position in 3D Model"
-    )
-    y = models.FloatField(
-        null=True,
-        default=None,
-        help_text="Y Position in 3D Model"
-    )
-    z = models.FloatField(
-        null=True,
-        default=None,
-        help_text="Z Position in 3D Model"
-    )
+    # device_maker = models.ForeignKey(
+    #     DeviceMaker,
+    #     on_delete=models.SET(''),
+    #     default=''
+    # )
+    # device_version = models.ForeignKey(
+    #     DeviceVersion,
+    #     on_delete=models.SET(''),
+    #     blank=True,
+    #     default=''
+    #     #limit_choices_to=....
+    # )
+    # device_slug = models.SlugField(
+    #     max_length=150,
+    #     default="{}_{}_{}".format(device_maker, device_name, device_version),
+    # )
+    # is_virtual = models.BooleanField(
+    #     help_text="True for virtual devices like e.g. a webservice."
+    # )
+    # x = models.FloatField(
+    #     null=True,
+    #     default=None,
+    #     help_text="X Position in 3D Model"
+    # )
+    # y = models.FloatField(
+    #     null=True,
+    #     default=None,
+    #     help_text="Y Position in 3D Model"
+    # )
+    # z = models.FloatField(
+    #     null=True,
+    #     default=None,
+    #     help_text="Z Position in 3D Model"
+    # )
     manager = DeviceManager()
     #datapoint = models.ManyToManyField(Datapoint, blank=False)
 
     def __str__(self):
-        return self.device_type_friendly_name
+        return self.device_name #device_type_friendly_name
 
     # def natural_key(self):
     #     return self.device_slug
@@ -393,23 +396,28 @@ class Datapoint(models.Model):
         )
         return element
 
-    device = models.ForeignKey(
-        Device,
-        on_delete=models.CASCADE
-    )
-    unit = models.ForeignKey(
-        DatapointUnit,
-        on_delete=models.SET('')
-    )
+    # TODO: uncomment again
+    # device = models.ForeignKey(
+    #     Device,
+    #     on_delete=models.CASCADE
+    # )
+    # TODO: uncomment again
+    # unit = models.ForeignKey(
+    #     DatapointUnit,
+    #     on_delete=models.SET('')
+    # )
     mqtt_topic = models.TextField(
         null=True,
+        blank=True,
         editable=False,
         help_text=(
             "The MQTT topic on which the values of this datapoint "
             "are published. Is auto generated for consistency."
         )
     )
+    # TODO: remove blank
     min_value = models.FloatField(
+        blank=True,
         null=True,
         default=None,
         help_text=(
@@ -418,7 +426,9 @@ class Datapoint(models.Model):
             "carry numeric values."
         )
     )
+    # TODO: remove blank
     max_value = models.FloatField(
+        blank=True,
         null=True,
         default=None,
         help_text=(
@@ -427,14 +437,17 @@ class Datapoint(models.Model):
             "carry numeric values."
         )
     )
-    default_value = models.FloatField(
-        default='--.-',
-        blank=True,
-        help_text=(
-            "The value that is displayed before the latest datapoint values "
-            "have been received via MQTT."
-        )
-    )
+    # # TODO: remove blank anc change default again
+    # default_value = models.FloatField(
+    #     default=None,
+    #     blank=True,
+    #     help_text=(
+    #         "The value that is displayed before the latest datapoint values "
+    #         "have been received via MQTT."
+    #     )
+    # )
+    datapoint_key_in_connector = models.TextField(default='')
+
 
 
 
