@@ -9,6 +9,7 @@ from admin_interface import connector_mqtt_integration
 
 class Connector(models.Model):
     """
+    TODO: Review set and get MQTT topics
     TODO: Ensure that all topics are unique.
     """
     name = models.CharField(
@@ -107,7 +108,7 @@ class Connector(models.Model):
             self.set_mqtt_topics()
             self.date_added = date.today()
 
-            # TODO: Scenario with multiple MQTT broker possible?
+            # TODO: Maybe as post_save signal?
             # Subscribe to the connector topics
             cmi = connector_mqtt_integration.ConnectorMQTTIntegration.get_broker()[0]
             cmi.integrate_new_connector(connector=self, message_types=(self.get_mqtt_topics().keys()))
@@ -282,78 +283,117 @@ class DeviceLocationFriendlyName(models.Model):
     )
 
 
-class DeviceManager(models.Manager):
-    def get_by_natural_key(self, slug):
-        return self.get(slug=slug)
+# class DeviceManager(models.Manager):
+#     def get_by_natural_key(self, slug):
+#         return self.get(slug=slug)
 
 
-class Device(models.Model):
+# class Device(models.Model):
+#     """
+#     TODO: Uncomment attributes below
+#     TODO: How about dynamic meta data?
+#     TODO: Fix on_delete to set a meaningful default value.
+#     """
+#     connector = models.ForeignKey(
+#         Connector,
+#         on_delete=models.CASCADE
+#     )
+#     # device_type_friendly_name = models.ForeignKey(
+#     #     DeviceType,
+#     #     on_delete=models.SET(''),
+#     #     name='Device_type'
+#     # )
+#     # device_location_friendly_name = models.ForeignKey(
+#     #     DeviceLocationFriendlyName,
+#     #     on_delete=models.SET(''),
+#     #     name='Device_location'
+#     # )
+#     device_name = models.TextField(
+#         default='',
+#         max_length=30,
+#         help_text="Name of device, e.g. Dachs"
+#     )
+#     # device_maker = models.ForeignKey(
+#     #     DeviceMaker,
+#     #     on_delete=models.SET(''),
+#     #     default=''
+#     # )
+#     # device_version = models.ForeignKey(
+#     #     DeviceVersion,
+#     #     on_delete=models.SET(''),
+#     #     blank=True,
+#     #     default=''
+#     #     #limit_choices_to=....
+#     # )
+#     # device_slug = models.SlugField(
+#     #     max_length=150,
+#     #     default="{}_{}_{}".format(device_maker, device_name, device_version),
+#     # )
+#     # is_virtual = models.BooleanField(
+#     #     help_text="True for virtual devices like e.g. a webservice."
+#     # )
+#     # x = models.FloatField(
+#     #     null=True,
+#     #     default=None,
+#     #     help_text="X Position in 3D Model"
+#     # )
+#     # y = models.FloatField(
+#     #     null=True,
+#     #     default=None,
+#     #     help_text="Y Position in 3D Model"
+#     # )
+#     # z = models.FloatField(
+#     #     null=True,
+#     #     default=None,
+#     #     help_text="Z Position in 3D Model"
+#     # )
+#     manager = DeviceManager()
+#     #datapoint = models.ManyToManyField(Datapoint, blank=False)
+#
+#     def __str__(self):
+#         return self.device_name #device_type_friendly_name
+#
+#     # def natural_key(self):
+#     #     return self.device_slug
+
+
+class GenericDevice(models.Model):
     """
-    TODO: Uncomment attributes below
-    TODO: How about dynamic meta data?
-    TODO: Fix on_delete to set a meaningful default value.
+    TODO: Write default for regex
     """
     connector = models.ForeignKey(
         Connector,
         on_delete=models.CASCADE
     )
-    # device_type_friendly_name = models.ForeignKey(
-    #     DeviceType,
-    #     on_delete=models.SET(''),
-    #     name='Device_type'
-    # )
-    # device_location_friendly_name = models.ForeignKey(
-    #     DeviceLocationFriendlyName,
-    #     on_delete=models.SET(''),
-    #     name='Device_location'
-    # )
-    device_name = models.TextField(
+
+    type = models.TextField(
         default='',
         max_length=30,
-        help_text="Name of device, e.g. Dachs"
+        help_text="Descriptive name of this device."
     )
-    # device_maker = models.ForeignKey(
-    #     DeviceMaker,
-    #     on_delete=models.SET(''),
-    #     default=''
-    # )
-    # device_version = models.ForeignKey(
-    #     DeviceVersion,
-    #     on_delete=models.SET(''),
-    #     blank=True,
-    #     default=''
-    #     #limit_choices_to=....
-    # )
-    # device_slug = models.SlugField(
-    #     max_length=150,
-    #     default="{}_{}_{}".format(device_maker, device_name, device_version),
-    # )
-    # is_virtual = models.BooleanField(
-    #     help_text="True for virtual devices like e.g. a webservice."
-    # )
-    # x = models.FloatField(
-    #     null=True,
-    #     default=None,
-    #     help_text="X Position in 3D Model"
-    # )
-    # y = models.FloatField(
-    #     null=True,
-    #     default=None,
-    #     help_text="Y Position in 3D Model"
-    # )
-    # z = models.FloatField(
-    #     null=True,
-    #     default=None,
-    #     help_text="Z Position in 3D Model"
-    # )
-    manager = DeviceManager()
-    #datapoint = models.ManyToManyField(Datapoint, blank=False)
+
+    datapoint_keys_regex = models.TextField(
+        default='',
+        blank=True,
+        help_text="Regular expression to automatically match available datapoints to this device based on their key."
+    )
 
     def __str__(self):
-        return self.device_name #device_type_friendly_name
+        return self.type
 
-    # def natural_key(self):
-    #     return self.device_slug
+    class Meta:
+        abstract = True
+
+
+class Device(GenericDevice):
+    pass
+
+
+class NonDevice(GenericDevice):
+    url = models.URLField(
+        blank=True
+    )
+    pass
 
 
 class DatapointUnit(models.Model):
@@ -450,6 +490,10 @@ class Datapoint(models.Model):
 
 
 class GenericDatapoint(models.Model):
+    """
+    TODO: Active/subscribed (or similar) boolean?
+    TODO: Abstract model
+    """
 
     def html_element_id(self):
         """
@@ -504,6 +548,9 @@ class GenericDatapoint(models.Model):
         )
     )
     descriptor = models.TextField(default='')
+
+    class Meta:
+        abstract = True
 
 
 class TextDatapoint(GenericDatapoint):
