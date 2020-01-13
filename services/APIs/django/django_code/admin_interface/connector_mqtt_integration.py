@@ -3,7 +3,6 @@ import logging
 
 from paho.mqtt.client import Client
 from django.conf import settings
-from django.db import connection
 
 from admin_interface import models
 from admin_interface.utils import datetime_from_timestamp
@@ -19,6 +18,10 @@ class ConnectorMQTTIntegration():
     It has some mechanisms implemented to ensure that only one instance of this 
     class is running, to prevent concurrent and redundand read/write operations
     the djangos DB.
+
+    Within the admin_interface app this class will be instantiated in apps.py.
+    Parts of the class will be called at runtime to react on changed settings
+    from within signals.py.
     """
     
     def __new__(cls, *args, **kwargs):
@@ -55,16 +58,12 @@ class ConnectorMQTTIntegration():
             'host': settings.MQTT_BROKER['host'],
             'port': settings.MQTT_BROKER['port'],
         }
-        #print('host: {}, port: {}'.format(connect_kwargs['host'], connect_kwargs['port']))
-
-        # The topics dict used for subscribing and message routing.
-        self.topics = self.compute_topics()
 
         # The private userdata, used by the callbacks.
         userdata = {
             'models': models,
             'connect_kwargs': connect_kwargs,
-            'topics': self.topics,
+            'topics': {},
         }
         self.userdata = userdata
 
@@ -74,17 +73,17 @@ class ConnectorMQTTIntegration():
         self.client.on_message = self.on_message
         self.client.on_subscribe = self.on_subscribe
 
+        # Fill the topics within userdata
+        self.update_topics()
+
         # Initial connection to broker.
         self.client.connect(**connect_kwargs)
 
-        # Start look in background process.
+        # Start loop in background process.
         self.client.loop_start()
 
-        self.connected_topics = {}
-        for topic in self.topics:
-            # use QOS=2, expect messages once and only once.
-            # No duplicates in log files etc.
-            self.client.subscribe(topic, 2)
+        # Subscripe to all computed topics.
+        self.update_subscriptions()
 
     @classmethod
     def get_instance(cls):
@@ -109,14 +108,12 @@ class ConnectorMQTTIntegration():
         self.client.disconnect()
         self.client.loop_stop()
 
-    @staticmethod
-    def compute_topics():
+    def update_topics(self):
         """
         Computes a list of all topics associated with the currently
-        registered Connecetors.
+        registered Connecetors. Places this list in the relevant places.
 
-        Returns:
-        --------
+        Returns nothing. The stored topics object looks like this:
         topics: dict
             as <topic>: (<Connector object>, <message type>)
             with <message type> being on of the following:
@@ -124,7 +121,6 @@ class ConnectorMQTTIntegration():
             - mqtt_topic_heartbeat
             - mqtt_topic_available_datapoints
             - mqtt_topic_datapoint_map
-
         """
         topics = {}
         message_types = [
@@ -134,12 +130,45 @@ class ConnectorMQTTIntegration():
             'mqtt_topic_datapoint_map',
             'mqtt_topic_datapoint_message_wildcard'
         ]
-
+        
+        # It might be more efficient to extract the topics only for those
+        # connectors which have been edited. However, at the time of 
+        # implementation the additional effort did not seem worth it.
         for connector in models.Connector.objects.all():
             for message_type in message_types:
                 topic = getattr(connector, message_type)
                 topics[topic] = (connector, message_type)
-        return topics
+                
+        # Store the topics and update the client userdata, so the callbacks
+        # will have up to date data.
+        self.userdata['topics'] = topics
+        self.client.user_data_set(self.userdata)
+
+    def update_subscriptions(self):
+        """
+        Updates subscriptions.
+        
+        Should be used if the topics object has changed, i.e. call directly 
+        after self.update_topics().
+        """
+        topics = self.userdata['topics']
+        
+        # Start with no subscription on first run.
+        if not hasattr(self, "connected_topics"):
+            self.connected_topics  = []
+        
+        # Subsribe to topics not subscribed yet.
+        for topic in topics:
+            if topic not in self.connected_topics:
+                # use QOS=2, expect messages once and only once.
+                # No duplicates in log files etc.
+                self.client.subscribe(topic=topic, qos=2)
+                self.connected_topics.append(topic)
+        
+        # Unsubscribe from topics no longer relevant.
+        for topic in self.connected_topics:
+            if topic not in topics:
+                self.client.unsubscribe(topic=topic)
 
     def integrate_new_connector(self, connector, message_types):
         for message_type in message_types:
