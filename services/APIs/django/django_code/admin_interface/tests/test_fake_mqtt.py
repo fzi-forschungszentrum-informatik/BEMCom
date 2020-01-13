@@ -378,6 +378,25 @@ class TestFakeMQTTEndToEnd(TestClassWithFixtures):
         # Validate the message has not been received.
         out, err = self.capsys.readouterr()
         assert out == ''
+        
+    def test_user_data_set_updates_userdata(self):
+        # Setup broker and client as one would do in test.
+        fake_broker = FakeMQTTBroker()
+        fake_client = FakeMQTTClient(fake_broker=fake_broker)
+        fake_client = fake_client(userdata='first userdata')
+
+        fake_client.user_data_set(userdata='Second userdata')
+
+        # set the on connect callback.
+        def on_connect(client, userdata, flags, rc):
+            print(userdata)
+
+        fake_client.on_connect = on_connect
+        fake_client.connect()
+
+        # Validate that the callback has been called.
+        out, err = self.capsys.readouterr()
+        assert out == 'Second userdata\n'
 
 
 if __name__ == '__main__':

@@ -179,3 +179,9 @@ class FakeMQTTClient():
             userdata = self.userdata
             message = msg
             self.on_message(client, userdata, message)
+            
+    def user_data_set(self, userdata):
+        """
+        Update the userdata object.
+        """
+        self.userdata = userdata
