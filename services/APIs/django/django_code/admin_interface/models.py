@@ -110,8 +110,8 @@ class Connector(models.Model):
 
             # TODO: Maybe as post_save signal?
             # Subscribe to the connector topics
-            cmi = connector_mqtt_integration.ConnectorMQTTIntegration.get_broker()[0]
-            cmi.integrate_new_connector(connector=self, message_types=(self.get_mqtt_topics().keys()))
+            # cmi = connector_mqtt_integration.ConnectorMQTTIntegration.get_instance()
+            # cmi.integrate_new_connector(connector=self, message_types=(self.get_mqtt_topics().keys()))
         super(Connector, self).save(*args, **kwargs)
 
     def get_absolute_url(self):

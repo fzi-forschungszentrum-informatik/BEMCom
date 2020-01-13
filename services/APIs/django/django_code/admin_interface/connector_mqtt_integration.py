@@ -12,14 +12,43 @@ logger = logging.getLogger(__name__)
 
 
 class ConnectorMQTTIntegration():
-
-    _brokers = list()
+    """
+    This class allows the API (django) to communicate with the connectors via
+    MQTT. 
+    
+    It has some mechanisms implemented to ensure that only one instance of this 
+    class is running, to prevent concurrent and redundand read/write operations
+    the djangos DB.
+    """
+    
+    def __new__(cls, *args, **kwargs):
+        """
+        Ensure singleton, i.e. only one instance is created.
+        """
+        if not hasattr(cls, "_instance"):
+            # This magically calls __init__ with the correct arguements too.
+            cls._instance = object.__new__(cls)
+        else:
+            logger.warning(
+                "ConnectorMQTTIntegration is aldready running. Use "
+                "get_instance method to retrieve the running instance."
+            )
+        return cls._instance
 
     def __init__(self, mqtt_client=Client):
         """
-        TODO: Use importlib.import_module('paho.mqtt.client.Client')
+        Initial configuration of the MQTT communication.
         """
-        logger.info('Starting up Connector MQTT Integration.')
+        
+        # Ignore the potentially changed configuration if instance, and thus
+        # also an MQTT client, exist.
+        # If a new configuration should be used, disconnect and destroy the 
+        # current instance and create a new one.
+        if hasattr(self, "client"):
+            return
+        
+        # Below the normal startup and configration of this class.
+        logger.info("Starting up Connector MQTT Integration.")
 
         # The configuration for connecting to the broker.
         connect_kwargs = {
@@ -57,11 +86,21 @@ class ConnectorMQTTIntegration():
             # No duplicates in log files etc.
             self.client.subscribe(topic, 2)
 
-        ConnectorMQTTIntegration._brokers.append(self)
-
     @classmethod
-    def get_broker(cls):
-        return cls._brokers
+    def get_instance(cls):
+        """
+        Return the running instance of the class.
+        
+        Returns:
+        --------
+        instance: ConnectorMQTTIntegration instance
+            The running instance of the class. Is none of not running yet.
+        """
+        if hasattr(cls, "_instance"):
+            instance = cls._instance
+        else:
+            instance = None
+        return instance
 
     def disconnect(self):
         """

@@ -14,6 +14,10 @@ if __name__ == "__main__":
     os.chdir('../..')
     setup()
 
+from django.conf import settings
+
+
+
 from admin_interface import models
 from admin_interface.connector_mqtt_integration import ConnectorMQTTIntegration
 from admin_interface.utils import datetime_from_timestamp
@@ -51,6 +55,10 @@ def connector_integration_setup(request, django_db_setup, django_db_blocker):
         mqtt_topic_datapoint_map='test_connector/datapoint_map',
     )
     test_connector.save()
+
+    # Delete _instance as tests above might have created an instance.
+    if hasattr(ConnectorMQTTIntegration, "_instance"):
+        del ConnectorMQTTIntegration._instance
 
     cmi = ConnectorMQTTIntegration(
         mqtt_client=fake_client_2
@@ -207,6 +215,99 @@ class TestConnectorIntegration():
         # Finnaly check if the rows are identical.
         assert expected_rows == actual_rows
 
+
+@pytest.fixture(scope='class')
+def get_instance_setup(request, django_db_setup, django_db_blocker):
+    """
+    Allows DB access for test. This is yet required as the __init__ of 
+    ConnectorMQTTIntegration will check the DB for topics. However, this should
+    be refactored in future.
+    
+    TODO Remove this function then.
+    """
+    # Allow access to the Test DB. See:
+    # https://pytest-django.readthedocs.io/en/latest/database.html#django-db-blocker
+    django_db_blocker.unblock()
+    
+    yield
+    # Remove access to DB.
+    django_db_blocker.block()
+    django_db_blocker.restore()
+
+
+@pytest.mark.usefixtures('get_instance_setup')
+class TestGetInstance():
+    """
+    Test that the mechanism of fetching the initialized class instance of 
+    ConnectorMQTTIntegration from the class object works as expected.
+    """
+    
+    def test_instance_is_returned(self):
+        """
+        Verify that the call to get_instance returns an instance of 
+        ConnectorMQTTIntegration.
+        """
+        # Delete _instance as tests above might have created an instance.
+        if hasattr(ConnectorMQTTIntegration, "_instance"):
+            del ConnectorMQTTIntegration._instance
+        
+        fake_broker = FakeMQTTBroker()
+        fake_client_1 = FakeMQTTClient(fake_broker=fake_broker)
+    
+        # Setup Broker and Integration.
+        mqtt_client = fake_client_1()
+        mqtt_client.connect('localhost', 1883)
+        mqtt_client.loop_start()
+    
+        initialized_instance = ConnectorMQTTIntegration(
+            mqtt_client=fake_client_1
+        )
+        
+        retrieved_instance = ConnectorMQTTIntegration.get_instance()
+        assert isinstance(retrieved_instance, ConnectorMQTTIntegration)
+        assert id(retrieved_instance) == id(initialized_instance)
+
+    def test_singleton(self):
+        """
+        Verify that repeated calls to __init__ will also return the already
+        initialized calls instance, instead of creating new instances.
+        """
+        # Delete _instance as tests above might have created an instance.
+        if hasattr(ConnectorMQTTIntegration, "_instance"):
+            del ConnectorMQTTIntegration._instance
+
+        fake_broker = FakeMQTTBroker()
+        fake_client_1 = FakeMQTTClient(fake_broker=fake_broker)
+    
+        # Setup Broker and Integration.
+        mqtt_client = fake_client_1()
+        mqtt_client.connect('localhost', 1883)
+        mqtt_client.loop_start()
+    
+        first_initialized_instance = ConnectorMQTTIntegration(
+            mqtt_client=fake_client_1
+        )
+        
+        second_initialized_instance = ConnectorMQTTIntegration(
+            mqtt_client=fake_client_1
+        )
+        
+        assert (
+            id(first_initialized_instance) == 
+            id(second_initialized_instance)
+        )
+
+    def test_returns_none_before_init(self):
+        """
+        Verify that a call to get_instance will return None if the class is
+        not initialized yet.
+        """
+        # Delete _instance as tests above might have created an instance.
+        if hasattr(ConnectorMQTTIntegration, "_instance"):
+            del ConnectorMQTTIntegration._instance
+
+        not_initialized_instance = ConnectorMQTTIntegration.get_instance()
+        assert not_initialized_instance is None
 
 if __name__ == '__main__':
     # Test this file only.
