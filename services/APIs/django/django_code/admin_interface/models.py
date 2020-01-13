@@ -411,22 +411,71 @@ class GenericDevice(models.Model):
 
 
 class Device(GenericDevice):
+    # #@staticmethod
+    # def full_id(self):
+    #     last_object = Device.objects.all().order_by('id').last()
+    #     if not last_object:
+    #         last_id = last_object.id
+    #         return "d-"+str(last_id+1)
+    #     return "d-00"
+
+
     class_identifier = models.TextField(
         default='d',
         editable=False,
     )
-    pass
+    full_id = models.TextField(
+        default='',
+        editable=False,
+        blank=True
+    )
 
+    def save(self, *args, **kwargs):
+        if self.id is not None:
+            self.full_id = "d-" + str(self.id)
+        else:
+            last_object = Device.objects.all().order_by('id').last()
+            print(last_object)
+            if last_object:
+                last_id = last_object.id
+                print(last_id)
+                self.full_id = "d-"+str(last_id+1)
+        super(Device, self).save(*args, **kwargs)
 
 class NonDevice(GenericDevice):
+    #@staticmethod
+    # def get_full_id():
+    #     # last_object = NonDevice.objects.all().order_by('id').last()
+    #     # if not last_object:
+    #     #     last_id = last_object.id
+    #     #     return "n-"+str(last_id+1)
+    #     # return "n-00"
+    #     return 'n-' + str(self.id)
+
     class_identifier = models.TextField(
         default='nd',
         editable=False,
     )
+    full_id = models.TextField(
+        default='',
+        blank=True,
+        editable=False
+    )
     # url = models.URLField(
     #     blank=True
     # )
-    pass
+
+    def save(self, *args, **kwargs):
+        if self.id is not None:
+            self.full_id = "n-" + str(self.id)
+        else:
+            last_object = NonDevice.objects.all().order_by('id').last()
+            print(last_object)
+            if last_object:
+                last_id = last_object.id
+                print(last_id)
+                self.full_id = "n-"+str(last_id+1)
+        super(NonDevice, self).save(*args, **kwargs)
 
 
 class DatapointUnit(models.Model):

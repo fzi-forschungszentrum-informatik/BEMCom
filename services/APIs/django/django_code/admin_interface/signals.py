@@ -28,3 +28,4 @@ def subscribe_to_mapped_datapoint_topic(**kwargs):
                 datapoint_key_in_connector=key).update(subscribed=new_subscription_status)
             print("Subscription status changed.")
 
+

@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.contrib.admin import actions
 from django.utils.text import slugify
 from django.contrib.admin.views.main import ChangeList as ChangeListDefault
 from django.urls import reverse
@@ -7,7 +8,7 @@ from .models import Connector, ConnectorAvailableDatapoints, ConnectorHeartbeat,
 from .signals import subscription_status
 from .utils import datetime_iso_format
 from datetime import datetime, timezone
-import re
+import uuid
 
 """
 Add actions to be performed on selected objects.
@@ -19,6 +20,24 @@ Below: example to change the heartbeat topic to "beat":
     change_mqtt_topic_heartbeat.short_description = "Change MQTT topic for heartbeat"
 --------------------
 """
+
+def delete_models(modeladmin, request, queryset):
+    ids_list = request._post.getlist('_selected_action')
+    qd = request._post
+    print(qd)
+    print(qd.getlist('_selected_action'))
+    print(queryset)
+    for model in queryset:
+        print(model.__class__.__name__)
+
+    # if len(ids_list) != len(queryset):
+    #     # One or more objects are non-devices
+    #     for id in ids_list:
+    #         try:
+    #             NonDevice.objects.filter(id=id).delete()
+    #         except Exception as e:
+    #             print(e)
+    #             break
 
 
 class DatapointMappingInline(admin.TabularInline):
@@ -304,17 +323,19 @@ class ConnectorDatapointTopicMapperAdmin(admin.ModelAdmin):
                     update_fields.append(field)
         obj.save(update_fields=update_fields)
 
-
 class DeviceChangeList(ChangeListDefault):
     """
     TODO: URL adaption in the case of multiple (>2) child classes
     """
 
     def get_queryset(self, request):
-        devices = Device.objects.all()#.values_list('type')
-        non_devices = NonDevice.objects.all()#.values_list('type')
-        queryset = devices.union(non_devices)#.order_by('type')
-        return queryset
+        if request.method == 'GET':
+            print("Get union of all (non)Devices...")
+            devices = Device.objects.all()#.values_list('type')
+            non_devices = NonDevice.objects.all()#.values_list('type')
+            queryset = devices.union(non_devices)#.order_by('type')
+            return queryset
+        return super().get_queryset(request)
 
     def url_for_result(self, result):
         devices_only_queryset = self.root_queryset
@@ -333,13 +354,24 @@ class DeviceChangeList(ChangeListDefault):
 
 @admin.register(Device)
 class DeviceAdmin(admin.ModelAdmin):
-    """
-    TODO: get_class_name should return actual class, not always "device" class
-    """
-    list_display = ('type', 'location_detail', 'get_class_name', )
+
+    list_display = ('type', 'location_detail', 'full_id', )
+    actions = [delete_models]
 
     def get_changelist(self, request, **kwargs):
         return DeviceChangeList
+
+    def get_actions(self, request):
+        all_actions = super().get_actions(request)
+        if 'delete_selected' in all_actions:
+            del all_actions['delete_selected']
+        return all_actions
+
+    # def delete_queryset(self, request, queryset):
+    #     print(queryset)
+    #     super().delete_queryset(request, queryset)
+
+
 
 # @admin.register(Datapoint)
 # class DatapointAdmin(admin.ModelAdmin):
