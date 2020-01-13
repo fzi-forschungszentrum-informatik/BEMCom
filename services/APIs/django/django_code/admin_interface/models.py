@@ -1,4 +1,5 @@
 from datetime import date
+import uuid
 from django.db import models
 from django.db.models.query import QuerySet
 from django.shortcuts import reverse
@@ -286,8 +287,8 @@ class DeviceLocationFriendlyName(models.Model):
 # class DeviceManager(models.Manager):
 #     def get_by_natural_key(self, slug):
 #         return self.get(slug=slug)
-
-
+#
+#
 # class Device(models.Model):
 #     """
 #     TODO: Uncomment attributes below
@@ -359,11 +360,18 @@ class DeviceLocationFriendlyName(models.Model):
 
 class GenericDevice(models.Model):
     """
+    TODO: !!! UUID as secondary keys to distinguish child models with same DB ID
+            see https://docs.djangoproject.com/en/dev/howto/writing-migrations/#migrations-that-add-unique-fields
     TODO: Write default for regex
     """
     connector = models.ForeignKey(
         Connector,
         on_delete=models.CASCADE
+    )
+    uuid = models.UUIDField(
+        default=uuid.uuid4,
+        editable=False,
+        unique=True
     )
 
     type = models.TextField(
@@ -371,12 +379,29 @@ class GenericDevice(models.Model):
         max_length=30,
         help_text="Descriptive name of this device."
     )
-
+    location_detail = models.TextField(
+        default='',
+        blank=True,
+        help_text="Human-readable info about location inside a room, e.g. 'left window'."
+    )
     datapoint_keys_regex = models.TextField(
         default='',
         blank=True,
         help_text="Regular expression to automatically match available datapoints to this device based on their key."
     )
+
+    def get_class_name(self):
+        return self.__class__.__name__
+
+    @classmethod
+    def get_list_of_subclasses_names(cls, exclude=None):
+        names = []
+        for subclass in cls.__subclasses__():
+            names.append(subclass.__name__)
+        if exclude is not None:
+            for name in exclude:
+                names.remove(name)
+        return names
 
     def __str__(self):
         return self.type
@@ -386,13 +411,21 @@ class GenericDevice(models.Model):
 
 
 class Device(GenericDevice):
+    class_identifier = models.TextField(
+        default='d',
+        editable=False,
+    )
     pass
 
 
 class NonDevice(GenericDevice):
-    url = models.URLField(
-        blank=True
+    class_identifier = models.TextField(
+        default='nd',
+        editable=False,
     )
+    # url = models.URLField(
+    #     blank=True
+    # )
     pass
 
 
@@ -409,84 +442,84 @@ class DatapointUnit(models.Model):
     )
 
 
-class Datapoint(models.Model):
-    """
-    TODO: Flag if already integrated or new (e.g. because of having installed a new device)
-    TODO: How about dynamic meta data?
-    TODO: Fix on_delete to set a meaningful default value.
-    """
-
-    def html_element_id(self):
-        """
-        Return the id of the datapoint element.
-        """
-        return "datapoint_" + str(self.pk)
-
-    def html_element(self):
-        """
-        Generates the html element to display the value of the datapoint with
-        the primary key as id and the default_value field as initial value.
-        E.g:
-            <div id=datapoint_21>--.-</div>
-        """
-        element = format_html(
-            "<div id={}>{}</div>",
-            self.html_element_id(),
-            self.default_value,
-        )
-        return element
-
-    # TODO: uncomment again
-    # device = models.ForeignKey(
-    #     Device,
-    #     on_delete=models.CASCADE
-    # )
-    # TODO: uncomment again
-    # unit = models.ForeignKey(
-    #     DatapointUnit,
-    #     on_delete=models.SET('')
-    # )
-    mqtt_topic = models.TextField(
-        null=True,
-        blank=True,
-        editable=False,
-        help_text=(
-            "The MQTT topic on which the values of this datapoint "
-            "are published. Is auto generated for consistency."
-        )
-    )
-    # TODO: remove blank
-    min_value = models.FloatField(
-        blank=True,
-        null=True,
-        default=None,
-        help_text=(
-            "The minimal expected value of the datapoint. Is uesed for "
-            "automatically scaling plots. Only applicable to datapoints that"
-            "carry numeric values."
-        )
-    )
-    # TODO: remove blank
-    max_value = models.FloatField(
-        blank=True,
-        null=True,
-        default=None,
-        help_text=(
-            "The maximal expected value of the datapoint. Is uesed for "
-            "automatically scaling plots. Only applicable to datapoints that"
-            "carry numeric values."
-        )
-    )
-    # # TODO: remove blank anc change default again
-    # default_value = models.FloatField(
-    #     default=None,
-    #     blank=True,
-    #     help_text=(
-    #         "The value that is displayed before the latest datapoint values "
-    #         "have been received via MQTT."
-    #     )
-    # )
-    datapoint_key_in_connector = models.TextField(default='')
+# class Datapoint(models.Model):
+#     """
+#     TODO: Flag if already integrated or new (e.g. because of having installed a new device)
+#     TODO: How about dynamic meta data?
+#     TODO: Fix on_delete to set a meaningful default value.
+#     """
+#
+#     def html_element_id(self):
+#         """
+#         Return the id of the datapoint element.
+#         """
+#         return "datapoint_" + str(self.pk)
+#
+#     def html_element(self):
+#         """
+#         Generates the html element to display the value of the datapoint with
+#         the primary key as id and the default_value field as initial value.
+#         E.g:
+#             <div id=datapoint_21>--.-</div>
+#         """
+#         element = format_html(
+#             "<div id={}>{}</div>",
+#             self.html_element_id(),
+#             self.default_value,
+#         )
+#         return element
+#
+#     #TODO: uncomment again
+#     device = models.ForeignKey(
+#         Device,
+#         on_delete=models.CASCADE
+#     )
+#     #TODO: uncomment again
+#     unit = models.ForeignKey(
+#         DatapointUnit,
+#         on_delete=models.SET('')
+#     )
+#     mqtt_topic = models.TextField(
+#         null=True,
+#         blank=True,
+#         editable=False,
+#         help_text=(
+#             "The MQTT topic on which the values of this datapoint "
+#             "are published. Is auto generated for consistency."
+#         )
+#     )
+#     # TODO: remove blank
+#     min_value = models.FloatField(
+#         blank=True,
+#         null=True,
+#         default=None,
+#         help_text=(
+#             "The minimal expected value of the datapoint. Is uesed for "
+#             "automatically scaling plots. Only applicable to datapoints that"
+#             "carry numeric values."
+#         )
+#     )
+#     # TODO: remove blank
+#     max_value = models.FloatField(
+#         blank=True,
+#         null=True,
+#         default=None,
+#         help_text=(
+#             "The maximal expected value of the datapoint. Is uesed for "
+#             "automatically scaling plots. Only applicable to datapoints that"
+#             "carry numeric values."
+#         )
+#     )
+#     # # TODO: remove blank anc change default again
+#     # default_value = models.FloatField(
+#     #     default=None,
+#     #     blank=True,
+#     #     help_text=(
+#     #         "The value that is displayed before the latest datapoint values "
+#     #         "have been received via MQTT."
+#     #     )
+#     # )
+#     datapoint_key_in_connector = models.TextField(default='')
 
 
 class GenericDatapoint(models.Model):

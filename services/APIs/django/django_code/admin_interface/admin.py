@@ -1,11 +1,13 @@
 from django.contrib import admin
 from django.utils.text import slugify
-from django.contrib.admin.models import LogEntry
-from .models import Connector, Device, ConnectorAvailableDatapoints, ConnectorHeartbeat, \
-    ConnectorLogEntry, ConnectorDatapointTopicMapper, Datapoint
+from django.contrib.admin.views.main import ChangeList as ChangeListDefault
+from django.urls import reverse
+from .models import Connector, ConnectorAvailableDatapoints, ConnectorHeartbeat, \
+    ConnectorLogEntry, ConnectorDatapointTopicMapper, Device, NonDevice
 from .signals import subscription_status
 from .utils import datetime_iso_format
 from datetime import datetime, timezone
+import re
 
 """
 Add actions to be performed on selected objects.
@@ -43,7 +45,6 @@ class ConnectorAdmin(admin.ModelAdmin):
             - Saving of subscribed topics to connector object (?)
     TODO: Display datapoint mapping directly after the basic information (might not be possible)
     TODO: If possible: "Subscribe to all" button if possible
-
     """
     """
     List view customizations
@@ -304,11 +305,48 @@ class ConnectorDatapointTopicMapperAdmin(admin.ModelAdmin):
         obj.save(update_fields=update_fields)
 
 
-@admin.register(Datapoint)
-class DatapointAdmin(admin.ModelAdmin):
-    list_display = ('datapoint_key_in_connector', )
-    search_fields = ('datapoint_key_in_connector', )
+class DeviceChangeList(ChangeListDefault):
+    """
+    TODO: URL adaption in the case of multiple (>2) child classes
+    """
+
+    def get_queryset(self, request):
+        devices = Device.objects.all()#.values_list('type')
+        non_devices = NonDevice.objects.all()#.values_list('type')
+        queryset = devices.union(non_devices)#.order_by('type')
+        return queryset
+
+    def url_for_result(self, result):
+        devices_only_queryset = self.root_queryset
+        base_class = devices_only_queryset[0].__class__.__bases__[0]
+
+        # Check if the current model (result) is a Device or Non-device by filtering the Device DB by UUID
+        if not devices_only_queryset.filter(uuid=result.uuid).exists():
+            # Model is a Non-Device -> adapt URL to this model's change page
+            current_model_name = self.root_queryset[0].__class__.__name__
+            new_model_name = base_class.get_list_of_subclasses_names(exclude=[current_model_name])[0]
+            new_device_url = super().url_for_result(result).replace(current_model_name.lower(), new_model_name.lower())
+            return new_device_url
+
+        return super().url_for_result(result)
+
+
+@admin.register(Device)
+class DeviceAdmin(admin.ModelAdmin):
+    """
+    TODO: get_class_name should return actual class, not always "device" class
+    """
+    list_display = ('type', 'location_detail', 'get_class_name', )
+
+    def get_changelist(self, request, **kwargs):
+        return DeviceChangeList
+
+# @admin.register(Datapoint)
+# class DatapointAdmin(admin.ModelAdmin):
+#     list_display = ('datapoint_key_in_connector', )
+#     search_fields = ('datapoint_key_in_connector', )
 
 
 # Register your models here.
-admin.site.register(Device)
+admin.site.register(NonDevice)
+
