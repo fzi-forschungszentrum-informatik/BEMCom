@@ -21,34 +21,15 @@ Below: example to change the heartbeat topic to "beat":
 --------------------
 """
 
-def delete_models(modeladmin, request, queryset):
-    print(queryset)
-    for obj in queryset:
-        if obj.full_id.startswith('d'):
-            print("{} will be deleted.".format(Device.objects.filter(pk=obj.full_id[2:])))
-            #Device.objects.filter(pk=obj.full_id[2:]).delete()
-        elif obj.full_id.startswith('n'):
-            print("{} will be deleted.".format(NonDevice.objects.filter(pk=obj.full_id[2:])))
-            #NonDevice.objects.filter(pk=obj.full_id[2:]).delete()
 
-    print(request.__dict__)
-    # ids_list = request._post.getlist('_selected_action')
-    # qd = request._post
-    # print(qd)
-    # print(qd.getlist('_selected_action'))
-    # print(queryset)
-    # for model in queryset:
-    #     print(model.__class__.__name__)
-    #     print(model.full_id)
-
-    # if len(ids_list) != len(queryset):
-    #     # One or more objects are non-devices
-    #     for id in ids_list:
-    #         try:
-    #             NonDevice.objects.filter(id=id).delete()
-    #         except Exception as e:
-    #             print(e)
-    #             break
+def action_delete_devices(modeladmin, request, queryset):
+    print(request._post.getlist('_selected_action'))
+    for obj_pk in request._post.getlist('_selected_action'):
+        if obj_pk.startswith('d'):
+            Device.objects.filter(pk=obj_pk).delete()
+        elif obj_pk.startswith('n'):
+            NonDevice.objects.filter(pk=obj_pk).delete()
+action_delete_devices.short_description = "Delete selected objects"
 
 
 class DatapointMappingInline(admin.TabularInline):
@@ -344,11 +325,7 @@ class DeviceChangeList(ChangeListDefault):
         if request.method == 'GET':
             print("Get union of all (non)Devices...")
             devices = Device.objects.all()
-            # for d in devices:
-            #     Device.objects.filter(pk=d.id).update(spec_id=d.id)
             non_devices = NonDevice.objects.all()
-            # for n in non_devices:
-            #     NonDevice.objects.filter(pk=n.id).update(spec_id=n.id)
             queryset = devices.union(non_devices)
             print(queryset)
             return queryset
@@ -362,7 +339,7 @@ class DeviceChangeList(ChangeListDefault):
         if not devices_only_queryset.filter(uuid=result.uuid).exists():
             # Model is a Non-Device -> adapt URL to this model's change page
             current_model_name = self.root_queryset[0].__class__.__name__
-            new_model_name = base_class.get_list_of_subclasses_names(exclude=[current_model_name])[0]
+            new_model_name = list(base_class.get_list_of_subclasses_with_identifier(exclude=[current_model_name]).keys())[0]
             new_device_url = super().url_for_result(result).replace(current_model_name.lower(), new_model_name.lower())
             return new_device_url
 
@@ -373,7 +350,7 @@ class DeviceChangeList(ChangeListDefault):
 class DeviceAdmin(admin.ModelAdmin):
 
     list_display = ('type', 'location_detail', 'full_id','spec_id')
-    actions = [delete_models]
+    actions = [action_delete_devices]
 
     def get_changelist(self, request, **kwargs):
         return DeviceChangeList

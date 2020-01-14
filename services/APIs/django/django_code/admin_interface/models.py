@@ -364,7 +364,7 @@ class GenericDeviceManager(models.Manager):
     def get_queryset(self):
         return super().get_queryset()
 
-    def all_devices(self):
+    def all_devices_as_dict(self):
         all_devices = {}
         devices = Device.objects.all().values('type', 'full_id')
         non_devices = NonDevice.objects.all().values('type', 'full_id')
@@ -416,17 +416,14 @@ class GenericDevice(models.Model):
 
 
     @classmethod
-    def get_list_of_subclasses_names(cls, exclude=None):
-        names = []
+    def get_list_of_subclasses_with_identifier(cls, exclude=None):
+        subclasses = {}
         for subclass in cls.__subclasses__():
-            names.append(subclass.__name__)
+            subclasses[subclass.__name__] = {'class': subclass, 'id': subclass.get_class_identifier()}
         if exclude is not None:
             for name in exclude:
-                names.remove(name)
-        return names
-
-    def __str__(self):
-        return self.full_id
+                del subclasses[name]
+        return subclasses
 
     class Meta:
         abstract = True
@@ -485,6 +482,10 @@ class Device(GenericDevice):
         #         self.full_id = "d-"+str(last_id+1)
         super(Device, self).save(*args, **kwargs)
 
+    @classmethod
+    def get_class_identifier(cls):
+        return 'd'
+
 class NonDevice(GenericDevice):
     #@staticmethod
     # def get_full_id():
@@ -538,6 +539,9 @@ class NonDevice(GenericDevice):
         #         #self.spec_id = last_id+1
         super(NonDevice, self).save(*args, **kwargs)
 
+    @classmethod
+    def get_class_identifier(cls):
+        return 'n'
 
 class DatapointUnit(models.Model):
 
