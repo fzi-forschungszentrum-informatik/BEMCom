@@ -3,7 +3,7 @@ from django.dispatch import receiver, Signal
 
 from admin_interface.models import Connector
 from admin_interface.models import ConnectorDatapointTopicMapper
-from admin_interface.models import ConnectorAvailableDatapoints
+from admin_interface.models import GenericDatapoint
 from admin_interface.connector_mqtt_integration import ConnectorMQTTIntegration
 
 subscription_status = Signal(providing_args=['subscribed'])#['datapoint_key_in_connector', 'mqtt_topic', 'subscribed'])
@@ -25,7 +25,7 @@ def subscribe_to_mapped_datapoint_topic(**kwargs):
             new_subscription_status = getattr(mapping, 'subscribed')
 
             # Update subscription status of mapped available datapoint
-            ConnectorAvailableDatapoints.objects.filter(
+            GenericDatapoint.objects.filter(
                 connector=connector,
                 datapoint_key_in_connector=key).update(subscribed=new_subscription_status)
             print("Subscription status changed.")

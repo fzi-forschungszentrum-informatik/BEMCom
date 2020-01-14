@@ -183,7 +183,7 @@ class ConnectorDatapointTopicMapper(models.Model):
         mappers = ConnectorDatapointTopicMapper.objects.filter(connector=conn_id)
         key_topic_mappings = {}
         for mapper in mappers:
-            av_dp = ConnectorAvailableDatapoints.objects.filter(connector=conn_id, datapoint_key_in_connector=mapper.datapoint_key_in_connector)[0]
+            av_dp = GenericDatapoint.objects.filter(connector=conn_id, datapoint_key_in_connector=mapper.datapoint_key_in_connector)[0]
             key_topic_mappings[av_dp.datapoint_key_in_connector] = mapper.mqtt_topic
         return key_topic_mappings
 
@@ -195,31 +195,110 @@ class ConnectorDatapointTopicMapper(models.Model):
         verbose_name_plural = "Connector datapoint to MQTT topic mapping"
 
 
-class ConnectorAvailableDatapoints(models.Model):
+class GenericDatapoint(models.Model):
     """
     TODO: Actually subscribe to topics
     TODO: Set subscription status of corresponding available datapoint accordingly -> maybe in conn. mqtt integration (see TODO there)?
     """
+    
+    def __str__(self):
+        return slugify(self.key_in_connector)
+    
     connector = models.ForeignKey(
         Connector,
-        on_delete=models.CASCADE
+        on_delete=models.CASCADE,
+        editable=False,
     )
 
-    datapoint_type = models.CharField(max_length=8)
-    datapoint_key_in_connector = models.TextField(default='')
-    datapoint_example_value = models.TextField(default='')
-    subscribed = models.BooleanField(default=False)
+    USE_AS_CHOICES = [
+        ("not used", "Not used"),
+        ("numeric", "Numeric"),
+        ("text", "Text"),
+    ]
+    use_as = models.CharField(
+        max_length=8,
+        choices=USE_AS_CHOICES,
+        default="not used",
+    )
 
-    # TODO: Delete the following two lines
-    # mapping = ConnectorDatapointTopicMapper.objects.filter(connector=connector, datapoint_key_in_connector=datapoint_key_in_connector)
-    # subscribed = getattr(mapping, 'subscribed')  #
+    type = models.CharField(
+        max_length=8,
+        editable=False,
+        default=None,
+    )
+    
+    # This must be unlimeted to prevent errors from cut away keys while
+    # using the datapoint map by the connector.
+    key_in_connector = models.TextField(
+        editable=False,
+    )
+    
+    example_value = models.CharField(
+        max_length=30,
+        editable=False
+    )
+
+
+class TextDatapoint(GenericDatapoint):
+
+    last_value = models.TextField(
+        editable=False,
+    )
+    
+    last_timestamp = models.DateTimeField(
+        editable=False,
+    )
+
+
+class DatapointUnit(models.Model):
 
     def __str__(self):
-        return slugify(self.datapoint_key_in_connector)
+        return self.unit_quantity + " [" + self.unit_symbol + "]"
 
-    class Meta:
-        verbose_name_plural = "Connector available datapoints"
+    unit_quantity = models.TextField(
+        help_text="The quantity of the unit, e.g. Temperature or Power"
+    )
+    unit_symbol = models.TextField(
+        help_text="The short symbol of the unit, e.g. °C or kW"
+    )
 
+
+class NumericDatapoint(GenericDatapoint):
+
+    unit = models.ForeignKey(
+        DatapointUnit,
+        on_delete=models.SET('')
+    )
+     
+    last_value = models.TextField(
+        editable=False,
+    )
+    
+    last_timestamp = models.DateTimeField(
+        editable=False,
+    )
+
+    min_value = models.FloatField(
+        blank=True,
+        null=True,
+        default=None,
+        help_text=(
+            "The minimal expected value of the datapoint. Is uesed for "
+            "automatically scaling plots. Only applicable to datapoints that"
+            "carry numeric values."
+        )
+    )
+    # TODO: remove blank if not optional
+    max_value = models.FloatField(
+        blank=True,
+        null=True,
+        default=None,
+        help_text=(
+            "The maximal expected value of the datapoint. Is uesed for "
+            "automatically scaling plots. Only applicable to datapoints that"
+            "carry numeric values."
+        )
+    )
 
 class DeviceMakerManager(models.Manager):
     def get_by_natural_key(self, slug):
@@ -396,197 +475,145 @@ class NonDevice(GenericDevice):
     pass
 
 
-class DatapointUnit(models.Model):
-
-    def __str__(self):
-        return self.unit_quantity + " [" + self.unit_symbol + "]"
-
-    unit_quantity = models.TextField(
-        help_text="The quantity of the unit, e.g. Temperature or Power"
-    )
-    unit_symbol = models.TextField(
-        help_text="The short symbol of the unit, e.g. °C or kW"
-    )
-
-
-class Datapoint(models.Model):
-    """
-    TODO: Flag if already integrated or new (e.g. because of having installed a new device)
-    TODO: How about dynamic meta data?
-    TODO: Fix on_delete to set a meaningful default value.
-    """
-
-    def html_element_id(self):
-        """
-        Return the id of the datapoint element.
-        """
-        return "datapoint_" + str(self.pk)
-
-    def html_element(self):
-        """
-        Generates the html element to display the value of the datapoint with
-        the primary key as id and the default_value field as initial value.
-        E.g:
-            <div id=datapoint_21>--.-</div>
-        """
-        element = format_html(
-            "<div id={}>{}</div>",
-            self.html_element_id(),
-            self.default_value,
-        )
-        return element
-
-    # TODO: uncomment again
-    # device = models.ForeignKey(
-    #     Device,
-    #     on_delete=models.CASCADE
-    # )
-    # TODO: uncomment again
-    # unit = models.ForeignKey(
-    #     DatapointUnit,
-    #     on_delete=models.SET('')
-    # )
-    mqtt_topic = models.TextField(
-        null=True,
-        blank=True,
-        editable=False,
-        help_text=(
-            "The MQTT topic on which the values of this datapoint "
-            "are published. Is auto generated for consistency."
-        )
-    )
-    # TODO: remove blank
-    min_value = models.FloatField(
-        blank=True,
-        null=True,
-        default=None,
-        help_text=(
-            "The minimal expected value of the datapoint. Is uesed for "
-            "automatically scaling plots. Only applicable to datapoints that"
-            "carry numeric values."
-        )
-    )
-    # TODO: remove blank
-    max_value = models.FloatField(
-        blank=True,
-        null=True,
-        default=None,
-        help_text=(
-            "The maximal expected value of the datapoint. Is uesed for "
-            "automatically scaling plots. Only applicable to datapoints that"
-            "carry numeric values."
-        )
-    )
-    # # TODO: remove blank anc change default again
-    # default_value = models.FloatField(
-    #     default=None,
-    #     blank=True,
-    #     help_text=(
-    #         "The value that is displayed before the latest datapoint values "
-    #         "have been received via MQTT."
-    #     )
-    # )
-    datapoint_key_in_connector = models.TextField(default='')
+#class Datapoint(models.Model):
+#    """
+#    TODO: Flag if already integrated or new (e.g. because of having installed a new device)
+#    TODO: How about dynamic meta data?
+#    TODO: Fix on_delete to set a meaningful default value.
+#    """
+#
+#    def html_element_id(self):
+#        """
+#        Return the id of the datapoint element.
+#        """
+#        return "datapoint_" + str(self.pk)
+#
+#    def html_element(self):
+#        """
+#        Generates the html element to display the value of the datapoint with
+#        the primary key as id and the default_value field as initial value.
+#        E.g:
+#            <div id=datapoint_21>--.-</div>
+#        """
+#        element = format_html(
+#            "<div id={}>{}</div>",
+#            self.html_element_id(),
+#            self.default_value,
+#        )
+#        return element
+#
+#    # TODO: uncomment again
+#    # device = models.ForeignKey(
+#    #     Device,
+#    #     on_delete=models.CASCADE
+#    # )
+#    # TODO: uncomment again
+#    # unit = models.ForeignKey(
+#    #     DatapointUnit,
+#    #     on_delete=models.SET('')
+#    # )
+#    mqtt_topic = models.TextField(
+#        null=True,
+#        blank=True,
+#        editable=False,
+#        help_text=(
+#            "The MQTT topic on which the values of this datapoint "
+#            "are published. Is auto generated for consistency."
+#        )
+#    )
+#    # TODO: remove blank
+#    min_value = models.FloatField(
+#        blank=True,
+#        null=True,
+#        default=None,
+#        help_text=(
+#            "The minimal expected value of the datapoint. Is uesed for "
+#            "automatically scaling plots. Only applicable to datapoints that"
+#            "carry numeric values."
+#        )
+#    )
+#    # TODO: remove blank
+#    max_value = models.FloatField(
+#        blank=True,
+#        null=True,
+#        default=None,
+#        help_text=(
+#            "The maximal expected value of the datapoint. Is uesed for "
+#            "automatically scaling plots. Only applicable to datapoints that"
+#            "carry numeric values."
+#        )
+#    )
+#    # # TODO: remove blank anc change default again
+#    # default_value = models.FloatField(
+#    #     default=None,
+#    #     blank=True,
+#    #     help_text=(
+#    #         "The value that is displayed before the latest datapoint values "
+#    #         "have been received via MQTT."
+#    #     )
+#    # )
+#    datapoint_key_in_connector = models.TextField(default='')
 
 
-class GenericDatapoint(models.Model):
-    """
-    TODO: Active/subscribed (or similar) boolean?
-    TODO: Abstract model
-    """
-
-    def html_element_id(self):
-        """
-        Return the id of the datapoint element.
-        """
-        return "datapoint_" + str(self.pk)
-
-    def html_element(self):
-        """
-        Generates the html element to display the value of the datapoint with
-        the primary key as id and the default_value field as initial value.
-        E.g:
-            <div id=datapoint_21>--.-</div>
-        """
-        element = format_html(
-            "<div id={}>{}</div>",
-            self.html_element_id(),
-            self.default_value,
-        )
-        return element
-
-    # TODO: uncomment again
-    # device = models.ForeignKey(
-    #     Device,
-    #     on_delete=models.CASCADE
-    # )
-    mqtt_topic = models.TextField(
-        null=True,
-        blank=True,
-        editable=False,
-        help_text=(
-            "The MQTT topic on which the values of this datapoint "
-            "are published. Is auto generated for consistency."
-        )
-    )
-    datapoint_key_in_connector = models.TextField(default='')
-
-    last_value = models.TextField(
-        default='',
-        blank=True,
-        help_text=(
-            "The last value django is aware of. This is used as an initial "
-            "value in pages before updating from MQTT."
-            )
-        )
-    last_timestamp = models.BigIntegerField(
-        default=None,
-        null=True,
-        help_text=(
-            "The last timestamp corresponding to last_value above. This is "
-            "used as an initial value in pages before updating from MQTT."
-        )
-    )
-    descriptor = models.TextField(default='')
-
-    class Meta:
-        abstract = True
-
-
-class TextDatapoint(GenericDatapoint):
-    pass
-    # TODO: uncomment again
-    # device = models.ForeignKey(
-    #     Device,
-    #     on_delete=models.CASCADE
-    # )
-
-
-class NumericDatapoint(GenericDatapoint):
-    # TODO: uncomment again
-    # unit = models.ForeignKey(
-    #     DatapointUnit,
-    #     on_delete=models.SET('')
-    # )
-    # TODO: remove blank if not optional
-    min_value = models.FloatField(
-        blank=True,
-        null=True,
-        default=None,
-        help_text=(
-            "The minimal expected value of the datapoint. Is uesed for "
-            "automatically scaling plots. Only applicable to datapoints that"
-            "carry numeric values."
-        )
-    )
-    # TODO: remove blank if not optional
-    max_value = models.FloatField(
-        blank=True,
-        null=True,
-        default=None,
-        help_text=(
-            "The maximal expected value of the datapoint. Is uesed for "
-            "automatically scaling plots. Only applicable to datapoints that"
-            "carry numeric values."
-        )
-    )
+#class GenericDatapoint(models.Model):
+#    """
+#    TODO: Active/subscribed (or similar) boolean?
+#    TODO: Abstract model
+#    """
+#
+#    def html_element_id(self):
+#        """
+#        Return the id of the datapoint element.
+#        """
+#        return "datapoint_" + str(self.pk)
+#
+#    def html_element(self):
+#        """
+#        Generates the html element to display the value of the datapoint with
+#        the primary key as id and the default_value field as initial value.
+#        E.g:
+#            <div id=datapoint_21>--.-</div>
+#        """
+#        element = format_html(
+#            "<div id={}>{}</div>",
+#            self.html_element_id(),
+#            self.default_value,
+#        )
+#        return element
+#
+#    # TODO: uncomment again
+#    # device = models.ForeignKey(
+#    #     Device,
+#    #     on_delete=models.CASCADE
+#    # )
+#    mqtt_topic = models.TextField(
+#        null=True,
+#        blank=True,
+#        editable=False,
+#        help_text=(
+#            "The MQTT topic on which the values of this datapoint "
+#            "are published. Is auto generated for consistency."
+#        )
+#    )
+#    datapoint_key_in_connector = models.TextField(default='')
+#
+#    last_value = models.TextField(
+#        default='',
+#        blank=True,
+#        help_text=(
+#            "The last value django is aware of. This is used as an initial "
+#            "value in pages before updating from MQTT."
+#            )
+#        )
+#    last_timestamp = models.BigIntegerField(
+#        default=None,
+#        null=True,
+#        help_text=(
+#            "The last timestamp corresponding to last_value above. This is "
+#            "used as an initial value in pages before updating from MQTT."
+#        )
+#    )
+#    descriptor = models.TextField(default='')
+#
+#    class Meta:
+#        abstract = True

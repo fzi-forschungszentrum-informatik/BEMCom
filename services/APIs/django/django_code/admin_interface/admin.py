@@ -1,8 +1,8 @@
 from django.contrib import admin
 from django.utils.text import slugify
 from django.contrib.admin.models import LogEntry
-from .models import Connector, Device, ConnectorAvailableDatapoints, ConnectorHeartbeat, \
-    ConnectorLogEntry, ConnectorDatapointTopicMapper, Datapoint
+from .models import Connector, Device, GenericDatapoint, ConnectorHeartbeat, \
+    ConnectorLogEntry, ConnectorDatapointTopicMapper, NumericDatapoint
 from .signals import subscription_status
 from .utils import datetime_iso_format
 from datetime import datetime, timezone
@@ -132,7 +132,7 @@ class ConnectorAdmin(admin.ModelAdmin):
         key_topic_mappings = {}
         mappers = ConnectorDatapointTopicMapper.objects.filter(connector=obj.id)
         for mapper in mappers:
-            av_dp = ConnectorAvailableDatapoints.objects.filter(connector=obj.id, datapoint_key_in_connector=mapper.datapoint_key_in_connector)[0]
+            av_dp = GenericDatapoint.objects.filter(connector=obj.id, datapoint_key_in_connector=mapper.datapoint_key_in_connector)[0]
             key_topic_mappings[av_dp.datapoint_key_in_connector] = mapper.mqtt_topic
         return key_topic_mappings
 
@@ -236,17 +236,56 @@ class ConnectorAdmin(admin.ModelAdmin):
     #     print(update_fields)
     #     obj.save(update_fields=update_fields)
 
-@admin.register(ConnectorAvailableDatapoints)
-class ConnectorAvailableDatapointsAdmin(admin.ModelAdmin):
-    list_display = ('id', 'connector', 'datapoint_type', 'datapoint_example_value',  'datapoint_key_in_connector', 'subscribed', )
-    list_filter = ('subscribed', )#('datapoint_key_in_connector', 'connector', 'datapoint_type', 'datapoint_example_value', )
-    search_fields = ('datapoint_key_in_connector', )
+@admin.register(GenericDatapoint)
+class GenericDatapointAdmin(admin.ModelAdmin):
+        
+    list_display = (
+        "key_in_connector",
+        "connector",
+        "type",
+        "example_value",
+        "use_as",
+    )
+    list_filter = (
+        "connector",
+        "type",
+        "use_as",
+    )
+    search_fields = (
+        "key_in_connector",
+        "example_value",
+    )
+    readonly_fields = (
+        "connector",
+        "type",
+        "key_in_connector",
+        "example_value"
+    )
+    actions = (
+        "mark_not_used",
+        "mark_numeric",
+        "mark_text",
+    )
 
     @staticmethod
     def connector(obj):
         return obj.connector.name
+    
+    def mark_not_used(self, request, queryset):
+        queryset.update(use_as='numeric')
+    mark_not_used.short_description = "Mark selected datapoints as not used"
 
+    def mark_numeric(self, request, queryset):
+        queryset.update(use_as='numeric')
+    mark_numeric.short_description = "Mark selected datapoints as numeric"
+    
+    def mark_text(self, request, queryset):
+        queryset.update(use_as='numeric')
+    mark_text.short_description = "Mark selected datapoints as text"
 
+@admin.register(NumericDatapoint)
+class NumericDatapointAdmin(GenericDatapointAdmin):
+    pass
 
 @admin.register(ConnectorHeartbeat)
 class ConnectorHeartbeatAdmin(admin.ModelAdmin):
@@ -302,12 +341,6 @@ class ConnectorDatapointTopicMapperAdmin(admin.ModelAdmin):
                 if new_value != form.initial[field]:
                     update_fields.append(field)
         obj.save(update_fields=update_fields)
-
-
-@admin.register(Datapoint)
-class DatapointAdmin(admin.ModelAdmin):
-    list_display = ('datapoint_key_in_connector', )
-    search_fields = ('datapoint_key_in_connector', )
 
 
 # Register your models here.
