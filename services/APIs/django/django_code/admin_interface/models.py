@@ -360,11 +360,10 @@ class DeviceLocationFriendlyName(models.Model):
 
 
 class GenericDeviceManager(models.Manager):
-    # self.model return class
-    def get_queryset(self):
-        return super().get_queryset()
+    # FYI: self.model returns class
 
-    def all_devices_as_dict(self):
+    @staticmethod
+    def all_devices_as_dict():
         all_devices = {}
         devices = Device.objects.all().values('type', 'full_id')
         non_devices = NonDevice.objects.all().values('type', 'full_id')
@@ -373,25 +372,20 @@ class GenericDeviceManager(models.Manager):
         for n in non_devices:
             all_devices[n['full_id']] = n['type']
 
-        #queryset = devices.union(non_devices).order_by('type')
         return all_devices
 
 
 class GenericDevice(models.Model):
     """
-    TODO: !!! UUID as secondary keys to distinguish child models with same DB ID
-            see https://docs.djangoproject.com/en/dev/howto/writing-migrations/#migrations-that-add-unique-fields
     TODO: Write default for regex
     """
     connector = models.ForeignKey(
         Connector,
         on_delete=models.CASCADE
     )
-
-    uuid = models.UUIDField(
-        default=uuid.uuid4,
+    spec_id = models.PositiveIntegerField(
         editable=False,
-        unique=True
+        null=True
     )
     type = models.TextField(
         default='',
@@ -411,137 +405,95 @@ class GenericDevice(models.Model):
 
     objects = GenericDeviceManager()
 
-    def get_class_name(self):
-        return self.__class__.__name__
-
+    def __str__(self):
+        return self.type
 
     @classmethod
     def get_list_of_subclasses_with_identifier(cls, exclude=None):
         subclasses = {}
         for subclass in cls.__subclasses__():
-            subclasses[subclass.__name__] = {'class': subclass, 'id': subclass.get_class_identifier()}
+            subclasses[subclass.get_class_identifier()] = {'class': subclass, 'name': subclass.__name__}
         if exclude is not None:
-            for name in exclude:
-                del subclasses[name]
+            for cls_id in exclude:
+                del subclasses[cls_id]
         return subclasses
 
     class Meta:
         abstract = True
 
 
-# class DeviceManager(models.Manager):
-#     def get_by_natural_key(self, full_id):
-#         return self.get(full_id=full_id)
-
-
 class Device(GenericDevice):
-    # #@staticmethod
-    # def full_id(self):
-    #     last_object = Device.objects.all().order_by('id').last()
-    #     if not last_object:
-    #         last_id = last_object.id
-    #         return "d-"+str(last_id+1)
-    #     return "d-00"
-
-    class_identifier = models.TextField(
-        default='d',
-        editable=False,
-    )
     full_id = models.TextField(
         default='',
         editable=False,
         primary_key=True,
         unique=True
     )
-    spec_id = models.PositiveIntegerField(
-        editable=False,
-        null=True
-    )
-    def natural_key(self):
-        return self.full_id
 
     def save(self, *args, **kwargs):
         if self.spec_id is None:
             max_id = Device.objects.aggregate(max_id=models.Max('spec_id', output_field=models.IntegerField()))['max_id']
-            print(max_id)
-            self.spec_id = max_id + 1
+            if max_id:
+                self.spec_id = max_id + 1
+            else:  # max_id is None because this is the first object for this model ever
+                self.spec_id = 1
             self.full_id = 'd-' + str(self.spec_id)
-
-        # if self.full_id == '':
-        #
-        # if self.full_id is not None:
-        #     self.full_id = "d-" + str(self.id)
-        #     #self.spec_id = self.id
-        #
-        # else:
-        #     last_object = Device.objects.all().order_by('id').last()
-        #     print(last_object)
-        #     if last_object:
-        #         last_id = last_object.id
-        #         print(last_id)
-        #         self.full_id = "d-"+str(last_id+1)
         super(Device, self).save(*args, **kwargs)
 
     @classmethod
     def get_class_identifier(cls):
         return 'd'
 
-class NonDevice(GenericDevice):
-    #@staticmethod
-    # def get_full_id():
-    #     # last_object = NonDevice.objects.all().order_by('id').last()
-    #     # if not last_object:
-    #     #     last_id = last_object.id
-    #     #     return "n-"+str(last_id+1)
-    #     # return "n-00"
-    #     return 'n-' + str(self.id)
 
-    class_identifier = models.TextField(
-        default='nd',
-        editable=False,
-    )
+class NonDevice(GenericDevice):
     full_id = models.TextField(
         default='',
         editable=False,
         primary_key=True,
         unique=True
     )
-    spec_id = models.PositiveIntegerField(
-        editable=False,
-        null=True
-    )
+
     # url = models.URLField(
     #     blank=True
     # )
 
-    #manager = DeviceManager()q
-
-    # def natural_key(self):
-    #     return self.full_id
-
     def save(self, *args, **kwargs):
         if self.spec_id is None:
             max_id = NonDevice.objects.aggregate(max_id=models.Max('spec_id', output_field=models.IntegerField()))['max_id']
-            print(max_id)
-            self.spec_id = max_id + 1
-            self.full_id = 'd-' + str(self.spec_id)
-
-        # if self.id is not None:
-        #     self.full_id = "n-" + str(self.id)
-        #     #self.spec_id = self.id
-        # else:
-        #     last_object = NonDevice.objects.all().order_by('id').last()
-        #     print(last_object)
-        #     if last_object:
-        #         last_id = last_object.id
-        #         print(last_id)
-        #         self.full_id = "n-"+str(last_id+1)
-        #         #self.spec_id = last_id+1
+            if max_id:
+                self.spec_id = max_id + 1
+            else:  # max_id is None because this is the first object for this model ever
+                self.spec_id = 1
+            self.full_id = 'n-' + str(self.spec_id)
         super(NonDevice, self).save(*args, **kwargs)
 
     @classmethod
     def get_class_identifier(cls):
         return 'n'
+
+
+class TestDevice(GenericDevice):
+    full_id = models.TextField(
+        default='',
+        editable=False,
+        primary_key=True,
+        unique=True
+    )
+
+    def save(self, *args, **kwargs):
+        if self.spec_id is None:
+            max_id = TestDevice.objects.aggregate(max_id=models.Max('spec_id', output_field=models.IntegerField()))['max_id']
+            if max_id:
+                self.spec_id = max_id + 1
+            else:  # max_id is None because this is the first object for this model ever
+                self.spec_id = 1
+            self.full_id = 't-' + str(self.spec_id)
+        super(TestDevice, self).save(*args, **kwargs)
+
+    @classmethod
+    def get_class_identifier(cls):
+        return 't'
+
 
 class DatapointUnit(models.Model):
 

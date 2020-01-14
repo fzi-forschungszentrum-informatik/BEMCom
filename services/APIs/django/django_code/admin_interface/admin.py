@@ -4,7 +4,7 @@ from django.utils.text import slugify
 from django.contrib.admin.views.main import ChangeList as ChangeListDefault
 from django.urls import reverse
 from .models import Connector, ConnectorAvailableDatapoints, ConnectorHeartbeat, \
-    ConnectorLogEntry, ConnectorDatapointTopicMapper, Device, NonDevice, GenericDevice
+    ConnectorLogEntry, ConnectorDatapointTopicMapper, Device, NonDevice, TestDevice, GenericDevice
 from .signals import subscription_status
 from .utils import datetime_iso_format
 from datetime import datetime, timezone
@@ -23,12 +23,16 @@ Below: example to change the heartbeat topic to "beat":
 
 
 def action_delete_devices(modeladmin, request, queryset):
-    print(request._post.getlist('_selected_action'))
+    """
+    TODO: Add intermediary confirmation page
+        (see https://docs.djangoproject.com/en/3.0/ref/contrib/admin/actions/#actions-that-provide-intermediate-pages)
+    """
+    all_classes = GenericDevice.get_list_of_subclasses_with_identifier()
     for obj_pk in request._post.getlist('_selected_action'):
-        if obj_pk.startswith('d'):
-            Device.objects.filter(pk=obj_pk).delete()
-        elif obj_pk.startswith('n'):
-            NonDevice.objects.filter(pk=obj_pk).delete()
+        cls_id = obj_pk[0]
+        obj_class = all_classes[cls_id]['class']
+        obj_class.objects.filter(pk=obj_pk).delete()
+
 action_delete_devices.short_description = "Delete selected objects"
 
 
@@ -317,29 +321,39 @@ class ConnectorDatapointTopicMapperAdmin(admin.ModelAdmin):
 
 
 class DeviceChangeList(ChangeListDefault):
-    """
-    TODO: URL adaption in the case of multiple (>2) child classes
-    """
-
     def get_queryset(self, request):
         if request.method == 'GET':
+            base_class = self.root_queryset[0].__class__.__bases__[0]
+            all_classes = base_class.get_list_of_subclasses_with_identifier()
+            querysets = []
+            for cls_id, cls_dict in all_classes.items():
+                querysets.append(cls_dict['class'].objects.all())
+            print(querysets)
             print("Get union of all (non)Devices...")
-            devices = Device.objects.all()
-            non_devices = NonDevice.objects.all()
-            queryset = devices.union(non_devices)
-            print(queryset)
-            return queryset
+            united_queryset = querysets[0].union(querysets[1])
+            if len(querysets) > 2:
+                for i in range(2, len(querysets)):
+                    united_queryset = united_queryset.union(querysets[i])
+
+
+            # devices = Device.objects.all()
+            # non_devices = NonDevice.objects.all()
+            # queryset = devices.union(non_devices)
+            print(united_queryset)
+            return united_queryset
         return super().get_queryset(request)
 
     def url_for_result(self, result):
+        # Root_queryset is defined before get_queryset (see above) is called -> contains only Device objects
         devices_only_queryset = self.root_queryset
         base_class = devices_only_queryset[0].__class__.__bases__[0]
 
-        # Check if the current model (result) is a Device or Non-device by filtering the Device DB by UUID
-        if not devices_only_queryset.filter(uuid=result.uuid).exists():
-            # Model is a Non-Device -> adapt URL to this model's change page
+        # Check if the current model (result) is a Device or other type by searching the Device DB for its primary key
+        if not devices_only_queryset.filter(pk=result.pk).exists():
+            # Model is a not a Device -> adapt URL to this model's change page
             current_model_name = self.root_queryset[0].__class__.__name__
-            new_model_name = list(base_class.get_list_of_subclasses_with_identifier(exclude=[current_model_name]).keys())[0]
+            excluded_classes = [self.root_queryset[0].__class__.get_class_identifier()]
+            new_model_name = base_class.get_list_of_subclasses_with_identifier(exclude=excluded_classes)[result.pk[0]]['name']
             new_device_url = super().url_for_result(result).replace(current_model_name.lower(), new_model_name.lower())
             return new_device_url
 
@@ -355,20 +369,12 @@ class DeviceAdmin(admin.ModelAdmin):
     def get_changelist(self, request, **kwargs):
         return DeviceChangeList
 
-    # def changelist_view(self, request, extra_context=None):
-    #     print(self.__dict__)
-    #     #extra_context['full_id'] =
-    #     return super().changelist_view(request, extra_context)
-
     def get_actions(self, request):
         all_actions = super().get_actions(request)
         if 'delete_selected' in all_actions:
             del all_actions['delete_selected']
         return all_actions
 
-    # def delete_queryset(self, request, queryset):
-    #     print(queryset)
-    #     super().delete_queryset(request, queryset)
 
 
 
@@ -380,4 +386,5 @@ class DeviceAdmin(admin.ModelAdmin):
 
 # Register your models here.
 admin.site.register(NonDevice)
+admin.site.register(TestDevice)
 
