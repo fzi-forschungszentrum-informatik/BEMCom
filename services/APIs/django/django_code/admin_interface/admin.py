@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.http import HttpResponseRedirect
 from django.contrib.admin import actions
 from django.utils.text import slugify
 from django.contrib.admin.views.main import ChangeList as ChangeListDefault
@@ -39,7 +40,7 @@ action_delete_devices.short_description = "Delete selected objects"
 class DatapointMappingInline(admin.TabularInline):
     model = ConnectorDatapointTopicMapper
     extra = 0
-    fields = ('datapoint_key_in_connector', 'mqtt_topic', 'datapoint_type', 'subscribed', )
+    fields = ('datapoint_key_in_connector', 'mqtt_topic', 'datapoint_type', 'type', )
     readonly_fields = ('datapoint_key_in_connector', 'mqtt_topic', 'datapoint_type', )
     ordering = ('subscribed', )
     verbose_name_plural = "Available datapoints subscription management"
@@ -49,6 +50,21 @@ class DatapointMappingInline(admin.TabularInline):
     # def get_queryset(self, request):
     #     queryset = super(DatapointMappingInline, self).get_queryset(request)
     #     return queryset.filter(subscribed=False)
+
+
+class AvailableDatapointsInline(admin.TabularInline):
+    model = ConnectorAvailableDatapoints
+    extra = 0
+    fields = ('datapoint_key_in_connector', 'datapoint_type', 'datapoint_example_value', 'format', )
+    readonly_fields = ('datapoint_key_in_connector', 'datapoint_type', 'datapoint_example_value', )
+    ordering = ('datapoint_key_in_connector', )
+    verbose_name_plural = "Available datapoints subscription management"
+    can_delete = False
+
+    # Uncomment to only display unsubscribed datapoints
+    def get_queryset(self, request):
+        queryset = super(AvailableDatapointsInline, self).get_queryset(request)
+        return queryset.filter(datapoint_key_in_connector__istartswith='meter_1_')
 
 
 @admin.register(Connector)
@@ -169,15 +185,23 @@ class ConnectorAdmin(admin.ModelAdmin):
         )
         return super(ConnectorAdmin, self).add_view(request)
 
+    change_form_template = '../templates/connector_change_form.html'
+
+    def response_change(self, request, obj):
+        if "_av_dp" in request.POST:
+            return HttpResponseRedirect("/admin/admin_interface/"
+                                        "connectoravailabledatapoints/?connector__id__exact={}".format(obj.id))
+        return super().response_change(request, obj)
+
     # Things that shall be displayed in change object view, but not add object view
     def change_view(self, request, object_id, form_url='', extra_context=None):
-        self.inlines = [DatapointMappingInline]
+        #self.inlines = [AvailableDatapointsInline]
         self.fieldsets = (
             ('Basic information', {
                 'fields': ('name', 'date_added', ('alive', 'last_heartbeat', 'next_heartbeat'), )
             }),
             ('MQTT topics', {
-                'fields': [topic for topic in Connector.get_mqtt_topics(Connector()).keys()]
+                'fields': [topic for topic in Connector.get_mqtt_topics(Connector()).keys()],
             }),
         )
         self.readonly_fields = ('date_added', 'last_heartbeat', 'next_heartbeat', 'alive', )
@@ -254,8 +278,8 @@ class ConnectorAdmin(admin.ModelAdmin):
 
 @admin.register(ConnectorAvailableDatapoints)
 class ConnectorAvailableDatapointsAdmin(admin.ModelAdmin):
-    list_display = ('id', 'connector', 'datapoint_type', 'datapoint_example_value',  'datapoint_key_in_connector', 'subscribed', )
-    list_filter = ('subscribed', )#('datapoint_key_in_connector', 'connector', 'datapoint_type', 'datapoint_example_value', )
+    list_display = ('id', 'connector', 'datapoint_type', 'datapoint_example_value',  'datapoint_key_in_connector', 'format', )
+    list_filter = ('connector', 'format', )#('datapoint_key_in_connector', 'connector', 'datapoint_type', 'datapoint_example_value', )
     search_fields = ('datapoint_key_in_connector', )
 
     @staticmethod

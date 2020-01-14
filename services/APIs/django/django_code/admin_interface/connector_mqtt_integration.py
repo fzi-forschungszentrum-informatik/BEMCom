@@ -161,7 +161,6 @@ class ConnectorMQTTIntegration():
         if message_type == 'mqtt_topic_available_datapoints':
             # TODO: Check how many of those entries exist already.
             for datapoint_type in payload:
-
                 for key, example in payload[datapoint_type].items():
                     # Check if this available datapoint already exists in database
                     # TODO: Update entry if type or example value changes for a given key instead of creating a new object
@@ -180,16 +179,17 @@ class ConnectorMQTTIntegration():
                                 'Exception while writing available datapoint into '
                                 'DB.'
                             )
-                    # TODO: only test version below -> create with correct device and unit
-                    if not models.Datapoint.objects.filter(datapoint_key_in_connector=key).exists():
-                        try:
-                            _ = models.Datapoint(
-                                datapoint_key_in_connector=key,
-                            ).save()
-                        except Exception:
-                            logger.exception(
-                                'Exception while writing datapoint into DB.'
-                            )
+
+                    # # TODO: only test version below -> create with correct device and unit
+                    # if not models.Datapoint.objects.filter(datapoint_key_in_connector=key).exists():
+                    #     try:
+                    #         _ = models.Datapoint(
+                    #             datapoint_key_in_connector=key,
+                    #         ).save()
+                    #     except Exception:
+                    #         logger.exception(
+                    #             'Exception while writing datapoint into DB.'
+                    #         )
 
         if message_type == 'mqtt_topic_datapoint_map':
             for datapoint_type in payload:

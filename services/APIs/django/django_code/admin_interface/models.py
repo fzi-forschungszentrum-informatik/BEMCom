@@ -211,6 +211,11 @@ class ConnectorAvailableDatapoints(models.Model):
     datapoint_key_in_connector = models.TextField(default='')
     datapoint_example_value = models.TextField(default='')
     subscribed = models.BooleanField(default=False)
+    format = models.TextField(
+        choices=[('unused', 'not used'), ('num', 'numeric'), ('text', 'text')],
+        default='unused'
+    )
+
 
     # TODO: Delete the following two lines
     # mapping = ConnectorDatapointTopicMapper.objects.filter(connector=connector, datapoint_key_in_connector=datapoint_key_in_connector)
@@ -381,7 +386,7 @@ class GenericDevice(models.Model):
     """
     connector = models.ForeignKey(
         Connector,
-        on_delete=models.CASCADE
+        on_delete=models.DO_NOTHING
     )
     spec_id = models.PositiveIntegerField(
         editable=False,
