@@ -1,6 +1,7 @@
 from datetime import date
 import uuid
 from django.db import models
+from django.db.models import Max, IntegerField
 from django.db.models.query import QuerySet
 from django.shortcuts import reverse
 from django.utils.html import format_html
@@ -358,6 +359,24 @@ class DeviceLocationFriendlyName(models.Model):
 #     #     return self.device_slug
 
 
+class GenericDeviceManager(models.Manager):
+    # self.model return class
+    def get_queryset(self):
+        return super().get_queryset()
+
+    def all_devices(self):
+        all_devices = {}
+        devices = Device.objects.all().values('type', 'full_id')
+        non_devices = NonDevice.objects.all().values('type', 'full_id')
+        for d in devices:
+            all_devices[d['full_id']] = d['type']
+        for n in non_devices:
+            all_devices[n['full_id']] = n['type']
+
+        #queryset = devices.union(non_devices).order_by('type')
+        return all_devices
+
+
 class GenericDevice(models.Model):
     """
     TODO: !!! UUID as secondary keys to distinguish child models with same DB ID
@@ -368,12 +387,12 @@ class GenericDevice(models.Model):
         Connector,
         on_delete=models.CASCADE
     )
+
     uuid = models.UUIDField(
         default=uuid.uuid4,
         editable=False,
         unique=True
     )
-
     type = models.TextField(
         default='',
         max_length=30,
@@ -390,8 +409,11 @@ class GenericDevice(models.Model):
         help_text="Regular expression to automatically match available datapoints to this device based on their key."
     )
 
+    objects = GenericDeviceManager()
+
     def get_class_name(self):
         return self.__class__.__name__
+
 
     @classmethod
     def get_list_of_subclasses_names(cls, exclude=None):
@@ -404,10 +426,15 @@ class GenericDevice(models.Model):
         return names
 
     def __str__(self):
-        return self.type
+        return self.full_id
 
     class Meta:
         abstract = True
+
+
+# class DeviceManager(models.Manager):
+#     def get_by_natural_key(self, full_id):
+#         return self.get(full_id=full_id)
 
 
 class Device(GenericDevice):
@@ -419,7 +446,6 @@ class Device(GenericDevice):
     #         return "d-"+str(last_id+1)
     #     return "d-00"
 
-
     class_identifier = models.TextField(
         default='d',
         editable=False,
@@ -427,19 +453,36 @@ class Device(GenericDevice):
     full_id = models.TextField(
         default='',
         editable=False,
-        blank=True
+        primary_key=True,
+        unique=True
     )
+    spec_id = models.PositiveIntegerField(
+        editable=False,
+        null=True
+    )
+    def natural_key(self):
+        return self.full_id
 
     def save(self, *args, **kwargs):
-        if self.id is not None:
-            self.full_id = "d-" + str(self.id)
-        else:
-            last_object = Device.objects.all().order_by('id').last()
-            print(last_object)
-            if last_object:
-                last_id = last_object.id
-                print(last_id)
-                self.full_id = "d-"+str(last_id+1)
+        if self.spec_id is None:
+            max_id = Device.objects.aggregate(max_id=models.Max('spec_id', output_field=models.IntegerField()))['max_id']
+            print(max_id)
+            self.spec_id = max_id + 1
+            self.full_id = 'd-' + str(self.spec_id)
+
+        # if self.full_id == '':
+        #
+        # if self.full_id is not None:
+        #     self.full_id = "d-" + str(self.id)
+        #     #self.spec_id = self.id
+        #
+        # else:
+        #     last_object = Device.objects.all().order_by('id').last()
+        #     print(last_object)
+        #     if last_object:
+        #         last_id = last_object.id
+        #         print(last_id)
+        #         self.full_id = "d-"+str(last_id+1)
         super(Device, self).save(*args, **kwargs)
 
 class NonDevice(GenericDevice):
@@ -458,23 +501,41 @@ class NonDevice(GenericDevice):
     )
     full_id = models.TextField(
         default='',
-        blank=True,
-        editable=False
+        editable=False,
+        primary_key=True,
+        unique=True
+    )
+    spec_id = models.PositiveIntegerField(
+        editable=False,
+        null=True
     )
     # url = models.URLField(
     #     blank=True
     # )
 
+    #manager = DeviceManager()q
+
+    # def natural_key(self):
+    #     return self.full_id
+
     def save(self, *args, **kwargs):
-        if self.id is not None:
-            self.full_id = "n-" + str(self.id)
-        else:
-            last_object = NonDevice.objects.all().order_by('id').last()
-            print(last_object)
-            if last_object:
-                last_id = last_object.id
-                print(last_id)
-                self.full_id = "n-"+str(last_id+1)
+        if self.spec_id is None:
+            max_id = NonDevice.objects.aggregate(max_id=models.Max('spec_id', output_field=models.IntegerField()))['max_id']
+            print(max_id)
+            self.spec_id = max_id + 1
+            self.full_id = 'd-' + str(self.spec_id)
+
+        # if self.id is not None:
+        #     self.full_id = "n-" + str(self.id)
+        #     #self.spec_id = self.id
+        # else:
+        #     last_object = NonDevice.objects.all().order_by('id').last()
+        #     print(last_object)
+        #     if last_object:
+        #         last_id = last_object.id
+        #         print(last_id)
+        #         self.full_id = "n-"+str(last_id+1)
+        #         #self.spec_id = last_id+1
         super(NonDevice, self).save(*args, **kwargs)
 
 

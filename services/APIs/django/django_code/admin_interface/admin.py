@@ -4,7 +4,7 @@ from django.utils.text import slugify
 from django.contrib.admin.views.main import ChangeList as ChangeListDefault
 from django.urls import reverse
 from .models import Connector, ConnectorAvailableDatapoints, ConnectorHeartbeat, \
-    ConnectorLogEntry, ConnectorDatapointTopicMapper, Device, NonDevice
+    ConnectorLogEntry, ConnectorDatapointTopicMapper, Device, NonDevice, GenericDevice
 from .signals import subscription_status
 from .utils import datetime_iso_format
 from datetime import datetime, timezone
@@ -22,13 +22,24 @@ Below: example to change the heartbeat topic to "beat":
 """
 
 def delete_models(modeladmin, request, queryset):
-    ids_list = request._post.getlist('_selected_action')
-    qd = request._post
-    print(qd)
-    print(qd.getlist('_selected_action'))
     print(queryset)
-    for model in queryset:
-        print(model.__class__.__name__)
+    for obj in queryset:
+        if obj.full_id.startswith('d'):
+            print("{} will be deleted.".format(Device.objects.filter(pk=obj.full_id[2:])))
+            #Device.objects.filter(pk=obj.full_id[2:]).delete()
+        elif obj.full_id.startswith('n'):
+            print("{} will be deleted.".format(NonDevice.objects.filter(pk=obj.full_id[2:])))
+            #NonDevice.objects.filter(pk=obj.full_id[2:]).delete()
+
+    print(request.__dict__)
+    # ids_list = request._post.getlist('_selected_action')
+    # qd = request._post
+    # print(qd)
+    # print(qd.getlist('_selected_action'))
+    # print(queryset)
+    # for model in queryset:
+    #     print(model.__class__.__name__)
+    #     print(model.full_id)
 
     # if len(ids_list) != len(queryset):
     #     # One or more objects are non-devices
@@ -323,6 +334,7 @@ class ConnectorDatapointTopicMapperAdmin(admin.ModelAdmin):
                     update_fields.append(field)
         obj.save(update_fields=update_fields)
 
+
 class DeviceChangeList(ChangeListDefault):
     """
     TODO: URL adaption in the case of multiple (>2) child classes
@@ -331,9 +343,14 @@ class DeviceChangeList(ChangeListDefault):
     def get_queryset(self, request):
         if request.method == 'GET':
             print("Get union of all (non)Devices...")
-            devices = Device.objects.all()#.values_list('type')
-            non_devices = NonDevice.objects.all()#.values_list('type')
-            queryset = devices.union(non_devices)#.order_by('type')
+            devices = Device.objects.all()
+            # for d in devices:
+            #     Device.objects.filter(pk=d.id).update(spec_id=d.id)
+            non_devices = NonDevice.objects.all()
+            # for n in non_devices:
+            #     NonDevice.objects.filter(pk=n.id).update(spec_id=n.id)
+            queryset = devices.union(non_devices)
+            print(queryset)
             return queryset
         return super().get_queryset(request)
 
@@ -355,11 +372,16 @@ class DeviceChangeList(ChangeListDefault):
 @admin.register(Device)
 class DeviceAdmin(admin.ModelAdmin):
 
-    list_display = ('type', 'location_detail', 'full_id', )
+    list_display = ('type', 'location_detail', 'full_id','spec_id')
     actions = [delete_models]
 
     def get_changelist(self, request, **kwargs):
         return DeviceChangeList
+
+    # def changelist_view(self, request, extra_context=None):
+    #     print(self.__dict__)
+    #     #extra_context['full_id'] =
+    #     return super().changelist_view(request, extra_context)
 
     def get_actions(self, request):
         all_actions = super().get_actions(request)
