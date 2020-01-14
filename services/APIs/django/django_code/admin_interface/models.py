@@ -437,7 +437,7 @@ class Device(GenericDevice):
                 self.spec_id = max_id + 1
             else:  # max_id is None because this is the first object for this model ever
                 self.spec_id = 1
-            self.full_id = 'd-' + str(self.spec_id)
+            self.full_id = self.get_class_identifier() + '-' + str(self.spec_id)
         super(Device, self).save(*args, **kwargs)
 
     @classmethod
@@ -464,7 +464,7 @@ class NonDevice(GenericDevice):
                 self.spec_id = max_id + 1
             else:  # max_id is None because this is the first object for this model ever
                 self.spec_id = 1
-            self.full_id = 'n-' + str(self.spec_id)
+            self.full_id = self.get_class_identifier() + '-' + str(self.spec_id)
         super(NonDevice, self).save(*args, **kwargs)
 
     @classmethod
@@ -487,7 +487,7 @@ class TestDevice(GenericDevice):
                 self.spec_id = max_id + 1
             else:  # max_id is None because this is the first object for this model ever
                 self.spec_id = 1
-            self.full_id = 't-' + str(self.spec_id)
+            self.full_id = self.get_class_identifier() + '-' + str(self.spec_id)
         super(TestDevice, self).save(*args, **kwargs)
 
     @classmethod
