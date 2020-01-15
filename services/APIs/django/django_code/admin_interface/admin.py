@@ -4,8 +4,9 @@ from django.contrib.admin import actions
 from django.utils.text import slugify
 from django.contrib.admin.views.main import ChangeList as ChangeListDefault
 from django.urls import reverse
-from .models import Connector, ConnectorAvailableDatapoints, ConnectorHeartbeat, \
-    ConnectorLogEntry, Device, NonDevice, TestDevice, GenericDevice
+from .models import Connector, ConnectorAvailableDatapoints, ConnectorHeartbeat, ConnectorLogEntry, \
+    Device, NonDevice, TestDevice, GenericDevice, \
+    NumericDatapoint, TextDatapoint
 from .utils import datetime_iso_format
 from datetime import datetime, timezone
 import uuid
@@ -35,6 +36,28 @@ def action_delete_devices(modeladmin, request, queryset):
 
 action_delete_devices.short_description = "Delete selected objects"
 
+
+def action_make_numeric(modeladmin, request, queryset):
+    for obj in queryset:
+        setattr(obj, 'format', 'num')
+        obj.save(update_fields=['format'])
+action_make_numeric.short_description = "Change format to numeric"
+
+
+def action_make_text(modeladmin, request, queryset):
+    for obj in queryset:
+        setattr(obj, 'format', 'text')
+        obj.save(update_fields=['format'])
+action_make_text.short_description = "Change format to text"
+
+
+def action_make_unused(modeladmin, request, queryset):
+    for obj in queryset:
+        setattr(obj, 'format', 'unused')
+        obj.save(update_fields=['format'])
+action_make_unused.short_description = "Mark as not used"
+
+
 class AvailableDatapointsInline(admin.TabularInline):
     model = ConnectorAvailableDatapoints
     extra = 0
@@ -48,6 +71,29 @@ class AvailableDatapointsInline(admin.TabularInline):
     def get_queryset(self, request):
         queryset = super(AvailableDatapointsInline, self).get_queryset(request)
         return queryset.filter(datapoint_key_in_connector__istartswith='meter_1_')
+
+
+class DatapointsInline(admin.TabularInline):
+    extra = 0
+    fields = ('datapoint_key_in_connector', 'mqtt_topic', 'last_value', 'last_timestamp')
+    readonly_fields = fields
+    ordering = ('datapoint_key_in_connector',)
+    show_change_link = True
+    can_delete = False
+    classes = ('collapse', )
+
+    def has_add_permission(self, request, obj):
+        return False
+
+
+class NumericDatapointsInline(DatapointsInline):
+    model = NumericDatapoint
+    verbose_name_plural = "Active numeric datapoints of this connector"
+
+
+class TextDatapointsInline(DatapointsInline):
+    model = TextDatapoint
+    verbose_name_plural = "Active text datapoints of this connector"
 
 
 @admin.register(Connector)
@@ -122,12 +168,6 @@ class ConnectorAdmin(admin.ModelAdmin):
                                'click "Save and continue editing" to proceed with the connector integration.</h3>',
                 'fields': ('name', )
             }),
-            # ('MQTT topics', {
-            #     'description': '<h3>Click "Save and continue editing" to prefill the MQTT topics '
-            #                    'with <i>connector-name/topic</i>.</h3>',
-            #     'classes': ('collapse',),
-            #     'fields': [topic for topic in Connector.get_mqtt_topics(Connector()).keys()]
-            # }),
         )
         return super(ConnectorAdmin, self).add_view(request)
 
@@ -144,7 +184,7 @@ class ConnectorAdmin(admin.ModelAdmin):
     # Things that shall be displayed in change object view, but not add object view
     def change_view(self, request, object_id, form_url='', extra_context=None):
         # Add Inline objects to be displayed
-        # self.inlines = [AvailableDatapointsInline]
+        self.inlines = [NumericDatapointsInline, TextDatapointsInline]
 
         self.fieldsets = (
             ('Basic information', {
@@ -152,6 +192,7 @@ class ConnectorAdmin(admin.ModelAdmin):
             }),
             ('MQTT topics', {
                 'fields': [topic for topic in Connector.get_mqtt_topics(Connector()).keys()],
+                'classes': ('collapse', )
             }),
         )
         self.readonly_fields = ('date_added', 'last_heartbeat', 'next_heartbeat', 'alive', )
@@ -192,9 +233,23 @@ class ConnectorAvailableDatapointsAdmin(admin.ModelAdmin):
     list_filter = ('connector', 'format', )
     search_fields = ('datapoint_key_in_connector', )
 
+    actions = (action_make_numeric, action_make_text, action_make_unused, )
+
     @staticmethod
     def connector(obj):
         return obj.connector.name
+
+    def save_model(self, request, obj, form, change):
+
+        update_fields = []
+
+        # True if model is changed not added
+        if change:
+            for field, new_value in form.cleaned_data.items():
+                print("field: {}, new_value={}, old_value={}".format(field, new_value, form.initial[field]))
+                if new_value != form.initial[field] and form.initial[field] == 'unused':
+                    update_fields.append(field)
+        obj.save(update_fields=update_fields)
 
 
 @admin.register(ConnectorHeartbeat)
@@ -313,4 +368,7 @@ class DeviceAdmin(admin.ModelAdmin):
 # Register your models here.
 admin.site.register(NonDevice)
 admin.site.register(TestDevice)
+admin.site.register(NumericDatapoint)
+admin.site.register(TextDatapoint)
+
 

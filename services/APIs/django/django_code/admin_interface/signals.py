@@ -1,6 +1,6 @@
 from django.db.models import signals
 from django.dispatch import receiver, Signal
-from .models import ConnectorAvailableDatapoints
+from .models import ConnectorAvailableDatapoints, NumericDatapoint, TextDatapoint
 from admin_interface import connector_mqtt_integration
 
 #subscription_status = Signal(providing_args=['subscribed'])#['datapoint_key_in_connector', 'mqtt_topic', 'subscribed'])
@@ -32,4 +32,46 @@ from admin_interface import connector_mqtt_integration
 #                 datapoint_key_in_connector=key).update(subscribed=new_subscription_status)
 #             print("Subscription status changed.")
 
+
+@receiver(signals.post_save, sender=ConnectorAvailableDatapoints)
+def create_or_update_datapoint(**kwargs):
+
+    # kwargs contains sender, instance, update_fields (and some other args)
+    if kwargs['update_fields']:
+        if 'format' in kwargs['update_fields']:
+            available_datapoint = kwargs['instance']
+            connector = getattr(available_datapoint, 'connector')
+            key = getattr(available_datapoint, 'datapoint_key_in_connector')
+            dp_format = getattr(available_datapoint, 'format')
+
+            # TODO: nice code
+            # TODO: case 'unused'
+            if dp_format == 'num':
+                _ = NumericDatapoint(
+                    connector=connector,
+                    datapoint_key_in_connector=key,
+                ).save()
+
+                if TextDatapoint.objects.filter(
+                    connector=connector,
+                    datapoint_key_in_connector=key
+                ).exists():
+                    TextDatapoint.objects.filter(
+                        connector=connector,
+                        datapoint_key_in_connector=key
+                    ).delete()
+            elif dp_format == 'text':
+                _ = TextDatapoint(
+                    connector=connector,
+                    datapoint_key_in_connector=key,
+                ).save()
+
+                if NumericDatapoint.objects.filter(
+                    connector=connector,
+                    datapoint_key_in_connector=key
+                ).exists():
+                    NumericDatapoint.objects.filter(
+                        connector=connector,
+                        datapoint_key_in_connector=key
+                    ).delete()
 

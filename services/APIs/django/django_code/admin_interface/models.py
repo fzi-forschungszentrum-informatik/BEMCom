@@ -407,11 +407,10 @@ class GenericDatapoint(models.Model):
         )
         return element
 
-    # TODO: uncomment again
-    # device = models.ForeignKey(
-    #     Device,
-    #     on_delete=models.CASCADE
-    # )
+    connector = models.ForeignKey(
+        Connector,
+        on_delete=models.CASCADE
+    )
     mqtt_topic = models.TextField(
         null=True,
         blank=True,
@@ -439,7 +438,10 @@ class GenericDatapoint(models.Model):
             "used as an initial value in pages before updating from MQTT."
         )
     )
-    descriptor = models.TextField(default='')
+    descriptor = models.TextField(
+        default='',
+        blank=True
+    )
 
     class Meta:
         abstract = True
