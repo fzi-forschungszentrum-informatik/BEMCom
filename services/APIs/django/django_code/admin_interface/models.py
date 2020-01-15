@@ -9,9 +9,10 @@ from django.utils.text import slugify
 
 from admin_interface import connector_mqtt_integration
 
+
 class Connector(models.Model):
     """
-    TODO: Review set and get MQTT topics
+    TODO: Review set and get MQTT topics for redundancy
     TODO: Ensure that all topics are unique.
     """
     name = models.CharField(
@@ -64,18 +65,7 @@ class Connector(models.Model):
     )
     date_added = models.DateField()
 
-    # def get_mapped_av_datapoints(self):
-    #     pass
-
-    # available_datapoints = models.CharField(
-    #     choices=[],
-    #     blank=True
-    # )
-
     def __str__(self):
-        return self.name
-
-    def natural_key(self):
         return self.name
 
     # Get dictionary of the fields defined above with verbose (human-readable) name and connector-specific value
@@ -116,8 +106,9 @@ class Connector(models.Model):
             cmi.integrate_new_connector(connector=self, message_types=(self.get_mqtt_topics().keys()))
         super(Connector, self).save(*args, **kwargs)
 
-    def get_absolute_url(self):
-        return reverse("edit_connector", kwargs={"id": self.id})
+    # TODO: Not sure if needed -> delete if no error is thrown
+    # def get_absolute_url(self):
+    #     return reverse("edit_connector", kwargs={"id": self.id})
 
 
 class ConnectorLogEntry(models.Model):
@@ -153,50 +144,6 @@ class ConnectorHeartbeat(models.Model):
         verbose_name_plural = "Connector heartbeats"
 
 
-# class ConnectorMessages(models.Model):
-#     connector = models.ForeignKey(
-#         Connector,
-#         on_delete=models.CASCADE
-#     )
-
-# class MapperQuerySet(QuerySet):
-#     def update(self, **kwargs):
-#         print("being updated")
-#         super().update(**kwargs)
-
-
-class ConnectorDatapointTopicMapper(models.Model):
-    #objects = MapperQuerySet.as_manager()
-
-    connector = models.ForeignKey(
-        Connector,
-        on_delete=models.CASCADE
-    )
-    datapoint_type = models.CharField(max_length=8)
-    datapoint_key_in_connector = models.TextField(default='')
-    mqtt_topic = models.TextField(default='')
-    subscribed = models.BooleanField(
-        default=False,
-        verbose_name="subscribe/ unsubscribe"
-    )
-
-    def get_mapping(self):
-        conn_id = self.connector.id
-        mappers = ConnectorDatapointTopicMapper.objects.filter(connector=conn_id)
-        key_topic_mappings = {}
-        for mapper in mappers:
-            av_dp = ConnectorAvailableDatapoints.objects.filter(connector=conn_id, datapoint_key_in_connector=mapper.datapoint_key_in_connector)[0]
-            key_topic_mappings[av_dp.datapoint_key_in_connector] = mapper.mqtt_topic
-        return key_topic_mappings
-
-    def __str__(self):
-        return str(self.id)
-
-    class Meta:
-        verbose_name = "Connector datapoint to MQTT topic mapping"
-        verbose_name_plural = "Connector datapoint to MQTT topic mapping"
-
-
 class ConnectorAvailableDatapoints(models.Model):
     """
     TODO: Actually subscribe to topics
@@ -215,11 +162,6 @@ class ConnectorAvailableDatapoints(models.Model):
         choices=[('unused', 'not used'), ('num', 'numeric'), ('text', 'text')],
         default='unused'
     )
-
-
-    # TODO: Delete the following two lines
-    # mapping = ConnectorDatapointTopicMapper.objects.filter(connector=connector, datapoint_key_in_connector=datapoint_key_in_connector)
-    # subscribed = getattr(mapping, 'subscribed')  #
 
     def __str__(self):
         return slugify(self.datapoint_key_in_connector)
@@ -288,80 +230,6 @@ class DeviceLocationFriendlyName(models.Model):
         help_text="Human readable device location. "
                   "E.g. 3.1.12 or heating cellar"
     )
-
-
-# class DeviceManager(models.Manager):
-#     def get_by_natural_key(self, slug):
-#         return self.get(slug=slug)
-#
-#
-# class Device(models.Model):
-#     """
-#     TODO: Uncomment attributes below
-#     TODO: How about dynamic meta data?
-#     TODO: Fix on_delete to set a meaningful default value.
-#     """
-#     connector = models.ForeignKey(
-#         Connector,
-#         on_delete=models.CASCADE
-#     )
-#     # device_type_friendly_name = models.ForeignKey(
-#     #     DeviceType,
-#     #     on_delete=models.SET(''),
-#     #     name='Device_type'
-#     # )
-#     # device_location_friendly_name = models.ForeignKey(
-#     #     DeviceLocationFriendlyName,
-#     #     on_delete=models.SET(''),
-#     #     name='Device_location'
-#     # )
-#     device_name = models.TextField(
-#         default='',
-#         max_length=30,
-#         help_text="Name of device, e.g. Dachs"
-#     )
-#     # device_maker = models.ForeignKey(
-#     #     DeviceMaker,
-#     #     on_delete=models.SET(''),
-#     #     default=''
-#     # )
-#     # device_version = models.ForeignKey(
-#     #     DeviceVersion,
-#     #     on_delete=models.SET(''),
-#     #     blank=True,
-#     #     default=''
-#     #     #limit_choices_to=....
-#     # )
-#     # device_slug = models.SlugField(
-#     #     max_length=150,
-#     #     default="{}_{}_{}".format(device_maker, device_name, device_version),
-#     # )
-#     # is_virtual = models.BooleanField(
-#     #     help_text="True for virtual devices like e.g. a webservice."
-#     # )
-#     # x = models.FloatField(
-#     #     null=True,
-#     #     default=None,
-#     #     help_text="X Position in 3D Model"
-#     # )
-#     # y = models.FloatField(
-#     #     null=True,
-#     #     default=None,
-#     #     help_text="Y Position in 3D Model"
-#     # )
-#     # z = models.FloatField(
-#     #     null=True,
-#     #     default=None,
-#     #     help_text="Z Position in 3D Model"
-#     # )
-#     manager = DeviceManager()
-#     #datapoint = models.ManyToManyField(Datapoint, blank=False)
-#
-#     def __str__(self):
-#         return self.device_name #device_type_friendly_name
-#
-#     # def natural_key(self):
-#     #     return self.device_slug
 
 
 class GenericDeviceManager(models.Manager):
@@ -437,13 +305,13 @@ class Device(GenericDevice):
 
     def save(self, *args, **kwargs):
         if self.spec_id is None:
-            max_id = Device.objects.aggregate(max_id=models.Max('spec_id', output_field=models.IntegerField()))['max_id']
+            max_id = self.__class__.objects.aggregate(max_id=models.Max('spec_id', output_field=models.IntegerField()))['max_id']
             if max_id:
                 self.spec_id = max_id + 1
             else:  # max_id is None because this is the first object for this model ever
                 self.spec_id = 1
             self.full_id = self.get_class_identifier() + '-' + str(self.spec_id)
-        super(Device, self).save(*args, **kwargs)
+        super(self.__class__, self).save(*args, **kwargs)
 
     @classmethod
     def get_class_identifier(cls):
@@ -464,13 +332,13 @@ class NonDevice(GenericDevice):
 
     def save(self, *args, **kwargs):
         if self.spec_id is None:
-            max_id = NonDevice.objects.aggregate(max_id=models.Max('spec_id', output_field=models.IntegerField()))['max_id']
+            max_id = self.__class__.objects.aggregate(max_id=models.Max('spec_id', output_field=models.IntegerField()))['max_id']
             if max_id:
                 self.spec_id = max_id + 1
             else:  # max_id is None because this is the first object for this model ever
                 self.spec_id = 1
             self.full_id = self.get_class_identifier() + '-' + str(self.spec_id)
-        super(NonDevice, self).save(*args, **kwargs)
+        super(self.__class__, self).save(*args, **kwargs)
 
     @classmethod
     def get_class_identifier(cls):
@@ -487,13 +355,13 @@ class TestDevice(GenericDevice):
 
     def save(self, *args, **kwargs):
         if self.spec_id is None:
-            max_id = TestDevice.objects.aggregate(max_id=models.Max('spec_id', output_field=models.IntegerField()))['max_id']
+            max_id = self.__class__.objects.aggregate(max_id=models.Max('spec_id', output_field=models.IntegerField()))['max_id']
             if max_id:
                 self.spec_id = max_id + 1
             else:  # max_id is None because this is the first object for this model ever
                 self.spec_id = 1
             self.full_id = self.get_class_identifier() + '-' + str(self.spec_id)
-        super(TestDevice, self).save(*args, **kwargs)
+        super(self.__class__, self).save(*args, **kwargs)
 
     @classmethod
     def get_class_identifier(cls):
@@ -511,86 +379,6 @@ class DatapointUnit(models.Model):
     unit_symbol = models.TextField(
         help_text="The short symbol of the unit, e.g. °C or kW"
     )
-
-
-# class Datapoint(models.Model):
-#     """
-#     TODO: Flag if already integrated or new (e.g. because of having installed a new device)
-#     TODO: How about dynamic meta data?
-#     TODO: Fix on_delete to set a meaningful default value.
-#     """
-#
-#     def html_element_id(self):
-#         """
-#         Return the id of the datapoint element.
-#         """
-#         return "datapoint_" + str(self.pk)
-#
-#     def html_element(self):
-#         """
-#         Generates the html element to display the value of the datapoint with
-#         the primary key as id and the default_value field as initial value.
-#         E.g:
-#             <div id=datapoint_21>--.-</div>
-#         """
-#         element = format_html(
-#             "<div id={}>{}</div>",
-#             self.html_element_id(),
-#             self.default_value,
-#         )
-#         return element
-#
-#     #TODO: uncomment again
-#     device = models.ForeignKey(
-#         Device,
-#         on_delete=models.CASCADE
-#     )
-#     #TODO: uncomment again
-#     unit = models.ForeignKey(
-#         DatapointUnit,
-#         on_delete=models.SET('')
-#     )
-#     mqtt_topic = models.TextField(
-#         null=True,
-#         blank=True,
-#         editable=False,
-#         help_text=(
-#             "The MQTT topic on which the values of this datapoint "
-#             "are published. Is auto generated for consistency."
-#         )
-#     )
-#     # TODO: remove blank
-#     min_value = models.FloatField(
-#         blank=True,
-#         null=True,
-#         default=None,
-#         help_text=(
-#             "The minimal expected value of the datapoint. Is uesed for "
-#             "automatically scaling plots. Only applicable to datapoints that"
-#             "carry numeric values."
-#         )
-#     )
-#     # TODO: remove blank
-#     max_value = models.FloatField(
-#         blank=True,
-#         null=True,
-#         default=None,
-#         help_text=(
-#             "The maximal expected value of the datapoint. Is uesed for "
-#             "automatically scaling plots. Only applicable to datapoints that"
-#             "carry numeric values."
-#         )
-#     )
-#     # # TODO: remove blank anc change default again
-#     # default_value = models.FloatField(
-#     #     default=None,
-#     #     blank=True,
-#     #     help_text=(
-#     #         "The value that is displayed before the latest datapoint values "
-#     #         "have been received via MQTT."
-#     #     )
-#     # )
-#     datapoint_key_in_connector = models.TextField(default='')
 
 
 class GenericDatapoint(models.Model):

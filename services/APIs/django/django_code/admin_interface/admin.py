@@ -5,8 +5,7 @@ from django.utils.text import slugify
 from django.contrib.admin.views.main import ChangeList as ChangeListDefault
 from django.urls import reverse
 from .models import Connector, ConnectorAvailableDatapoints, ConnectorHeartbeat, \
-    ConnectorLogEntry, ConnectorDatapointTopicMapper, Device, NonDevice, TestDevice, GenericDevice
-from .signals import subscription_status
+    ConnectorLogEntry, Device, NonDevice, TestDevice, GenericDevice
 from .utils import datetime_iso_format
 from datetime import datetime, timezone
 import uuid
@@ -36,22 +35,6 @@ def action_delete_devices(modeladmin, request, queryset):
 
 action_delete_devices.short_description = "Delete selected objects"
 
-
-class DatapointMappingInline(admin.TabularInline):
-    model = ConnectorDatapointTopicMapper
-    extra = 0
-    fields = ('datapoint_key_in_connector', 'mqtt_topic', 'datapoint_type', 'type', )
-    readonly_fields = ('datapoint_key_in_connector', 'mqtt_topic', 'datapoint_type', )
-    ordering = ('subscribed', )
-    verbose_name_plural = "Available datapoints subscription management"
-    can_delete = False
-
-    # Uncomment to only display unsubscribed datapoints
-    # def get_queryset(self, request):
-    #     queryset = super(DatapointMappingInline, self).get_queryset(request)
-    #     return queryset.filter(subscribed=False)
-
-
 class AvailableDatapointsInline(admin.TabularInline):
     model = ConnectorAvailableDatapoints
     extra = 0
@@ -70,18 +53,10 @@ class AvailableDatapointsInline(admin.TabularInline):
 @admin.register(Connector)
 class ConnectorAdmin(admin.ModelAdmin):
     """
-    TODO: Managing mapping and subscription in connector change view
-            - human-readable name instead of key?
-            - Set subscribed status of corresponding available datapoint accordingly
-            - Saving of subscribed topics to connector object (?)
-    TODO: Display datapoint mapping directly after the basic information (might not be possible)
-    TODO: If possible: "Subscribe to all" button if possible
-    """
-    """
     List view customizations
     """
     # Attributes to be displayed
-    list_display = ('name', 'date_added','num_subscribed_datapoints', 'alive', )
+    list_display = ('name', 'date_added', 'alive', )
 
     # Ordering of objects
     ordering = ('-date_added',)
@@ -104,38 +79,18 @@ class ConnectorAdmin(admin.ModelAdmin):
     # Fields to be hidden
     # exclude = ('name', )
 
-    # Fieldsets allow grouping of fields with corresponding title & description
-    # Doc: https://docs.djangoproject.com/en/3.0/ref/contrib/admin/#django.contrib.admin.ModelAdmin.fieldsets
-    # fieldsets = (
-    #     ('Datapoints', {
-    #         'fields': ('available_datapoints', '')
-    #     }),
-    #     ('Field group 2 title', {
-    #         'description': 'Further info for this group.',
-    #         'classes': ('collapse', ),
-    #         'fields': ()
-    #     })
-    # )
-
+    # Inline objects to be displayed in change/add view
+    # Needs to be initialized here when overriding change_view() and adding Inline objects in the method
     inlines = ()
 
-    # @staticmethod
-    # def available_datapoints(obj):
-    #     # datapoints = []
-    #     # for dp in ConnectorAvailableDatapoints.objects.filter(connector=obj.id).last():
-    #     #     if dp not in datapoints:
-    #     #         datapoints.append(dp.__str__())
-    #     #
-    #     # if datapoints:
-    #     #     return ", ".join(datapoints)  # return list as string
-    #     datapoints = ConnectorAvailableDatapoints.objects.filter(connector=obj.id)
-    #     keys = [dp.datapoint_key_in_connector for dp in datapoints]
-    #     return len(keys)
-
-    def num_subscribed_datapoints(self, obj):
-        num = ConnectorDatapointTopicMapper.objects.filter(connector=obj.id, subscribed=True).count()
-        return num
-    num_subscribed_datapoints.short_description = "Number of subscribed datapoints"
+    # def num_subscribed_datapoints(self, obj):
+    #         """
+    #         TODO: Keep for now as reference for possible similar implementation
+    #             -> delete if not needed anymore
+    #         """
+    #     num = ConnectorDatapointTopicMapper.objects.filter(connector=obj.id, subscribed=True).count()
+    #     return num
+    # num_subscribed_datapoints.short_description = "Number of subscribed datapoints"
 
     @staticmethod
     def last_heartbeat(obj, pretty=True):
@@ -159,15 +114,6 @@ class ConnectorAdmin(admin.ModelAdmin):
         return True if current_time <= next_hb else False
     alive.boolean = True
 
-    @staticmethod
-    def mqtt_message_topics(obj):
-        key_topic_mappings = {}
-        mappers = ConnectorDatapointTopicMapper.objects.filter(connector=obj.id)
-        for mapper in mappers:
-            av_dp = ConnectorAvailableDatapoints.objects.filter(connector=obj.id, datapoint_key_in_connector=mapper.datapoint_key_in_connector)[0]
-            key_topic_mappings[av_dp.datapoint_key_in_connector] = mapper.mqtt_topic
-        return key_topic_mappings
-
     # Things that shall be displayed in add object view, but not change object view
     def add_view(self, request, form_url='', extra_context=None):
         self.fieldsets = (
@@ -185,8 +131,10 @@ class ConnectorAdmin(admin.ModelAdmin):
         )
         return super(ConnectorAdmin, self).add_view(request)
 
+    # Adapted change form template to display "Go to available datapoints" button
     change_form_template = '../templates/connector_change_form.html'
 
+    # Provides redirect to available datapoints when button is clicked
     def response_change(self, request, obj):
         if "_av_dp" in request.POST:
             return HttpResponseRedirect("/admin/admin_interface/"
@@ -195,7 +143,9 @@ class ConnectorAdmin(admin.ModelAdmin):
 
     # Things that shall be displayed in change object view, but not add object view
     def change_view(self, request, object_id, form_url='', extra_context=None):
-        #self.inlines = [AvailableDatapointsInline]
+        # Add Inline objects to be displayed
+        # self.inlines = [AvailableDatapointsInline]
+
         self.fieldsets = (
             ('Basic information', {
                 'fields': ('name', 'date_added', ('alive', 'last_heartbeat', 'next_heartbeat'), )
@@ -208,84 +158,43 @@ class ConnectorAdmin(admin.ModelAdmin):
 
         return super(ConnectorAdmin, self).change_view(request, object_id)
 
-    def save_related(self, request, form, formsets, change):
-        all_saved = False
-        for inlines in formsets:
-            if inlines.has_changed() and str(inlines).__contains__("connectordatapointtopicmapper"):
-                old_subscription_status = {}
-                # Save old subscription status before saving the new ones
-                for mapping in ConnectorDatapointTopicMapper.objects.filter(connector=form.instance.id):
-                    old_subscription_status[mapping.id] = mapping.subscribed
-                print(old_subscription_status)
-
-                # Save all inline objects
-                super().save_related(request, form, formsets, change)
-                all_saved = True
-
-                # Save mapper object again if subscription status has changed to trigger update
-                for mapping_id, status in old_subscription_status.items():
-                    mapping = ConnectorDatapointTopicMapper.objects.get(pk=mapping_id)
-                    if mapping.subscribed != status:
-                        mapping.save(update_fields=['subscribed'])
-        if not all_saved:
-            super().save_related(request, form, formsets, change)
-
-        # TODO: Delete stuff below if it's definitely not needed again
-        # last_log = LogEntry.objects.latest('action_time')
-        # print(last_log.get_edited_object())
-        # for form in formsets:
-        #     print(type(form))
-        #     print(form)
-        #     new_data = form.cleaned_data
-        #     print(new_data)
-        #
-        #
-        #     for new_object_data in new_data:
-        #         print(new_object_data['id'])
-        #         #old_subscription_status
-        #         #print("Subscription status has changed!")
-
-
-            # # form.cleaned_data : list of dictionaries for each inline object with (key,val) = (attribute,value)
-            # for field, new_value in form.cleaned_data.items():
-            #     #print(field)
-            #     if new_value != form.initial[field]:
-            #         print("Old value: {}, New value: {}".format(form.initial[field], new_value))
-            # # for field, new_value in form.cleaned_data.items():
-            # #     print(field)
-
-
-        # mappings = ConnectorDatapointTopicMapper.objects.filter(connector=form.instance.id)
-        # for map in mappings:
-        #     print('{}: {}'. format(getattr(map, 'mqtt_topic'), getattr(map, 'subscribed')))
-
-    # def save_model(self, request, obj, form, change):
-    #     update_fields = []
-    #     print(obj)
-    #     print(change)
-    #     print(request)
+    # def save_related(self, request, form, formsets, change):
+    #     """
+    #     TODO: Keep for now as reference for possible similar implementation
+    #         -> delete if not needed anymore
+    #     """
+    #     all_saved = False
+    #     for inlines in formsets:
+    #         if inlines.has_changed() and str(inlines).__contains__("connectordatapointtopicmapper"):
+    #             old_subscription_status = {}
+    #             # Save old subscription status before saving the new ones
+    #             for mapping in ConnectorDatapointTopicMapper.objects.filter(connector=form.instance.id):
+    #                 old_subscription_status[mapping.id] = mapping.subscribed
+    #             print(old_subscription_status)
     #
-    #     # True if something changed in model, False if model is added
-    #     if change:
-    #         for field, new_value in form.cleaned_data.items():
-    #             print(field)
-    #             if new_value != form.initial[field]:
-    #                 print("Old value: {}, New value: {}".format(form.initial[field], new_value))
+    #             # Save all inline objects
+    #             super().save_related(request, form, formsets, change)
+    #             all_saved = True
     #
-    #                 update_fields.append(field)
-    #     print(update_fields)
-    #     obj.save(update_fields=update_fields)
+    #             # Save mapper object again if subscription status has changed to trigger update
+    #             for mapping_id, status in old_subscription_status.items():
+    #                 mapping = ConnectorDatapointTopicMapper.objects.get(pk=mapping_id)
+    #                 if mapping.subscribed != status:
+    #                     mapping.save(update_fields=['subscribed'])
+    #     if not all_saved:
+    #         super().save_related(request, form, formsets, change)
+
 
 @admin.register(ConnectorAvailableDatapoints)
 class ConnectorAvailableDatapointsAdmin(admin.ModelAdmin):
-    list_display = ('id', 'connector', 'datapoint_type', 'datapoint_example_value',  'datapoint_key_in_connector', 'format', )
-    list_filter = ('connector', 'format', )#('datapoint_key_in_connector', 'connector', 'datapoint_type', 'datapoint_example_value', )
+    list_display = ('id', 'connector', 'datapoint_type', 'datapoint_example_value',
+                    'datapoint_key_in_connector', 'format', )
+    list_filter = ('connector', 'format', )
     search_fields = ('datapoint_key_in_connector', )
 
     @staticmethod
     def connector(obj):
         return obj.connector.name
-
 
 
 @admin.register(ConnectorHeartbeat)
@@ -323,48 +232,50 @@ class ConnectorLogsAdmin(admin.ModelAdmin):
     timestamp_iso.short_description = "Timestamp"
 
 
-@admin.register(ConnectorDatapointTopicMapper)
-class ConnectorDatapointTopicMapperAdmin(admin.ModelAdmin):
-    list_display = ('id', 'connector', 'datapoint_key_in_connector', 'datapoint_type', 'mqtt_topic', )
-    #list_filter = ('datapoint_key_in_connector', 'connector', 'datapoint_type', 'datapoint_example_value', )
+# @admin.register(ConnectorDatapointTopicMapper)
+# class ConnectorDatapointTopicMapperAdmin(admin.ModelAdmin):
+#
+#     list_display = ('id', 'connector', 'datapoint_key_in_connector', 'datapoint_type', 'mqtt_topic', )
+#     #list_filter = ('datapoint_key_in_connector', 'connector', 'datapoint_type', 'datapoint_example_value', )
+#
+#     @staticmethod
+#     def connector(obj):
+#         return obj.connector.name
+#
+#     def save_model(self, request, obj, form, change):
+#         """
+#         TODO: Keep for now as reference for possible similar implementation
+#             -> delete if not needed anymore
+#         """
+#         update_fields = []
+#
+#         # True if something changed in model
+#         # Note that change is False at the very first time
+#         if change:
+#             for field, new_value in form.cleaned_data.items():
+#                 if new_value != form.initial[field]:
+#                     update_fields.append(field)
+#         obj.save(update_fields=update_fields)
 
-    @staticmethod
-    def connector(obj):
-        return obj.connector.name
 
-    def save_model(self, request, obj, form, change):
-        update_fields = []
-
-        # True if something changed in model
-        # Note that change is False at the very first time
-        if change:
-            for field, new_value in form.cleaned_data.items():
-                if new_value != form.initial[field]:
-                    update_fields.append(field)
-        obj.save(update_fields=update_fields)
-
-
+# Custom ChangeList for displaying all (non-) device types together
 class DeviceChangeList(ChangeListDefault):
     def get_queryset(self, request):
-        if request.method == 'GET':
+        if request.method == 'GET' and self.root_queryset.exists():
             base_class = self.root_queryset[0].__class__.__bases__[0]
-            all_classes = base_class.get_list_of_subclasses_with_identifier()
+            all_subclasses = base_class.get_list_of_subclasses_with_identifier()
             querysets = []
-            for cls_id, cls_dict in all_classes.items():
+            # For each subclass (model), get all objects and add the resulting query set to the list
+            for cls_id, cls_dict in all_subclasses.items():
                 querysets.append(cls_dict['class'].objects.all())
-            print(querysets)
-            print("Get union of all (non)Devices...")
+            # Create union of all subclass-query sets
             united_queryset = querysets[0].union(querysets[1])
             if len(querysets) > 2:
                 for i in range(2, len(querysets)):
                     united_queryset = united_queryset.union(querysets[i])
 
-
-            # devices = Device.objects.all()
-            # non_devices = NonDevice.objects.all()
-            # queryset = devices.union(non_devices)
-            print(united_queryset)
             return united_queryset
+
         return super().get_queryset(request)
 
     def url_for_result(self, result):
@@ -398,15 +309,6 @@ class DeviceAdmin(admin.ModelAdmin):
         if 'delete_selected' in all_actions:
             del all_actions['delete_selected']
         return all_actions
-
-
-
-
-# @admin.register(Datapoint)
-# class DatapointAdmin(admin.ModelAdmin):
-#     list_display = ('datapoint_key_in_connector', )
-#     search_fields = ('datapoint_key_in_connector', )
-
 
 # Register your models here.
 admin.site.register(NonDevice)
