@@ -96,6 +96,30 @@ class TextDatapointsInline(DatapointsInline):
     verbose_name_plural = "Active text datapoints of this connector"
 
 
+class ConnectorLogEntryInline(admin.TabularInline):
+    model = ConnectorLogEntry
+    verbose_name_plural = "Last 10 Log entries"
+    fields = ('timestamp', 'msg', 'emitter', )
+    readonly_fields = fields
+    ordering = ('timestamp', )
+    can_delete = False
+    classes = ('collapse', )
+
+    def has_add_permission(self, request, obj):
+        return False
+
+    def get_queryset(self, request):
+        """
+        Note: simply ordering original query set desc. by timestamp and slice it throws error,
+                because the custom (returned) query set is filtered again for connector,
+                but filtering is not possible after slicing.
+        """
+        all_entries = super(ConnectorLogEntryInline, self).get_queryset(request)
+        ids_last_two_entries = all_entries.order_by('-timestamp').values('id')[:10]
+        last_two_entries = ConnectorLogEntry.objects.filter(id__in=ids_last_two_entries)
+        return last_two_entries
+
+
 @admin.register(Connector)
 class ConnectorAdmin(admin.ModelAdmin):
     """
@@ -184,7 +208,7 @@ class ConnectorAdmin(admin.ModelAdmin):
     # Things that shall be displayed in change object view, but not add object view
     def change_view(self, request, object_id, form_url='', extra_context=None):
         # Add Inline objects to be displayed
-        self.inlines = [NumericDatapointsInline, TextDatapointsInline]
+        self.inlines = [NumericDatapointsInline, TextDatapointsInline, ConnectorLogEntryInline]
 
         self.fieldsets = (
             ('Basic information', {
