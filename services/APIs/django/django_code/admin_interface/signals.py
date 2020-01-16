@@ -12,11 +12,6 @@ from admin_interface import connector_mqtt_integration
 #         TODO: Keep for now as reference for possible similar implementation
 #             -> delete if not needed anymore
 #         """
-#     """
-#     TODO: Currently, client subscribes to all topics of a newly added connector including all datapoint messages
-#         (see integrate_new_connector() in connector_mqtt_integration module).
-#         -> subscription management of selected messages is missing.
-#     """
 #     # kwargs contains sender, instance, update_fields (and some other args)
 #     if kwargs['update_fields']:
 #         if 'subscribed' in kwargs['update_fields']:
@@ -34,7 +29,10 @@ from admin_interface import connector_mqtt_integration
 
 
 @receiver(signals.post_save, sender=ConnectorAvailableDatapoints)
-def create_or_update_datapoint(**kwargs):
+def create_datapoint(**kwargs):
+    """
+    @david: quick and dirty solution for dev, I assume you have a more elegant solution -> can be removed
+    """
 
     # kwargs contains sender, instance, update_fields (and some other args)
     if kwargs['update_fields']:
@@ -44,7 +42,6 @@ def create_or_update_datapoint(**kwargs):
             key = getattr(available_datapoint, 'datapoint_key_in_connector')
             dp_format = getattr(available_datapoint, 'format')
 
-            # TODO: nice code
             # TODO: case 'unused'
             if dp_format == 'num':
                 _ = NumericDatapoint(

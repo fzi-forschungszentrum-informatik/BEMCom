@@ -12,7 +12,7 @@ from admin_interface import connector_mqtt_integration
 
 class Connector(models.Model):
     """
-    TODO: Review set and get MQTT topics for redundancy
+    @david: all relevant
     TODO: Ensure that all topics are unique.
     """
     name = models.CharField(
@@ -68,52 +68,73 @@ class Connector(models.Model):
     def __str__(self):
         return self.name
 
-    # Get dictionary of the fields defined above with verbose (human-readable) name and connector-specific value
-    def get_fields(self):
-        connector_fields = {}
-        fields = self._meta.get_fields(include_parents=False)[-len(self.__dict__)+1:]
-        for field in fields:
-            connector_fields[field.verbose_name] = getattr(self, field.name)
-        return connector_fields
+    # def get_fields(self):
+    #     """
+    #     Return dictionary of the fields defined above with verbose (human-readable) name and connector-specific value.
+    #     Is used in connector_detail.html template
+    #     @david: not relevant
+    #     """
+    #     connector_fields = {}
+    #     fields = self._meta.get_fields(include_parents=False)[-len(self.__dict__)+1:]
+    #     for field in fields:
+    #         connector_fields[field.verbose_name] = getattr(self, field.name)
+    #     return connector_fields
 
-    def get_mqtt_topics(self):
-        mqtt_topics = {}
+    def get_mqtt_topic_fields(self):
+        """
+        :return: list of fields with MQTT topic
+        Used as a shortcut to avoid typing all field names
+        """
+        mqtt_topics_fields = {}
         for attr in self.__dict__:
             if attr.startswith("mqtt_topic"):
-                mqtt_topics[attr] = attr[len("mqtt_topic_"):]
-        return mqtt_topics
+                mqtt_topics_fields[attr] = attr[len("mqtt_topic_"):]
+        return mqtt_topics_fields
 
     # Automatically set MQTT topics to 'connector_name/mqtt_topic'
-    def set_mqtt_topics(self):
-        connector_attr = self.__dict__
-        for attr in connector_attr:
+    def populate_mqtt_topic_fields(self):
+        """
+        Populates each MQTT topic field with <connector-name>/<mqtt-topic>.
+        Function is executed upon saving of a new connector object
+        Note: Must be adapted if naming convention for fields or topics changes
+        """
+        connector_attributes = self.__dict__
+        for attr in connector_attributes:
             if attr.startswith("mqtt"):
                 if attr.endswith("datapoint_message_wildcard"):
-                    connector_attr[attr] = self.name + "/messages/#"
+                    connector_attributes[attr] = self.name + "/messages/#"
                 else:
-                    connector_attr[attr] = self.name + "/" + attr[len("mqtt_topic_"):]
-        return connector_attr
+                    # Get MQTT topic by stripping of "mqtt_topic_" from the field name defined above
+                    connector_attributes[attr] = self.name + "/" + attr[len("mqtt_topic_"):]
 
     def save(self, *args, **kwargs):
+        """
+        Overridden to perform the following action before saving a new connector object:
+            - Automatically define the connector's MQTT topics according a given naming convention
+            - Set date_added to today
+            - Subscribe to the defined MQTT topics
+        """
         if not self.id:  # New instance
             # Set MQTT topics and set current day as date_added upon saving of connector name of new connector
-            self.set_mqtt_topics()
+            self.populate_mqtt_topic_fields()
             self.date_added = date.today()
 
             # TODO: Maybe as post_save signal?
             # Subscribe to the connector topics
             cmi = connector_mqtt_integration.ConnectorMQTTIntegration.get_broker()[0]
-            cmi.integrate_new_connector(connector=self, message_types=(self.get_mqtt_topics().keys()))
+            cmi.integrate_new_connector(connector=self, message_types=(self.get_mqtt_topic_fields().keys()))
         super(Connector, self).save(*args, **kwargs)
 
-    # TODO: Not sure if needed -> delete if no error is thrown
     # def get_absolute_url(self):
+    #     """
+    #     Only needed for non-admin pages
+    #     """
     #     return reverse("edit_connector", kwargs={"id": self.id})
 
 
 class ConnectorLogEntry(models.Model):
     """
-    TODO: Why not keeping the log entries when deleting the connector?
+    TODO: Why not keeping at least some log entries when deleting the connector?
     """
     connector = models.ForeignKey(
         Connector, on_delete=models.CASCADE
@@ -145,10 +166,6 @@ class ConnectorHeartbeat(models.Model):
 
 
 class ConnectorAvailableDatapoints(models.Model):
-    """
-    TODO: Actually subscribe to topics
-    TODO: Set subscription status of corresponding available datapoint accordingly -> maybe in conn. mqtt integration (see TODO there)?
-    """
     connector = models.ForeignKey(
         Connector,
         on_delete=models.CASCADE
@@ -175,26 +192,6 @@ class DeviceMakerManager(models.Manager):
         return self.get(slug=slug)
 
 
-class DeviceMaker(models.Model):
-    friendly_name = models.TextField(
-        default='',
-        help_text="Human readable device manufacturer or service provider. "
-                  "E.g. Aquametro",
-        max_length=30
-    )
-    slug = models.SlugField(
-        default='',
-        max_length=40
-    )
-    manager = DeviceMakerManager()
-
-    def __str__(self):
-        return self.slug
-
-    def natural_key(self):
-        return self.slug
-
-
 class DeviceType(models.Model):
     friendly_name = models.TextField(
         default='',
@@ -207,21 +204,6 @@ class DeviceType(models.Model):
         default='',
         max_length=40
     )
-
-
-class DeviceVersion(models.Model):
-    version = models.TextField(
-        default='',
-        help_text="Version/model of device, e.g. 2.1",
-        max_length=30
-    )
-    slug = models.SlugField(
-        default='',
-        max_length=40
-    )
-
-    def __str__(self):
-        return self.slug
 
 
 class DeviceLocationFriendlyName(models.Model):
@@ -237,6 +219,9 @@ class GenericDeviceManager(models.Manager):
 
     @staticmethod
     def all_devices_as_dict():
+        """
+        :return: all devices from all types with name and class identifier
+        """
         all_devices = {}
         devices = Device.objects.all().values('type', 'full_id')
         non_devices = NonDevice.objects.all().values('type', 'full_id')
@@ -304,6 +289,10 @@ class Device(GenericDevice):
     )
 
     def save(self, *args, **kwargs):
+        """
+        When a new object is created, set its 'spec_id' to the next increment of the highest existing id.
+        The primary key full_id combines the class_identifier 'd' with the spec_id
+        """
         if self.spec_id is None:
             max_id = self.__class__.objects.aggregate(max_id=models.Max('spec_id', output_field=models.IntegerField()))['max_id']
             if max_id:
@@ -331,6 +320,10 @@ class NonDevice(GenericDevice):
     # )
 
     def save(self, *args, **kwargs):
+        """
+        When a new object is created, set its 'spec_id' to the next increment of the highest existing id.
+        The primary key full_id ombines the class_identifier 'n' with the spec_id
+        """
         if self.spec_id is None:
             max_id = self.__class__.objects.aggregate(max_id=models.Max('spec_id', output_field=models.IntegerField()))['max_id']
             if max_id:

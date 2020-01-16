@@ -12,26 +12,21 @@ from datetime import datetime, timezone
 import uuid
 
 """
-Add actions to be performed on selected objects.
-Below: example to change the heartbeat topic to "beat":
---------------------
-    def change_mqtt_topic_heartbeat(modeladmin, request, queryset):
-        queryset.update(mqtt_topic_heartbeat='beat')
-        
-    change_mqtt_topic_heartbeat.short_description = "Change MQTT topic for heartbeat"
---------------------
+Custom actions to be performed on selected objects.
+Add action to a model's list view with 'actions= [actionfunction1, actionfunction2, ]' inside the ModelAdmin class
 """
 
 
 def action_delete_devices(modeladmin, request, queryset):
     """
-    TODO: Add intermediary confirmation page
+    TODO: Add intermediate confirmation page
         (see https://docs.djangoproject.com/en/3.0/ref/contrib/admin/actions/#actions-that-provide-intermediate-pages)
+    @david: only necessary for the abstract-device-base-class-solution
     """
-    all_classes = GenericDevice.get_list_of_subclasses_with_identifier()
+    all_device_classes = GenericDevice.get_list_of_subclasses_with_identifier()
     for obj_pk in request._post.getlist('_selected_action'):
-        cls_id = obj_pk[0]
-        obj_class = all_classes[cls_id]['class']
+        cls_id = obj_pk[0]  # Example: obj_pk is "d-3", because object is of class Device -> class identifier is 'd'
+        obj_class = all_device_classes[cls_id]['class']
         obj_class.objects.filter(pk=obj_pk).delete()
 
 action_delete_devices.short_description = "Delete selected objects"
@@ -59,6 +54,9 @@ action_make_unused.short_description = "Mark as not used"
 
 
 class AvailableDatapointsInline(admin.TabularInline):
+    """
+    @david: only necessary when available datapoints should be displayed in connector views
+    """
     model = ConnectorAvailableDatapoints
     extra = 0
     fields = ('datapoint_key_in_connector', 'datapoint_type', 'datapoint_example_value', 'format', )
@@ -67,13 +65,19 @@ class AvailableDatapointsInline(admin.TabularInline):
     verbose_name_plural = "Available datapoints subscription management"
     can_delete = False
 
-    # Uncomment to only display unsubscribed datapoints
     def get_queryset(self, request):
+        """
+        Limited query set for dev
+        """
         queryset = super(AvailableDatapointsInline, self).get_queryset(request)
         return queryset.filter(datapoint_key_in_connector__istartswith='meter_1_')
 
 
 class DatapointsInline(admin.TabularInline):
+    """
+    Base class for numeric and text datapoint inline classes (see below)
+    @david: relevant, although you might need to adapt it to your Generic/Numeric/TextDatapoint model structure/relations
+    """
     extra = 0
     fields = ('datapoint_key_in_connector', 'mqtt_topic', 'last_value', 'last_timestamp')
     readonly_fields = fields
@@ -97,8 +101,11 @@ class TextDatapointsInline(DatapointsInline):
 
 
 class ConnectorLogEntryInline(admin.TabularInline):
+    """
+    @david: relevant
+    """
     model = ConnectorLogEntry
-    verbose_name_plural = "Last 10 Log entries"
+    verbose_name_plural = "Last 10 log entries"
     fields = ('timestamp', 'msg', 'emitter', )
     readonly_fields = fields
     ordering = ('timestamp', )
@@ -110,18 +117,23 @@ class ConnectorLogEntryInline(admin.TabularInline):
 
     def get_queryset(self, request):
         """
-        Note: simply ordering original query set desc. by timestamp and slice it throws error,
-                because the custom (returned) query set is filtered again for connector,
-                but filtering is not possible after slicing.
+        Note: Getting query set in descending order (by timestamp) and slicing it throws error ("filtering is
+                not possible after slicing"), because the custom (returned) query set is filtered again for the
+                current connector.
+                Hence this workaround: First get IDs of last ten entries, then filter all entries based on these IDs.
+                -> Returned query set can now be filtered again for the current connector :)
         """
         all_entries = super(ConnectorLogEntryInline, self).get_queryset(request)
-        ids_last_two_entries = all_entries.order_by('-timestamp').values('id')[:10]
-        last_two_entries = ConnectorLogEntry.objects.filter(id__in=ids_last_two_entries)
-        return last_two_entries
+        ids_of_last_ten_entries = all_entries.order_by('-timestamp').values('id')[:10]
+        last_ten_entries = ConnectorLogEntry.objects.filter(id__in=ids_of_last_ten_entries)
+        return last_ten_entries
 
 
 @admin.register(Connector)
 class ConnectorAdmin(admin.ModelAdmin):
+    """
+    @david: whole class is relevant if not stated differently
+    """
     """
     List view customizations
     """
@@ -137,8 +149,6 @@ class ConnectorAdmin(admin.ModelAdmin):
     # Search fields
     search_fields = ('name', )
 
-    # Add action function defined above
-    # actions = [change_mqtt_topic_heartbeat]
 
     """
     Add/Change object view customizations
@@ -150,12 +160,13 @@ class ConnectorAdmin(admin.ModelAdmin):
     # exclude = ('name', )
 
     # Inline objects to be displayed in change/add view
-    # Needs to be initialized here when overriding change_view() and adding Inline objects in the method
+    # Needs to be initialized here when overriding change_view() and adding Inline objects inside the method
     inlines = ()
 
     # def num_subscribed_datapoints(self, obj):
     #         """
-    #         TODO: Keep for now as reference for possible similar implementation
+    #         Number of datapoints from a connector I have subscribed to
+    #         TODO: Keep for now as reference for possible similar implementation or idea
     #             -> delete if not needed anymore
     #         """
     #     num = ConnectorDatapointTopicMapper.objects.filter(connector=obj.id, subscribed=True).count()
@@ -164,6 +175,12 @@ class ConnectorAdmin(admin.ModelAdmin):
 
     @staticmethod
     def last_heartbeat(obj, pretty=True):
+        """
+        :param obj: current connector object
+        :param pretty: If true (default), timestamp will be returned like this: "yyyy-mm-dd hh:mm:ss (UTC)"
+                        If false, format is "yyyy-mm-dd hh:mm:ss.mmmmmm+00:00"
+        :return: UTC timestamp of last received heartbeat
+        """
         latest_hb_message = ConnectorHeartbeat.objects.filter(connector=obj.id).latest('last_heartbeat')
         last_hb = latest_hb_message.last_heartbeat
         if pretty:
@@ -172,6 +189,10 @@ class ConnectorAdmin(admin.ModelAdmin):
 
     @staticmethod
     def next_heartbeat(obj, pretty=True):
+        """
+        see last_heartbeat()
+        :return: UTC timestamp of next expected heartbeat
+        """
         latest_hb_message = ConnectorHeartbeat.objects.filter(connector=obj.id).latest('next_heartbeat')
         next_hb = latest_hb_message.next_heartbeat
         if pretty:
@@ -179,13 +200,19 @@ class ConnectorAdmin(admin.ModelAdmin):
         return next_hb
 
     def alive(self, obj):
+        """
+        Connector is alive if the current time has not yet passed the timestamp of the next expected heartbeat
+        """
         current_time = datetime.now(timezone.utc)
         next_hb = ConnectorHeartbeat.objects.filter(connector=obj.id).latest('next_heartbeat').next_heartbeat
         return True if current_time <= next_hb else False
     alive.boolean = True
 
-    # Things that shall be displayed in add object view, but not change object view
     def add_view(self, request, form_url='', extra_context=None):
+        """
+        General: Things that shall be displayed in add object view, but not change object view.
+        Here: Only display the name field to enter connector name and some instruction.
+        """
         self.fieldsets = (
             (None, {
                 'description': '<h3>After entering the connector name, '
@@ -198,15 +225,26 @@ class ConnectorAdmin(admin.ModelAdmin):
     # Adapted change form template to display "Go to available datapoints" button
     change_form_template = '../templates/connector_change_form.html'
 
-    # Provides redirect to available datapoints when button is clicked
     def response_change(self, request, obj):
+        """
+        Overridden to provide redirect URL for a custom button ("Go to available datapoints").
+        :param request: POST request sent when clicking one of the buttons in the change view (e.g. "SAVE")
+        :param obj: current connector
+        :return: URL
+        """
         if "_av_dp" in request.POST:
             return HttpResponseRedirect("/admin/admin_interface/"
                                         "connectoravailabledatapoints/?connector__id__exact={}".format(obj.id))
         return super().response_change(request, obj)
 
-    # Things that shall be displayed in change object view, but not add object view
     def change_view(self, request, object_id, form_url='', extra_context=None):
+        """
+        General: Things that shall be displayed in change object view, but not add object view.
+        Here:
+            - Selected connector fields or information
+            - Active datapoints
+            - Last 10 log entries
+        """
         # Add Inline objects to be displayed
         self.inlines = [NumericDatapointsInline, TextDatapointsInline, ConnectorLogEntryInline]
 
@@ -215,16 +253,20 @@ class ConnectorAdmin(admin.ModelAdmin):
                 'fields': ('name', 'date_added', ('alive', 'last_heartbeat', 'next_heartbeat'), )
             }),
             ('MQTT topics', {
-                'fields': [topic for topic in Connector.get_mqtt_topics(Connector()).keys()],
+                'fields': [topic for topic in Connector.get_mqtt_topic_fields(Connector.objects.get(id=object_id)).keys()],
                 'classes': ('collapse', )
             }),
         )
+
         self.readonly_fields = ('date_added', 'last_heartbeat', 'next_heartbeat', 'alive', )
 
         return super(ConnectorAdmin, self).change_view(request, object_id)
 
     # def save_related(self, request, form, formsets, change):
     #     """
+    #     Overridden to trigger update of a Datapoint's subscription status when status of corresponding
+    #     mapping object was changed.
+    #     Update is triggered via post_save signal, which necessitates the provision of the update_fields argument.
     #     TODO: Keep for now as reference for possible similar implementation
     #         -> delete if not needed anymore
     #     """
@@ -235,13 +277,13 @@ class ConnectorAdmin(admin.ModelAdmin):
     #             # Save old subscription status before saving the new ones
     #             for mapping in ConnectorDatapointTopicMapper.objects.filter(connector=form.instance.id):
     #                 old_subscription_status[mapping.id] = mapping.subscribed
-    #             print(old_subscription_status)
     #
     #             # Save all inline objects
     #             super().save_related(request, form, formsets, change)
     #             all_saved = True
     #
-    #             # Save mapper object again if subscription status has changed to trigger update
+    #             # Save mapper object again if subscription status has changed to trigger update on
+    #             # corresponding datapoint via post_save signal
     #             for mapping_id, status in old_subscription_status.items():
     #                 mapping = ConnectorDatapointTopicMapper.objects.get(pk=mapping_id)
     #                 if mapping.subscribed != status:
@@ -264,6 +306,13 @@ class ConnectorAvailableDatapointsAdmin(admin.ModelAdmin):
         return obj.connector.name
 
     def save_model(self, request, obj, form, change):
+        """
+        Add field name to update_fields if a field value has has been changed in the change view.
+        (Update_fields is an argument for the model's save method.)
+        Here: Used together with a post_save signal to create a corresponding Datapoint object when format/status
+         changes from "unused" to "numeric" or "text"
+        @david: Probably not relevant, because you have your own solution
+        """
 
         update_fields = []
 
@@ -278,6 +327,10 @@ class ConnectorAvailableDatapointsAdmin(admin.ModelAdmin):
 
 @admin.register(ConnectorHeartbeat)
 class ConnectorHeartbeatAdmin(admin.ModelAdmin):
+    """
+    List view customization
+    @david: adopt it if you like it
+    """
     list_display = ('connector', 'last_hb_iso', 'next_hb_iso', )
     list_filter = ('connector', )
 
@@ -285,11 +338,13 @@ class ConnectorHeartbeatAdmin(admin.ModelAdmin):
     def connector(obj):
         return obj.connector.name
 
+    # displays a prettier timestamp format
     def last_hb_iso(self, obj):
         return obj.last_heartbeat.isoformat(sep=' ')
     last_hb_iso.admin_order_field = 'last_heartbeat'
     last_hb_iso.short_description = "Last heartbeat"
 
+    # displays a prettier timestamp format
     def next_hb_iso(self, obj):
         return obj.next_heartbeat.isoformat(sep=' ')
     next_hb_iso.admin_order_field = 'next_heartbeat'
@@ -298,6 +353,10 @@ class ConnectorHeartbeatAdmin(admin.ModelAdmin):
 
 @admin.register(ConnectorLogEntry)
 class ConnectorLogsAdmin(admin.ModelAdmin):
+    """
+    List view customization
+    @david: adopt it if you like it
+    """
     list_display = ('id', 'connector', 'timestamp_iso', 'msg', 'emitter', 'level')
     list_filter = ('connector', 'emitter', )
 
@@ -305,43 +364,26 @@ class ConnectorLogsAdmin(admin.ModelAdmin):
     def connector(obj):
         return obj.connector.name
 
+    # displays a prettier timestamp format
     def timestamp_iso(self, obj):
         return obj.timestamp.isoformat(sep=' ')
     timestamp_iso.admin_order_field = 'timestamp'
     timestamp_iso.short_description = "Timestamp"
 
 
-# @admin.register(ConnectorDatapointTopicMapper)
-# class ConnectorDatapointTopicMapperAdmin(admin.ModelAdmin):
-#
-#     list_display = ('id', 'connector', 'datapoint_key_in_connector', 'datapoint_type', 'mqtt_topic', )
-#     #list_filter = ('datapoint_key_in_connector', 'connector', 'datapoint_type', 'datapoint_example_value', )
-#
-#     @staticmethod
-#     def connector(obj):
-#         return obj.connector.name
-#
-#     def save_model(self, request, obj, form, change):
-#         """
-#         TODO: Keep for now as reference for possible similar implementation
-#             -> delete if not needed anymore
-#         """
-#         update_fields = []
-#
-#         # True if something changed in model
-#         # Note that change is False at the very first time
-#         if change:
-#             for field, new_value in form.cleaned_data.items():
-#                 if new_value != form.initial[field]:
-#                     update_fields.append(field)
-#         obj.save(update_fields=update_fields)
-
-
-# Custom ChangeList for displaying all (non-) device types together
 class DeviceChangeList(ChangeListDefault):
+    """
+    Custom ChangeList for displaying all (non-) device types together
+    Note: root_queryset is defined before get_queryset is called -> contains only Device objects
+    """
     def get_queryset(self, request):
+        """
+        Returns the union of all query sets from all device types (except for POST requests)
+        """
         if request.method == 'GET' and self.root_queryset.exists():
+            # Get base class of the Device class
             base_class = self.root_queryset[0].__class__.__bases__[0]
+            # Get all respective classes of the different device types
             all_subclasses = base_class.get_list_of_subclasses_with_identifier()
             querysets = []
             # For each subclass (model), get all objects and add the resulting query set to the list
@@ -358,7 +400,12 @@ class DeviceChangeList(ChangeListDefault):
         return super().get_queryset(request)
 
     def url_for_result(self, result):
-        # Root_queryset is defined before get_queryset (see above) is called -> contains only Device objects
+        """
+        Provides the correct change-view-URL for each non-device object listed in the Device list view
+        :param result: a model object displayed in the list view
+        :return: URL to the change view of the respective object
+        @david: only necessary for the abstract-device-base-class-solution
+        """
         devices_only_queryset = self.root_queryset
         base_class = devices_only_queryset[0].__class__.__bases__[0]
 
@@ -376,6 +423,13 @@ class DeviceChangeList(ChangeListDefault):
 
 @admin.register(Device)
 class DeviceAdmin(admin.ModelAdmin):
+    """
+    List view customizations for Device model:
+        - list all device types together (i.e. of class Device, NonDevice, ...)
+        - remove default delete action, because it doesn't work with this custom list
+        - add custom delete action
+    @david: only necessary for the abstract-device-base-class-solution
+    """
 
     list_display = ('type', 'location_detail', 'full_id','spec_id')
     actions = [action_delete_devices]
