@@ -213,6 +213,7 @@ class ConnectorAdmin(admin.ModelAdmin):
         General: Things that shall be displayed in add object view, but not change object view.
         Here: Only display the name field to enter connector name and some instruction.
         """
+        self.inlines = ()
         self.fieldsets = (
             (None, {
                 'description': '<h3>After entering the connector name, '
