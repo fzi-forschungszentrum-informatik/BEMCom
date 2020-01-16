@@ -1,74 +1,82 @@
 from datetime import date
-from django.db import models
-from django.db.models.query import QuerySet
-from django.shortcuts import reverse
-from django.utils.html import format_html
-from django.utils.text import slugify
 
-from admin_interface import connector_mqtt_integration
+from django.db import models
+from django.shortcuts import reverse
+from django.utils.text import slugify
+from django.contrib.contenttypes.models import ContentType
+
 
 class Connector(models.Model):
     """
+    The model to store the basic configuration of a connector, that is it's
+    name and MQTT topics it communicates over.
+
+    Don't restrict length of name and mqtt fields, this could lead to errors.
+    Setting the MQTT topics (and the name hence too) is required for the
+    ConnectorMQTTIntegration to work correctly. We hence enforce that these
+    fields are not empty and unique.
+
     TODO: Review set and get MQTT topics
-    TODO: Ensure that all topics are unique.
     """
-    name = models.CharField(
-        default='test-connector',
-        max_length=50,
-        blank=True,
-        verbose_name="Connector name"
+
+    name = models.TextField(
+        blank=False,
+        default=None,
+        unique=True,
+        verbose_name="Connector name",
     )
-    mqtt_topic_logs = models.CharField(
-        default='/logs',
-        max_length=100,
-        blank=True,
+    mqtt_topic_logs = models.TextField(
+        blank=False,
+        default=None,
+        unique=True,
         verbose_name="MQTT topic for logs"
     )
-    mqtt_topic_heartbeat = models.CharField(
-        default='/heartbeat',
-        max_length=100,
-        blank=True,
+    mqtt_topic_heartbeat = models.TextField(
+        blank=False,
+        default=None,
+        unique=True,
         verbose_name="MQTT topic for heartbeat"
     )
-    mqtt_topic_available_datapoints = models.CharField(
-        default='/available_datapoints',
-        max_length=100,
-        blank=True,
+    mqtt_topic_available_datapoints =models.TextField(
+        blank=False,
+        default=None,
+        unique=True,
         verbose_name="MQTT topic for available datapoints"
     )
-    mqtt_topic_datapoint_map = models.CharField(
-        default='/datapoint_map',
-        max_length=100,
-        blank=True,
+    mqtt_topic_datapoint_map = models.TextField(
+        blank=False,
+        default=None,
+        unique=True,
         verbose_name="MQTT topic for datapoint map"
     )
-    mqtt_topic_raw_message_to_db = models.CharField(
-        default='/raw_message_to_db',
-        max_length=100,
-        blank=True,
+    mqtt_topic_raw_message_to_db =models.TextField(
+        blank=False,
+        default=None,
+        unique=True,
         verbose_name="MQTT topic for raw message to database"
     )
-    mqtt_topic_raw_message_reprocess = models.CharField(
-        default='/raw_message_reprocess',
-        max_length=100,
-        blank=True,
+    mqtt_topic_raw_message_reprocess = models.TextField(
+        blank=False,
+        default=None,
+        unique=True,
         verbose_name="MQTT topic for reprocess"
     )
-    mqtt_topic_datapoint_message_wildcard = models.CharField(
-        default='messages/#',
-        max_length=100,
-        blank=True,
+    mqtt_topic_datapoint_message_wildcard = models.TextField(
+        blank=False,
+        default=None,
+        unique=True,
         verbose_name="MQTT topic for all datapoint messages (wildcard)"
     )
-    date_added = models.DateField()
-
-    # def get_mapped_av_datapoints(self):
-    #     pass
-
-    # available_datapoints = models.CharField(
-    #     choices=[],
-    #     blank=True
-    # )
+    # These two are automatically generated. It makes no sense to edit them
+    # my hand.
+    added = models.DateTimeField(
+        auto_now_add = True,
+        editable = False,
+    )
+    last_changed = models.DateTimeField(
+        auto_now = True,
+        editable = False,
+    )
 
     def __str__(self):
         return self.name
@@ -91,8 +99,11 @@ class Connector(models.Model):
                 mqtt_topics[attr] = attr[len("mqtt_topic_"):]
         return mqtt_topics
 
-    # Automatically set MQTT topics to 'connector_name/mqtt_topic'
+
     def set_mqtt_topics(self):
+        """
+        Automatically set MQTT topics to 'connector_name/mqtt_topic'
+        """
         connector_attr = self.__dict__
         for attr in connector_attr:
             if attr.startswith("mqtt"):
@@ -103,16 +114,13 @@ class Connector(models.Model):
         return connector_attr
 
     def save(self, *args, **kwargs):
+        """
+        Save the connector, auto populate the MQTT topics on creation.
+        """
         if not self.id:  # New instance
-            # Set MQTT topics and set current day as date_added upon saving of connector name of new connector
             self.set_mqtt_topics()
-            self.date_added = date.today()
-
-            # TODO: Maybe as post_save signal?
-            # Subscribe to the connector topics
-            # cmi = connector_mqtt_integration.ConnectorMQTTIntegration.get_instance()
-            # cmi.integrate_new_connector(connector=self, message_types=(self.get_mqtt_topics().keys()))
         super(Connector, self).save(*args, **kwargs)
+
 
     def get_absolute_url(self):
         return reverse("edit_connector", kwargs={"id": self.id})
@@ -120,500 +128,320 @@ class Connector(models.Model):
 
 class ConnectorLogEntry(models.Model):
     """
-    TODO: Why not keeping the log entries when deleting the connector?
+    Model to story the log messages sent by the connector.
+
+    See the definition of the log message format for more information
+    about the fields.
+
+    The objects for this model are automatically generated (received via MQTT)
+    by ConnectorMQTTIntegration. They are not intended to be edited manually.
     """
-    connector = models.ForeignKey(
-        Connector, on_delete=models.CASCADE
-    )
-    timestamp = models.DateTimeField()
-    msg = models.TextField(
-        default='',
-        verbose_name="Message"
-    )
-    emitter = models.TextField(
-        default='',
-    )
-    level = models.SmallIntegerField()
 
     class Meta:
         verbose_name_plural = "Connector log entries"
 
-
-class ConnectorHeartbeat(models.Model):
-    connector = models.ForeignKey(
-        Connector,
-        on_delete=models.CASCADE
-    )
-    last_heartbeat = models.DateTimeField()
-    next_heartbeat = models.DateTimeField()
-
-    class Meta:
-        verbose_name_plural = "Connector heartbeats"
-
-
-# class ConnectorMessages(models.Model):
-#     connector = models.ForeignKey(
-#         Connector,
-#         on_delete=models.CASCADE
-#     )
-
-# class MapperQuerySet(QuerySet):
-#     def update(self, **kwargs):
-#         print("being updated")
-#         super().update(**kwargs)
-
-
-class ConnectorDatapointTopicMapper(models.Model):
-    #objects = MapperQuerySet.as_manager()
-
-    connector = models.ForeignKey(
-        Connector,
-        on_delete=models.CASCADE
-    )
-    datapoint_type = models.CharField(max_length=8)
-    datapoint_key_in_connector = models.TextField(default='')
-    mqtt_topic = models.TextField(default='')
-    subscribed = models.BooleanField(
-        default=False,
-        verbose_name="subscribe/ unsubscribe"
-    )
-
-    def get_mapping(self):
-        conn_id = self.connector.id
-        mappers = ConnectorDatapointTopicMapper.objects.filter(connector=conn_id)
-        key_topic_mappings = {}
-        for mapper in mappers:
-            av_dp = GenericDatapoint.objects.filter(connector=conn_id, datapoint_key_in_connector=mapper.datapoint_key_in_connector)[0]
-            key_topic_mappings[av_dp.datapoint_key_in_connector] = mapper.mqtt_topic
-        return key_topic_mappings
-
-    def __str__(self):
-        return str(self.id)
-
-    class Meta:
-        verbose_name = "Connector datapoint to MQTT topic mapping"
-        verbose_name_plural = "Connector datapoint to MQTT topic mapping"
-
-
-class GenericDatapoint(models.Model):
-    """
-    TODO: Actually subscribe to topics
-    TODO: Set subscription status of corresponding available datapoint accordingly -> maybe in conn. mqtt integration (see TODO there)?
-    """
-    
-    def __str__(self):
-        return slugify(self.key_in_connector)
-    
     connector = models.ForeignKey(
         Connector,
         on_delete=models.CASCADE,
         editable=False,
     )
+    timestamp = models.DateTimeField(
+        editable=False,
+    )
+    msg = models.TextField(
+        default='',
+        verbose_name="Log message",
+        editable=False,
+    )
+    emitter = models.TextField(
+        default='',
+        editable=False,
+    )
+    LEVEL_CHOICES = [
+        (10, "DEBUG"),
+        (20, "INFO"),
+        (30, "WARNING"),
+        (40, "ERROR"),
+        (50, "CRITICAL"),
+    ]
+    level = models.SmallIntegerField(
+        choices=LEVEL_CHOICES,
+        editable=False,
+    )
 
-    USE_AS_CHOICES = [
+
+class ConnectorHeartbeat(models.Model):
+    """
+    Model to store the last heartbeat of the connector. Ignore the history,
+    it does not seem very interesting.
+
+    See the definition of the heartbeat message format for more information
+    about the fields.
+
+    The objects for this model are automatically generated (received via MQTT)
+    by ConnectorMQTTIntegration. They are not intended to be edited manually.
+    """
+
+    class Meta:
+        verbose_name_plural = "Connector heartbeats"
+
+    connector = models.OneToOneField(
+        Connector,
+        on_delete=models.CASCADE,
+        editable=False,
+    )
+    last_heartbeat = models.DateTimeField(
+        editable=False,
+    )
+    next_heartbeat = models.DateTimeField(
+        editable=False,
+    )
+
+
+class Datapoint(models.Model):
+    """
+    Model for a datapoint.
+
+    This model holds the generic information of a datapoint, i.e. the data
+    that should be set for every datapoint regardless of which information it
+    represents. By default a datapoint can ether hold a numeric information
+    (e.g. 2.0912) or a text information (e.g. "OK").
+
+    The use_as attribute of Datapoint defines how the Datapoint should be used.
+    It can be ether:
+        "not used": The datapoint will not be used, i.e ignored. That means
+                    the connector will not publish values for this datapoint
+                    over MQTT.
+        "numeric":  The datapoint will be used and it represents a numeric
+                    information.
+        "text":     The datapoint will be used and it represents a string,
+                    or at least something that can be stored as a string.
+
+    Depeding on the use case, the datapoint may require (or should be able to
+    carry) additional metadata fields. If you encounter Datapoints that require
+    other metadata then is defined in NumericDatapointAddition or
+    TextDatapointAddition simply generate a new DatapointAddition model and
+    extend use_as_choices and `use_as_addition_models` accordingly.
+    """
+
+    connector = models.ForeignKey(
+        Connector,
+        on_delete=models.CASCADE,
+        editable=False,
+    )
+    # Defines the usage of the datapoint, i.e. the additional metadata fields.
+    # The 'actual value' (i.e. the first element of the tuple) must match the
+    # key in use_as_addition_models.
+    use_as_choices = [
         ("not used", "Not used"),
         ("numeric", "Numeric"),
         ("text", "Text"),
     ]
+    # Mapping to which model to use for the addtional metadata fields.
+    # The value must be a dict of valid kwargs expected by
+    # django.contrib.contenttypes.models.ContentType.objects.get()
+    #
+    # Gotcha: The model name must be all lowercase not as in the class name.
+    use_as_addition_models = {
+        "numeric": {
+            "app_label": "admin_interface",
+            "model": "numericdatapointaddition",
+        },
+        "text": {
+            "app_label": "admin_interface",
+            "model": "textdatapointaddition",
+        },
+    }
     use_as = models.CharField(
         max_length=8,
-        choices=USE_AS_CHOICES,
+        choices=use_as_choices,
         default="not used",
     )
-
     type = models.CharField(
         max_length=8,
         editable=False,
         default=None,
     )
-    
     # This must be unlimeted to prevent errors from cut away keys while
     # using the datapoint map by the connector.
     key_in_connector = models.TextField(
         editable=False,
     )
-    
     example_value = models.CharField(
         max_length=30,
         editable=False
     )
 
-
-class TextDatapoint(GenericDatapoint):
-
-    last_value = models.TextField(
-        editable=False,
-    )
-    
-    last_timestamp = models.DateTimeField(
-        editable=False,
-    )
-
-
-class DatapointUnit(models.Model):
-
     def __str__(self):
-        return self.unit_quantity + " [" + self.unit_symbol + "]"
+        return slugify(self.key_in_connector)
 
-    unit_quantity = models.TextField(
-        help_text="The quantity of the unit, e.g. Temperature or Power"
+    def save(self, *args, **kwargs):
+        """
+        Handle the potentially changed usage value, and manage (i.e.
+        create/delete) the respective objects in the addition models.
+
+        TODO: This is quite complex and might deserve a test or two.
+        Relevant test cases would be:
+            - The Datapoint is created for the first time and use_as is:
+                - not_used
+                - numeric and/or text
+            - The Datapoint is changed and:
+                - No change if use_as is not changed
+                - use_as changed:
+                    - The old datapoint addition object exists and is deleted.
+                    - The old datapoint addition object does not exist and
+                      no error is raised.
+                    - The new use_as is not_used and no new object is created.
+                    - The new use_as is numeric and/or text and a new object is
+                      created.
+        """
+
+        # New instance, create a new object for the respective
+        # Addition. Assume that until now no such object in of the
+        # addition models exists.
+        if not self.id:
+            # At first trigger a save of self, this is required that we can
+            # use it as a relation.
+            super(Datapoint, self).save(*args, **kwargs)
+
+            # This is False for "not used" and potentially an other
+            # datapoint usage pattern that requires no additional metadata.
+            try:
+                if self.use_as in self.use_as_addition_models:
+                    ct_kwargs = self.use_as_addition_models[self.use_as]
+                    addition_type = ContentType.objects.get(**ct_kwargs)
+                    addition_model = addition_type .model_class()
+                    addition_model(
+                        datapoint=self,
+                    ).save()
+            except:
+                # Undo save if the creation of the addition object failed to
+                # prevent inconsistent states in DB.
+                Datapoint.objects.get(id=self.id).delete()
+                raise
+            return
+
+        #
+        # Below here only for Existing datapoint instance.
+        #
+        # Check if use_as has changed and trigger a normal save if not.
+        use_as_as_in_db = Datapoint.objects.get(id=self.id).use_as
+        if use_as_as_in_db == self.use_as:
+            super(Datapoint, self).save(*args, **kwargs)
+            return
+
+        # Now we now that use_as has chaged, delete the object for the old
+        # datapoint addition (if the if statement below is true there should
+        # exist one and only one entry in the respective model, as it should
+        # have been created by the last run of this method)
+        if use_as_as_in_db in self.use_as_addition_models:
+            ct_kwargs = self.use_as_addition_models[use_as_as_in_db]
+            addition_type = ContentType.objects.get(**ct_kwargs)
+            addition_model = addition_type .model_class()
+            # DatapointAddition should use a OneToOne relation, hence there
+            # should be onyl one entry for this query.
+            addition_model.objects.get(datapoint=self.id).delete()
+
+        # Finally create the new datapoint addition entry if applicable.
+        if self.use_as in self.use_as_addition_models:
+            ct_kwargs = self.use_as_addition_models[self.use_as]
+            addition_type = ContentType.objects.get(**ct_kwargs)
+            addition_model = addition_type .model_class()
+            addition_model(
+                datapoint=self,
+            ).save()
+
+        super(Datapoint, self).save(*args, **kwargs)
+
+
+class TextDatapointAddition(models.Model):
+    """
+    This extends the Datapoint model with metadata specific for text
+    datapoints.
+    """
+
+    # The metadata belongs to exactly one datapoint.
+    datapoint = models.OneToOneField(
+        Datapoint,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        editable=False,
     )
-    unit_symbol = models.TextField(
-        help_text="The short symbol of the unit, e.g. °C or kW"
-    )
-
-
-class NumericDatapoint(GenericDatapoint):
-
-    unit = models.ForeignKey(
-        DatapointUnit,
-        on_delete=models.SET('')
-    )
-     
     last_value = models.TextField(
         editable=False,
+        null=True,
+        help_text=(
+            "The last value received via MQTT."
+        )
     )
-    
     last_timestamp = models.DateTimeField(
         editable=False,
+        null=True,
+        help_text=(
+            "The timestamp of the last value received via MQTT."
+        )
     )
 
+
+#class DatapointUnit(models.Model):
+#
+#    def __str__(self):
+#        return self.unit_quantity + " [" + self.unit_symbol + "]"
+#
+#    unit_quantity = models.TextField(
+#        help_text="The quantity of the unit, e.g. Temperature or Power"
+#    )
+#    unit_symbol = models.TextField(
+#        help_text="The short symbol of the unit, e.g. °C or kW"
+#    )
+
+
+class NumericDatapointAddition(models.Model):
+    """
+    This extends the Datapoint model with metadata specific for numeric
+    datapoints.
+    """
+
+    # The metadata belongs to exactly one datapoint.
+    datapoint = models.OneToOneField(
+        Datapoint,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        editable=False,
+    )
+    last_value = models.FloatField(
+        editable=False,
+        null=True,
+        help_text=(
+            "The last value received via MQTT."
+        )
+    )
+    last_timestamp = models.DateTimeField(
+        editable=False,
+        null=True,
+        help_text=(
+            "The timestamp of the last value received via MQTT."
+        )
+    )
+#    unit = models.ForeignKey(
+#        DatapointUnit,
+#        on_delete=models.SET('')
+#    )
     min_value = models.FloatField(
         blank=True,
         null=True,
         default=None,
         help_text=(
             "The minimal expected value of the datapoint. Is uesed for "
-            "automatically scaling plots. Only applicable to datapoints that"
-            "carry numeric values."
+            "automatically scaling plots."
         )
     )
-    # TODO: remove blank if not optional
     max_value = models.FloatField(
         blank=True,
         null=True,
         default=None,
         help_text=(
             "The maximal expected value of the datapoint. Is uesed for "
-            "automatically scaling plots. Only applicable to datapoints that"
-            "carry numeric values."
+            "automatically scaling plots."
         )
     )
-
-class DeviceMakerManager(models.Manager):
-    def get_by_natural_key(self, slug):
-        return self.get(slug=slug)
-
-
-class DeviceMaker(models.Model):
-    friendly_name = models.TextField(
-        default='',
-        help_text="Human readable device manufacturer or service provider. "
-                  "E.g. Aquametro",
-        max_length=30
-    )
-    slug = models.SlugField(
-        default='',
-        max_length=40
-    )
-    manager = DeviceMakerManager()
-
-    def __str__(self):
-        return self.slug
-
-    def natural_key(self):
-        return self.slug
-
-
-class DeviceType(models.Model):
-    friendly_name = models.TextField(
-        default='',
-        help_text="Human readable device description. "
-                  "E.g. room thermostat or heat meter",
-        max_length=30
-
-    )
-    slug = models.SlugField(
-        default='',
-        max_length=40
-    )
-
-
-class DeviceVersion(models.Model):
-    version = models.TextField(
-        default='',
-        help_text="Version/model of device, e.g. 2.1",
-        max_length=30
-    )
-    slug = models.SlugField(
-        default='',
-        max_length=40
-    )
-
-    def __str__(self):
-        return self.slug
-
-
-class DeviceLocationFriendlyName(models.Model):
-    friendly_name = models.TextField(
-        default='',
-        help_text="Human readable device location. "
-                  "E.g. 3.1.12 or heating cellar"
-    )
-
-
-# class DeviceManager(models.Manager):
-#     def get_by_natural_key(self, slug):
-#         return self.get(slug=slug)
-
-
-# class Device(models.Model):
-#     """
-#     TODO: Uncomment attributes below
-#     TODO: How about dynamic meta data?
-#     TODO: Fix on_delete to set a meaningful default value.
-#     """
-#     connector = models.ForeignKey(
-#         Connector,
-#         on_delete=models.CASCADE
-#     )
-#     # device_type_friendly_name = models.ForeignKey(
-#     #     DeviceType,
-#     #     on_delete=models.SET(''),
-#     #     name='Device_type'
-#     # )
-#     # device_location_friendly_name = models.ForeignKey(
-#     #     DeviceLocationFriendlyName,
-#     #     on_delete=models.SET(''),
-#     #     name='Device_location'
-#     # )
-#     device_name = models.TextField(
-#         default='',
-#         max_length=30,
-#         help_text="Name of device, e.g. Dachs"
-#     )
-#     # device_maker = models.ForeignKey(
-#     #     DeviceMaker,
-#     #     on_delete=models.SET(''),
-#     #     default=''
-#     # )
-#     # device_version = models.ForeignKey(
-#     #     DeviceVersion,
-#     #     on_delete=models.SET(''),
-#     #     blank=True,
-#     #     default=''
-#     #     #limit_choices_to=....
-#     # )
-#     # device_slug = models.SlugField(
-#     #     max_length=150,
-#     #     default="{}_{}_{}".format(device_maker, device_name, device_version),
-#     # )
-#     # is_virtual = models.BooleanField(
-#     #     help_text="True for virtual devices like e.g. a webservice."
-#     # )
-#     # x = models.FloatField(
-#     #     null=True,
-#     #     default=None,
-#     #     help_text="X Position in 3D Model"
-#     # )
-#     # y = models.FloatField(
-#     #     null=True,
-#     #     default=None,
-#     #     help_text="Y Position in 3D Model"
-#     # )
-#     # z = models.FloatField(
-#     #     null=True,
-#     #     default=None,
-#     #     help_text="Z Position in 3D Model"
-#     # )
-#     manager = DeviceManager()
-#     #datapoint = models.ManyToManyField(Datapoint, blank=False)
-#
-#     def __str__(self):
-#         return self.device_name #device_type_friendly_name
-#
-#     # def natural_key(self):
-#     #     return self.device_slug
-
-
-class GenericDevice(models.Model):
-    """
-    TODO: Write default for regex
-    """
-    connector = models.ForeignKey(
-        Connector,
-        on_delete=models.CASCADE
-    )
-
-    type = models.TextField(
-        default='',
-        max_length=30,
-        help_text="Descriptive name of this device."
-    )
-
-    datapoint_keys_regex = models.TextField(
-        default='',
-        blank=True,
-        help_text="Regular expression to automatically match available datapoints to this device based on their key."
-    )
-
-    def __str__(self):
-        return self.type
-
-    class Meta:
-        abstract = True
-
-
-class Device(GenericDevice):
-    pass
-
-
-class NonDevice(GenericDevice):
-    url = models.URLField(
-        blank=True
-    )
-    pass
-
-
-#class Datapoint(models.Model):
-#    """
-#    TODO: Flag if already integrated or new (e.g. because of having installed a new device)
-#    TODO: How about dynamic meta data?
-#    TODO: Fix on_delete to set a meaningful default value.
-#    """
-#
-#    def html_element_id(self):
-#        """
-#        Return the id of the datapoint element.
-#        """
-#        return "datapoint_" + str(self.pk)
-#
-#    def html_element(self):
-#        """
-#        Generates the html element to display the value of the datapoint with
-#        the primary key as id and the default_value field as initial value.
-#        E.g:
-#            <div id=datapoint_21>--.-</div>
-#        """
-#        element = format_html(
-#            "<div id={}>{}</div>",
-#            self.html_element_id(),
-#            self.default_value,
-#        )
-#        return element
-#
-#    # TODO: uncomment again
-#    # device = models.ForeignKey(
-#    #     Device,
-#    #     on_delete=models.CASCADE
-#    # )
-#    # TODO: uncomment again
-#    # unit = models.ForeignKey(
-#    #     DatapointUnit,
-#    #     on_delete=models.SET('')
-#    # )
-#    mqtt_topic = models.TextField(
-#        null=True,
-#        blank=True,
-#        editable=False,
-#        help_text=(
-#            "The MQTT topic on which the values of this datapoint "
-#            "are published. Is auto generated for consistency."
-#        )
-#    )
-#    # TODO: remove blank
-#    min_value = models.FloatField(
-#        blank=True,
-#        null=True,
-#        default=None,
-#        help_text=(
-#            "The minimal expected value of the datapoint. Is uesed for "
-#            "automatically scaling plots. Only applicable to datapoints that"
-#            "carry numeric values."
-#        )
-#    )
-#    # TODO: remove blank
-#    max_value = models.FloatField(
-#        blank=True,
-#        null=True,
-#        default=None,
-#        help_text=(
-#            "The maximal expected value of the datapoint. Is uesed for "
-#            "automatically scaling plots. Only applicable to datapoints that"
-#            "carry numeric values."
-#        )
-#    )
-#    # # TODO: remove blank anc change default again
-#    # default_value = models.FloatField(
-#    #     default=None,
-#    #     blank=True,
-#    #     help_text=(
-#    #         "The value that is displayed before the latest datapoint values "
-#    #         "have been received via MQTT."
-#    #     )
-#    # )
-#    datapoint_key_in_connector = models.TextField(default='')
-
-
-#class GenericDatapoint(models.Model):
-#    """
-#    TODO: Active/subscribed (or similar) boolean?
-#    TODO: Abstract model
-#    """
-#
-#    def html_element_id(self):
-#        """
-#        Return the id of the datapoint element.
-#        """
-#        return "datapoint_" + str(self.pk)
-#
-#    def html_element(self):
-#        """
-#        Generates the html element to display the value of the datapoint with
-#        the primary key as id and the default_value field as initial value.
-#        E.g:
-#            <div id=datapoint_21>--.-</div>
-#        """
-#        element = format_html(
-#            "<div id={}>{}</div>",
-#            self.html_element_id(),
-#            self.default_value,
-#        )
-#        return element
-#
-#    # TODO: uncomment again
-#    # device = models.ForeignKey(
-#    #     Device,
-#    #     on_delete=models.CASCADE
-#    # )
-#    mqtt_topic = models.TextField(
-#        null=True,
-#        blank=True,
-#        editable=False,
-#        help_text=(
-#            "The MQTT topic on which the values of this datapoint "
-#            "are published. Is auto generated for consistency."
-#        )
-#    )
-#    datapoint_key_in_connector = models.TextField(default='')
-#
-#    last_value = models.TextField(
-#        default='',
-#        blank=True,
-#        help_text=(
-#            "The last value django is aware of. This is used as an initial "
-#            "value in pages before updating from MQTT."
-#            )
-#        )
-#    last_timestamp = models.BigIntegerField(
-#        default=None,
-#        null=True,
-#        help_text=(
-#            "The last timestamp corresponding to last_value above. This is "
-#            "used as an initial value in pages before updating from MQTT."
-#        )
-#    )
-#    descriptor = models.TextField(default='')
-#
-#    class Meta:
-#        abstract = True
