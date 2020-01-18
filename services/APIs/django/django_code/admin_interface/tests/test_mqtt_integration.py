@@ -3,8 +3,6 @@ import json
 import time
 
 import pytest
-import paho.mqtt.client as mqtt
-from django.test import TransactionTestCase
 
 # Sets path and django such that we can execute this file stand alone and
 # develop interactive too.
@@ -20,21 +18,36 @@ from admin_interface.utils import datetime_from_timestamp
 from admin_interface.tests.fake_mqtt import FakeMQTTBroker, FakeMQTTClient
 
 
-def connector_factory(connector_name="test_connector"):
+def connector_factory(connector_name=None):
     """
     Create a test connector in DB.
+
+    This function is not thread save and may produce errors if other code
+    inserts objects in models.Connector in parallel.
+
+    Arguments:
+    ----------
+    connector_name: string or None
+        If String uses this name as connector name. Else will automatically
+        generate a name that is "test_connector_" + id of Connector. Be aware
+        that mqtt topics are automatically generated from the name and that
+        name and mqtt_topics must be unique.
+
+    Returns:
+    test_connector: models.Connector object
+        A dummy Connector for tests.
     """
+    if connector_name is None:
+        next_id = models.Connector.objects.count() + 1
+        connector_name = "test_connector_" + str(next_id)
+
     test_connector = models.Connector(
         name=connector_name,
-        mqtt_topic_logs=connector_name+"/logs",
-        mqtt_topic_heartbeat=connector_name+"/heartbeat",
-        mqtt_topic_available_datapoints=connector_name+"available_datapoints",
-        mqtt_topic_datapoint_map=connector_name+"/datapoint_map",
     )
     test_connector.save()
-    
+
     return test_connector
-    
+
 @pytest.fixture(scope='class')
 def connector_integration_setup(request, django_db_setup, django_db_blocker):
     """
@@ -62,7 +75,7 @@ def connector_integration_setup(request, django_db_setup, django_db_blocker):
     if hasattr(ConnectorMQTTIntegration, "_instance"):
         del ConnectorMQTTIntegration._instance
 
-    # This would throw an error as the post_save signal is fired but 
+    # This would throw an error as the post_save signal is fired but
     # the ConnectorMQTTIntegration instance is not ready yet.
     # However, the signal receiver ignores this one special connector_name.
     special_connector_name = (
@@ -80,6 +93,9 @@ def connector_integration_setup(request, django_db_setup, django_db_blocker):
     request.cls.cmi = cmi
     yield
 
+    # Remove DB entries, as the restore command below does not seem to work.
+    test_connector.delete()
+
     # Close connections and objects.
     mqtt_client.disconnect()
     mqtt_client.loop_stop()
@@ -94,7 +110,7 @@ def connector_integration_setup(request, django_db_setup, django_db_blocker):
 class TestConnectorIntegration():
     """
     Test that all messages sent by a standard Connector are saved in the DB.
-    
+
     This tests effectively:
         __init__ : i.e. that the client is set up correctly.
         update_topics : At least the first execution of it.
@@ -136,7 +152,7 @@ class TestConnectorIntegration():
         assert log_msg_db.msg == test_log_msg['msg']
         assert log_msg_db.emitter == test_log_msg['emitter']
         assert log_msg_db.level == test_log_msg['level']
-        
+
         # Clean up.
         log_msg_db.delete()
 
@@ -173,7 +189,7 @@ class TestConnectorIntegration():
         )
         assert heartbeat_db.last_heartbeat == last_heartbeat_as_datetime
         assert heartbeat_db.next_heartbeat == next_heartbeat_as_datetime
-        
+
         # Clean up.
         heartbeat_db.delete()
 
@@ -201,7 +217,7 @@ class TestConnectorIntegration():
 
         # Wait for the data to reach the DB
         waited_seconds = 0
-        while models.ConnectorAvailableDatapoints.objects.count() < 3:
+        while models.Datapoint.objects.count() < 3:
             time.sleep(0.005)
             waited_seconds += 0.005
 
@@ -223,19 +239,19 @@ class TestConnectorIntegration():
                 expected_rows.append(expected_row)
 
         # Actual rows in DB:
-        ad_db = models.ConnectorAvailableDatapoints.objects.all()
+        ad_db = models.Datapoint.objects.all()
         actual_rows = []
         for item in ad_db:
             actual_row = (
-                item.datapoint_type,
-                item.datapoint_key_in_connector,
-                item.datapoint_example_value,
+                item.type,
+                item.key_in_connector,
+                item.example_value,
             )
             actual_rows.append(actual_row)
 
         # Finnaly check if the rows are identical.
         assert expected_rows == actual_rows
-        
+
         # Clean up.
         for item in ad_db:
             item.delete()
@@ -244,13 +260,13 @@ class TestConnectorIntegration():
 @pytest.fixture(scope='class')
 def allow_db_setup(request, django_db_setup, django_db_blocker):
     """
-    Allows DB access for test. This is yet required as the __init__ of 
+    Allows DB access for test. This is yet required as the __init__ of
     ConnectorMQTTIntegration will check the DB for topics.
     """
     # Allow access to the Test DB. See:
     # https://pytest-django.readthedocs.io/en/latest/database.html#django-db-blocker
     django_db_blocker.unblock()
-    
+
     yield
     # Remove access to DB.
     django_db_blocker.block()
@@ -260,31 +276,31 @@ def allow_db_setup(request, django_db_setup, django_db_blocker):
 @pytest.mark.usefixtures('allow_db_setup')
 class TestGetInstance():
     """
-    Test that the mechanism of fetching the initialized class instance of 
+    Test that the mechanism of fetching the initialized class instance of
     ConnectorMQTTIntegration from the class object works as expected.
     """
-    
+
     def test_instance_is_returned(self):
         """
-        Verify that the call to get_instance returns an instance of 
+        Verify that the call to get_instance returns an instance of
         ConnectorMQTTIntegration.
         """
         # Delete _instance as tests above might have created an instance.
         if hasattr(ConnectorMQTTIntegration, "_instance"):
             del ConnectorMQTTIntegration._instance
-        
+
         fake_broker = FakeMQTTBroker()
         fake_client_1 = FakeMQTTClient(fake_broker=fake_broker)
-    
+
         # Setup Broker and Integration.
         mqtt_client = fake_client_1()
         mqtt_client.connect('localhost', 1883)
         mqtt_client.loop_start()
-    
+
         initialized_instance = ConnectorMQTTIntegration(
             mqtt_client=fake_client_1
         )
-        
+
         retrieved_instance = ConnectorMQTTIntegration.get_instance()
         assert isinstance(retrieved_instance, ConnectorMQTTIntegration)
         assert id(retrieved_instance) == id(initialized_instance)
@@ -300,22 +316,22 @@ class TestGetInstance():
 
         fake_broker = FakeMQTTBroker()
         fake_client_1 = FakeMQTTClient(fake_broker=fake_broker)
-    
+
         # Setup Broker and Integration.
         mqtt_client = fake_client_1()
         mqtt_client.connect('localhost', 1883)
         mqtt_client.loop_start()
-    
+
         first_initialized_instance = ConnectorMQTTIntegration(
             mqtt_client=fake_client_1
         )
-        
+
         second_initialized_instance = ConnectorMQTTIntegration(
             mqtt_client=fake_client_1
         )
-        
+
         assert (
-            id(first_initialized_instance) == 
+            id(first_initialized_instance) ==
             id(second_initialized_instance)
         )
 
@@ -359,7 +375,7 @@ def update_subscription_setup(request, django_db_setup, django_db_blocker):
     if hasattr(ConnectorMQTTIntegration, "_instance"):
         del ConnectorMQTTIntegration._instance
 
-    # This would throw an error as the post_save signal is fired but 
+    # This would throw an error as the post_save signal is fired but
     # the ConnectorMQTTIntegration instance is not ready yet.
     # However, the signal receiver ignores this one special connector_name.
     special_connector_name = (
@@ -370,12 +386,12 @@ def update_subscription_setup(request, django_db_setup, django_db_blocker):
     cmi = ConnectorMQTTIntegration(
         mqtt_client=fake_client_2
     )
-    
-    # Create additional connector and remove the first one to simulate 
+
+    # Create additional connector and remove the first one to simulate
     # changes after ConnectorMQTTIntegration has been inizialized.
     test_connector_2 = connector_factory("test_connector_2")
     test_connector_3 = connector_factory("test_connector_3")
-    
+
     # Give django a seconds to receive the signal and call update_topcis
     # as well as update_subscriptions.
     time.sleep(0.5)
@@ -401,22 +417,22 @@ def update_subscription_setup(request, django_db_setup, django_db_blocker):
 @pytest.mark.usefixtures('update_subscription_setup')
 class TestUpdateSubscription():
     """
-    Tests for the handling of changed Connector entries after the 
+    Tests for the handling of changed Connector entries after the
     initialization of ConnectorMQTTIntegration.
-    
-    This tests effectively the functions `update_topics` and 
+
+    This tests effectively the functions `update_topics` and
     `update_subscriptions` and their handling of changes after the first.
     initialization of ConnectorMQTTIntegration.
-    
-    Furhtermore all tests require a correct signal handling of post_save 
-    signals for the Connector model. Hence, if all tests of this class fail, 
+
+    Furhtermore all tests require a correct signal handling of post_save
+    signals for the Connector model. Hence, if all tests of this class fail,
     this might be the reason.
     """
-    
+
     def test_subscribe_to_new_connector(self):
         """
-        Test that the topics of the connector added after initialization of 
-        ConnectorMQTTIntegration are available in the managed topic list as 
+        Test that the topics of the connector added after initialization of
+        ConnectorMQTTIntegration are available in the managed topic list as
         well as have been subscribed to.
         """
         mqtt_topic_attrs = [
@@ -425,18 +441,18 @@ class TestUpdateSubscription():
             "mqtt_topic_available_datapoints",
         ]
         subscribed_topics = self.mqtt_client.fake_broker.subscribed_topics
-        
+
         for mqtt_topic_attr in mqtt_topic_attrs:
             topic = getattr(self.test_connector_2, mqtt_topic_attr)
             assert topic in self.cmi.userdata["topics"]
             assert topic in subscribed_topics
-    
+
     def test_unsubscribe_from_removed_connector(self):
         """
-        Test that the topics of the connector removed after initialization of 
-        ConnectorMQTTIntegration are no longer available in the managed topic 
+        Test that the topics of the connector removed after initialization of
+        ConnectorMQTTIntegration are no longer available in the managed topic
         list as well as have been unsubscribed from.
-        
+
         TODO This test fails as:
             1) fake_mqtt does not support unsubscribe
             2) Some other reason that prevents the topics from being saved back.
@@ -447,26 +463,26 @@ class TestUpdateSubscription():
             "mqtt_topic_available_datapoints",
         ]
         subscribed_topics = self.mqtt_client.fake_broker.subscribed_topics
-        
+
         # Verify that the topics of test_connector_3 are available.
         for mqtt_topic_attr in mqtt_topic_attrs:
             topic = getattr(self.test_connector_3, mqtt_topic_attr)
             assert topic not in self.cmi.userdata["topics"]
             assert topic not in subscribed_topics
-        
+
         # Now delete the test_connector, give the signal some time and
         # verify that the topics are no longer available.
         self.test_connector_3.delete()
         time.sleep(0.5)
-        
+
         for mqtt_topic_attr in mqtt_topic_attrs:
             topic = getattr(self.test_connector_3, mqtt_topic_attr)
             assert topic in self.cmi.userdata["topics"]
             # assert topic in subscribed_topics
-    
+
     def test_log_msg_received_new_connector(self):
         """
-        Test that a log message received via MQTT is stored in the DB for a 
+        Test that a log message received via MQTT is stored in the DB for a
         connector added after initialization of ConnectorMQTTIntegration.
         """
         # Define test data and send to mqtt integration.
@@ -506,7 +522,7 @@ class TestUpdateSubscription():
 
     def test_heartbeat_received(self):
         """
-        Test that a heartbeat message received via MQTT is stored in the DB 
+        Test that a heartbeat message received via MQTT is stored in the DB
         for a connector added after initialization of ConnectorMQTTIntegration.
         """
         test_heartbeat = {
@@ -538,14 +554,14 @@ class TestUpdateSubscription():
         )
         assert heartbeat_db.last_heartbeat == last_heartbeat_as_datetime
         assert heartbeat_db.next_heartbeat == next_heartbeat_as_datetime
-        
+
         # Clean up.
         heartbeat_db.delete()
 
     def test_available_datapoints_received(self):
         """
         Test that a available_datapoints message received via MQTT is stored
-        correctly in the DB for a connector added after initialization of 
+        correctly in the DB for a connector added after initialization of
         ConnectorMQTTIntegration.
         """
         # Numbers will be converted to strings by json.dumps and not converted
@@ -567,7 +583,7 @@ class TestUpdateSubscription():
 
         # Wait for the data to reach the DB
         waited_seconds = 0
-        while models.ConnectorAvailableDatapoints.objects.count() < 3:
+        while models.Datapoint.objects.count() < 3:
             time.sleep(0.005)
             waited_seconds += 0.005
 
@@ -589,13 +605,13 @@ class TestUpdateSubscription():
                 expected_rows.append(expected_row)
 
         # Actual rows in DB:
-        ad_db = models.ConnectorAvailableDatapoints.objects.all()
+        ad_db = models.Datapoint.objects.all()
         actual_rows = []
         for item in ad_db:
             actual_row = (
-                item.datapoint_type,
-                item.datapoint_key_in_connector,
-                item.datapoint_example_value,
+                item.type,
+                item.key_in_connector,
+                item.example_value,
             )
             actual_rows.append(actual_row)
 
@@ -610,4 +626,3 @@ class TestUpdateSubscription():
 if __name__ == '__main__':
     # Test this file only.
     pytest.main(['-v', __file__])
-

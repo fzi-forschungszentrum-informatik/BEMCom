@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 class ConnectorMQTTIntegration():
     """
     This class allows the API (django) to communicate with the connectors via
-    MQTT. 
-    
-    It has some mechanisms implemented to ensure that only one instance of this 
+    MQTT.
+
+    It has some mechanisms implemented to ensure that only one instance of this
     class is running, to prevent concurrent and redundand read/write operations
     the djangos DB.
 
@@ -23,7 +23,7 @@ class ConnectorMQTTIntegration():
     Parts of the class will be called at runtime to react on changed settings
     from within signals.py.
     """
-    
+
     def __new__(cls, *args, **kwargs):
         """
         Ensure singleton, i.e. only one instance is created.
@@ -42,14 +42,14 @@ class ConnectorMQTTIntegration():
         """
         Initial configuration of the MQTT communication.
         """
-        
+
         # Ignore the potentially changed configuration if instance, and thus
         # also an MQTT client, exist.
-        # If a new configuration should be used, disconnect and destroy the 
+        # If a new configuration should be used, disconnect and destroy the
         # current instance and create a new one.
         if hasattr(self, "client"):
             return
-        
+
         # Below the normal startup and configration of this class.
         logger.info("Starting up Connector MQTT Integration.")
 
@@ -89,7 +89,7 @@ class ConnectorMQTTIntegration():
     def get_instance(cls):
         """
         Return the running instance of the class.
-        
+
         Returns:
         --------
         instance: ConnectorMQTTIntegration instance
@@ -130,15 +130,15 @@ class ConnectorMQTTIntegration():
             'mqtt_topic_datapoint_map',
             'mqtt_topic_datapoint_message_wildcard'
         ]
-        
+
         # It might be more efficient to extract the topics only for those
-        # connectors which have been edited. However, at the time of 
+        # connectors which have been edited. However, at the time of
         # implementation the additional effort did not seem worth it.
         for connector in models.Connector.objects.all():
             for message_type in message_types:
                 topic = getattr(connector, message_type)
                 topics[topic] = (connector, message_type)
-                
+
         # Store the topics and update the client userdata, so the callbacks
         # will have up to date data.
         self.userdata['topics'] = topics
@@ -147,16 +147,16 @@ class ConnectorMQTTIntegration():
     def update_subscriptions(self):
         """
         Updates subscriptions.
-        
-        Should be used if the topics object has changed, i.e. call directly 
+
+        Should be used if the topics object has changed, i.e. call directly
         after self.update_topics().
         """
         topics = self.userdata['topics']
-        
+
         # Start with no subscription on first run.
         if not hasattr(self, "connected_topics"):
             self.connected_topics  = []
-        
+
         # Subsribe to topics not subscribed yet.
         for topic in topics:
             if topic not in self.connected_topics:
@@ -164,7 +164,7 @@ class ConnectorMQTTIntegration():
                 # No duplicates in log files etc.
                 self.client.subscribe(topic=topic, qos=2)
                 self.connected_topics.append(topic)
-        
+
         # Unsubscribe from topics no longer relevant.
         for topic in self.connected_topics:
             if topic not in topics:
@@ -193,34 +193,49 @@ class ConnectorMQTTIntegration():
         logger.info('got message on topic %s', msg.topic)
         if message_type == 'mqtt_topic_logs':
             timestamp = datetime_from_timestamp(payload['timestamp'])
-            if not models.ConnectorLogEntry.objects.filter(
+            try:
+                _ = models.ConnectorLogEntry(
                     connector=connector,
-                    timestamp=timestamp).exists():
-                try:
-                    _ = models.ConnectorLogEntry(
-                        connector=connector,
-                        timestamp=timestamp,
-                        msg=payload['msg'],
-                        emitter=payload['emitter'],
-                        level=payload['level'],
-                    ).save()
-                except Exception:
-                    logger.exception('Exception while writing Log into DB.')
-                    # This raise will be caught by paho mqtt. It should not though.
-                    raise
+                    timestamp=timestamp,
+                    msg=payload['msg'],
+                    emitter=payload['emitter'],
+                    level=payload['level'],
+                ).save()
+            except Exception:
+                logger.exception('Exception while writing Log into DB.')
+                # This raise will be caught by paho mqtt. It should not though.
+                raise
 
         if message_type == 'mqtt_topic_heartbeat':
-            # TODO: Update the entry Instead of inserting one.
             try:
-                _ = models.ConnectorHeartbeat(
-                    connector=connector,
-                    last_heartbeat=datetime_from_timestamp(
+                hb_model = models.ConnectorHeartbeat
+                # Create a new DB entry if this is the first time we see a
+                # heartbeat message for this connector. This code prevents
+                # creating an object with invalid values for the heartbeat
+                # entries (i.e. null or 1.1.1970, etc.) which should be
+                # beneficial for downstream code that relies on valid entries.
+                if not hb_model.objects.filter(connector=connector).exists():
+                    _ = hb_model(
+                        connector=connector,
+                        last_heartbeat=datetime_from_timestamp(
+                            payload['this_heartbeats_timestamp']
+                        ),
+                        next_heartbeat=datetime_from_timestamp(
+                            payload['next_heartbeats_timestamp']
+                        ),
+                    ).save()
+                # Else this is an update to an existing entry. There should
+                # be only one heartbeat entry per connector, enforced by the
+                # unique constraint of the connector field.
+                else:
+                    hb_object = hb_model.objects.get(connector=connector)
+                    hb_object.last_heartbeat=datetime_from_timestamp(
                         payload['this_heartbeats_timestamp']
-                    ),
-                    next_heartbeat=datetime_from_timestamp(
+                    )
+                    hb_object.next_heartbeat=datetime_from_timestamp(
                         payload['next_heartbeats_timestamp']
-                    ),
-                ).save()
+                    )
+                    hb_object.save()
             except Exception:
                 logger.exception('Exception while writing heartbeat into DB.')
                 # This raise will be caught by paho mqtt. It should not though.
@@ -233,11 +248,11 @@ class ConnectorMQTTIntegration():
                 for key, example in payload[datapoint_type].items():
                     # Check if this available datapoint already exists in database
                     # TODO: Update entry if type or example value changes for a given key instead of creating a new object
-                    if not models.GenericDatapoint.objects.filter(
+                    if not models.Datapoint.objects.filter(
                             connector=connector,
                             key_in_connector=key).exists():
                         try:
-                            _ = models.GenericDatapoint(
+                            _ = models.Datapoint(
                                 connector=connector,
                                 type=datapoint_type,
                                 key_in_connector=key,
@@ -248,41 +263,6 @@ class ConnectorMQTTIntegration():
                                 'Exception while writing available datapoint into '
                                 'DB.'
                             )
-#                    # TODO: only test version below -> create with correct device and unit
-#                    if not models.Datapoint.objects.filter(datapoint_key_in_connector=key).exists():
-#                        try:
-#                            _ = models.Datapoint(
-#                                datapoint_key_in_connector=key,
-#                            ).save()
-#                        except Exception:
-#                            logger.exception(
-#                                'Exception while writing datapoint into DB.'
-#                            )
-
-        if message_type == 'mqtt_topic_datapoint_map':
-            for datapoint_type in payload:
-                for key, topic in payload[datapoint_type].items():
-                    # Check if this mapping already exists in database
-                    # TODO: Update entry if mapping changes instead of creating a new object
-                    if not models.ConnectorDatapointTopicMapper.objects.filter(
-                            datapoint_type=datapoint_type,
-                            datapoint_key_in_connector=key,
-                            mqtt_topic=topic).exists():
-                        try:
-                            _ = models.ConnectorDatapointTopicMapper(
-                                connector=connector,
-                                datapoint_type=datapoint_type,
-                                datapoint_key_in_connector=key,
-                                mqtt_topic=topic,
-                                subscribed=False
-                            ).save()
-                        except Exception:
-                            logger.exception(
-                                'Exception while writing datapoint map into DB.'
-                            )
-            if message_type == 'mqtt_topic_datapoint_message_wildcard':
-                print(payload)
-
 
     @staticmethod
     def on_connect(client, userdata, flags, rc):
