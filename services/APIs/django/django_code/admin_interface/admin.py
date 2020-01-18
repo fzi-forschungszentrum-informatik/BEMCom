@@ -1,40 +1,25 @@
-from django.contrib import admin
-from django.utils.text import slugify
-from django.contrib.admin.models import LogEntry
-from .models import Connector, Device, GenericDatapoint, ConnectorHeartbeat, \
-    ConnectorLogEntry, ConnectorDatapointTopicMapper, NumericDatapoint
-from .signals import subscription_status
-from .utils import datetime_iso_format
 from datetime import datetime, timezone
 
+from django.contrib import admin
+
+from admin_interface import models
+from admin_interface.utils import datetime_iso_format
+from admin_interface.signals import subscription_status
 """
 Add actions to be performed on selected objects.
 Below: example to change the heartbeat topic to "beat":
 --------------------
     def change_mqtt_topic_heartbeat(modeladmin, request, queryset):
         queryset.update(mqtt_topic_heartbeat='beat')
-        
+
     change_mqtt_topic_heartbeat.short_description = "Change MQTT topic for heartbeat"
 --------------------
 """
 
 
-class DatapointMappingInline(admin.TabularInline):
-    model = ConnectorDatapointTopicMapper
-    extra = 0
-    fields = ('datapoint_key_in_connector', 'mqtt_topic', 'datapoint_type', 'subscribed', )
-    readonly_fields = ('datapoint_key_in_connector', 'mqtt_topic', 'datapoint_type', )
-    ordering = ('subscribed', )
-    verbose_name_plural = "Available datapoints subscription management"
-    can_delete = False
-
-    # Uncomment to only display unsubscribed datapoints
-    # def get_queryset(self, request):
-    #     queryset = super(DatapointMappingInline, self).get_queryset(request)
-    #     return queryset.filter(subscribed=False)
 
 
-@admin.register(Connector)
+@admin.register(models.Connector)
 class ConnectorAdmin(admin.ModelAdmin):
     """
     TODO: Managing mapping and subscription in connector change view
@@ -60,54 +45,17 @@ class ConnectorAdmin(admin.ModelAdmin):
     # Search fields
     search_fields = ('name', )
 
-    # Add action function defined above
-    # actions = [change_mqtt_topic_heartbeat]
-
-    """
-    Add/Change object view customizations
-    """
-    # Fields to be displayed
-    # fields = ('name',)
-
-    # Fields to be hidden
-    # exclude = ('name', )
-
-    # Fieldsets allow grouping of fields with corresponding title & description
-    # Doc: https://docs.djangoproject.com/en/3.0/ref/contrib/admin/#django.contrib.admin.ModelAdmin.fieldsets
-    # fieldsets = (
-    #     ('Datapoints', {
-    #         'fields': ('available_datapoints', '')
-    #     }),
-    #     ('Field group 2 title', {
-    #         'description': 'Further info for this group.',
-    #         'classes': ('collapse', ),
-    #         'fields': ()
-    #     })
-    # )
-
     inlines = ()
 
-    # @staticmethod
-    # def available_datapoints(obj):
-    #     # datapoints = []
-    #     # for dp in ConnectorAvailableDatapoints.objects.filter(connector=obj.id).last():
-    #     #     if dp not in datapoints:
-    #     #         datapoints.append(dp.__str__())
-    #     #
-    #     # if datapoints:
-    #     #     return ", ".join(datapoints)  # return list as string
-    #     datapoints = ConnectorAvailableDatapoints.objects.filter(connector=obj.id)
-    #     keys = [dp.datapoint_key_in_connector for dp in datapoints]
-    #     return len(keys)
-
-    def num_subscribed_datapoints(self, obj):
-        num = ConnectorDatapointTopicMapper.objects.filter(connector=obj.id, subscribed=True).count()
-        return num
-    num_subscribed_datapoints.short_description = "Number of subscribed datapoints"
+#    def num_subscribed_datapoints(self, obj):
+#        num = ConnectorDatapointTopicMapper.objects.filter(connector=obj.id, subscribed=True).count()
+#        return num
+#    num_subscribed_datapoints.short_description = "Number of subscribed datapoints"
 
     @staticmethod
     def last_heartbeat(obj, pretty=True):
-        latest_hb_message = ConnectorHeartbeat.objects.filter(connector=obj.id).latest('last_heartbeat')
+        hb_objects = models.ConnectorHeartbeat.objects
+        latest_hb_message = hb_objects.filter(connector=obj.id).last()
         last_hb = latest_hb_message.last_heartbeat
         if pretty:
             last_hb = datetime_iso_format(last_hb, hide_microsec=True)
@@ -115,26 +63,20 @@ class ConnectorAdmin(admin.ModelAdmin):
 
     @staticmethod
     def next_heartbeat(obj, pretty=True):
-        latest_hb_message = ConnectorHeartbeat.objects.filter(connector=obj.id).latest('next_heartbeat')
+        hb_objects = models.ConnectorHeartbeat.objects
+        latest_hb_message = hb_objects.filter(connector=obj.id).last()
         next_hb = latest_hb_message.next_heartbeat
         if pretty:
             next_hb = datetime_iso_format(next_hb, hide_microsec=True)
         return next_hb
 
-    def alive(self, obj):
+    @staticmethod
+    def alive(obj):
         current_time = datetime.now(timezone.utc)
-        next_hb = ConnectorHeartbeat.objects.filter(connector=obj.id).latest('next_heartbeat').next_heartbeat
+        hb_objects = models.ConnectorHeartbeat.objects
+        next_hb = hb_objects.filter(connector=obj.id).last().next_heartbeat
         return True if current_time <= next_hb else False
     alive.boolean = True
-
-    @staticmethod
-    def mqtt_message_topics(obj):
-        key_topic_mappings = {}
-        mappers = ConnectorDatapointTopicMapper.objects.filter(connector=obj.id)
-        for mapper in mappers:
-            av_dp = GenericDatapoint.objects.filter(connector=obj.id, datapoint_key_in_connector=mapper.datapoint_key_in_connector)[0]
-            key_topic_mappings[av_dp.datapoint_key_in_connector] = mapper.mqtt_topic
-        return key_topic_mappings
 
     # Things that shall be displayed in add object view, but not change object view
     def add_view(self, request, form_url='', extra_context=None):
@@ -144,18 +86,11 @@ class ConnectorAdmin(admin.ModelAdmin):
                                'click "Save and continue editing" to proceed with the connector integration.</h3>',
                 'fields': ('name', )
             }),
-            # ('MQTT topics', {
-            #     'description': '<h3>Click "Save and continue editing" to prefill the MQTT topics '
-            #                    'with <i>connector-name/topic</i>.</h3>',
-            #     'classes': ('collapse',),
-            #     'fields': [topic for topic in Connector.get_mqtt_topics(Connector()).keys()]
-            # }),
         )
         return super(ConnectorAdmin, self).add_view(request)
 
     # Things that shall be displayed in change object view, but not add object view
     def change_view(self, request, object_id, form_url='', extra_context=None):
-        self.inlines = [DatapointMappingInline]
         self.fieldsets = (
             ('Basic information', {
                 'fields': ('name', 'date_added', ('alive', 'last_heartbeat', 'next_heartbeat'), )
@@ -236,9 +171,42 @@ class ConnectorAdmin(admin.ModelAdmin):
     #     print(update_fields)
     #     obj.save(update_fields=update_fields)
 
+from django import forms
+import logging
+logger = logging.getLogger(__name__)
+
+
+class NumericDatapointInline(admin.StackedInline):
+    model = NumericDatapoint
+
 @admin.register(GenericDatapoint)
 class GenericDatapointAdmin(admin.ModelAdmin):
-        
+
+    @staticmethod
+    def get_form(request, obj=None, **kwargs):
+        dpmf = forms.modelform_factory(GenericDatapoint, fields=("use_as", ))
+
+        class ExtendedForm(dpmf):
+            class Meta(dpmf.Meta):
+                fields = ("use_as", "np_max_value")
+            np_max_value = forms.FloatField()
+
+        return ExtendedForm
+
+        class DatapointAdminForm(forms.Form):
+            def __init__(*args, **kwargs):
+                return
+            is_bound = False
+            fields = []
+            title = forms.CharField()
+            connector= forms.CharField()
+            type= forms.CharField()
+            key_in_connector= forms.CharField()
+            example_value= forms.CharField()
+            use_as= forms.CharField()
+
+        return DatapointAdminForm
+
     list_display = (
         "key_in_connector",
         "connector",
@@ -259,7 +227,17 @@ class GenericDatapointAdmin(admin.ModelAdmin):
         "connector",
         "type",
         "key_in_connector",
-        "example_value"
+        "example_value",
+#        "np_max_value",
+    )
+    fields = (
+        "connector",
+        "type",
+        "key_in_connector",
+        "example_value",
+        "use_as",
+#        "np_max_value",
+        "np_max_value"
     )
     actions = (
         "mark_not_used",
@@ -267,10 +245,18 @@ class GenericDatapointAdmin(admin.ModelAdmin):
         "mark_text",
     )
 
+    inlines = (NumericDatapointInline, )
+
+    @staticmethod
+    def np_max_value(obj):
+        max_value = obj.numericdatapoint.max_value
+        logger.warning("Returning value: %s" % max_value)
+        return max_value
+
     @staticmethod
     def connector(obj):
         return obj.connector.name
-    
+
     def mark_not_used(self, request, queryset):
         queryset.update(use_as='numeric')
     mark_not_used.short_description = "Mark selected datapoints as not used"
@@ -278,13 +264,13 @@ class GenericDatapointAdmin(admin.ModelAdmin):
     def mark_numeric(self, request, queryset):
         queryset.update(use_as='numeric')
     mark_numeric.short_description = "Mark selected datapoints as numeric"
-    
+
     def mark_text(self, request, queryset):
         queryset.update(use_as='numeric')
     mark_text.short_description = "Mark selected datapoints as text"
 
 @admin.register(NumericDatapoint)
-class NumericDatapointAdmin(GenericDatapointAdmin):
+class NumericDatapointAdmin(admin.ModelAdmin):
     pass
 
 @admin.register(ConnectorHeartbeat)
