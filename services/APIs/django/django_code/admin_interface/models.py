@@ -84,14 +84,6 @@ class Connector(models.Model):
     def natural_key(self):
         return self.name
 
-    # Get dictionary of the fields defined above with verbose (human-readable) name and connector-specific value
-    def get_fields(self):
-        connector_fields = {}
-        fields = self._meta.get_fields(include_parents=False)[-len(self.__dict__)+1:]
-        for field in fields:
-            connector_fields[field.verbose_name] = getattr(self, field.name)
-        return connector_fields
-
     def get_mqtt_topics(self):
         mqtt_topics = {}
         for attr in self.__dict__:
