@@ -84,6 +84,14 @@ class Connector(models.Model):
     def natural_key(self):
         return self.name
 
+    # Get dictionary of the fields defined above with verbose (human-readable) name and connector-specific value
+    def get_fields(self):
+        connector_fields = {}
+        fields = self._meta.get_fields(include_parents=False)[-len(self.__dict__)+1:]
+        for field in fields:
+            connector_fields[field.verbose_name] = getattr(self, field.name)
+        return connector_fields
+
     def get_mqtt_topics(self):
         mqtt_topics = {}
         for attr in self.__dict__:
@@ -329,7 +337,7 @@ class Datapoint(models.Model):
         if use_as_as_in_db in self.use_as_addition_models:
             ct_kwargs = self.use_as_addition_models[use_as_as_in_db]
             addition_type = ContentType.objects.get(**ct_kwargs)
-            addition_model = addition_type .model_class()
+            addition_model = addition_type.model_class()
             # DatapointAddition should use a OneToOne relation, hence there
             # should be onyl one entry for this query.
             addition_model.objects.get(datapoint=self.id).delete()
@@ -338,7 +346,7 @@ class Datapoint(models.Model):
         if self.use_as in self.use_as_addition_models:
             ct_kwargs = self.use_as_addition_models[self.use_as]
             addition_type = ContentType.objects.get(**ct_kwargs)
-            addition_model = addition_type .model_class()
+            addition_model = addition_type.model_class()
             addition_model(
                 datapoint=self,
             ).save()

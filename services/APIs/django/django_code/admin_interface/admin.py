@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+from django import forms
 from django.contrib import admin
 from django.http import HttpResponseRedirect
 from django.contrib.admin.views.main import ChangeList as ChangeListDefault
@@ -54,51 +55,31 @@ Add action to a model's list view with 'actions= [actionfunction1, actionfunctio
 #action_make_unused.short_description = "Mark as not used"
 
 
-class AvailableDatapointsInline(admin.TabularInline):
+class UsedDatapointsInline(admin.TabularInline):
     """
     @david: only necessary when available datapoints should be displayed in connector views
     """
     model = Datapoint
-    extra = 0
-    fields = ('key_in_connector', 'type', 'example_value', )
-    readonly_fields = ('key_in_connector', 'type', 'example_value', )
+    fields = ("key_in_connector", "use_as", "type", "example_value", )
+    readonly_fields = fields
     ordering = ('key_in_connector', )
-    verbose_name_plural = "Available datapoints subscription management"
+    verbose_name_plural = "Used datapoints of connector"
     can_delete = False
+    classes = ['collapse']
+
+    def has_add_permission(self, request):
+        """
+        Remove the add another button at the bottom of the inline, makes no
+        sense to add another datapoint.
+        """
+        return False
 
     def get_queryset(self, request):
         """
         Limited query set for dev
         """
-        queryset = super(AvailableDatapointsInline, self).get_queryset(request)
-        return queryset.filter(key_in_connector__istartswith='meter_1_')
-
-
-#class DatapointsInline(admin.TabularInline):
-#    """
-#    Base class for numeric and text datapoint inline classes (see below)
-#    @david: relevant, although you might need to adapt it to your Generic/Numeric/TextDatapoint model structure/relations
-#    """
-#    extra = 0
-#    fields = ('datapoint_key_in_connector', 'mqtt_topic', 'last_value', 'last_timestamp')
-#    readonly_fields = fields
-#    ordering = ('datapoint_key_in_connector',)
-#    show_change_link = True
-#    can_delete = False
-#    classes = ('collapse', )
-#
-#    def has_add_permission(self, request, obj):
-#        return False
-#
-#
-#class NumericDatapointsInline(DatapointsInline):
-#    model = NumericDatapoint
-#    verbose_name_plural = "Active numeric datapoints of this connector"
-#
-#
-#class TextDatapointsInline(DatapointsInline):
-#    model = TextDatapoint
-#    verbose_name_plural = "Active text datapoints of this connector"
+        queryset = super(UsedDatapointsInline, self).get_queryset(request)
+        return queryset.exclude(use_as='not used')
 
 
 class ConnectorLogEntryInline(admin.TabularInline):
@@ -130,49 +111,71 @@ class ConnectorLogEntryInline(admin.TabularInline):
         return last_ten_entries
 
 
+class ConnectorAdminForm(forms.ModelForm):
+
+    class Meta:
+        fields = '__all__'
+        model = Connector
+        widgets = {f: forms.TextInput for f in [
+            'name',
+            'mqtt_topic_logs',
+            'mqtt_topic_heartbeat',
+            'mqtt_topic_available_datapoints',
+            'mqtt_topic_datapoint_map',
+            'mqtt_topic_raw_message_to_db',
+            'mqtt_topic_raw_message_reprocess',
+            'mqtt_topic_datapoint_message_wildcard',
+        ]}
+
+
 @admin.register(Connector)
 class ConnectorAdmin(admin.ModelAdmin):
-    """
-    @david: whole class is relevant if not stated differently
-    """
-    """
-    List view customizations
-    """
-    # Attributes to be displayed
-    list_display = ('name', 'added', 'alive', )
 
-    # Ordering of objects
-    ordering = ('-added',)
-
-    # Filter
-    # list_filter = ('attr', )
-
-    # Search fields
+    form = ConnectorAdminForm
+    list_display = ('name', 'added', 'last_changed', 'alive', )
+    ordering = ('-name', )
     search_fields = ('name', )
 
 
-    """
-    Add/Change object view customizations
-    """
-    # Fields to be displayed
-    # fields = ('name',)
+    readonly_fields = (
+        'added',
+        'last_changed',
+        'last_heartbeat',
+        'next_heartbeat',
+        'alive',
+        'num_available_datapoints',
+        'num_used_datapoints',
+    )
 
-    # Fields to be hidden
-    # exclude = ('name', )
+    # Needs to be initialized here when overriding change_view() and adding
+    # Inline objects inside the method
+    inlines = (UsedDatapointsInline, ConnectorLogEntryInline, )
 
-    # Inline objects to be displayed in change/add view
-    # Needs to be initialized here when overriding change_view() and adding Inline objects inside the method
-    inlines = ()
+    # Adapted change form template to display "Go to available datapoints"
+    # button
+    change_form_template = '../templates/connector_change_form.html'
 
-    # def num_subscribed_datapoints(self, obj):
-    #         """
-    #         Number of datapoints from a connector I have subscribed to
-    #         TODO: Keep for now as reference for possible similar implementation or idea
-    #             -> delete if not needed anymore
-    #         """
-    #     num = ConnectorDatapointTopicMapper.objects.filter(connector=obj.id, subscribed=True).count()
-    #     return num
-    # num_subscribed_datapoints.short_description = "Number of subscribed datapoints"
+    @staticmethod
+    def num_available_datapoints(obj):
+        """
+        Numer of available datapoints.
+
+        That is all datapoints incl. the "not used" ones.
+        """
+        dpo = Datapoint.objects
+        return dpo.filter(connector=obj.id).count()
+    num_available_datapoints.short_description = (
+        "Number of available datapoints"
+    )
+
+    @staticmethod
+    def num_used_datapoints(obj):
+         """
+         Numer of used datapoints.
+         """
+         dpo = Datapoint.objects
+         return dpo.filter(connector=obj.id).exclude(use_as="not used").count()
+    num_used_datapoints.short_description = "Number of used datapoints"
 
     @staticmethod
     def last_heartbeat(obj, pretty=True):
@@ -182,8 +185,7 @@ class ConnectorAdmin(admin.ModelAdmin):
                         If false, format is "yyyy-mm-dd hh:mm:ss.mmmmmm+00:00"
         :return: UTC timestamp of last received heartbeat
         """
-        latest_hb_message = ConnectorHeartbeat.objects.get(connector=obj.id)
-        last_hb = latest_hb_message.last_heartbeat
+        last_hb = obj.connectorheartbeat.last_heartbeat
         if pretty:
             last_hb = datetime_iso_format(last_hb, hide_microsec=True)
         return last_hb
@@ -194,83 +196,91 @@ class ConnectorAdmin(admin.ModelAdmin):
         see last_heartbeat()
         :return: UTC timestamp of next expected heartbeat
         """
-        latest_hb_message = ConnectorHeartbeat.objects.get(connector=obj.id)
-        next_hb = latest_hb_message.next_heartbeat
+        next_hb = obj.connectorheartbeat.next_heartbeat
         if pretty:
             next_hb = datetime_iso_format(next_hb, hide_microsec=True)
         return next_hb
 
-    def alive(self, obj):
+    @staticmethod
+    def alive(obj):
         """
-        Connector is alive if the current time has not yet passed the timestamp of the next expected heartbeat
+        Connector is alive if the current time has not yet passed the timestamp
+        of the next expected heartbeat
         """
         current_time = datetime.now(timezone.utc)
-        next_hb = ConnectorHeartbeat.objects.get(connector=obj.id).next_heartbeat
+        next_hb = obj.connectorheartbeat.next_heartbeat
         return True if current_time <= next_hb else False
     alive.boolean = True
 
     def add_view(self, request, form_url='', extra_context=None):
         """
-        General: Things that shall be displayed in add object view, but not change object view.
-        Here: Only display the name field to enter connector name and some instruction.
+        Display only name and a hint while adding a new connector. This is as
+        most other fields are not populated yet, and will only after the MQTT
+        topics have been set.
         """
-        self.inlines = ()
         self.fieldsets = (
             (None, {
                 'description': '<h3>After entering the connector name, '
-                               'click "Save and continue editing" to proceed with the connector integration.</h3>',
+                               'click "Save and continue editing" to proceed '
+                               'with the connector integration.</h3>',
                 'fields': ('name', )
             }),
         )
         return super(ConnectorAdmin, self).add_view(request)
 
-    # Adapted change form template to display "Go to available datapoints" button
-    change_form_template = '../templates/connector_change_form.html'
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        """
+        Display the full formsets content in change view.
+        """
+        self.fieldsets = (
+            ('Basic information', {
+                'fields': (
+                    'name',
+                    ('added', 'last_changed'),
+                    ('num_available_datapoints', 'num_used_datapoints'),
+                    ('alive', 'last_heartbeat', 'next_heartbeat'),
+                )
+            }),
+            ('MQTT topics', {
+                'fields': (
+                    'mqtt_topic_logs',
+                    'mqtt_topic_heartbeat',
+                    'mqtt_topic_available_datapoints',
+                    'mqtt_topic_datapoint_map',
+                    'mqtt_topic_raw_message_to_db',
+                    'mqtt_topic_raw_message_reprocess',
+                    'mqtt_topic_datapoint_message_wildcard',
+                ),
+                'classes': ('collapse', )
+            }),
+        )
+        return super(ConnectorAdmin, self).change_view(request, object_id)
 
     def response_change(self, request, obj):
         """
-        Overridden to provide redirect URL for a custom button ("Go to available datapoints").
-        :param request: POST request sent when clicking one of the buttons in the change view (e.g. "SAVE")
+        Overridden to provide redirect URL for a custom button
+        ("Go to available datapoints").
+        :param request: POST request sent when clicking one of the
+                        buttons in the change view (e.g. "SAVE")
         :param obj: current connector
         :return: URL
         """
         if "_av_dp" in request.POST:
-            return HttpResponseRedirect("/admin/admin_interface/"
-                                        "datapoint/?connector__id__exact={}".format(obj.id))
+            return HttpResponseRedirect(
+                "/admin/admin_interface/datapoint/?connector__id__exact={}"
+                .format(obj.id)
+            )
         return super().response_change(request, obj)
-
-    def change_view(self, request, object_id, form_url='', extra_context=None):
-        """
-        General: Things that shall be displayed in change object view, but not add object view.
-        Here:
-            - Selected connector fields or information
-            - Active datapoints
-            - Last 10 log entries
-        """
-        # Add Inline objects to be displayed
-        self.inlines = [AvailableDatapointsInline]
-
-        self.fieldsets = (
-            ('Basic information', {
-                'fields': ('name', 'added', ('alive', 'last_heartbeat', 'next_heartbeat'), )
-            }),
-            ('MQTT topics', {
-                'fields': [topic for topic in Connector.get_mqtt_topics(Connector.objects.get(id=object_id)).keys()],
-                'classes': ('collapse', )
-            }),
-        )
-
-        self.readonly_fields = ('added', 'last_heartbeat', 'next_heartbeat', 'alive', )
-
-        return super(ConnectorAdmin, self).change_view(request, object_id)
 
 
 @admin.register(Datapoint)
 class DatapointAdmin(admin.ModelAdmin):
-    list_display = ('id', 'connector', 'type', 'example_value',
+    list_display = ('connector', 'type', 'example_value',
                     'key_in_connector', )
     list_filter = ('connector', )
     search_fields = ('key_in_connector', )
+    readonly_fields = ('connector', 'type', 'example_value')
+    fields = ('connector', 'type', 'example_value', 'use_as')
 
     # XXX Reactivate
     # actions = (action_make_numeric, action_make_text, action_make_unused, )
