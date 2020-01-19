@@ -279,21 +279,6 @@ class Datapoint(models.Model):
         """
         Handle the potentially changed usage value, and manage (i.e.
         create/delete) the respective objects in the addition models.
-
-        TODO: This is quite complex and might deserve a test or two.
-        Relevant test cases would be:
-            - The Datapoint is created for the first time and use_as is:
-                - not_used
-                - numeric and/or text
-            - The Datapoint is changed and:
-                - No change if use_as is not changed
-                - use_as changed:
-                    - The old datapoint addition object exists and is deleted.
-                    - The old datapoint addition object does not exist and
-                      no error is raised.
-                    - The new use_as is not_used and no new object is created.
-                    - The new use_as is numeric and/or text and a new object is
-                      created.
         """
 
         # New instance, create a new object for the respective
