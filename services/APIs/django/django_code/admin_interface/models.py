@@ -295,7 +295,7 @@ class Datapoint(models.Model):
                 if self.use_as in self.use_as_addition_models:
                     ct_kwargs = self.use_as_addition_models[self.use_as]
                     addition_type = ContentType.objects.get(**ct_kwargs)
-                    addition_model = addition_type .model_class()
+                    addition_model = addition_type.model_class()
                     addition_model(
                         datapoint=self,
                     ).save()

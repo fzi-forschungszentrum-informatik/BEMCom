@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from django import forms
 from django.contrib import admin
 from django.http import HttpResponseRedirect
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.admin.views.main import ChangeList as ChangeListDefault
 
 from admin_interface.models import Connector, Datapoint
@@ -11,12 +12,6 @@ from admin_interface.models import NumericDatapointAddition
 from admin_interface.models import TextDatapointAddition
 
 from .utils import datetime_iso_format
-
-
-"""
-Custom actions to be performed on selected objects.
-Add action to a model's list view with 'actions= [actionfunction1, actionfunction2, ]' inside the ModelAdmin class
-"""
 
 
 #def action_delete_devices(modeladmin, request, queryset):
@@ -32,27 +27,6 @@ Add action to a model's list view with 'actions= [actionfunction1, actionfunctio
 #        obj_class.objects.filter(pk=obj_pk).delete()
 #
 #action_delete_devices.short_description = "Delete selected objects"
-
-
-#def action_make_numeric(modeladmin, request, queryset):
-#    for obj in queryset:
-#        setattr(obj, 'format', 'num')
-#        obj.save(update_fields=['format'])
-#action_make_numeric.short_description = "Change format to numeric"
-#
-#
-#def action_make_text(modeladmin, request, queryset):
-#    for obj in queryset:
-#        setattr(obj, 'format', 'text')
-#        obj.save(update_fields=['format'])
-#action_make_text.short_description = "Change format to text"
-#
-#
-#def action_make_unused(modeladmin, request, queryset):
-#    for obj in queryset:
-#        setattr(obj, 'format', 'unused')
-#        obj.save(update_fields=['format'])
-#action_make_unused.short_description = "Mark as not used"
 
 
 class UsedDatapointsInline(admin.TabularInline):
@@ -273,40 +247,140 @@ class ConnectorAdmin(admin.ModelAdmin):
         return super().response_change(request, obj)
 
 
+class NumericDatapointAdditionInline(admin.StackedInline):
+    model = NumericDatapointAddition
+
+class TextDatapointAdditionInline(admin.StackedInline):
+    model = TextDatapointAddition
+
 @admin.register(Datapoint)
 class DatapointAdmin(admin.ModelAdmin):
-    list_display = ('connector', 'type', 'example_value',
-                    'key_in_connector', )
-    list_filter = ('connector', )
-    search_fields = ('key_in_connector', )
-    readonly_fields = ('connector', 'type', 'example_value')
-    fields = ('connector', 'type', 'example_value', 'use_as')
+    """
+    Admin model instance for Datapoints, that also displays fields of the
+    additions. Hence, there is no seperate
+    """
+    list_display = (
+        "connector",
+        "key_in_connector",
+        "type",
+        "use_as",
+        "example_value",
+    )
+    list_display_links = (
+        "key_in_connector",
+    )
+    list_filter = (
+        "type",
+        "connector",
+        "use_as",
+    )
+    search_fields = (
+        "key_in_connector",
+        "example_value",
+        "type",
+    )
+    readonly_fields = (
+        "connector",
+        "key_in_connector",
+        "type",
+        "example_value",
+    )
+    fieldsets = (
+            ('GENERIC METADATA', {
+                "fields": (
+                    "use_as",
+                    "connector",
+                    "key_in_connector",
+                    "type",
+                    "example_value",
+                )
+            }),
+    )
+    actions = (
+        "mark_not_used",
+        "mark_numeric",
+        "mark_text",
+    )
 
-    # XXX Reactivate
-    # actions = (action_make_numeric, action_make_text, action_make_unused, )
+    def get_inline_instances(self, request, obj):
+        """
+        Look up the model of DatapointAddition and generate a matching inline
+        admin instance.
+
+        Inspired by: https://docs.djangoproject.com/en/3.0/ref/contrib/admin/#django.contrib.admin.ModelAdmin.get_inline_instances
+
+        TODO: This deserves one or the other test.
+        """
+        if obj is None:
+        # Add form, obj does not exist, the remaining code would fail.
+            return []
+
+        use_as = obj.use_as
+        use_as_addition_models = obj.use_as_addition_models
+
+        # This is False for "not used" and potentially an other
+        # datapoint usage pattern that requires no additional metadata.
+        if not use_as in use_as_addition_models:
+            return []
+
+        # Get te model of the DatapointAddition
+        ct_kwargs = use_as_addition_models[use_as]
+        addition_type = ContentType.objects.get(**ct_kwargs)
+        addition_model = addition_type.model_class()
+
+        # Compute fields and readonly fields. Access to _meta following
+        # https://docs.djangoproject.com/en/3.0/ref/models/meta/
+        model_fields = addition_model._meta.get_fields()
+        # datapoint is not relevant to display.
+        fields = [f.name for f in model_fields if f.name != "datapoint"]
+        # There might be more fields that must be set readonly.
+        readonly_fields = [f.name for f in model_fields if f.editable == False]
+
+        # Now build the inline class based on the above and return it.
+        class DatapointAdditionInline(admin.StackedInline):
+            # TODO This throws an error on changing use_as, may be related to
+            # checking the formsets, which then have already changed.
+            # See als: https://stackoverflow.com/questions/13526792/validation-of-dependant-inlines-in-django-admin
+            can_delete = False
+            verbose_name = "verbose_name"
+            verbose_name_plural = "Additional metadata"
+            def __init__(self, model, admin_site, addition_model, fields,
+                         readonly_fields):
+                self.model = addition_model
+                self.fields = fields
+                self.readonly_fields = readonly_fields
+                super().__init__(model, admin_site)
+
+        inline_instance = DatapointAdditionInline(
+            model=self.model,
+            admin_site=self.admin_site,
+            addition_model=addition_model,
+            fields=fields,
+            readonly_fields=readonly_fields,
+        )
+        return [inline_instance]
 
     @staticmethod
     def connector(obj):
         return obj.connector.name
 
-    def save_model(self, request, obj, form, change):
-        """
-        Add field name to update_fields if a field value has has been changed in the change view.
-        (Update_fields is an argument for the model's save method.)
-        Here: Used together with a post_save signal to create a corresponding Datapoint object when format/status
-         changes from "unused" to "numeric" or "text"
-        @david: Probably not relevant, because you have your own solution
-        """
+    def mark_not_used(self, request, queryset):
+        queryset.update(use_as="not used")
+    mark_not_used.short_description = (
+        "Mark selected datapoints as not used"
+    )
 
-        update_fields = []
+    def mark_numeric(self, request, queryset):
+        queryset.update(use_as="numeric")
+    mark_numeric.short_description = (
+        "Mark selected datapoints as numeric"
+    )
 
-        # True if model is changed not added
-        if change:
-            for field, new_value in form.cleaned_data.items():
-                print("field: {}, new_value={}, old_value={}".format(field, new_value, form.initial[field]))
-                if new_value != form.initial[field] and form.initial[field] == 'unused':
-                    update_fields.append(field)
-        obj.save(update_fields=update_fields)
+    def mark_text(self, request, queryset):
+        queryset.update(use_as="text")
+    mark_text.short_description = (
+        "Mark selected datapoints as text"
+    )
 
 
 @admin.register(ConnectorHeartbeat)
