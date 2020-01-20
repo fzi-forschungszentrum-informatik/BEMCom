@@ -427,6 +427,8 @@ class TestUpdateSubscription():
     Furhtermore all tests require a correct signal handling of post_save
     signals for the Connector model. Hence, if all tests of this class fail,
     this might be the reason.
+
+    # TODO: There are missing tests for the case if a connector is deleted.
     """
 
     def test_subscribe_to_new_connector(self):

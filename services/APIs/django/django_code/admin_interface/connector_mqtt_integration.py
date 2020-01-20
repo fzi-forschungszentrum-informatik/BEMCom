@@ -166,15 +166,13 @@ class ConnectorMQTTIntegration():
                 self.connected_topics.append(topic)
 
         # Unsubscribe from topics no longer relevant.
+        connected_topics_update = []
         for topic in self.connected_topics:
             if topic not in topics:
                 self.client.unsubscribe(topic=topic)
-
-    def integrate_new_connector(self, connector, message_types):
-        for message_type in message_types:
-            topic = getattr(connector, message_type)
-            self.topics[topic] = (connector, message_type)
-            self.client.subscribe(topic, 2)
+            else:
+                connected_topics_update.append(topic)
+        self.connected_topics = connected_topics_update
 
     @staticmethod
     def on_message(client, userdata, msg):
