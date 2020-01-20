@@ -247,6 +247,109 @@ class ConnectorAdmin(admin.ModelAdmin):
         return super().response_change(request, obj)
 
 
+@admin.register(ConnectorHeartbeat)
+class ConnectorHeartbeatAdmin(admin.ModelAdmin):
+    """
+    Readonly model to search and view heartbeat entries.
+    """
+    list_display = (
+        "connector",
+        "last_hb_pretty",
+        "next_hb_pretty",
+    )
+    list_filter = (
+        "connector",
+    )
+    list_display_links = (
+        "last_hb_pretty",
+        "next_hb_pretty"
+    )
+    fields = list_display
+    readonly_fields = fields
+
+    @staticmethod
+    def connector(obj):
+        return obj.connector.name
+
+    def last_hb_pretty(self, obj):
+        """
+        Displays a prettier timestamp format.
+        """
+        return datetime_iso_format(obj.last_heartbeat, hide_microsec=True)
+    last_hb_pretty.admin_order_field = "last_heartbeat"
+    last_hb_pretty.short_description = "Last heartbeat"
+
+    def next_hb_pretty(self, obj):
+        """
+        Displays a prettier timestamp format.
+        """
+        return datetime_iso_format(obj.next_heartbeat, hide_microsec=True)
+    next_hb_pretty.admin_order_field = "next_heartbeat"
+    next_hb_pretty.short_description = "Next heartbeat"
+
+    def has_add_permission(cls, request):
+        """
+        Remove `add` and `save and add another` button.
+        """
+        return False
+
+    def has_change_permission(cls, request, obj=None):
+        """
+        Disable remaining save buttons, there is nothing to change anyway.
+        """
+        return False
+
+
+@admin.register(ConnectorLogEntry)
+class ConnectorLogsAdmin(admin.ModelAdmin):
+    """
+    Readonly model to search and view log entries.
+    """
+    list_display = (
+        "connector",
+        "level",
+        "timestamp_pretty",
+        "emitter",
+        "msg",
+    )
+    list_filter = (
+        "connector",
+        "level",
+        "emitter",
+    )
+    list_display_links = (
+        "msg",
+    )
+    search_fields = (
+        "msg",
+    )
+    fields = list_display
+    readonly_fields = fields
+
+    @staticmethod
+    def connector(obj):
+        return obj.connector.name
+
+    def timestamp_pretty(self, obj):
+        """
+        Displays a prettier timestamp format.
+        """
+        return datetime_iso_format(obj.timestamp, hide_microsec=True)
+    timestamp_pretty.admin_order_field = "timestamp"
+    timestamp_pretty.short_description = "Timestamp"
+
+    def has_add_permission(cls, request):
+        """
+        Remove `add` and `save and add another` button.
+        """
+        return False
+
+    def has_change_permission(cls, request, obj=None):
+        """
+        Disable remaining save buttons, there is nothing to change anyway.
+        """
+        return False
+
 class NumericDatapointAdditionInline(admin.StackedInline):
     model = NumericDatapointAddition
 
@@ -257,7 +360,11 @@ class TextDatapointAdditionInline(admin.StackedInline):
 class DatapointAdmin(admin.ModelAdmin):
     """
     Admin model instance for Datapoints, that also displays fields of the
-    additions. Hence, there is no seperate
+    addition models. It is hence not necessary to create a model for any
+    DatapointAddition model.
+
+    This model does not allow adding datapoints manually, it doesn't make
+    sense, all datapoints are created by the connectors.
     """
     list_display = (
         "connector",
@@ -342,7 +449,7 @@ class DatapointAdmin(admin.ModelAdmin):
             # checking the formsets, which then have already changed.
             # See als: https://stackoverflow.com/questions/13526792/validation-of-dependant-inlines-in-django-admin
             can_delete = False
-            verbose_name = "verbose_name"
+            # verbose_name = "verbose_name"
             verbose_name_plural = "Additional metadata"
             def __init__(self, model, admin_site, addition_model, fields,
                          readonly_fields):
@@ -382,129 +489,8 @@ class DatapointAdmin(admin.ModelAdmin):
         "Mark selected datapoints as text"
     )
 
-
-@admin.register(ConnectorHeartbeat)
-class ConnectorHeartbeatAdmin(admin.ModelAdmin):
-    """
-    List view customization
-    @david: adopt it if you like it
-    """
-    list_display = ('connector', 'last_hb_iso', 'next_hb_iso', )
-    list_filter = ('connector', )
-
-    @staticmethod
-    def connector(obj):
-        return obj.connector.name
-
-    # displays a prettier timestamp format
-    def last_hb_iso(self, obj):
-        return obj.last_heartbeat.isoformat(sep=' ')
-    last_hb_iso.admin_order_field = 'last_heartbeat'
-    last_hb_iso.short_description = "Last heartbeat"
-
-    # displays a prettier timestamp format
-    def next_hb_iso(self, obj):
-        return obj.next_heartbeat.isoformat(sep=' ')
-    next_hb_iso.admin_order_field = 'next_heartbeat'
-    next_hb_iso.short_description = "Next heartbeat"
-
-
-@admin.register(ConnectorLogEntry)
-class ConnectorLogsAdmin(admin.ModelAdmin):
-    """
-    List view customization
-    @david: adopt it if you like it
-    """
-    list_display = ('id', 'connector', 'timestamp_iso', 'msg', 'emitter', 'level')
-    list_filter = ('connector', 'emitter', )
-
-    @staticmethod
-    def connector(obj):
-        return obj.connector.name
-
-    # displays a prettier timestamp format
-    def timestamp_iso(self, obj):
-        return obj.timestamp.isoformat(sep=' ')
-    timestamp_iso.admin_order_field = 'timestamp'
-    timestamp_iso.short_description = "Timestamp"
-
-
-class DeviceChangeList(ChangeListDefault):
-    """
-    Custom ChangeList for displaying all (non-) device types together
-    Note: root_queryset is defined before get_queryset is called -> contains only Device objects
-    """
-    def get_queryset(self, request):
+    def has_add_permission(cls, request):
         """
-        Returns the union of all query sets from all device types (except for POST requests)
+        Remove `add` and `save and add another` button.
         """
-        if request.method == 'GET' and self.root_queryset.exists():
-            # Get base class of the Device class
-            base_class = self.root_queryset[0].__class__.__bases__[0]
-            # Get all respective classes of the different device types
-            all_subclasses = base_class.get_list_of_subclasses_with_identifier()
-            querysets = []
-            # For each subclass (model), get all objects and add the resulting query set to the list
-            for cls_id, cls_dict in all_subclasses.items():
-                querysets.append(cls_dict['class'].objects.all())
-            # Create union of all subclass-query sets
-            united_queryset = querysets[0].union(querysets[1])
-            if len(querysets) > 2:
-                for i in range(2, len(querysets)):
-                    united_queryset = united_queryset.union(querysets[i])
-
-            return united_queryset
-
-        return super().get_queryset(request)
-
-    def url_for_result(self, result):
-        """
-        Provides the correct change-view-URL for each non-device object listed in the Device list view
-        :param result: a model object displayed in the list view
-        :return: URL to the change view of the respective object
-        @david: only necessary for the abstract-device-base-class-solution
-        """
-        devices_only_queryset = self.root_queryset
-        base_class = devices_only_queryset[0].__class__.__bases__[0]
-
-        # Check if the current model (result) is a Device or other type by searching the Device DB for its primary key
-        if not devices_only_queryset.filter(pk=result.pk).exists():
-            # Model is a not a Device -> adapt URL to this model's change page
-            current_model_name = self.root_queryset[0].__class__.__name__
-            excluded_classes = [self.root_queryset[0].__class__.get_class_identifier()]
-            new_model_name = base_class.get_list_of_subclasses_with_identifier(exclude=excluded_classes)[result.pk[0]]['name']
-            new_device_url = super().url_for_result(result).replace(current_model_name.lower(), new_model_name.lower())
-            return new_device_url
-
-        return super().url_for_result(result)
-
-
-#@admin.register(Device)
-#class DeviceAdmin(admin.ModelAdmin):
-#    """
-#    List view customizations for Device model:
-#        - list all device types together (i.e. of class Device, NonDevice, ...)
-#        - remove default delete action, because it doesn't work with this custom list
-#        - add custom delete action
-#    @david: only necessary for the abstract-device-base-class-solution
-#    """
-#
-#    list_display = ('type', 'location_detail', 'full_id','spec_id')
-##    actions = [action_delete_devices]
-#
-#    def get_changelist(self, request, **kwargs):
-#        return DeviceChangeList
-#
-#    def get_actions(self, request):
-#        all_actions = super().get_actions(request)
-#        if 'delete_selected' in all_actions:
-#            del all_actions['delete_selected']
-#        return all_actions
-
-# Register your models here.
-#admin.site.register(NonDevice)
-##admin.site.register(TestDevice)
-#admin.site.register(NumericDatapoint)
-#admin.site.register(TextDatapoint)
-
-
+        return False
