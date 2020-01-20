@@ -28,12 +28,13 @@ def connector_factory(connector_name=None):
     Arguments:
     ----------
     connector_name: string or None
-        If String uses this name as connector name. Else will automatically
+        If string uses this name as connector name. Else will automatically
         generate a name that is "test_connector_" + id of Connector. Be aware
         that mqtt topics are automatically generated from the name and that
         name and mqtt_topics must be unique.
 
     Returns:
+    --------
     test_connector: models.Connector object
         A dummy Connector for tests.
     """
@@ -47,6 +48,46 @@ def connector_factory(connector_name=None):
     test_connector.save()
 
     return test_connector
+
+def datapoint_factory(connector, key_in_connector=None, use_as="not_used",
+                      type="sensor"):
+    """
+    Create a dummy datapoint in DB.
+
+    This function is not thread save and may produce errors if other code
+    inserts objects in models.Datapoint in parallel.
+
+    Arguments:
+    ----------
+    connector: models.Connector object
+        The connector the datapoint belongs to.
+    key_in_connector:
+        If string uses it's value as key_in_connector. Else will automatically
+        generate a key that is "key__in__connector__" + id of Datapoint.
+    use_as: str
+        See models.Datapoint.
+    type: str
+        See models.Datapoint.
+
+    Returns:
+    --------
+    test_datapoint: models.Datapoint object
+        A dummy datapoint for tests.
+    """
+    if key_in_connector is None:
+        next_id = models.Datapoint.objects.count() + 1
+        key_in_connector = "key__in__connector__" + str(next_id)
+
+    test_datapoint = models.Datapoint(
+        connector=connector,
+        key_in_connector=key_in_connector,
+        use_as=use_as,
+        type=type,
+    )
+    test_datapoint.save()
+
+    return test_datapoint
+
 
 @pytest.fixture(scope='class')
 def connector_integration_setup(request, django_db_setup, django_db_blocker):
@@ -469,6 +510,13 @@ def update_subscription_setup(request, django_db_setup, django_db_blocker):
     # changes after ConnectorMQTTIntegration has been inizialized.
     test_connector_2 = connector_factory("test_connector_2")
     test_connector_3 = connector_factory("test_connector_3")
+    test_connector_4 = connector_factory("test_connector_4")
+
+    # Create some test datapoints used for checking that normal datapoint
+    # messages will be handled correctly too.
+    not_used_datapoint = datapoint_factory(test_connector, use_as="not used")
+    numeric_datapoint = datapoint_factory(test_connector, use_as="numeric")
+    text_datapoint = datapoint_factory(test_connector, use_as="text")
 
     # Give django a seconds to receive the signal and call update_topcis
     # as well as update_subscriptions.
@@ -479,7 +527,11 @@ def update_subscription_setup(request, django_db_setup, django_db_blocker):
     request.cls.test_connector = test_connector
     request.cls.test_connector_2 = test_connector_2
     request.cls.test_connector_3 = test_connector_3
+    request.cls.test_connector_4 = test_connector_4
     request.cls.cmi = cmi
+    request.cls.not_used_datapoint = not_used_datapoint
+    request.cls.numeric_datapoint = numeric_datapoint
+    request.cls.text_datapoint = text_datapoint
     yield
 
     # Close connections and objects.
@@ -664,7 +716,8 @@ class TestUpdateSubscription():
 
         # Wait for the data to reach the DB
         waited_seconds = 0
-        while models.Datapoint.objects.count() < 3:
+        dpos = models.Datapoint.objects
+        while dpos.filter(connector=self.test_connector_2).count() < 3:
             time.sleep(0.005)
             waited_seconds += 0.005
 
@@ -686,7 +739,7 @@ class TestUpdateSubscription():
                 expected_rows.append(expected_row)
 
         # Actual rows in DB:
-        ad_db = models.Datapoint.objects.all()
+        ad_db = dpos.filter(connector=self.test_connector_2)
         actual_rows = []
         for item in ad_db:
             actual_row = (
@@ -703,6 +756,122 @@ class TestUpdateSubscription():
         for item in ad_db:
             item.delete()
 
+    def test_datapoint_message_received(self):
+        """
+        Test that datapoint messages received via MQTT correctly update the
+        Addition models of Datapoint.
+        """
+        text_dp = self.text_datapoint
+        numeric_dp = self.numeric_datapoint
+
+        datapoint_message_numeric = {
+            "value": 13.37,
+            "timestamp": 1571927666222,
+        }
+        datapoint_message_text = {
+            "value": "1337 rulez",
+            "timestamp": 1571927666666,
+        }
+
+        payload_numeric = json.dumps(datapoint_message_numeric)
+        payload_text = json.dumps(datapoint_message_text)
+        topic_numeric = numeric_dp.get_mqtt_topic()
+        topic_text = text_dp.get_mqtt_topic()
+        self.mqtt_client.publish(topic_numeric, payload_numeric, qos=2)
+        self.mqtt_client.publish(topic_text, payload_text, qos=2)
+
+        # Wait for the data to reach the DB
+
+        waited_seconds = 0
+        while True:
+
+            if text_dp.textdatapointaddition.last_timestamp is None:
+                # That means no update to this datapoint yet.
+                time.sleep(0.005)
+                waited_seconds += 0.005
+
+                if waited_seconds >= 3:
+                    raise RuntimeError(
+                        'Expected message on available datapoints has not '
+                        'reached DB.'
+                    )
+                continue
+            break
+
+        expected_numeric_value = datapoint_message_numeric["value"]
+        expected_numeric_timestamp = datapoint_message_numeric["timestamp"]
+        expected_numeric_datetime = datetime_from_timestamp(
+            expected_numeric_timestamp
+        )
+        expected_text_value = datapoint_message_text["value"]
+        expected_text_timestamp = datapoint_message_text["timestamp"]
+        expected_text_datetime = datetime_from_timestamp(
+            expected_text_timestamp
+        )
+
+        datapointaddition = numeric_dp.numericdatapointaddition
+        actual_numeric_value = datapointaddition.last_value
+        actual_numeric_datetime = datapointaddition.last_timestamp
+
+        datapointaddition = text_dp.textdatapointaddition
+        actual_text_value = datapointaddition.last_value
+        actual_text_datetime = datapointaddition.last_timestamp
+
+        assert expected_numeric_value == actual_numeric_value
+        assert expected_numeric_datetime == actual_numeric_datetime
+        assert expected_text_value == actual_text_value
+        assert expected_text_datetime == actual_text_datetime
+
+    def test_datapoint_map_created(self):
+        """
+        Test that a datapoint_map is created after Datapoints are updated.
+
+        Also tests that Datapoint.get_mqtt_topic returns the right thing.
+        """
+        # Start with an empty string so json.loads below won't fail, which
+        # would distract from the actual reason of the test failing.
+        self.mqtt_client.userdata = "{}"
+
+        def on_message(client, userdata, msg):
+            """
+            Store the received message so we can test it's correctness later.
+            """
+            print(msg.payload)
+            if msg.topic == "test_connector_4/datapoint_map":
+                client.userdata = msg.payload
+        self.mqtt_client.on_message = on_message
+
+        # Add two datapoints that should occure in the datapoint_map
+        test_datapoint_1 = datapoint_factory(
+            connector=self.test_connector_4,
+            key_in_connector="test_datapoint_map",
+            use_as="numeric",
+            type="sensor"
+        )
+        test_datapoint_2 = datapoint_factory(
+            connector=self.test_connector_4,
+            key_in_connector="test_datapoint_map_2",
+            use_as="text",
+            type="actuator"
+        )
+        # TODO Use a loop here.
+        time.sleep(0.5)
+
+        dp1_topic = "test_connector_4/messages/" + str(test_datapoint_1.id)
+        dp2_topic = "test_connector_4/messages/" + str(test_datapoint_2.id)
+
+        # Following the datapoint_map format
+        expected_payload = {
+            "sensor": {
+                test_datapoint_1.key_in_connector: dp1_topic
+            },
+            "actuator": {
+                test_datapoint_2.key_in_connector: dp2_topic
+            },
+        }
+
+        actual_payload = json.loads(self.mqtt_client.userdata)
+        assert actual_payload == expected_payload
 
 if __name__ == '__main__':
     # Test this file only.
