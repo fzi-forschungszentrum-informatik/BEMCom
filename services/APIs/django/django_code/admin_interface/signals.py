@@ -4,6 +4,7 @@ from django.dispatch import receiver
 from admin_interface import models
 from admin_interface.connector_mqtt_integration import ConnectorMQTTIntegration
 
+@receiver(signals.post_delete, sender=models.Connector)
 @receiver(signals.post_save, sender=models.Connector)
 def update_connector_mqtt_integration_settings(**kwargs):
     """
