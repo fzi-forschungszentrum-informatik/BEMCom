@@ -82,6 +82,13 @@ class ConnectorAdmin(admin.ModelAdmin):
         'alive',
         'num_available_datapoints',
         'num_used_datapoints',
+        'mqtt_topic_logs',
+        'mqtt_topic_heartbeat',
+        'mqtt_topic_available_datapoints',
+        'mqtt_topic_datapoint_map',
+        'mqtt_topic_raw_message_to_db',
+        'mqtt_topic_raw_message_reprocess',
+        'mqtt_topic_datapoint_message_wildcard',
     )
 
     # Display wider version of normal TextInput for all text fields, as

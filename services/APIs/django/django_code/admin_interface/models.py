@@ -12,7 +12,9 @@ class Connector(models.Model):
     Don't restrict length of name and mqtt fields, this could lead to errors.
     Setting the MQTT topics (and the name hence too) is required for the
     ConnectorMQTTIntegration to work correctly. We hence enforce that these
-    fields are not empty and unique.
+    fields are not empty and unique. Furthermore we set all mqtt_topics to be
+    non editable as other parts of the API rely on the convention introduced
+    here (e.g. the connector_mqtt_integration on the wildcard format).
 
     TODO: Review set and get MQTT topics
     """
@@ -26,42 +28,49 @@ class Connector(models.Model):
     mqtt_topic_logs = models.TextField(
         blank=False,
         default=None,
+        editable=False,
         unique=True,
         verbose_name="MQTT topic for logs"
     )
     mqtt_topic_heartbeat = models.TextField(
         blank=False,
         default=None,
+        editable=False,
         unique=True,
         verbose_name="MQTT topic for heartbeat"
     )
     mqtt_topic_available_datapoints =models.TextField(
         blank=False,
         default=None,
+        editable=False,
         unique=True,
         verbose_name="MQTT topic for available datapoints"
     )
     mqtt_topic_datapoint_map = models.TextField(
         blank=False,
         default=None,
+        editable=False,
         unique=True,
         verbose_name="MQTT topic for datapoint map"
     )
     mqtt_topic_raw_message_to_db =models.TextField(
         blank=False,
         default=None,
+        editable=False,
         unique=True,
         verbose_name="MQTT topic for raw message to database"
     )
     mqtt_topic_raw_message_reprocess = models.TextField(
         blank=False,
         default=None,
+        editable=False,
         unique=True,
         verbose_name="MQTT topic for reprocess"
     )
     mqtt_topic_datapoint_message_wildcard = models.TextField(
         blank=False,
         default=None,
+        editable=False,
         unique=True,
         verbose_name="MQTT topic for all datapoint messages (wildcard)"
     )
@@ -113,10 +122,10 @@ class Connector(models.Model):
 
     def save(self, *args, **kwargs):
         """
-        Save the connector, auto populate the MQTT topics on creation.
+        Save the connector, auto populate the MQTT topics on creation and on
+        changed names.
         """
-        if not self.id:  # New instance
-            self.set_mqtt_topics()
+        self.set_mqtt_topics()
         super(Connector, self).save(*args, **kwargs)
 
 
@@ -220,6 +229,10 @@ class Datapoint(models.Model):
     other metadata then is defined in NumericDatapointAddition or
     TextDatapointAddition simply generate a new DatapointAddition model and
     extend use_as_choices and `use_as_addition_models` accordingly.
+
+    TODO: May be replace delete with deactivate, else we will might end with
+          entries in the ValueDB with unknown origin (deleted datapoints will
+          be rentered but with new id)
     """
 
     connector = models.ForeignKey(
@@ -335,6 +348,23 @@ class Datapoint(models.Model):
             ).save()
 
         super(Datapoint, self).save(*args, **kwargs)
+
+    def get_mqtt_topic(self):
+        """
+        Computes the MQTT topic of the datapoint.
+
+        This uses the mqtt_topic_wildcard part of the connector and adds the
+        primary key of the Datapoint table. The later alows efficent mapping
+        of incoming messages to Datapoint objects.
+
+        Returns:
+        --------
+        mqtt_topic: str
+            A string with the mqtt_topic of the datapoint.
+        """
+        # Removes the trailing wildcard `#`
+        prefix = self.connector.mqtt_topic_datapoint_message_wildcard[:-1]
+        return prefix + str(self.id)
 
 
 class TextDatapointAddition(models.Model):
