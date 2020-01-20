@@ -256,6 +256,84 @@ class TestConnectorIntegration():
         for item in ad_db:
             item.delete()
 
+    def test_available_datapoints_updates(self):
+        """
+        Test that a available_datapoints message received via MQTT updates the
+        value in DB instead of appending the existing data.
+        """
+        # Numbers will be converted to strings by json.dumps and not converted
+        # back by json.loads. Hence use all strings here to prevent type errors
+        # while asserting below.
+        test_available_datapoints = {
+            "sensor": {
+                "Channel__P__value__0": "0.122",
+                "Channel__P__unit__0": "kW",
+            },
+            "actuator": {
+                "Channel__P__setpoint__0": "0.4",
+            },
+        }
+
+        payload = json.dumps(test_available_datapoints)
+        topic = self.test_connector.mqtt_topic_available_datapoints
+        self.mqtt_client.publish(topic, payload, qos=2)
+
+        # Here comes the update message.
+        test_available_datapoints_update = {
+            "sensor": {
+                "Channel__P__value__0": "0.222",
+                "Channel__P__unit__0": "W",
+            },
+            "actuator": {
+                "Channel__P__setpoint__0": "0.5",
+                "Channel__M__setpoint__1": "OK"
+            },
+        }
+
+        payload = json.dumps(test_available_datapoints_update)
+        topic = self.test_connector.mqtt_topic_available_datapoints
+        self.mqtt_client.publish(topic, payload, qos=2)
+
+        # Wait for the data to reach the DB
+        waited_seconds = 0
+        while models.Datapoint.objects.count() < 4:
+            time.sleep(0.005)
+            waited_seconds += 0.005
+
+            if waited_seconds >= 3:
+                raise RuntimeError(
+                    'Expected message on available datapoints has not reached '
+                    ' DB.'
+                )
+
+        # Expected rows in DB as tuples of values
+        expected_rows = []
+        for datapoint_type, d in test_available_datapoints_update.items():
+            for datapoint_key, datapoint_example in d.items():
+                expected_row = (
+                    datapoint_type,
+                    datapoint_key,
+                    datapoint_example,
+                )
+                expected_rows.append(expected_row)
+
+        # Actual rows in DB:
+        ad_db = models.Datapoint.objects.all()
+        actual_rows = []
+        for item in ad_db:
+            actual_row = (
+                item.type,
+                item.key_in_connector,
+                item.example_value,
+            )
+            actual_rows.append(actual_row)
+
+        # Finnaly check if the rows are identical.
+        assert expected_rows == actual_rows
+
+        # Clean up.
+        for item in ad_db:
+            item.delete()
 
 @pytest.fixture(scope='class')
 def allow_db_setup(request, django_db_setup, django_db_blocker):

@@ -240,13 +240,11 @@ class ConnectorMQTTIntegration():
                 raise
 
         if message_type == 'mqtt_topic_available_datapoints':
-            # TODO: Check how many of those entries exist already.
             for datapoint_type in payload:
-
                 for key, example in payload[datapoint_type].items():
-                    # Check if this available datapoint already exists in database
-                    # TODO: Update entry if type or example value changes for a given key instead of creating a new object
+
                     if not models.Datapoint.objects.filter(
+                            # Handling if the Datapoint does not exist yet.
                             connector=connector,
                             key_in_connector=key).exists():
                         try:
@@ -258,9 +256,31 @@ class ConnectorMQTTIntegration():
                             ).save()
                         except Exception:
                             logger.exception(
-                                'Exception while writing available datapoint into '
-                                'DB.'
+                                'Exception while writing available datapoint '
+                                'into DB.'
                             )
+                            # This raise will be caught by paho mqtt.
+                            # It should not though.
+                            raise
+
+                    else:
+                        # Update existing datapoint.
+                        try:
+                            datapoint = models.Datapoint.objects.get(
+                                connector=connector,
+                                key_in_connector=key
+                            )
+                            datapoint.type=datapoint_type
+                            datapoint.example_value = example
+                            datapoint.save()
+                        except Exception:
+                            logger.exception(
+                                'Exception while updating available datapoint.'
+                            )
+                            # This raise will be caught by paho mqtt.
+                            # It should not though.
+                            raise
+
 
     @staticmethod
     def on_connect(client, userdata, flags, rc):
