@@ -24,6 +24,11 @@ def datetime_from_timestamp(timestamp, tz_aware=True):
 
 
 def datetime_iso_format(dt, hide_microsec=True):
+    """
+    :param dt: a DateTime object
+    :param hide_microsec: If true, the microseconds are not displayed
+    :return: Timestamp similar to ISO-format but nicer
+    """
     if hide_microsec:
         dt = dt.replace(microsecond=0)
     dt = dt.astimezone(timezone.utc).replace(tzinfo=None).isoformat(sep=' ')

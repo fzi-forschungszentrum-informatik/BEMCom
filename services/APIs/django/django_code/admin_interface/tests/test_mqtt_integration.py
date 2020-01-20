@@ -429,6 +429,7 @@ class TestUpdateSubscription():
     this might be the reason.
 
     # TODO: There are missing tests for the case if a connector is deleted.
+            I.e. there should be no more handling of messages.
     """
 
     def test_subscribe_to_new_connector(self):

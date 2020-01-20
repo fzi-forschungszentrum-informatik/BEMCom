@@ -62,19 +62,6 @@ class ConnectorDetailView(DetailView):
 
 
 
-# class AddDatapointView(ListView):
-#     template_name = "add_datapoint.html"
-#
-#     def get_queryset(self):
-#         """
-#         Function to get all available datapoints connected to a specific connector
-#         :return: list of available datapoints with new datapoints first
-#         """
-#         connector_name = self.kwargs['name']
-#         connector = get_object_or_404(models.Connector, name=connector_name)
-#         available_datapoints = models.ConnectorAvailableDatapoints.objects.filter(connector=connector_name)
-#         return available_datapoints.order_by(subscribed=False)
-
 
 
 

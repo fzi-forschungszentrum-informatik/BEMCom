@@ -4,29 +4,10 @@ from django import forms, db
 from django.contrib import admin
 from django.http import HttpResponseRedirect
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.admin.views.main import ChangeList as ChangeListDefault
 
 from admin_interface.models import Connector, Datapoint
 from admin_interface.models import ConnectorHeartbeat, ConnectorLogEntry
-from admin_interface.models import NumericDatapointAddition
-from admin_interface.models import TextDatapointAddition
-
-from .utils import datetime_iso_format
-
-
-#def action_delete_devices(modeladmin, request, queryset):
-#    """
-#    TODO: Add intermediate confirmation page
-#        (see https://docs.djangoproject.com/en/3.0/ref/contrib/admin/actions/#actions-that-provide-intermediate-pages)
-#    @david: only necessary for the abstract-device-base-class-solution
-#    """
-#    all_device_classes = GenericDevice.get_list_of_subclasses_with_identifier()
-#    for obj_pk in request._post.getlist('_selected_action'):
-#        cls_id = obj_pk[0]  # Example: obj_pk is "d-3", because object is of class Device -> class identifier is 'd'
-#        obj_class = all_device_classes[cls_id]['class']
-#        obj_class.objects.filter(pk=obj_pk).delete()
-#
-#action_delete_devices.short_description = "Delete selected objects"
+from admin_interface.utils import datetime_iso_format
 
 
 class UsedDatapointsInline(admin.TabularInline):
@@ -336,11 +317,6 @@ class ConnectorLogsAdmin(admin.ModelAdmin):
         """
         return False
 
-#class NumericDatapointAdditionInline(admin.StackedInline):
-#    model = NumericDatapointAddition
-#
-#class TextDatapointAdditionInline(admin.StackedInline):
-#    model = TextDatapointAddition
 
 def create_datapoint_addition_inlines():
     """
@@ -375,6 +351,7 @@ def create_datapoint_addition_inlines():
     return datapoint_addition_inlines
 
 datapoint_addition_inlines = create_datapoint_addition_inlines()
+
 
 @admin.register(Datapoint)
 class DatapointAdmin(admin.ModelAdmin):
