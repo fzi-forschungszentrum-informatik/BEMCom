@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from django import forms
+from django import forms, db
 from django.contrib import admin
 from django.http import HttpResponseRedirect
 from django.contrib.contenttypes.models import ContentType
@@ -85,27 +85,9 @@ class ConnectorLogEntryInline(admin.TabularInline):
         return last_ten_entries
 
 
-class ConnectorAdminForm(forms.ModelForm):
-
-    class Meta:
-        fields = '__all__'
-        model = Connector
-        widgets = {f: forms.TextInput for f in [
-            'name',
-            'mqtt_topic_logs',
-            'mqtt_topic_heartbeat',
-            'mqtt_topic_available_datapoints',
-            'mqtt_topic_datapoint_map',
-            'mqtt_topic_raw_message_to_db',
-            'mqtt_topic_raw_message_reprocess',
-            'mqtt_topic_datapoint_message_wildcard',
-        ]}
-
-
 @admin.register(Connector)
 class ConnectorAdmin(admin.ModelAdmin):
 
-    form = ConnectorAdminForm
     list_display = ('name', 'added', 'last_changed', 'alive', )
     ordering = ('-name', )
     search_fields = ('name', )
@@ -121,9 +103,11 @@ class ConnectorAdmin(admin.ModelAdmin):
         'num_used_datapoints',
     )
 
-    # Needs to be initialized here when overriding change_view() and adding
-    # Inline objects inside the method
-    inlines = (UsedDatapointsInline, ConnectorLogEntryInline, )
+    # Display wider version of normal TextInput for all text fields, as
+    # default forms look ugly.
+    formfield_overrides = {
+        db.models.TextField: {'widget': forms.TextInput(attrs={'size':'60'})},
+    }
 
     # Adapted change form template to display "Go to available datapoints"
     # button
@@ -200,6 +184,7 @@ class ConnectorAdmin(admin.ModelAdmin):
                 'fields': ('name', )
             }),
         )
+        self.inlines = ()
         return super(ConnectorAdmin, self).add_view(request)
 
     def change_view(self, request, object_id, form_url='', extra_context=None):
@@ -228,6 +213,7 @@ class ConnectorAdmin(admin.ModelAdmin):
                 'classes': ('collapse', )
             }),
         )
+        self.inlines = (UsedDatapointsInline, ConnectorLogEntryInline, )
         return super(ConnectorAdmin, self).change_view(request, object_id)
 
     def response_change(self, request, obj):
@@ -350,18 +336,51 @@ class ConnectorLogsAdmin(admin.ModelAdmin):
         """
         return False
 
-class NumericDatapointAdditionInline(admin.StackedInline):
-    model = NumericDatapointAddition
+#class NumericDatapointAdditionInline(admin.StackedInline):
+#    model = NumericDatapointAddition
+#
+#class TextDatapointAdditionInline(admin.StackedInline):
+#    model = TextDatapointAddition
 
-class TextDatapointAdditionInline(admin.StackedInline):
-    model = TextDatapointAddition
+def create_datapoint_addition_inlines():
+    """
+    This creates StackedInline admin objects for all ModelAdditions known
+    to datapoint. It is used by the DatapointAdmin.
+    """
+    datapoint_addition_inlines = {}
+    use_as_addition_models = Datapoint.use_as_addition_models
+    for use_as in use_as_addition_models.keys():
+
+        # Get te model of the DatapointAddition
+        ct_kwargs = use_as_addition_models[use_as]
+        addition_type = ContentType.objects.get(**ct_kwargs)
+        addition_model = addition_type.model_class()
+
+        # Compute fields and readonly fields. Access to _meta following
+        # https://docs.djangoproject.com/en/3.0/ref/models/meta/
+        model_fields = addition_model._meta.get_fields()
+        # datapoint is not relevant to display.
+        fields = [f.name for f in model_fields if f.name != "datapoint"]
+        # There might be more fields that must be set readonly.
+        readonly_fields = [f.name for f in model_fields if f.editable == False]
+
+        # Now build the inline class based on the above and store it.
+        class DatapointAdditionInline(admin.StackedInline):
+            can_delete = False
+            verbose_name_plural = "Additional metadata"
+        DatapointAdditionInline.model = addition_model
+        DatapointAdditionInline.fields = fields
+        DatapointAdditionInline.readonly_fields = readonly_fields
+        datapoint_addition_inlines[use_as] = DatapointAdditionInline
+    return datapoint_addition_inlines
+
+datapoint_addition_inlines = create_datapoint_addition_inlines()
 
 @admin.register(Datapoint)
 class DatapointAdmin(admin.ModelAdmin):
     """
     Admin model instance for Datapoints, that also displays fields of the
-    addition models. It is hence not necessary to create a model for any
-    DatapointAddition model.
+    addition models.
 
     This model does not allow adding datapoints manually, it doesn't make
     sense, all datapoints are created by the connectors.
@@ -409,63 +428,18 @@ class DatapointAdmin(admin.ModelAdmin):
         "mark_text",
     )
 
-    def get_inline_instances(self, request, obj):
+    def change_view(self, request, object_id, form_url='', extra_context=None):
         """
-        Look up the model of DatapointAddition and generate a matching inline
-        admin instance.
-
-        Inspired by: https://docs.djangoproject.com/en/3.0/ref/contrib/admin/#django.contrib.admin.ModelAdmin.get_inline_instances
-
-        TODO: This deserves one or the other test.
+        Dynamically display the according DatapointAdditionInline based on
+        `use_as`
         """
-        if obj is None:
-        # Add form, obj does not exist, the remaining code would fail.
-            return []
-
-        use_as = obj.use_as
-        use_as_addition_models = obj.use_as_addition_models
-
-        # This is False for "not used" and potentially an other
-        # datapoint usage pattern that requires no additional metadata.
-        if not use_as in use_as_addition_models:
-            return []
-
-        # Get te model of the DatapointAddition
-        ct_kwargs = use_as_addition_models[use_as]
-        addition_type = ContentType.objects.get(**ct_kwargs)
-        addition_model = addition_type.model_class()
-
-        # Compute fields and readonly fields. Access to _meta following
-        # https://docs.djangoproject.com/en/3.0/ref/models/meta/
-        model_fields = addition_model._meta.get_fields()
-        # datapoint is not relevant to display.
-        fields = [f.name for f in model_fields if f.name != "datapoint"]
-        # There might be more fields that must be set readonly.
-        readonly_fields = [f.name for f in model_fields if f.editable == False]
-
-        # Now build the inline class based on the above and return it.
-        class DatapointAdditionInline(admin.StackedInline):
-            # TODO This throws an error on changing use_as, may be related to
-            # checking the formsets, which then have already changed.
-            # See als: https://stackoverflow.com/questions/13526792/validation-of-dependant-inlines-in-django-admin
-            can_delete = False
-            # verbose_name = "verbose_name"
-            verbose_name_plural = "Additional metadata"
-            def __init__(self, model, admin_site, addition_model, fields,
-                         readonly_fields):
-                self.model = addition_model
-                self.fields = fields
-                self.readonly_fields = readonly_fields
-                super().__init__(model, admin_site)
-
-        inline_instance = DatapointAdditionInline(
-            model=self.model,
-            admin_site=self.admin_site,
-            addition_model=addition_model,
-            fields=fields,
-            readonly_fields=readonly_fields,
-        )
-        return [inline_instance]
+        use_as = Datapoint.objects.get(id=object_id).use_as
+        if use_as not in datapoint_addition_inlines:
+            self.inlines = ()
+        else:
+            DatapointAdditionInline = datapoint_addition_inlines[use_as]
+            self.inlines = (DatapointAdditionInline, )
+        return super().change_view(request, object_id)
 
     @staticmethod
     def connector(obj):
