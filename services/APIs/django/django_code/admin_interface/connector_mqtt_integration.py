@@ -123,12 +123,15 @@ class ConnectorMQTTIntegration():
             - mqtt_topic_datapoint_map
         """
         topics = {}
+
+        # Don't subscribe to the datapoint_message_wildcard topic, we want to
+        # control which messages we receive, in order to prevent the case
+        # were incoming messages from a wildcard topic have no corresponding
+        # equivalent in the database and cause errors.
         message_types = [
             'mqtt_topic_logs',
             'mqtt_topic_heartbeat',
             'mqtt_topic_available_datapoints',
-            'mqtt_topic_datapoint_map',
-            'mqtt_topic_datapoint_message_wildcard'
         ]
 
         # It might be more efficient to extract the topics only for those
@@ -138,6 +141,16 @@ class ConnectorMQTTIntegration():
             for message_type in message_types:
                 topic = getattr(connector, message_type)
                 topics[topic] = (connector, message_type)
+
+            # Also store the topics of the used datapoints.
+            datapoint_set = connector.datapoint_set
+            used_datapoints = datapoint_set.exclude(use_as="not used")
+            for used_datapoint in used_datapoints:
+                datapoint_topic = used_datapoint.get_mqtt_topic()
+                topics[datapoint_topic] = (
+                    connector,
+                    "mqtt_topic_datapoint_message",
+                )
 
         # Store the topics and update the client userdata, so the callbacks
         # will have up to date data.
@@ -155,7 +168,7 @@ class ConnectorMQTTIntegration():
 
         # Start with no subscription on first run.
         if not hasattr(self, "connected_topics"):
-            self.connected_topics  = []
+            self.connected_topics = []
 
         # Subsribe to topics not subscribed yet.
         for topic in topics:
@@ -174,10 +187,56 @@ class ConnectorMQTTIntegration():
                 connected_topics_update.append(topic)
         self.connected_topics = connected_topics_update
 
+    def create_and_send_datapoint_map(self, connector=None):
+        """
+        Creates and sends a datapoint_map.
+
+        Arguments:
+        ----------
+        connector: models.Connector object or None.
+            If not None compute only the datapoint_map for the specified
+            connector. Else will process all connectors.
+        """
+        if connector is None:
+            connectors = models.Connector.objects.all()
+        else:
+            connectors = [connector]
+
+        for connector in connectors:
+            # This is the minimal viable datapoint map accepted by the
+            # Connectors.
+            datapoint_map = {"sensor": {}, "actuator": {}}
+            datapoints = connector.datapoint_set
+            used_datapoints = datapoints.exclude(use_as="not used")
+
+            # Create the map entry for every used datapoint
+            for used_datapoint in used_datapoints:
+
+                _type = used_datapoint.type
+                key_in_connector = used_datapoint.key_in_connector
+                mqtt_topic = used_datapoint.get_mqtt_topic()
+
+                if used_datapoint.type not in datapoint_map:
+                    datapoint_map[used_datapoint.type] = {}
+                datapoint_map[_type][key_in_connector] = mqtt_topic
+
+            # Send the final datapoint_map to the connector.
+            # Use qos=2 to ensure the message is received by the connector.
+            payload = json.dumps(datapoint_map)
+            topic = connector.mqtt_topic_datapoint_map
+            self.client.publish(
+                topic=topic,
+                payload=payload,
+                qos=2,
+            )
+
     @staticmethod
     def on_message(client, userdata, msg):
         """
         Handle incomming mqtt messages by writing to appropriate DB tables.
+
+        Revise the message_format definition within the repo's documentation
+        folder for more information on the structure of the incoming messages.
 
         Arguments:
         ----------
@@ -188,8 +247,32 @@ class ConnectorMQTTIntegration():
 
         connector, message_type = topics[msg.topic]
         payload = json.loads(msg.payload)
-        logger.info('got message on topic %s', msg.topic)
-        if message_type == 'mqtt_topic_logs':
+        if message_type == "mqtt_topic_datapoint_message":
+            # If this message has reached that point, i.e. has had a
+            # topic entry it means that the Datapoint object must exist, as
+            # else the MQTT topic coulc not habe been computed.
+            try:
+                logger.error('Got Message on topic: {}\nWith payload\n{}'.format(msg.topic, msg.payload))
+                # Make use of the convention that the Datapoint topic ends
+                # with the primary key of the Datapoint.
+                datapoint_id = msg.topic.split("/")[-1]
+                datapoint = models.Datapoint.objects.get(id=datapoint_id)
+
+                # Get the object of the Datapoint's DatapointAddition and
+                # update it with the currenttly received timestamp and value.
+                addition_object = datapoint.get_addition_object()
+                addition_object.last_value = payload["value"]
+                addition_object.last_timestamp = datetime_from_timestamp(
+                    payload["timestamp"]
+                )
+                addition_object.save()
+            except Exception:
+                logger.exception(
+                    'Exception while updating datapoint_message in DB.'
+                )
+                # This raise will be caught by paho mqtt. It should not though.
+                raise
+        elif message_type == 'mqtt_topic_logs':
             timestamp = datetime_from_timestamp(payload['timestamp'])
             try:
                 _ = models.ConnectorLogEntry(
@@ -204,7 +287,7 @@ class ConnectorMQTTIntegration():
                 # This raise will be caught by paho mqtt. It should not though.
                 raise
 
-        if message_type == 'mqtt_topic_heartbeat':
+        elif message_type == 'mqtt_topic_heartbeat':
             try:
                 hb_model = models.ConnectorHeartbeat
                 # Create a new DB entry if this is the first time we see a
@@ -227,10 +310,10 @@ class ConnectorMQTTIntegration():
                 # unique constraint of the connector field.
                 else:
                     hb_object = hb_model.objects.get(connector=connector)
-                    hb_object.last_heartbeat=datetime_from_timestamp(
+                    hb_object.last_heartbeat = datetime_from_timestamp(
                         payload['this_heartbeats_timestamp']
                     )
-                    hb_object.next_heartbeat=datetime_from_timestamp(
+                    hb_object.next_heartbeat = datetime_from_timestamp(
                         payload['next_heartbeats_timestamp']
                     )
                     hb_object.save()
@@ -239,7 +322,7 @@ class ConnectorMQTTIntegration():
                 # This raise will be caught by paho mqtt. It should not though.
                 raise
 
-        if message_type == 'mqtt_topic_available_datapoints':
+        elif message_type == 'mqtt_topic_available_datapoints':
             for datapoint_type in payload:
                 for key, example in payload[datapoint_type].items():
 
@@ -270,7 +353,7 @@ class ConnectorMQTTIntegration():
                                 connector=connector,
                                 key_in_connector=key
                             )
-                            datapoint.type=datapoint_type
+                            datapoint.type = datapoint_type
                             datapoint.example_value = example
                             datapoint.save()
                         except Exception:
@@ -280,7 +363,6 @@ class ConnectorMQTTIntegration():
                             # This raise will be caught by paho mqtt.
                             # It should not though.
                             raise
-
 
     @staticmethod
     def on_connect(client, userdata, flags, rc):

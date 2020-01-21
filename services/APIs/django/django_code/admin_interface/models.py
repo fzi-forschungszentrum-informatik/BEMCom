@@ -53,7 +53,7 @@ class Connector(models.Model):
         unique=True,
         verbose_name="MQTT topic for datapoint map"
     )
-    mqtt_topic_raw_message_to_db =models.TextField(
+    mqtt_topic_raw_message_to_db = models.TextField(
         blank=False,
         default=None,
         editable=False,
@@ -77,12 +77,12 @@ class Connector(models.Model):
     # These two are automatically generated. It makes no sense to edit them
     # my hand.
     added = models.DateTimeField(
-        auto_now_add = True,
-        editable = False,
+        auto_now_add=True,
+        editable=False,
     )
     last_changed = models.DateTimeField(
-        auto_now = True,
-        editable = False,
+        auto_now=True,
+        editable=False,
     )
 
     def __str__(self):
@@ -91,7 +91,8 @@ class Connector(models.Model):
     def natural_key(self):
         return self.name
 
-    # Get dictionary of the fields defined above with verbose (human-readable) name and connector-specific value
+    # Get dictionary of the fields defined above with verbose (human-readable)
+    # name and connector-specific value
     def get_fields(self):
         connector_fields = {}
         fields = self._meta.get_fields(include_parents=False)[-len(self.__dict__)+1:]
@@ -105,7 +106,6 @@ class Connector(models.Model):
             if attr.startswith("mqtt_topic"):
                 mqtt_topics[attr] = attr[len("mqtt_topic_"):]
         return mqtt_topics
-
 
     def set_mqtt_topics(self):
         """
@@ -127,7 +127,6 @@ class Connector(models.Model):
         """
         self.set_mqtt_topics()
         super(Connector, self).save(*args, **kwargs)
-
 
     def get_absolute_url(self):
         return reverse("edit_connector", kwargs={"id": self.id})
@@ -243,6 +242,9 @@ class Datapoint(models.Model):
     # Defines the usage of the datapoint, i.e. the additional metadata fields.
     # The 'actual value' (i.e. the first element of the tuple) must match the
     # key in use_as_addition_models.
+    #
+    # Be very careful to not change the "not used" string, it's expected
+    # exactly like this in a lot of places.
     use_as_choices = [
         ("not used", "Not used"),
         ("numeric", "Numeric"),
@@ -310,7 +312,7 @@ class Datapoint(models.Model):
                     addition_model(
                         datapoint=self,
                     ).save()
-            except:
+            except Exception:
                 # Undo save if the creation of the addition object failed to
                 # prevent inconsistent states in DB.
                 Datapoint.objects.get(id=self.id).delete()
@@ -365,6 +367,52 @@ class Datapoint(models.Model):
         # Removes the trailing wildcard `#`
         prefix = self.connector.mqtt_topic_datapoint_message_wildcard[:-1]
         return prefix + str(self.id)
+
+    def get_addition_model(self,  use_as=None):
+        """
+        A convenient shorthand to return the model of a Datapoint Additon.
+
+        Arguements:
+        -----------
+        use_as: string or None
+            The `use_as` value to compute the corresponding DatapointAddition.
+            If None will use the `use_as` value of self.
+
+        Returns:
+        --------
+        addition_model: django.db.models.Model or None
+            The corresponding DatapointAddition model if existing for `use_as`.
+            Will be None if no such model exists.
+        """
+        if use_as is None:
+            use_as = self.use_as
+
+        if use_as not in self.use_as_addition_models:
+            addition_model = None
+        else:
+            ct_kwargs = self.use_as_addition_models[use_as]
+            addition_type = ContentType.objects.get(**ct_kwargs)
+            addition_model = addition_type.model_class()
+        return addition_model
+
+    def get_addition_object(self):
+        """
+        A shorthand to return the DatapointAddition object for the Datapoint.
+
+        Returns:
+        --------
+        addition_object: DatapointAddition.object or None
+            Returns None if not additon object exists (e.g. use_as="not_used").
+            Else returns the object.
+        """
+        addition_model = self.get_addition_model()
+        if addition_model is None:
+            addition_object = None
+        else:
+            # This is possible as `datapoint` of the AdditionModel is set to be
+            # a OneToOneField with `primary_key` = True
+            addition_object = addition_model.objects.get(datapoint_id=self.id)
+        return addition_object
 
 
 class TextDatapointAddition(models.Model):

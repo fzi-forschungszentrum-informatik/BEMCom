@@ -17,6 +17,10 @@ from admin_interface.connector_mqtt_integration import ConnectorMQTTIntegration
 from admin_interface.utils import datetime_from_timestamp
 from admin_interface.tests.fake_mqtt import FakeMQTTBroker, FakeMQTTClient
 
+# TODO This is devl stuff, Remove.
+import logging
+logger = logging.getLogger(__name__)
+
 
 def connector_factory(connector_name=None):
     """
@@ -48,6 +52,7 @@ def connector_factory(connector_name=None):
     test_connector.save()
 
     return test_connector
+
 
 def datapoint_factory(connector, key_in_connector=None, use_as="not_used",
                       type="sensor"):
@@ -511,12 +516,13 @@ def update_subscription_setup(request, django_db_setup, django_db_blocker):
     test_connector_2 = connector_factory("test_connector_2")
     test_connector_3 = connector_factory("test_connector_3")
     test_connector_4 = connector_factory("test_connector_4")
+    test_connector_5 = connector_factory("test_connector_5")
 
     # Create some test datapoints used for checking that normal datapoint
     # messages will be handled correctly too.
-    not_used_datapoint = datapoint_factory(test_connector, use_as="not used")
-    numeric_datapoint = datapoint_factory(test_connector, use_as="numeric")
-    text_datapoint = datapoint_factory(test_connector, use_as="text")
+    not_used_datapoint = datapoint_factory(test_connector_5, use_as="not used")
+    numeric_datapoint = datapoint_factory(test_connector_5, use_as="numeric")
+    text_datapoint = datapoint_factory(test_connector_5, use_as="text")
 
     # Give django a seconds to receive the signal and call update_topcis
     # as well as update_subscriptions.
@@ -760,9 +766,13 @@ class TestUpdateSubscription():
         """
         Test that datapoint messages received via MQTT correctly update the
         Addition models of Datapoint.
+
+        TODO: Also test that datapoint maps always contain sensor and actuator
+        key.
         """
         text_dp = self.text_datapoint
         numeric_dp = self.numeric_datapoint
+        numeric_dp.save()
 
         datapoint_message_numeric = {
             "value": 13.37,
@@ -773,6 +783,10 @@ class TestUpdateSubscription():
             "timestamp": 1571927666666,
         }
 
+        # TODO Remove this once update_topics reacts on changed datapoints.
+        self.cmi.update_topics()
+        self.cmi.update_subscriptions()
+
         payload_numeric = json.dumps(datapoint_message_numeric)
         payload_text = json.dumps(datapoint_message_text)
         topic_numeric = numeric_dp.get_mqtt_topic()
@@ -781,11 +795,11 @@ class TestUpdateSubscription():
         self.mqtt_client.publish(topic_text, payload_text, qos=2)
 
         # Wait for the data to reach the DB
-
         waited_seconds = 0
+        datapointaddition = text_dp.get_addition_object()
         while True:
 
-            if text_dp.textdatapointaddition.last_timestamp is None:
+            if datapointaddition.last_timestamp is None:
                 # That means no update to this datapoint yet.
                 time.sleep(0.005)
                 waited_seconds += 0.005
@@ -809,11 +823,11 @@ class TestUpdateSubscription():
             expected_text_timestamp
         )
 
-        datapointaddition = numeric_dp.numericdatapointaddition
+        datapointaddition = numeric_dp.get_addition_object()
         actual_numeric_value = datapointaddition.last_value
         actual_numeric_datetime = datapointaddition.last_timestamp
 
-        datapointaddition = text_dp.textdatapointaddition
+        datapointaddition = text_dp.get_addition_object()
         actual_text_value = datapointaddition.last_value
         actual_text_datetime = datapointaddition.last_timestamp
 
@@ -836,9 +850,11 @@ class TestUpdateSubscription():
             """
             Store the received message so we can test it's correctness later.
             """
-            print(msg.payload)
             if msg.topic == "test_connector_4/datapoint_map":
+                logger.error(msg.topic)
+                logger.error(msg.payload)
                 client.userdata = msg.payload
+        self.mqtt_client.subscribe("test_connector_4/datapoint_map")
         self.mqtt_client.on_message = on_message
 
         # Add two datapoints that should occure in the datapoint_map
@@ -854,8 +870,15 @@ class TestUpdateSubscription():
             use_as="text",
             type="actuator"
         )
-        # TODO Use a loop here.
-        time.sleep(0.5)
+        waited_seconds = 0
+        while not self.mqtt_client.userdata:
+            time.sleep(0.005)
+            waited_seconds += 0.005
+
+            if waited_seconds >= 3:
+                raise RuntimeError(
+                    'Expected datapoint map not received via MQTT.'
+                )
 
         dp1_topic = "test_connector_4/messages/" + str(test_datapoint_1.id)
         dp2_topic = "test_connector_4/messages/" + str(test_datapoint_2.id)

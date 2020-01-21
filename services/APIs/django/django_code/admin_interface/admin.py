@@ -436,19 +436,44 @@ class DatapointAdmin(admin.ModelAdmin):
         return obj.connector.name
 
     def mark_not_used(self, request, queryset):
-        queryset.update(use_as="not used")
+        """
+        Flag all selected datapoints as not used.
+
+        It is important that this method does not call queryset.update(..)
+        as the Datapoint save method would not be called, and also the signal
+        would not be emitted. This leads to the situation where the Datapoint
+        Addition entries are not  matching the datapoints and that no
+        datapoint_map is sent to the connector
+        """
+        for datapoint in queryset:
+            datapoint.use_as = "not used"
+            datapoint.save()
     mark_not_used.short_description = (
         "Mark selected datapoints as not used"
     )
 
     def mark_numeric(self, request, queryset):
-        queryset.update(use_as="numeric")
+        """
+        Flag all selected datapoints as numeric.
+
+        See mark_not_used.
+        """
+        for datapoint in queryset:
+            datapoint.use_as = "numeric"
+            datapoint.save()
     mark_numeric.short_description = (
         "Mark selected datapoints as numeric"
     )
 
     def mark_text(self, request, queryset):
-        queryset.update(use_as="text")
+        """
+        Flag all selected datapoints as text.
+
+        See mark_not_used.
+        """
+        for datapoint in queryset:
+            datapoint.use_as = "text"
+            datapoint.save()
     mark_text.short_description = (
         "Mark selected datapoints as text"
     )
