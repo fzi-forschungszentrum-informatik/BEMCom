@@ -12,7 +12,9 @@ from admin_interface.utils import datetime_iso_format
 
 class UsedDatapointsInline(admin.TabularInline):
     """
-    @david: only necessary when available datapoints should be displayed in connector views
+    Inline view of the datapoints used by a connector.
+
+    Does not show datapoits marked as "not_used" to limit spam.
     """
     model = Datapoint
     fields = ("key_in_connector", "use_as", "type", "example_value", )
@@ -31,7 +33,7 @@ class UsedDatapointsInline(admin.TabularInline):
 
     def get_queryset(self, request):
         """
-        Limited query set for dev
+        Limit query to Datapoints marked not as "not_used"
         """
         queryset = super(UsedDatapointsInline, self).get_queryset(request)
         return queryset.exclude(use_as='not used')
@@ -39,7 +41,8 @@ class UsedDatapointsInline(admin.TabularInline):
 
 class ConnectorLogEntryInline(admin.TabularInline):
     """
-    @david: relevant
+    Inline view for connector to list the last log messages received by this
+    connector.
     """
     model = ConnectorLogEntry
     verbose_name_plural = "Last 10 log entries"
@@ -54,13 +57,15 @@ class ConnectorLogEntryInline(admin.TabularInline):
 
     def get_queryset(self, request):
         """
-        Note: Getting query set in descending order (by timestamp) and slicing it throws error ("filtering is
-                not possible after slicing"), because the custom (returned) query set is filtered again for the
-                current connector.
-                Hence this workaround: First get IDs of last ten entries, then filter all entries based on these IDs.
-                -> Returned query set can now be filtered again for the current connector :)
+        Note: Getting query set in descending order (by timestamp) and slicing
+              it throws error ("filtering is not possible after slicing"),
+              because the custom (returned) query set is filtered again for the
+              current connector. Hence this workaround: First get IDs of last
+              ten entries, then filter all entries based on these IDs.
+              -> Returned query set can now be filtered again for the current
+              connector :)
         """
-        all_entries = super(ConnectorLogEntryInline, self).get_queryset(request)
+        all_entries = super().get_queryset(request)
         ids_of_last_ten_entries = all_entries.order_by('-timestamp').values('id')[:10]
         last_ten_entries = ConnectorLogEntry.objects.filter(id__in=ids_of_last_ten_entries)
         return last_ten_entries
@@ -72,7 +77,6 @@ class ConnectorAdmin(admin.ModelAdmin):
     list_display = ('name', 'added', 'last_changed', 'alive', )
     ordering = ('-name', )
     search_fields = ('name', )
-
 
     readonly_fields = (
         'added',
@@ -94,7 +98,7 @@ class ConnectorAdmin(admin.ModelAdmin):
     # Display wider version of normal TextInput for all text fields, as
     # default forms look ugly.
     formfield_overrides = {
-        db.models.TextField: {'widget': forms.TextInput(attrs={'size':'60'})},
+        db.models.TextField: {'widget': forms.TextInput(attrs={'size': '60'})},
     }
 
     # Adapted change form template to display "Go to available datapoints"
@@ -116,18 +120,19 @@ class ConnectorAdmin(admin.ModelAdmin):
 
     @staticmethod
     def num_used_datapoints(obj):
-         """
-         Numer of used datapoints.
-         """
-         dpo = Datapoint.objects
-         return dpo.filter(connector=obj.id).exclude(use_as="not used").count()
+        """
+        Numer of used datapoints.
+        """
+        dpo = Datapoint.objects
+        return dpo.filter(connector=obj.id).exclude(use_as="not used").count()
     num_used_datapoints.short_description = "Number of used datapoints"
 
     @staticmethod
     def last_heartbeat(obj, pretty=True):
         """
         :param obj: current connector object
-        :param pretty: If true (default), timestamp will be returned like this: "yyyy-mm-dd hh:mm:ss (UTC)"
+        :param pretty: If true (default), timestamp will be returned like this:
+                        "yyyy-mm-dd hh:mm:ss (UTC)"
                         If false, format is "yyyy-mm-dd hh:mm:ss.mmmmmm+00:00"
         :return: UTC timestamp of last received heartbeat
         """
@@ -345,7 +350,7 @@ def create_datapoint_addition_inlines():
         # datapoint is not relevant to display.
         fields = [f.name for f in model_fields if f.name != "datapoint"]
         # There might be more fields that must be set readonly.
-        readonly_fields = [f.name for f in model_fields if f.editable == False]
+        readonly_fields = [f.name for f in model_fields if f.editable is False]
 
         # Now build the inline class based on the above and store it.
         class DatapointAdditionInline(admin.StackedInline):
@@ -356,6 +361,7 @@ def create_datapoint_addition_inlines():
         DatapointAdditionInline.readonly_fields = readonly_fields
         datapoint_addition_inlines[use_as] = DatapointAdditionInline
     return datapoint_addition_inlines
+
 
 datapoint_addition_inlines = create_datapoint_addition_inlines()
 
