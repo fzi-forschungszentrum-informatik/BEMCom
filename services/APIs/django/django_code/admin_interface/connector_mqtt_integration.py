@@ -4,8 +4,9 @@ import logging
 from paho.mqtt.client import Client
 from django.conf import settings
 
-from admin_interface import models
-from admin_interface.utils import datetime_from_timestamp
+from .utils import datetime_from_timestamp
+from .models.datapoint import Datapoint
+from .models.connector import Connector, ConnectorHeartbeat, ConnectorLogEntry
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,6 @@ class ConnectorMQTTIntegration():
 
         # The private userdata, used by the callbacks.
         userdata = {
-            'models': models,
             'connect_kwargs': connect_kwargs,
             'topics': {},
         }
@@ -137,7 +137,7 @@ class ConnectorMQTTIntegration():
         # It might be more efficient to extract the topics only for those
         # connectors which have been edited. However, at the time of
         # implementation the additional effort did not seem worth it.
-        for connector in models.Connector.objects.all():
+        for connector in Connector.objects.all():
             for message_type in message_types:
                 topic = getattr(connector, message_type)
                 topics[topic] = (connector, message_type)
@@ -193,12 +193,12 @@ class ConnectorMQTTIntegration():
 
         Arguments:
         ----------
-        connector: models.Connector object or None.
+        connector: Connector object or None.
             If not None compute only the datapoint_map for the specified
             connector. Else will process all connectors.
         """
         if connector is None:
-            connectors = models.Connector.objects.all()
+            connectors = Connector.objects.all()
         else:
             connectors = [connector]
 
@@ -243,7 +243,6 @@ class ConnectorMQTTIntegration():
         See paho mqtt documentation.
         """
         topics = userdata['topics']
-        models = userdata['models']
 
         connector, message_type = topics[msg.topic]
         payload = json.loads(msg.payload)
@@ -252,11 +251,12 @@ class ConnectorMQTTIntegration():
             # topic entry it means that the Datapoint object must exist, as
             # else the MQTT topic coulc not habe been computed.
             try:
+                # TODO Remove this.
                 logger.error('Got Message on topic: {}\nWith payload\n{}'.format(msg.topic, msg.payload))
                 # Make use of the convention that the Datapoint topic ends
                 # with the primary key of the Datapoint.
                 datapoint_id = msg.topic.split("/")[-1]
-                datapoint = models.Datapoint.objects.get(id=datapoint_id)
+                datapoint = Datapoint.objects.get(id=datapoint_id)
 
                 # Get the object of the Datapoint's DatapointAddition and
                 # update it with the currenttly received timestamp and value.
@@ -275,7 +275,7 @@ class ConnectorMQTTIntegration():
         elif message_type == 'mqtt_topic_logs':
             timestamp = datetime_from_timestamp(payload['timestamp'])
             try:
-                _ = models.ConnectorLogEntry(
+                _ = ConnectorLogEntry(
                     connector=connector,
                     timestamp=timestamp,
                     msg=payload['msg'],
@@ -289,7 +289,7 @@ class ConnectorMQTTIntegration():
 
         elif message_type == 'mqtt_topic_heartbeat':
             try:
-                hb_model = models.ConnectorHeartbeat
+                hb_model = ConnectorHeartbeat
                 # Create a new DB entry if this is the first time we see a
                 # heartbeat message for this connector. This code prevents
                 # creating an object with invalid values for the heartbeat
@@ -326,12 +326,12 @@ class ConnectorMQTTIntegration():
             for datapoint_type in payload:
                 for key, example in payload[datapoint_type].items():
 
-                    if not models.Datapoint.objects.filter(
+                    if not Datapoint.objects.filter(
                             # Handling if the Datapoint does not exist yet.
                             connector=connector,
                             key_in_connector=key).exists():
                         try:
-                            _ = models.Datapoint(
+                            _ = Datapoint(
                                 connector=connector,
                                 type=datapoint_type,
                                 key_in_connector=key,
@@ -349,7 +349,7 @@ class ConnectorMQTTIntegration():
                     else:
                         # Update existing datapoint.
                         try:
-                            datapoint = models.Datapoint.objects.get(
+                            datapoint = Datapoint.objects.get(
                                 connector=connector,
                                 key_in_connector=key
                             )

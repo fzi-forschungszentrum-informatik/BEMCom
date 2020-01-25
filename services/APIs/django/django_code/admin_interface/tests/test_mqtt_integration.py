@@ -12,7 +12,9 @@ if __name__ == "__main__":
     os.chdir('../..')
     setup()
 
-from admin_interface import models
+from admin_interface.models.datapoint import Datapoint
+from admin_interface.models.connector import Connector, ConnectorHeartbeat
+from admin_interface.models.connector import ConnectorLogEntry
 from admin_interface.connector_mqtt_integration import ConnectorMQTTIntegration
 from admin_interface.utils import datetime_from_timestamp
 from admin_interface.tests.fake_mqtt import FakeMQTTBroker, FakeMQTTClient
@@ -39,14 +41,14 @@ def connector_factory(connector_name=None):
 
     Returns:
     --------
-    test_connector: models.Connector object
+    test_connector: Connector object
         A dummy Connector for tests.
     """
     if connector_name is None:
-        next_id = models.Connector.objects.count() + 1
+        next_id = Connector.objects.count() + 1
         connector_name = "test_connector_" + str(next_id)
 
-    test_connector = models.Connector(
+    test_connector = Connector(
         name=connector_name,
     )
     test_connector.save()
@@ -60,30 +62,30 @@ def datapoint_factory(connector, key_in_connector=None, use_as="not_used",
     Create a dummy datapoint in DB.
 
     This function is not thread save and may produce errors if other code
-    inserts objects in models.Datapoint in parallel.
+    inserts objects in Datapoint in parallel.
 
     Arguments:
     ----------
-    connector: models.Connector object
+    connector: Connector object
         The connector the datapoint belongs to.
     key_in_connector:
         If string uses it's value as key_in_connector. Else will automatically
         generate a key that is "key__in__connector__" + id of Datapoint.
     use_as: str
-        See models.Datapoint.
+        See Datapoint.
     type: str
-        See models.Datapoint.
+        See Datapoint.
 
     Returns:
     --------
-    test_datapoint: models.Datapoint object
+    test_datapoint: Datapoint object
         A dummy datapoint for tests.
     """
     if key_in_connector is None:
-        next_id = models.Datapoint.objects.count() + 1
+        next_id = Datapoint.objects.count() + 1
         key_in_connector = "key__in__connector__" + str(next_id)
 
-    test_datapoint = models.Datapoint(
+    test_datapoint = Datapoint(
         connector=connector,
         key_in_connector=key_in_connector,
         use_as=use_as,
@@ -180,7 +182,7 @@ class TestConnectorIntegration():
 
         # Wait for the data to reach the DB
         waited_seconds = 0
-        while models.ConnectorLogEntry.objects.count() == 0:
+        while ConnectorLogEntry.objects.count() == 0:
             time.sleep(0.005)
             waited_seconds += 0.005
 
@@ -188,7 +190,7 @@ class TestConnectorIntegration():
                 raise RuntimeError('Expected Log Entry has not reached DB.')
 
         # Compare expected and stored data.
-        log_msg_db = models.ConnectorLogEntry.objects.first()
+        log_msg_db = ConnectorLogEntry.objects.first()
 
         # DB stores timestamp as datetime objects, convert here accordingly.
         timestamp_as_datetime = datetime_from_timestamp(
@@ -216,7 +218,7 @@ class TestConnectorIntegration():
 
         # Wait for the data to reach the DB
         waited_seconds = 0
-        while models.ConnectorHeartbeat.objects.count() == 0:
+        while ConnectorHeartbeat.objects.count() == 0:
             time.sleep(0.005)
             waited_seconds += 0.005
 
@@ -224,7 +226,7 @@ class TestConnectorIntegration():
                 raise RuntimeError('Expected heartbeat has not reached DB.')
 
         # Compare expected and stored data.
-        heartbeat_db = models.ConnectorHeartbeat.objects.first()
+        heartbeat_db = ConnectorHeartbeat.objects.first()
 
         # DB stores timestamp as datetime objects, convert here accordingly.
         last_heartbeat_as_datetime = datetime_from_timestamp(
@@ -263,7 +265,7 @@ class TestConnectorIntegration():
 
         # Wait for the data to reach the DB
         waited_seconds = 0
-        while models.Datapoint.objects.count() < 3:
+        while Datapoint.objects.count() < 3:
             time.sleep(0.005)
             waited_seconds += 0.005
 
@@ -285,7 +287,7 @@ class TestConnectorIntegration():
                 expected_rows.append(expected_row)
 
         # Actual rows in DB:
-        ad_db = models.Datapoint.objects.all()
+        ad_db = Datapoint.objects.all()
         actual_rows = []
         for item in ad_db:
             actual_row = (
@@ -342,7 +344,7 @@ class TestConnectorIntegration():
 
         # Wait for the data to reach the DB
         waited_seconds = 0
-        while models.Datapoint.objects.count() < 4:
+        while Datapoint.objects.count() < 4:
             time.sleep(0.005)
             waited_seconds += 0.005
 
@@ -364,7 +366,7 @@ class TestConnectorIntegration():
                 expected_rows.append(expected_row)
 
         # Actual rows in DB:
-        ad_db = models.Datapoint.objects.all()
+        ad_db = Datapoint.objects.all()
         actual_rows = []
         for item in ad_db:
             actual_row = (
@@ -380,6 +382,7 @@ class TestConnectorIntegration():
         # Clean up.
         for item in ad_db:
             item.delete()
+
 
 @pytest.fixture(scope='class')
 def allow_db_setup(request, django_db_setup, django_db_blocker):
@@ -637,7 +640,7 @@ class TestUpdateSubscription():
 
         # Wait for the data to reach the DB
         waited_seconds = 0
-        while models.ConnectorLogEntry.objects.count() == 0:
+        while ConnectorLogEntry.objects.count() == 0:
             time.sleep(0.005)
             waited_seconds += 0.005
 
@@ -645,7 +648,7 @@ class TestUpdateSubscription():
                 raise RuntimeError('Expected Log Entry has not reached DB.')
 
         # Compare expected and stored data.
-        log_msg_db = models.ConnectorLogEntry.objects.first()
+        log_msg_db = ConnectorLogEntry.objects.first()
 
         # DB stores timestamp as datetime objects, convert here accordingly.
         timestamp_as_datetime = datetime_from_timestamp(
@@ -674,7 +677,7 @@ class TestUpdateSubscription():
 
         # Wait for the data to reach the DB
         waited_seconds = 0
-        while models.ConnectorHeartbeat.objects.count() == 0:
+        while ConnectorHeartbeat.objects.count() == 0:
             time.sleep(0.005)
             waited_seconds += 0.005
 
@@ -682,7 +685,7 @@ class TestUpdateSubscription():
                 raise RuntimeError('Expected heartbeat has not reached DB.')
 
         # Compare expected and stored data.
-        heartbeat_db = models.ConnectorHeartbeat.objects.first()
+        heartbeat_db = ConnectorHeartbeat.objects.first()
 
         # DB stores timestamp as datetime objects, convert here accordingly.
         last_heartbeat_as_datetime = datetime_from_timestamp(
@@ -722,7 +725,7 @@ class TestUpdateSubscription():
 
         # Wait for the data to reach the DB
         waited_seconds = 0
-        dpos = models.Datapoint.objects
+        dpos = Datapoint.objects
         while dpos.filter(connector=self.test_connector_2).count() < 3:
             time.sleep(0.005)
             waited_seconds += 0.005
@@ -895,6 +898,7 @@ class TestUpdateSubscription():
 
         actual_payload = json.loads(self.mqtt_client.userdata)
         assert actual_payload == expected_payload
+
 
 if __name__ == '__main__':
     # Test this file only.

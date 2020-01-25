@@ -1,14 +1,15 @@
 from django.db.models import signals
 from django.dispatch import receiver
 
-from admin_interface import models
-from admin_interface.connector_mqtt_integration import ConnectorMQTTIntegration
+from .models.connector import Connector
+from .models.datapoint import Datapoint
+from .connector_mqtt_integration import ConnectorMQTTIntegration
 
 
-@receiver(signals.post_save, sender=models.Datapoint)
-@receiver(signals.post_delete, sender=models.Datapoint)
-@receiver(signals.post_delete, sender=models.Connector)
-@receiver(signals.post_save, sender=models.Connector)
+@receiver(signals.post_save, sender=Datapoint)
+@receiver(signals.post_delete, sender=Datapoint)
+@receiver(signals.post_delete, sender=Connector)
+@receiver(signals.post_save, sender=Connector)
 def update_connector_mqtt_integration_settings(sender, instance, **kwargs):
     """
     Trigger update of subscribed topics if changes in Connector DB occure.
@@ -22,7 +23,7 @@ def update_connector_mqtt_integration_settings(sender, instance, **kwargs):
     special_connector_name = (
         "the_only_connector_name_that_won't_fire_the_signal"
     )
-    if sender == models.Connector:
+    if sender == Connector:
         if instance.name != special_connector_name:
             cmi = ConnectorMQTTIntegration.get_instance()
             cmi.update_topics()
@@ -35,9 +36,9 @@ def update_connector_mqtt_integration_settings(sender, instance, **kwargs):
 #        cmi.update_subscriptions()
 
 
-@receiver(signals.post_save, sender=models.Datapoint)
-@receiver(signals.post_delete, sender=models.Datapoint)
-@receiver(signals.post_save, sender=models.Connector)
+@receiver(signals.post_save, sender=Datapoint)
+@receiver(signals.post_delete, sender=Datapoint)
+@receiver(signals.post_save, sender=Connector)
 def trigger_datapoint_map_update(sender, instance, **kwargs):
     """
     Trigger that a new datapoint map is created and sent on changes.
@@ -56,7 +57,7 @@ def trigger_datapoint_map_update(sender, instance, **kwargs):
     )
 
     cmi = ConnectorMQTTIntegration.get_instance()
-    if sender == models.Connector:
+    if sender == Connector:
         if instance.name == special_connector_name:
             return
 
@@ -64,7 +65,7 @@ def trigger_datapoint_map_update(sender, instance, **kwargs):
         # datapoint_map.
         cmi.create_and_send_datapoint_map(connector=instance)
 
-    if sender == models.Datapoint:
+    if sender == Datapoint:
         connector = instance.connector
         # If Datapoint is saved.
         if "update_fields" in kwargs:

@@ -9,7 +9,9 @@ if __name__ == "__main__":
     os.chdir('../..')
     setup()
 
-from admin_interface import models
+from admin_interface.models.connector import Connector
+from admin_interface.models.datapoint import Datapoint, TextDatapointAddition
+from admin_interface.models.datapoint import NumericDatapointAddition
 from admin_interface.connector_mqtt_integration import ConnectorMQTTIntegration
 from admin_interface.tests.fake_mqtt import FakeMQTTBroker, FakeMQTTClient
 
@@ -34,12 +36,12 @@ def datapoint_save_setup(request, django_db_setup, django_db_blocker):
 
     # These are the Models of the Datapoint additions used in the tests.
     dp_addition_models = {
-        "numeric": models.NumericDatapointAddition,
-        "text": models.TextDatapointAddition,
+        "numeric": NumericDatapointAddition,
+        "text": TextDatapointAddition,
     }
 
     # We need one connector to create Datapoint objects in the tests
-    test_connector = models.Connector(
+    test_connector = Connector(
         name='test_datapoint_save_connector',
     )
     test_connector.save()
@@ -72,7 +74,7 @@ class TestDatapointSave():
         should lead to entries in the datapoint addition models.
         """
         # Here the generic test datapoint.
-        test_datapoint = models.Datapoint(
+        test_datapoint = Datapoint(
             connector=self.test_connector,
             type="sensor",
             key_in_connector="some_key_in_connector",
@@ -111,7 +113,7 @@ class TestDatapointSave():
         nevertheless.
         """
         # Here the generic test datapoint.
-        test_datapoint = models.Datapoint(
+        test_datapoint = Datapoint(
             connector=self.test_connector,
             type="sensor",
             key_in_connector="some_key_in_connector",
@@ -150,7 +152,7 @@ class TestDatapointSave():
         nevertheless.
         """
         # Here the generic test datapoint.
-        test_datapoint = models.Datapoint(
+        test_datapoint = Datapoint(
             connector=self.test_connector,
             type="sensor",
             key_in_connector="some_key_in_connector",
@@ -188,7 +190,7 @@ class TestDatapointSave():
         should affect the datapoint addition objects too.
         """
         # Here the generic test datapoint.
-        test_datapoint = models.Datapoint(
+        test_datapoint = Datapoint(
             connector=self.test_connector,
             type="sensor",
             key_in_connector="some_key_in_connector",
@@ -233,7 +235,7 @@ class TestDatapointSave():
         should affect the datapoint addition objects too.
         """
         # Here the generic test datapoint.
-        test_datapoint = models.Datapoint(
+        test_datapoint = Datapoint(
             connector=self.test_connector,
             type="sensor",
             key_in_connector="some_key_in_connector",
@@ -277,7 +279,7 @@ class TestDatapointSave():
         should affect the datapoint addition objects too.
         """
         # Here the generic test datapoint.
-        test_datapoint = models.Datapoint(
+        test_datapoint = Datapoint(
             connector=self.test_connector,
             type="sensor",
             key_in_connector="some_key_in_connector",
@@ -321,7 +323,7 @@ class TestDatapointSave():
         should affect the datapoint addition objects too.
         """
         # Here the generic test datapoint.
-        test_datapoint = models.Datapoint(
+        test_datapoint = Datapoint(
             connector=self.test_connector,
             type="sensor",
             key_in_connector="some_key_in_connector",
@@ -365,7 +367,7 @@ class TestDatapointSave():
         should affect the datapoint addition objects too.
         """
         # Here the generic test datapoint.
-        test_datapoint = models.Datapoint(
+        test_datapoint = Datapoint(
             connector=self.test_connector,
             type="sensor",
             key_in_connector="some_key_in_connector",
