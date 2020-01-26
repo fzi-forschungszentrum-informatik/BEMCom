@@ -51,18 +51,28 @@ class Datapoint(models.Model):
         ("numeric", "Numeric"),
         ("text", "Text"),
     ]
+
     # Mapping to which model to use for the addtional metadata fields.
     # The value must be a dict of valid kwargs expected by
     # django.contrib.contenttypes.models.ContentType.objects.get()
     #
     # Gotcha: The model name must be all lowercase not as in the class name.
+    #
+    # Compute the app_label from the inherited `_meta` attribute of a temporary
+    # class. This seems hacky, but we cannot access Datapoint at this point as
+    # it is not fully defined yet,and the addition models must follow below
+    # as they reference Datapoint. Computing app_label however allows us to use
+    # the Datapoint model in several django apps.
+    class TempModel(models.Model):
+        pass
+    app_label = TempModel._meta.app_label
     use_as_addition_models = {
         "numeric": {
-            "app_label": "admin_interface",
+            "app_label": app_label,
             "model": "numericdatapointaddition",
         },
         "text": {
-            "app_label": "admin_interface",
+            "app_label": app_label,
             "model": "textdatapointaddition",
         },
     }

@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.contenttypes.models import ContentType
 
-from admin_interface.models.datapoint import Datapoint
+from ..models.datapoint import Datapoint
 
 
 def create_datapoint_addition_inlines():
