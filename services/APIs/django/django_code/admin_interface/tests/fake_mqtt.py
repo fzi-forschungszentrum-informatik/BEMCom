@@ -37,6 +37,19 @@ class FakeMQTTBroker():
         subscribed_clients.append(id(client))
         self.subscribed_topics[topic] = subscribed_clients
 
+    def unsubscribe_from_topic(self, client, topic):
+        """
+        Handle a list of clients that have been subscribed for any topic.
+        """
+        subscribed_clients = self.subscribed_topics.setdefault(topic, [])
+        if id(client) in subscribed_clients:
+            subscribed_clients.remove(id(client))
+        # Delete the entry for the topic if no clients are left.
+        if not subscribed_clients:
+            del self.subscribed_topics[topic]
+        else:
+            self.subscribed_topics[topic] = subscribed_clients
+
     def publish_on_broker(self, msg):
         """
         Publish a message will actually call the receive_from_broker for all
@@ -79,6 +92,7 @@ class FakeMQTTClient():
         self.on_disconnect = self.do_nothing
         self.on_message = self.do_nothing
         self.on_subscribe = self.do_nothing
+        self.on_unsubscribe = self.do_nothing
 
     def __call__(self, *args, userdata=None, **kwargs):
         """
@@ -155,6 +169,27 @@ class FakeMQTTClient():
         granted_qos = 0
         self.on_subscribe(client, userdata, mid, granted_qos)
 
+    def unsubscribe(self, topic):
+        """
+        Unsubscribe from topic, can be called as the paho mqtt version.
+        See the paho reference for more information.
+        """
+        topics = []
+        if isinstance(topic, str):
+            topics.append(topic)
+        elif hasattr(topic, '__iter__'):
+            for topic_str in topic:
+                topics.append(topic_str)
+        for topic_str in topics:
+            self.fake_broker.unsubscribe_from_topic(self, topic_str)
+
+        # TODO: This would only be called once the client is connected.
+        # Define plausible values for on_subscribe callback
+        client = self
+        userdata = self.userdata
+        mid = 0
+        self.on_unsubscribe(client, userdata, mid)
+
     def publish(self, topic, payload=None, qos=0, retain=False):
         """
         Publish message on fake_broker. Similar to paho.mqtt clients method.
@@ -179,7 +214,7 @@ class FakeMQTTClient():
             userdata = self.userdata
             message = msg
             self.on_message(client, userdata, message)
-            
+
     def user_data_set(self, userdata):
         """
         Update the userdata object.

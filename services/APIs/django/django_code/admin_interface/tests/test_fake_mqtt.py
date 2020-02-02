@@ -76,6 +76,42 @@ class TestFakeMQTTClient(TestClassWithFixtures):
         out, err = self.capsys.readouterr()
         assert out == 'on subscribe userdata\n'
 
+    def test_on_unsubscribe_is_called(self):
+        # Setup broker and client as one would do in test.
+        fake_broker = FakeMQTTBroker()
+        fake_client = FakeMQTTClient(fake_broker=fake_broker)
+        fake_client = fake_client()
+
+        # set the on subscribe callback.
+        def on_unsubscribe(client, userdata, mid):
+            print('on_unsubscribe called')
+
+        fake_client.on_unsubscribe = on_unsubscribe
+        fake_client.subscribe('my/topic')
+        fake_client.unsubscribe('my/topic')
+
+        # Validate that the callback has been called.
+        out, err = self.capsys.readouterr()
+        assert out == 'on_unsubscribe called\n'
+
+    def test_on_unsubscribe_contains_userdata(self):
+        # Setup broker and client as one would do in test.
+        fake_broker = FakeMQTTBroker()
+        fake_client = FakeMQTTClient(fake_broker=fake_broker)
+        fake_client = fake_client(userdata='on unsubscribe userdata')
+
+        # set the on subscribe callback.
+        def on_unsubscribe(client, userdata, mid):
+            print(userdata)
+
+        fake_client.on_unsubscribe = on_unsubscribe
+        fake_client.subscribe('my/topic')
+        fake_client.unsubscribe('my/topic')
+
+        # Validate that the callback has been called.
+        out, err = self.capsys.readouterr()
+        assert out == 'on unsubscribe userdata\n'
+
     def test_subscribe_can_be_called_paho_style(self):
         """
         I.e. subscribe can be called in three ways. These are:
@@ -223,6 +259,20 @@ class TestFakeMQTTBroker(TestClassWithFixtures):
         fake_client.subscribe('my/topic')
 
         assert fake_broker.subscribed_topics['my/topic'] == [id(fake_client)]
+
+    def test_unsubscribe_from_topic(self):
+        # Setup broker and client as one would do in test.
+        fake_broker = FakeMQTTBroker()
+        fake_client = FakeMQTTClient(fake_broker=fake_broker)
+        fake_client = fake_client()
+
+        fake_client.connect()
+        fake_client.subscribe('my/topic')
+
+        assert fake_broker.subscribed_topics['my/topic'] == [id(fake_client)]
+
+        fake_client.unsubscribe('my/topic')
+        assert 'my/topic' not in fake_broker.subscribed_topics
 
 
 class TestFakeMQTTEndToEnd(TestClassWithFixtures):

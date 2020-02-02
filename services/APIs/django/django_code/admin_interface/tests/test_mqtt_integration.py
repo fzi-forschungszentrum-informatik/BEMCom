@@ -594,10 +594,6 @@ class TestUpdateSubscription():
         Test that the topics of the connector removed after initialization of
         ConnectorMQTTIntegration are no longer available in the managed topic
         list as well as have been unsubscribed from.
-
-        TODO This test fails as:
-            1) fake_mqtt does not support unsubscribe
-            2) Some other reason that prevents the topics from being saved back.
         """
         mqtt_topic_attrs = [
             "mqtt_topic_logs",
@@ -609,8 +605,8 @@ class TestUpdateSubscription():
         # Verify that the topics of test_connector_3 are available.
         for mqtt_topic_attr in mqtt_topic_attrs:
             topic = getattr(self.test_connector_3, mqtt_topic_attr)
-            assert topic not in self.cmi.userdata["topics"]
-            assert topic not in subscribed_topics
+            assert topic in self.cmi.userdata["topics"]
+            assert topic in subscribed_topics
 
         # Now delete the test_connector, give the signal some time and
         # verify that the topics are no longer available.
@@ -619,8 +615,8 @@ class TestUpdateSubscription():
 
         for mqtt_topic_attr in mqtt_topic_attrs:
             topic = getattr(self.test_connector_3, mqtt_topic_attr)
-            assert topic in self.cmi.userdata["topics"]
-            # assert topic in subscribed_topics
+            assert topic not in self.cmi.userdata["topics"]
+            assert topic not in subscribed_topics
 
     def test_log_msg_received_new_connector(self):
         """
