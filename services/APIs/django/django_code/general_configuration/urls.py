@@ -16,6 +16,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
+admin.site.site_header = "FZI Entity Connector Admin"
+admin.site.site_title = "FZI Entity Connector"
+admin.site.index_title = "Connector and Datapoint Adminsitration"
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
