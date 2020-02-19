@@ -14,7 +14,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 
 admin.site.site_header = "FZI Entity Connector Admin"
 admin.site.site_title = "FZI Entity Connector"
@@ -22,5 +22,6 @@ admin.site.index_title = "Connector and Datapoint Adminsitration"
 
 
 urlpatterns = [
+    path('', include('api.urls')),
     path('admin/', admin.site.urls),
 ]
