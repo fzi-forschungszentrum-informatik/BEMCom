@@ -14,21 +14,11 @@ class Datapoint(models.Model):
     represents. By default a datapoint can ether hold a numeric information
     (e.g. 2.0912) or a text information (e.g. "OK").
 
-    The use_as attribute of Datapoint defines how the Datapoint should be used.
-    It can be ether:
-        "not used": The datapoint will not be used, i.e ignored. That means
-                    the connector will not publish values for this datapoint
-                    over MQTT.
-        "numeric":  The datapoint will be used and it represents a numeric
-                    information.
-        "text":     The datapoint will be used and it represents a string,
-                    or at least something that can be stored as a string.
-
     Depeding on the use case, the datapoint may require (or should be able to
     carry) additional metadata fields. If you encounter Datapoints that require
-    other metadata then is defined in NumericDatapointAddition or
-    TextDatapointAddition simply generate a new DatapointAddition model and
-    extend use_as_choices and `use_as_addition_models` accordingly.
+    other metadata then is defined in DatapointAddition models below, simply
+    generate a new DatapointAddition model and extend `data_format_choices`
+    and `data_format_addition_models` accordingly.
 
     TODO: May be replace delete with deactivate, else we will might end with
           entries in the ValueDB with unknown origin (deleted datapoints will
@@ -40,18 +30,58 @@ class Datapoint(models.Model):
         on_delete=models.CASCADE,
         editable=False,
     )
-    # Defines the usage of the datapoint, i.e. the additional metadata fields.
-    # The 'actual value' (i.e. the first element of the tuple) must match the
-    # key in use_as_addition_models.
+    is_active = models.BooleanField(
+        default=False,
+        help_text=(
+            "Flag if the connector should publish values for this datapoint."
+        )
+    )
+    is_accessible = models.BooleanField(
+        default=False,
+        help_text=(
+            "Flag if the datapoint is accessible via the API."
+        )
+    )
+    # This must be unlimeted to prevent errors from cut away keys while
+    # using the datapoint map by the connector.
+    key_in_connector = models.TextField(
+        editable=False,
+        help_text=(
+            "Internal key used by the connector to identify the datapoint "
+            "in the incoming/outgoing data streams."
+        )
+    )
+    type = models.CharField(
+        max_length=8,
+        editable=False,
+        default=None,
+        help_text=(
+            "Datapoint type, can be ether sensor or actuator. Is defined by "
+            "the connector."
+        )
+    )
+    # Defines the data format of the datapoint, i.e. the additional metadata
+    # fields. The 'actual value' (i.e. the first element of the tuple) must
+    # match the key in data_format_addition_models.
     #
-    # Be very careful to not change the "not used" string, it's expected
+    # The formats have the following meanings:
+    #   numeric: The value of the datapoint can be stored as a float.
+    #   text: The value of the datapoint can be stored as a string.
+    #   generic: No additional information.
+    #   continuous: The value is a continuous variable with an optional max
+    #               and min value, that can take any value in between.
+    #   discrete: The value of the datapoint can take one value of limited set
+    #             of possible values.
+    #
+    # Be very careful to not change the "generic" string, it's expected
     # exactly like this in a lot of places.
-    use_as_choices = [
-        ("not used", "Not used"),
-        ("numeric", "Numeric"),
-        ("text", "Text"),
+    data_format_choices = [
+        ("generic_numeric", "Generic Numeric"),
+        ("continuous_numeric", "Continuous Numeric"),
+        ("discrete_numeric", "Discrete Numeric"),
+        ("generic_text", "Generic Text"),
+        ("discrete_text", "Discrete Text"),
     ]
-
     # Mapping to which model to use for the addtional metadata fields.
     # The value must be a dict of valid kwargs expected by
     # django.contrib.contenttypes.models.ContentType.objects.get()
@@ -63,37 +93,60 @@ class Datapoint(models.Model):
     # it is not fully defined yet,and the addition models must follow below
     # as they reference Datapoint. Computing app_label however allows us to use
     # the Datapoint model in several django apps.
+
     class TempModel(models.Model):
         pass
     app_label = TempModel._meta.app_label
-    use_as_addition_models = {
-        "numeric": {
+    data_format_addition_models = {
+        "generic_numeric": {
             "app_label": app_label,
-            "model": "numericdatapointaddition",
+            "model": "genericnumericdatapointaddition",
         },
-        "text": {
+        "continuous_numeric": {
             "app_label": app_label,
-            "model": "textdatapointaddition",
+            "model": "continuousnumericdatapointaddition",
+        },
+        "discrete_numeric": {
+            "app_label": app_label,
+            "model": "discretenumericdatapointaddition",
+        },
+        "generic_text": {
+            "app_label": app_label,
+            "model": "generictextdatapointaddition",
+        },
+        "discrete_text": {
+            "app_label": app_label,
+            "model": "discretetextdatapointaddition",
         },
     }
-    use_as = models.CharField(
-        max_length=8,
-        choices=use_as_choices,
-        default="not used",
-    )
-    type = models.CharField(
-        max_length=8,
-        editable=False,
-        default=None,
-    )
-    # This must be unlimeted to prevent errors from cut away keys while
-    # using the datapoint map by the connector.
-    key_in_connector = models.TextField(
-        editable=False,
+    # Use generic_text as default as it imposes no constraints on the datapoint
+    # apart from that the value can be stored as string, which should always
+    # be possible as the value has been received as a JSON string.
+    data_format = models.CharField(
+        max_length=18,
+        choices=data_format_choices,
+        default="generic_text",
+        help_text=(
+            "Format of the datapoint value. Additionally defines which meta"
+            "data is available for it. See documentation for details."
+        )
     )
     example_value = models.CharField(
         max_length=30,
-        editable=False
+        editable=False,
+        help_text=(
+            "One example value for this datapoint. Should help admins while "
+            "mangeing datapoints, i.e. to specify the correct data format."
+        )
+    )
+    # Don't limit this, people should never need to use abbreviations or
+    # shorten their thoughts just b/c the field is too short.
+    description = models.TextField(
+        editable=True,
+        help_text=(
+            "A human readable description of the datapoint targeted on "
+            "users of the API wihtout knowledge about connector details."
+        )
     )
 
     def __str__(self):
@@ -103,6 +156,9 @@ class Datapoint(models.Model):
         """
         Handle the potentially changed usage value, and manage (i.e.
         create/delete) the respective objects in the addition models.
+
+        TODO: Write default value for description.
+        TODO: Adept to changed fields.
         """
 
         # New instance, create a new object for the respective
@@ -267,6 +323,7 @@ class TextDatapointAddition(models.Model):
 #        help_text="The short symbol of the unit, e.g. °C or kW"
 #    )
 
+# TODO Update Datapoint Addition models.
 
 class NumericDatapointAddition(models.Model):
     """
