@@ -11,3 +11,6 @@ available_datapoints.json
 
 # Never store credentials in version control.
 secrets.env
+
+# Ignore automatically generated config files for Homematic CCUs
+ccu_*.json
