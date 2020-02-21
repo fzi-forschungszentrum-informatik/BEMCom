@@ -205,8 +205,9 @@
         "id": "19cce630.3057ca",
         "type": "ui_tab",
         "z": "",
-        "name": "Incomming Messages",
+        "name": "Sensor Messages",
         "icon": "dashboard",
+        "order": 2,
         "disabled": false,
         "hidden": false
     },
@@ -332,6 +333,7 @@
         "z": "",
         "name": "Sensor keys & values",
         "icon": "dashboard",
+        "order": 3,
         "disabled": false,
         "hidden": false
     },
@@ -351,6 +353,7 @@
         "z": "",
         "name": "Available datapoints & map",
         "icon": "dashboard",
+        "order": 4,
         "disabled": false,
         "hidden": false
     },
@@ -358,8 +361,9 @@
         "id": "90835299.68f1b",
         "type": "ui_group",
         "z": "",
-        "name": "Available datapoints",
+        "name": "available_datapoints",
         "tab": "db9c652b.d0bd28",
+        "order": 1,
         "disp": true,
         "width": "12",
         "collapse": false
@@ -368,8 +372,9 @@
         "id": "379da9ca.82ee16",
         "type": "ui_group",
         "z": "",
-        "name": "Datapoint map",
+        "name": "datapoint_map",
         "tab": "db9c652b.d0bd28",
+        "order": 2,
         "disp": true,
         "width": "12",
         "collapse": false
@@ -380,6 +385,7 @@
         "z": "",
         "name": "Logs & Heartbeats",
         "icon": "dashboard",
+        "order": 1,
         "disabled": false,
         "hidden": false
     },
@@ -389,6 +395,55 @@
         "z": "",
         "name": "Logs & Heartbeats",
         "tab": "978ad04b.ec079",
+        "disp": true,
+        "width": "24",
+        "collapse": false
+    },
+    {
+        "id": "9792b503.7734e8",
+        "type": "ui_tab",
+        "z": "",
+        "name": "Datapoint map table",
+        "icon": "dashboard",
+        "order": 6,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "edc02d80.cd91c",
+        "type": "ui_tab",
+        "z": "",
+        "name": "Available datapoints table",
+        "icon": "dashboard",
+        "order": 5,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "b7c229ab.26b6e8",
+        "type": "ui_group",
+        "z": "",
+        "name": "available_datapoints",
+        "tab": "edc02d80.cd91c",
+        "disp": true,
+        "width": "24",
+        "collapse": false
+    },
+    {
+        "id": "bb726f3d.6db7a",
+        "type": "ui_spacer",
+        "name": "spacer",
+        "group": "379da9ca.82ee16",
+        "order": 2,
+        "width": 1,
+        "height": 1
+    },
+    {
+        "id": "5996b5f4.cadc8c",
+        "type": "ui_group",
+        "z": "",
+        "name": "datapoint_map",
+        "tab": "9792b503.7734e8",
         "disp": true,
         "width": "24",
         "collapse": false
@@ -1532,7 +1587,7 @@
             "6aae28b2.fb2688"
         ],
         "x": 235,
-        "y": 240,
+        "y": 300,
         "wires": [
             [
                 "a0cef456.4affb8"
@@ -1559,7 +1614,7 @@
         "to": "",
         "reg": false,
         "x": 430,
-        "y": 240,
+        "y": 300,
         "wires": [
             []
         ]
@@ -1583,7 +1638,7 @@
         "payloadType": "flow",
         "topic": "",
         "x": 710,
-        "y": 240,
+        "y": 300,
         "wires": [
             [
                 "4b935014.411fc"
@@ -1604,7 +1659,7 @@
         "fwdInMessages": true,
         "templateScope": "local",
         "x": 1140,
-        "y": 240,
+        "y": 300,
         "wires": [
             []
         ]
@@ -1618,7 +1673,7 @@
             "376a4260.2d545e"
         ],
         "x": 235,
-        "y": 280,
+        "y": 340,
         "wires": [
             [
                 "a9e9974.d42f868"
@@ -1645,7 +1700,7 @@
         "to": "",
         "reg": false,
         "x": 440,
-        "y": 280,
+        "y": 340,
         "wires": [
             []
         ]
@@ -1669,7 +1724,7 @@
         "payloadType": "flow",
         "topic": "",
         "x": 720,
-        "y": 280,
+        "y": 340,
         "wires": [
             [
                 "3e330df.717b3f2"
@@ -1685,7 +1740,7 @@
         "action": "str",
         "pretty": true,
         "x": 950,
-        "y": 280,
+        "y": 340,
         "wires": [
             [
                 "d9039779.764788"
@@ -1706,7 +1761,7 @@
         "fwdInMessages": true,
         "templateScope": "local",
         "x": 1140,
-        "y": 280,
+        "y": 340,
         "wires": [
             []
         ]
@@ -1720,7 +1775,7 @@
         "action": "str",
         "pretty": true,
         "x": 950,
-        "y": 240,
+        "y": 300,
         "wires": [
             [
                 "df149b87.116e88"
@@ -1734,7 +1789,7 @@
         "name": "Shows the raw and incomming messages of the sensors",
         "info": "",
         "x": 240,
-        "y": 200,
+        "y": 260,
         "wires": []
     },
     {
@@ -1744,7 +1799,7 @@
         "name": "Shows a table of parsed_message flattened topics and values ",
         "info": "",
         "x": 260,
-        "y": 380,
+        "y": 420,
         "wires": []
     },
     {
@@ -1756,7 +1811,7 @@
             "376a4260.2d545e"
         ],
         "x": 235,
-        "y": 420,
+        "y": 460,
         "wires": [
             [
                 "7c67de4d.1bc8e"
@@ -1772,7 +1827,7 @@
         "outputs": 1,
         "noerr": 0,
         "x": 720,
-        "y": 420,
+        "y": 460,
         "wires": [
             []
         ]
@@ -1786,7 +1841,7 @@
         "outputs": 1,
         "noerr": 0,
         "x": 400,
-        "y": 420,
+        "y": 460,
         "wires": [
             [
                 "712b939e.dbf4ac"
@@ -1807,7 +1862,7 @@
         "outputs": 0,
         "cts": false,
         "x": 850,
-        "y": 460,
+        "y": 500,
         "wires": []
     },
     {
@@ -1826,7 +1881,7 @@
         "delay": 300,
         "topic": "key_filter",
         "x": 130,
-        "y": 460,
+        "y": 500,
         "wires": [
             [
                 "bcdb3175.c8ee7"
@@ -1852,7 +1907,7 @@
         "payloadType": "flow",
         "topic": "refresh",
         "x": 120,
-        "y": 500,
+        "y": 540,
         "wires": [
             [
                 "bcdb3175.c8ee7"
@@ -1868,7 +1923,7 @@
         "outputs": 1,
         "noerr": 0,
         "x": 430,
-        "y": 480,
+        "y": 520,
         "wires": [
             [
                 "ad020571.6cba28",
@@ -1890,7 +1945,7 @@
         "fwdInMessages": true,
         "templateScope": "local",
         "x": 810,
-        "y": 500,
+        "y": 540,
         "wires": [
             []
         ]
@@ -1902,7 +1957,7 @@
         "name": "Displays the available_datapoints and datapoint_map objects as sent/received.",
         "info": "",
         "x": 310,
-        "y": 600,
+        "y": 620,
         "wires": []
     },
     {
@@ -1924,7 +1979,7 @@
         "payloadType": "global",
         "topic": "",
         "x": 200,
-        "y": 640,
+        "y": 660,
         "wires": [
             [
                 "4bcc3a07.424d34"
@@ -1945,7 +2000,7 @@
         "fwdInMessages": true,
         "templateScope": "local",
         "x": 640,
-        "y": 640,
+        "y": 660,
         "wires": [
             []
         ]
@@ -1969,7 +2024,7 @@
         "payloadType": "global",
         "topic": "",
         "x": 180,
-        "y": 680,
+        "y": 700,
         "wires": [
             [
                 "d8caa46.dd61a58"
@@ -1985,7 +2040,7 @@
         "action": "str",
         "pretty": true,
         "x": 450,
-        "y": 680,
+        "y": 700,
         "wires": [
             [
                 "4507b8af.253ee8"
@@ -2006,7 +2061,7 @@
         "fwdInMessages": true,
         "templateScope": "local",
         "x": 640,
-        "y": 680,
+        "y": 700,
         "wires": [
             []
         ]
@@ -2020,7 +2075,7 @@
         "action": "str",
         "pretty": true,
         "x": 450,
-        "y": 640,
+        "y": 660,
         "wires": [
             [
                 "30c7f276.a9e29e"
@@ -2047,7 +2102,7 @@
         "datatype": "json",
         "broker": "f0d21eb0.93967",
         "x": 150,
-        "y": 120,
+        "y": 160,
         "wires": [
             [
                 "9cf662.642399a"
@@ -2059,11 +2114,11 @@
         "type": "function",
         "z": "8addb331.0233e",
         "name": "Store logs in array",
-        "func": "let stored_logs = flow.get(\"stored_logs\") || []\nstored_logs.push(msg.payload)\nflow.set(\"stored_logs\", stored_logs)\n\nreturn {\"payload\": stored_logs}",
+        "func": "let stored_logs = flow.get(\"stored_logs\") || []\nif (msg.topic === 'reset_logs') {\n    stored_logs = []\n}else{\n\n    let log_entry = msg.payload\n    //Convert timestamp to human readable time\n    log_entry.timestamp = new Date(log_entry.timestamp).toISOString()\n    stored_logs.push(msg.payload)\n}\nflow.set(\"stored_logs\", stored_logs)\n\nreturn {\"payload\": stored_logs}",
         "outputs": 1,
         "noerr": 0,
-        "x": 440,
-        "y": 120,
+        "x": 490,
+        "y": 160,
         "wires": [
             [
                 "312e5c1e.7fff14"
@@ -2076,14 +2131,55 @@
         "z": "8addb331.0233e",
         "group": "e7a7b1a2.81adf",
         "name": "",
-        "order": 4,
+        "order": 3,
         "width": "24",
         "height": "10",
-        "columns": [],
+        "columns": [
+            {
+                "field": "timestamp",
+                "title": "Time",
+                "width": "15%",
+                "align": "left",
+                "formatter": "plaintext",
+                "formatterParams": {
+                    "target": "_blank"
+                }
+            },
+            {
+                "field": "emitter",
+                "title": "Emitter",
+                "width": "10%",
+                "align": "left",
+                "formatter": "plaintext",
+                "formatterParams": {
+                    "target": "_blank"
+                }
+            },
+            {
+                "field": "level",
+                "title": "Level",
+                "width": "10%",
+                "align": "left",
+                "formatter": "plaintext",
+                "formatterParams": {
+                    "target": "_blank"
+                }
+            },
+            {
+                "field": "msg",
+                "title": "Message",
+                "width": "64%",
+                "align": "left",
+                "formatter": "plaintext",
+                "formatterParams": {
+                    "target": "_blank"
+                }
+            }
+        ],
         "outputs": 0,
         "cts": false,
-        "x": 650,
-        "y": 120,
+        "x": 700,
+        "y": 160,
         "wires": []
     },
     {
@@ -2109,14 +2205,252 @@
         "z": "8addb331.0233e",
         "group": "e7a7b1a2.81adf",
         "order": 1,
-        "width": 0,
-        "height": 0,
+        "width": "20",
+        "height": "1",
         "name": "",
         "label": "Last heartbeat:",
         "format": "{{msg.payload.this_heartbeats_timestamp | date: 'yyyy-MM-ddTHH:mm:ss'}}",
         "layout": "row-left",
-        "x": 620,
+        "x": 670,
         "y": 80,
         "wires": []
+    },
+    {
+        "id": "b56b054c.d734e8",
+        "type": "ui_button",
+        "z": "8addb331.0233e",
+        "name": "",
+        "group": "e7a7b1a2.81adf",
+        "order": 2,
+        "width": "4",
+        "height": "1",
+        "passthru": false,
+        "label": "Reset Logs",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "icon": "",
+        "payload": "[]",
+        "payloadType": "json",
+        "topic": "reset_logs",
+        "x": 190,
+        "y": 120,
+        "wires": [
+            [
+                "9cf662.642399a"
+            ]
+        ]
+    },
+    {
+        "id": "571c8c5d.858904",
+        "type": "comment",
+        "z": "8addb331.0233e",
+        "name": "Display detail tables for available_datapoints and datapoint_map",
+        "info": "",
+        "x": 270,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "b2146a8f.158db8",
+        "type": "ui_table",
+        "z": "8addb331.0233e",
+        "group": "b7c229ab.26b6e8",
+        "name": "",
+        "order": 4,
+        "width": "24",
+        "height": "10",
+        "columns": [],
+        "outputs": 0,
+        "cts": false,
+        "x": 630,
+        "y": 820,
+        "wires": []
+    },
+    {
+        "id": "f79bdc89.af894",
+        "type": "ui_text_input",
+        "z": "8addb331.0233e",
+        "name": "",
+        "label": "Filter keys",
+        "tooltip": "",
+        "group": "b7c229ab.26b6e8",
+        "order": 1,
+        "width": "20",
+        "height": "1",
+        "passthru": true,
+        "mode": "text",
+        "delay": 300,
+        "topic": "key_filter",
+        "x": 110,
+        "y": 820,
+        "wires": [
+            [
+                "ed612b04.ea45f8"
+            ]
+        ]
+    },
+    {
+        "id": "989113ba.a47d7",
+        "type": "ui_button",
+        "z": "8addb331.0233e",
+        "name": "",
+        "group": "b7c229ab.26b6e8",
+        "order": 2,
+        "width": "4",
+        "height": "1",
+        "passthru": false,
+        "label": "Refresh",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "icon": "",
+        "payload": "available_datapoints",
+        "payloadType": "global",
+        "topic": "refresh",
+        "x": 100,
+        "y": 860,
+        "wires": [
+            [
+                "ed612b04.ea45f8"
+            ]
+        ]
+    },
+    {
+        "id": "ed612b04.ea45f8",
+        "type": "function",
+        "z": "8addb331.0233e",
+        "name": "Filter available datapoints",
+        "func": "// Cache the inputs received from other nodes.\nif (msg.topic === 'key_filter') {\n    context.set('key_filter', msg.payload)\n} else {\n    context.set('current_available_datapoints', msg.payload)\n}\n\n// Apply the filter and convert to format expected by table node\nlet payload = []\nlet current_available_datapoints = context.get('current_available_datapoints') || {}\nlet key_filter = context.get('key_filter') || ''\n\nfor (let type in current_available_datapoints) {\n    for (let key in current_available_datapoints[type]) {\n        if (key.includes(key_filter)) {\n            payload.push({\n                \"key\": key,\n                \"type\": type,\n                \"value\": current_available_datapoints[type][key],\n            })\n        }\n    }\n}\n\nreturn {\"payload\": payload, \"count\": payload.length}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 330,
+        "y": 840,
+        "wires": [
+            [
+                "b2146a8f.158db8",
+                "24ad6ca3.963044"
+            ]
+        ]
+    },
+    {
+        "id": "24ad6ca3.963044",
+        "type": "ui_template",
+        "z": "8addb331.0233e",
+        "group": "b7c229ab.26b6e8",
+        "name": "Show item count",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "format": "<p>Count: {{msg.count}}</p>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "templateScope": "local",
+        "x": 590,
+        "y": 860,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "2afc048d.4f007c",
+        "type": "ui_table",
+        "z": "8addb331.0233e",
+        "group": "5996b5f4.cadc8c",
+        "name": "",
+        "order": 4,
+        "width": "24",
+        "height": "10",
+        "columns": [],
+        "outputs": 0,
+        "cts": false,
+        "x": 630,
+        "y": 900,
+        "wires": []
+    },
+    {
+        "id": "70ef28c1.90a2a8",
+        "type": "ui_text_input",
+        "z": "8addb331.0233e",
+        "name": "",
+        "label": "Filter keys",
+        "tooltip": "",
+        "group": "5996b5f4.cadc8c",
+        "order": 1,
+        "width": "20",
+        "height": "1",
+        "passthru": true,
+        "mode": "text",
+        "delay": 300,
+        "topic": "key_filter",
+        "x": 110,
+        "y": 900,
+        "wires": [
+            [
+                "387c24fc.96d81c"
+            ]
+        ]
+    },
+    {
+        "id": "357484df.99967c",
+        "type": "ui_button",
+        "z": "8addb331.0233e",
+        "name": "",
+        "group": "5996b5f4.cadc8c",
+        "order": 2,
+        "width": "4",
+        "height": "1",
+        "passthru": false,
+        "label": "Refresh",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "icon": "",
+        "payload": "datapoint_map",
+        "payloadType": "global",
+        "topic": "refresh",
+        "x": 100,
+        "y": 940,
+        "wires": [
+            [
+                "387c24fc.96d81c"
+            ]
+        ]
+    },
+    {
+        "id": "387c24fc.96d81c",
+        "type": "function",
+        "z": "8addb331.0233e",
+        "name": "Filter datapoint map",
+        "func": "// Cache the inputs received from other nodes.\nif (msg.topic === 'key_filter') {\n    context.set('key_filter', msg.payload)\n} else {\n    context.set('current_datapoint_map', msg.payload)\n}\n\n// Apply the filter and convert to format expected by table node\nlet payload = []\nlet current_datapoint_map = context.get('current_datapoint_map') || {}\nlet key_filter = context.get('key_filter') || ''\n\nfor (let type in current_datapoint_map) {\n    for (let key in current_datapoint_map[type]) {\n        if (key.includes(key_filter)) {\n            payload.push({\n                \"key\": key,\n                \"type\": type,\n                \"topic\": current_datapoint_map[type][key],\n            })\n        }\n    }\n}\n\nreturn {\"payload\": payload, \"count\": payload.length}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 320,
+        "y": 920,
+        "wires": [
+            [
+                "2afc048d.4f007c",
+                "2dd9a642.74282a"
+            ]
+        ]
+    },
+    {
+        "id": "2dd9a642.74282a",
+        "type": "ui_template",
+        "z": "8addb331.0233e",
+        "group": "5996b5f4.cadc8c",
+        "name": "Show item count",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "format": "<p>Count: {{msg.count}}</p>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "templateScope": "local",
+        "x": 590,
+        "y": 940,
+        "wires": [
+            []
+        ]
     }
 ]
