@@ -543,7 +543,7 @@
   "node-red-dashboard": {
    "name": "node-red-dashboard",
    "version": "2.19.4",
-   "local": false,
+   "local": true,
    "nodes": {
     "ui_base": {
      "name": "ui_base",

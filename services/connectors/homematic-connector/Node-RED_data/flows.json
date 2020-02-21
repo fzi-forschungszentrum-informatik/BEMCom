@@ -39,14 +39,7 @@
         "type": "tab",
         "label": "Debug Dashboard",
         "disabled": false,
-        "info": ""
-    },
-    {
-        "id": "b5a451b4.6e45c",
-        "type": "tab",
-        "label": "Devl stuff",
-        "disabled": false,
-        "info": "Some unsorted stuff used for development. "
+        "info": "This is dashboard that should help while developing or debugging the connector. \n\nGot to [/ui](/ui) to open it."
     },
     {
         "id": "2f246a38.edf956",
@@ -224,7 +217,113 @@
         "name": "Last raw_message",
         "tab": "19cce630.3057ca",
         "disp": true,
-        "width": "18",
+        "width": "12",
+        "collapse": false
+    },
+    {
+        "id": "ccfc61c7.a2ac3",
+        "type": "ui_base",
+        "theme": {
+            "name": "theme-light",
+            "lightTheme": {
+                "default": "#0094CE",
+                "baseColor": "#0094CE",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif",
+                "edited": true,
+                "reset": false
+            },
+            "darkTheme": {
+                "default": "#097479",
+                "baseColor": "#097479",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif",
+                "edited": false
+            },
+            "customTheme": {
+                "name": "Untitled Theme 1",
+                "default": "#4B7930",
+                "baseColor": "#4B7930",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif"
+            },
+            "themeState": {
+                "base-color": {
+                    "default": "#0094CE",
+                    "value": "#0094CE",
+                    "edited": false
+                },
+                "page-titlebar-backgroundColor": {
+                    "value": "#0094CE",
+                    "edited": false
+                },
+                "page-backgroundColor": {
+                    "value": "#fafafa",
+                    "edited": false
+                },
+                "page-sidebar-backgroundColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "group-textColor": {
+                    "value": "#1bbfff",
+                    "edited": false
+                },
+                "group-borderColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "group-backgroundColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "widget-textColor": {
+                    "value": "#111111",
+                    "edited": false
+                },
+                "widget-backgroundColor": {
+                    "value": "#0094ce",
+                    "edited": false
+                },
+                "widget-borderColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "base-font": {
+                    "value": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif"
+                }
+            },
+            "angularTheme": {
+                "primary": "indigo",
+                "accents": "blue",
+                "warn": "red",
+                "background": "grey"
+            }
+        },
+        "site": {
+            "name": "Node-RED Dashboard",
+            "hideToolbar": "false",
+            "allowSwipe": "false",
+            "lockMenu": "false",
+            "allowTempTheme": "true",
+            "dateFormat": "DD/MM/YYYY",
+            "sizes": {
+                "sx": 48,
+                "sy": 48,
+                "gx": 6,
+                "gy": 6,
+                "cx": 6,
+                "cy": 6,
+                "px": 0,
+                "py": 0
+            }
+        }
+    },
+    {
+        "id": "157f298.c0d83d7",
+        "type": "ui_group",
+        "z": "",
+        "name": "Last parsed_message",
+        "tab": "19cce630.3057ca",
+        "disp": true,
+        "width": "12",
         "collapse": false
     },
     {
@@ -625,7 +724,8 @@
         "name": "flow \"Parse raw_message\" out",
         "links": [
             "498bc454.265e5c",
-            "2a8520d8.ce254"
+            "2a8520d8.ce254",
+            "1e213525.ab1f5b"
         ],
         "x": 515,
         "y": 40,
@@ -1363,8 +1463,8 @@
         "links": [
             "6aae28b2.fb2688"
         ],
-        "x": 215,
-        "y": 40,
+        "x": 235,
+        "y": 80,
         "wires": [
             [
                 "a0cef456.4affb8"
@@ -1390,27 +1490,11 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 410,
-        "y": 40,
+        "x": 430,
+        "y": 80,
         "wires": [
             []
         ]
-    },
-    {
-        "id": "a77eeb17.8bb688",
-        "type": "ui_text",
-        "z": "8addb331.0233e",
-        "group": "307993dc.21c95c",
-        "order": 1,
-        "width": "18",
-        "height": "1",
-        "name": "display as text",
-        "label": "",
-        "format": "{{msg.payload}}",
-        "layout": "col-center",
-        "x": 560,
-        "y": 80,
-        "wires": []
     },
     {
         "id": "49c275c8.fdab6c",
@@ -1418,7 +1502,7 @@
         "z": "8addb331.0233e",
         "name": "",
         "group": "307993dc.21c95c",
-        "order": 0,
+        "order": 1,
         "width": 0,
         "height": 0,
         "passthru": false,
@@ -1430,28 +1514,159 @@
         "payload": "raw_message",
         "payloadType": "flow",
         "topic": "",
-        "x": 130,
+        "x": 710,
         "y": 80,
         "wires": [
             [
-                "24b31006.c4696"
+                "4b935014.411fc"
             ]
         ]
     },
     {
-        "id": "24b31006.c4696",
+        "id": "df149b87.116e88",
+        "type": "ui_template",
+        "z": "8addb331.0233e",
+        "group": "307993dc.21c95c",
+        "name": "",
+        "order": 2,
+        "width": "12",
+        "height": "10",
+        "format": "<div style=\"white-space: pre-wrap;\">\n{{msg.payload}}\n</div>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "templateScope": "local",
+        "x": 1100,
+        "y": 80,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "1e213525.ab1f5b",
+        "type": "link in",
+        "z": "8addb331.0233e",
+        "name": "",
+        "links": [
+            "376a4260.2d545e"
+        ],
+        "x": 235,
+        "y": 120,
+        "wires": [
+            [
+                "a9e9974.d42f868"
+            ]
+        ]
+    },
+    {
+        "id": "a9e9974.d42f868",
+        "type": "change",
+        "z": "8addb331.0233e",
+        "name": "Store last paresed_message",
+        "rules": [
+            {
+                "t": "set",
+                "p": "parsed_message",
+                "pt": "flow",
+                "to": "payload.parsed_message",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 440,
+        "y": 120,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "664730e6.8ae6a",
+        "type": "ui_button",
+        "z": "8addb331.0233e",
+        "name": "",
+        "group": "157f298.c0d83d7",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "Show last parsed_message",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "icon": "",
+        "payload": "parsed_message",
+        "payloadType": "flow",
+        "topic": "",
+        "x": 720,
+        "y": 120,
+        "wires": [
+            [
+                "3e330df.717b3f2"
+            ]
+        ]
+    },
+    {
+        "id": "3e330df.717b3f2",
         "type": "json",
         "z": "8addb331.0233e",
         "name": "",
         "property": "payload",
         "action": "str",
         "pretty": true,
-        "x": 350,
+        "x": 950,
+        "y": 120,
+        "wires": [
+            [
+                "d9039779.764788"
+            ]
+        ]
+    },
+    {
+        "id": "d9039779.764788",
+        "type": "ui_template",
+        "z": "8addb331.0233e",
+        "group": "157f298.c0d83d7",
+        "name": "",
+        "order": 2,
+        "width": "12",
+        "height": "10",
+        "format": "<div style=\"white-space: pre-wrap;\">\n{{msg.payload}}\n</div>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "templateScope": "local",
+        "x": 1100,
+        "y": 120,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "4b935014.411fc",
+        "type": "json",
+        "z": "8addb331.0233e",
+        "name": "",
+        "property": "payload",
+        "action": "str",
+        "pretty": true,
+        "x": 950,
         "y": 80,
         "wires": [
             [
-                "a77eeb17.8bb688"
+                "df149b87.116e88"
             ]
         ]
+    },
+    {
+        "id": "d6ec7341.40312",
+        "type": "comment",
+        "z": "8addb331.0233e",
+        "name": "Shows the raw and incomming messages of the sensors",
+        "info": "",
+        "x": 240,
+        "y": 40,
+        "wires": []
     }
 ]
