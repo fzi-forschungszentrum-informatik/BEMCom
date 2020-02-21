@@ -327,6 +327,73 @@
         "collapse": false
     },
     {
+        "id": "4fbf4dee.9fd8d4",
+        "type": "ui_tab",
+        "z": "",
+        "name": "Sensor keys & values",
+        "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "5a310882.b28f28",
+        "type": "ui_group",
+        "z": "",
+        "name": "All flattened keys  ",
+        "tab": "4fbf4dee.9fd8d4",
+        "disp": true,
+        "width": "24",
+        "collapse": false
+    },
+    {
+        "id": "db9c652b.d0bd28",
+        "type": "ui_tab",
+        "z": "",
+        "name": "Available datapoints & map",
+        "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "90835299.68f1b",
+        "type": "ui_group",
+        "z": "",
+        "name": "Available datapoints",
+        "tab": "db9c652b.d0bd28",
+        "disp": true,
+        "width": "12",
+        "collapse": false
+    },
+    {
+        "id": "379da9ca.82ee16",
+        "type": "ui_group",
+        "z": "",
+        "name": "Datapoint map",
+        "tab": "db9c652b.d0bd28",
+        "disp": true,
+        "width": "12",
+        "collapse": false
+    },
+    {
+        "id": "978ad04b.ec079",
+        "type": "ui_tab",
+        "z": "",
+        "name": "Logs & Heartbeats",
+        "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "e7a7b1a2.81adf",
+        "type": "ui_group",
+        "z": "",
+        "name": "Logs & Heartbeats",
+        "tab": "978ad04b.ec079",
+        "disp": true,
+        "width": "24",
+        "collapse": false
+    },
+    {
         "id": "1980e6e1.5dc979",
         "type": "change",
         "z": "927c9b3e.6d8038",
@@ -725,7 +792,8 @@
         "links": [
             "498bc454.265e5c",
             "2a8520d8.ce254",
-            "1e213525.ab1f5b"
+            "1e213525.ab1f5b",
+            "6bfea7df.b55098"
         ],
         "x": 515,
         "y": 40,
@@ -1464,7 +1532,7 @@
             "6aae28b2.fb2688"
         ],
         "x": 235,
-        "y": 80,
+        "y": 240,
         "wires": [
             [
                 "a0cef456.4affb8"
@@ -1491,7 +1559,7 @@
         "to": "",
         "reg": false,
         "x": 430,
-        "y": 80,
+        "y": 240,
         "wires": [
             []
         ]
@@ -1515,7 +1583,7 @@
         "payloadType": "flow",
         "topic": "",
         "x": 710,
-        "y": 80,
+        "y": 240,
         "wires": [
             [
                 "4b935014.411fc"
@@ -1527,7 +1595,7 @@
         "type": "ui_template",
         "z": "8addb331.0233e",
         "group": "307993dc.21c95c",
-        "name": "",
+        "name": "Display formated json",
         "order": 2,
         "width": "12",
         "height": "10",
@@ -1535,8 +1603,8 @@
         "storeOutMessages": true,
         "fwdInMessages": true,
         "templateScope": "local",
-        "x": 1100,
-        "y": 80,
+        "x": 1140,
+        "y": 240,
         "wires": [
             []
         ]
@@ -1550,7 +1618,7 @@
             "376a4260.2d545e"
         ],
         "x": 235,
-        "y": 120,
+        "y": 280,
         "wires": [
             [
                 "a9e9974.d42f868"
@@ -1577,7 +1645,7 @@
         "to": "",
         "reg": false,
         "x": 440,
-        "y": 120,
+        "y": 280,
         "wires": [
             []
         ]
@@ -1601,7 +1669,7 @@
         "payloadType": "flow",
         "topic": "",
         "x": 720,
-        "y": 120,
+        "y": 280,
         "wires": [
             [
                 "3e330df.717b3f2"
@@ -1617,7 +1685,7 @@
         "action": "str",
         "pretty": true,
         "x": 950,
-        "y": 120,
+        "y": 280,
         "wires": [
             [
                 "d9039779.764788"
@@ -1629,7 +1697,7 @@
         "type": "ui_template",
         "z": "8addb331.0233e",
         "group": "157f298.c0d83d7",
-        "name": "",
+        "name": "Display formated json",
         "order": 2,
         "width": "12",
         "height": "10",
@@ -1637,8 +1705,8 @@
         "storeOutMessages": true,
         "fwdInMessages": true,
         "templateScope": "local",
-        "x": 1100,
-        "y": 120,
+        "x": 1140,
+        "y": 280,
         "wires": [
             []
         ]
@@ -1652,7 +1720,7 @@
         "action": "str",
         "pretty": true,
         "x": 950,
-        "y": 80,
+        "y": 240,
         "wires": [
             [
                 "df149b87.116e88"
@@ -1666,7 +1734,389 @@
         "name": "Shows the raw and incomming messages of the sensors",
         "info": "",
         "x": 240,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "32c8706c.d03ee",
+        "type": "comment",
+        "z": "8addb331.0233e",
+        "name": "Shows a table of parsed_message flattened topics and values ",
+        "info": "",
+        "x": 260,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "6bfea7df.b55098",
+        "type": "link in",
+        "z": "8addb331.0233e",
+        "name": "",
+        "links": [
+            "376a4260.2d545e"
+        ],
+        "x": 235,
+        "y": 420,
+        "wires": [
+            [
+                "7c67de4d.1bc8e"
+            ]
+        ]
+    },
+    {
+        "id": "712b939e.dbf4ac",
+        "type": "function",
+        "z": "8addb331.0233e",
+        "name": "Store last value for all parsed messages as array",
+        "func": "// Store the last value for each message key\nlet flattened_messages = flow.get(\"flattened_messages\") || {}\nfor ( let key in msg.payload.flattened_message ){\n    flattened_messages[key] =  msg.payload.flattened_message[key]\n}\nflow.set(\"flattened_messages\", flattened_messages)\n\n// Convert into required format for table node.\nlet payload = []\nfor ( let key in flattened_messages ){\n    payload.push({\n        \"key\": key ,\n        \"value\": flattened_messages[key],\n    })\n}\nreturn {\"payload\": payload}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 720,
+        "y": 420,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "7c67de4d.1bc8e",
+        "type": "function",
+        "z": "8addb331.0233e",
+        "name": "Flatten object",
+        "func": "// from https://stackoverflow.com/questions/44134212/best-way-to-flatten-js-object-keys-and-values-to-a-single-depth-array\nfunction flattenObject(ob) {\n    var toReturn = {};\n\n    for (var i in ob) {\n        if (!ob.hasOwnProperty(i)) continue;\n\n        if ((typeof ob[i]) == 'object' && ob[i] !== null) {\n            var flatObject = flattenObject(ob[i]);\n            for (var x in flatObject) {\n                if (!flatObject.hasOwnProperty(x)) continue;\n\n                toReturn[i + '__' + x] = flatObject[x];\n            }\n        } else {\n            toReturn[i] = ob[i];\n        }\n    }\n    return toReturn;\n}\n\nlet parsed_message = msg.payload.parsed_message\nlet flattened_message = flattenObject(parsed_message)\ndelete msg.payload.parsed_message\nmsg.payload[\"flattened_message\"] = flattened_message\n\nreturn msg",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 400,
+        "y": 420,
+        "wires": [
+            [
+                "712b939e.dbf4ac"
+            ]
+        ],
+        "info": "Flattens the incomming object to depth 1, i.e that every leaf of the incomming object can be accessed with a unique key directly from flat_message object.\n# Returns\nShould return the a message with the flattend data like:\n```\nmsg = {\n    \"payload\": {\n        \"flattened_message\": <the parsed data as flattend object>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"flattened_message\": {\n            \"device_1__sensor_1\": \"2.12\"\n            \"device_1__sensor_2\": \"3.12\"\n        },\n        \"timestamp\": 1573680749000\n    }\n}\n```"
+    },
+    {
+        "id": "ad020571.6cba28",
+        "type": "ui_table",
+        "z": "8addb331.0233e",
+        "group": "5a310882.b28f28",
+        "name": "",
+        "order": 4,
+        "width": "24",
+        "height": "10",
+        "columns": [],
+        "outputs": 0,
+        "cts": false,
+        "x": 850,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "329b5727.b2f088",
+        "type": "ui_text_input",
+        "z": "8addb331.0233e",
+        "name": "",
+        "label": "Filter keys",
+        "tooltip": "",
+        "group": "5a310882.b28f28",
+        "order": 1,
+        "width": "20",
+        "height": "1",
+        "passthru": true,
+        "mode": "text",
+        "delay": 300,
+        "topic": "key_filter",
+        "x": 130,
+        "y": 460,
+        "wires": [
+            [
+                "bcdb3175.c8ee7"
+            ]
+        ]
+    },
+    {
+        "id": "968bb4ee.aefe68",
+        "type": "ui_button",
+        "z": "8addb331.0233e",
+        "name": "",
+        "group": "5a310882.b28f28",
+        "order": 2,
+        "width": "4",
+        "height": "1",
+        "passthru": false,
+        "label": "Refresh",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "icon": "",
+        "payload": "flattened_messages",
+        "payloadType": "flow",
+        "topic": "refresh",
+        "x": 120,
+        "y": 500,
+        "wires": [
+            [
+                "bcdb3175.c8ee7"
+            ]
+        ]
+    },
+    {
+        "id": "bcdb3175.c8ee7",
+        "type": "function",
+        "z": "8addb331.0233e",
+        "name": "Filter flattened messages",
+        "func": "// Cache the inputs received from other nodes.\nif (msg.topic === 'key_filter') {\n    context.set('key_filter', msg.payload)\n} else {\n    context.set('current_flattened_messages', msg.payload)\n}\n\n// Apply the filter and convert to format expected by table node\nlet payload = []\nlet current_flattened_messages = context.get('current_flattened_messages') || {}\nlet key_filter = context.get('key_filter') || ''\n\nfor (let key in current_flattened_messages) {\n    if (key.includes(key_filter)) {\n        payload.push({\n            \"key\": key ,\n            \"value\": current_flattened_messages[key],\n        })\n    }\n}\n\nreturn {\"payload\": payload, \"count\": payload.length}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 430,
+        "y": 480,
+        "wires": [
+            [
+                "ad020571.6cba28",
+                "b6d682f1.635ea"
+            ]
+        ]
+    },
+    {
+        "id": "b6d682f1.635ea",
+        "type": "ui_template",
+        "z": "8addb331.0233e",
+        "group": "5a310882.b28f28",
+        "name": "Show item count",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "format": "<p>Count: {{msg.count}}</p>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "templateScope": "local",
+        "x": 810,
+        "y": 500,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "4f4025e6.08d74c",
+        "type": "comment",
+        "z": "8addb331.0233e",
+        "name": "Displays the available_datapoints and datapoint_map objects as sent/received.",
+        "info": "",
+        "x": 310,
+        "y": 600,
+        "wires": []
+    },
+    {
+        "id": "7ef1d3c7.4d063c",
+        "type": "ui_button",
+        "z": "8addb331.0233e",
+        "name": "",
+        "group": "90835299.68f1b",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "Show last version of available_datapoints",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "icon": "",
+        "payload": "available_datapoints",
+        "payloadType": "global",
+        "topic": "",
+        "x": 200,
+        "y": 640,
+        "wires": [
+            [
+                "4bcc3a07.424d34"
+            ]
+        ]
+    },
+    {
+        "id": "30c7f276.a9e29e",
+        "type": "ui_template",
+        "z": "8addb331.0233e",
+        "group": "90835299.68f1b",
+        "name": "Display formated json",
+        "order": 2,
+        "width": "12",
+        "height": "10",
+        "format": "<div style=\"white-space: pre-wrap;\">\n{{msg.payload}}\n</div>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "templateScope": "local",
+        "x": 640,
+        "y": 640,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "1fbe38a3.f0bdc7",
+        "type": "ui_button",
+        "z": "8addb331.0233e",
+        "name": "",
+        "group": "379da9ca.82ee16",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "Show last version of datapoint_map",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "icon": "",
+        "payload": "datapoint_map",
+        "payloadType": "global",
+        "topic": "",
+        "x": 180,
+        "y": 680,
+        "wires": [
+            [
+                "d8caa46.dd61a58"
+            ]
+        ]
+    },
+    {
+        "id": "d8caa46.dd61a58",
+        "type": "json",
+        "z": "8addb331.0233e",
+        "name": "",
+        "property": "payload",
+        "action": "str",
+        "pretty": true,
+        "x": 450,
+        "y": 680,
+        "wires": [
+            [
+                "4507b8af.253ee8"
+            ]
+        ]
+    },
+    {
+        "id": "4507b8af.253ee8",
+        "type": "ui_template",
+        "z": "8addb331.0233e",
+        "group": "379da9ca.82ee16",
+        "name": "Display formated json",
+        "order": 2,
+        "width": "12",
+        "height": "10",
+        "format": "<div style=\"white-space: pre-wrap;\">\n{{msg.payload}}\n</div>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "templateScope": "local",
+        "x": 640,
+        "y": 680,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "4bcc3a07.424d34",
+        "type": "json",
+        "z": "8addb331.0233e",
+        "name": "",
+        "property": "payload",
+        "action": "str",
+        "pretty": true,
+        "x": 450,
+        "y": 640,
+        "wires": [
+            [
+                "30c7f276.a9e29e"
+            ]
+        ]
+    },
+    {
+        "id": "b6a29e47.a902f",
+        "type": "comment",
+        "z": "8addb331.0233e",
+        "name": "Display last heartbeat and log messages ",
+        "info": "",
+        "x": 200,
         "y": 40,
+        "wires": []
+    },
+    {
+        "id": "4feff28c.21869c",
+        "type": "mqtt in",
+        "z": "8addb331.0233e",
+        "name": "",
+        "topic": "$(MQTT_TOPIC_LOGS)",
+        "qos": "2",
+        "datatype": "json",
+        "broker": "f0d21eb0.93967",
+        "x": 150,
+        "y": 120,
+        "wires": [
+            [
+                "9cf662.642399a"
+            ]
+        ]
+    },
+    {
+        "id": "9cf662.642399a",
+        "type": "function",
+        "z": "8addb331.0233e",
+        "name": "Store logs in array",
+        "func": "let stored_logs = flow.get(\"stored_logs\") || []\nstored_logs.push(msg.payload)\nflow.set(\"stored_logs\", stored_logs)\n\nreturn {\"payload\": stored_logs}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 440,
+        "y": 120,
+        "wires": [
+            [
+                "312e5c1e.7fff14"
+            ]
+        ]
+    },
+    {
+        "id": "312e5c1e.7fff14",
+        "type": "ui_table",
+        "z": "8addb331.0233e",
+        "group": "e7a7b1a2.81adf",
+        "name": "",
+        "order": 4,
+        "width": "24",
+        "height": "10",
+        "columns": [],
+        "outputs": 0,
+        "cts": false,
+        "x": 650,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "10f7100c.826ef",
+        "type": "mqtt in",
+        "z": "8addb331.0233e",
+        "name": "",
+        "topic": "$(MQTT_TOPIC_HEARTBEAT)",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "f0d21eb0.93967",
+        "x": 170,
+        "y": 80,
+        "wires": [
+            [
+                "8943d33b.2acde"
+            ]
+        ]
+    },
+    {
+        "id": "8943d33b.2acde",
+        "type": "ui_text",
+        "z": "8addb331.0233e",
+        "group": "e7a7b1a2.81adf",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "name": "",
+        "label": "Last heartbeat:",
+        "format": "{{msg.payload.this_heartbeats_timestamp | date: 'yyyy-MM-ddTHH:mm:ss'}}",
+        "layout": "row-left",
+        "x": 620,
+        "y": 80,
         "wires": []
     }
 ]

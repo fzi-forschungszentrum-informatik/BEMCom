@@ -756,6 +756,23 @@
      "file": "/data/node_modules/node-red-dashboard/nodes/ui_spacer.js"
     }
    }
+  },
+  "node-red-node-ui-table": {
+   "name": "node-red-node-ui-table",
+   "version": "0.2.2",
+   "local": false,
+   "nodes": {
+    "ui_table": {
+     "name": "ui_table",
+     "types": [
+      "ui_table"
+     ],
+     "enabled": true,
+     "local": true,
+     "module": "node-red-node-ui-table",
+     "file": "/data/node_modules/node-red-node-ui-table/node.js"
+    }
+   }
   }
  },
  "_credentialSecret": "e8bb6513fc997c0385bd852ab3a33c4a619020a7e42027caccc83382b49c07c4",
