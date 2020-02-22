@@ -331,9 +331,9 @@
         "id": "4fbf4dee.9fd8d4",
         "type": "ui_tab",
         "z": "",
-        "name": "Sensor keys & values",
+        "name": "Sensor Keys & Values",
         "icon": "dashboard",
-        "order": 3,
+        "order": 4,
         "disabled": false,
         "hidden": false
     },
@@ -351,9 +351,9 @@
         "id": "db9c652b.d0bd28",
         "type": "ui_tab",
         "z": "",
-        "name": "Available datapoints & map",
+        "name": "Available Datapoints & Map JSON",
         "icon": "dashboard",
-        "order": 4,
+        "order": 5,
         "disabled": false,
         "hidden": false
     },
@@ -403,9 +403,9 @@
         "id": "9792b503.7734e8",
         "type": "ui_tab",
         "z": "",
-        "name": "Datapoint map table",
+        "name": "Datapoint Map Table",
         "icon": "dashboard",
-        "order": 6,
+        "order": 7,
         "disabled": false,
         "hidden": false
     },
@@ -413,9 +413,9 @@
         "id": "edc02d80.cd91c",
         "type": "ui_tab",
         "z": "",
-        "name": "Available datapoints table",
+        "name": "Available Datapoints Table",
         "icon": "dashboard",
-        "order": 5,
+        "order": 6,
         "disabled": false,
         "hidden": false
     },
@@ -446,6 +446,27 @@
         "tab": "9792b503.7734e8",
         "disp": true,
         "width": "24",
+        "collapse": false
+    },
+    {
+        "id": "61771e73.ad34f",
+        "type": "ui_tab",
+        "z": "",
+        "name": "Send Actuator Message",
+        "icon": "dashboard",
+        "order": 3,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "5bf81584.67e6cc",
+        "type": "ui_group",
+        "z": "",
+        "name": "Send Message",
+        "tab": "61771e73.ad34f",
+        "order": 1,
+        "disp": true,
+        "width": "22",
         "collapse": false
     },
     {
@@ -997,11 +1018,11 @@
         "func": "let datapoint_map = global.get(\"datapoint_map\")\nlet actuator_map = datapoint_map[\"actuator\"]\n\nif (msg.topic in actuator_map){\n    return msg\n}",
         "outputs": 1,
         "noerr": 0,
-        "x": 760,
+        "x": 640,
         "y": 580,
         "wires": [
             [
-                "3ed4277f.ed75d8"
+                "6fae26ce.206a68"
             ]
         ],
         "info": "This notes lets only these messages through that are actuator messages for this particular connector. This filtering is necessary as there is no way (known to the author) of using dynmic topic lists for receiving MQTT messages in Node-RED.\n\n# Given \n... that a datapoint_map is stored in global context with content:\n```\n{\n    \"sensor\": {\n        \"device_1__sensor_1\": \"example-connector/msgs/0001\",\n        \"device_1__sensor_2\": \"example-connector/msgs/0002\"\n    },\n    \"actuator\": {\n        \"example-connector/msgs/0003\": \"device_1__actuator_1\"\n    }\n}\n```\n\n# Returns\nThis node would only let messages pass through that have been received on topic `example-connector/msgs/0003`."
@@ -1044,27 +1065,16 @@
         "z": "9f1169a9.8e23c8",
         "name": "flow \"Send command\" in",
         "links": [
-            "3ed4277f.ed75d8"
+            "3ed4277f.ed75d8",
+            "de9b93ab.f0871"
         ],
         "x": 155,
         "y": 40,
         "wires": [
             [
-                "1c26ecc6.986e53"
+                "74708e14.36573"
             ]
         ]
-    },
-    {
-        "id": "1c26ecc6.986e53",
-        "type": "function",
-        "z": "9f1169a9.8e23c8",
-        "name": "Throw not implemented error",
-        "func": "node.error(\"Logic in flow \\\"Send command\\\" not implemented\")",
-        "outputs": 0,
-        "noerr": 0,
-        "x": 340,
-        "y": 40,
-        "wires": []
     },
     {
         "id": "43d13ddb.00ffd4",
@@ -1378,56 +1388,20 @@
         "wires": []
     },
     {
-        "id": "f2bc5962.82d5b8",
-        "type": "inject",
-        "z": "9f1169a9.8e23c8",
-        "name": "",
-        "topic": "",
-        "payload": "{\"payload\":21,\"channel\":\"OEQ1573206:2\",\"datapoint\":\"SET_TEMPERATURE\"}",
-        "payloadType": "json",
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "x": 170,
-        "y": 180,
-        "wires": [
-            [
-                "74708e14.36573"
-            ]
-        ]
-    },
-    {
         "id": "74708e14.36573",
         "type": "function",
         "z": "9f1169a9.8e23c8",
-        "name": "payload to msg",
-        "func": "return msg.payload",
+        "name": "Build CCU message format",
+        "func": "let _msg = {}\nlet msgs = []\nfor ( let key in msg.payload ){\n    _msg = {\n        \"payload\": msg.payload[key],\n        \"channel\": key.split(\"__\")[0],\n        \"datapoint\": key.split(\"__\")[1],\n    }\n    msgs.push(_msg)\n}\nreturn msgs",
         "outputs": 1,
         "noerr": 0,
         "x": 360,
-        "y": 180,
+        "y": 40,
         "wires": [
             [
-                "468fad81.3fe364",
                 "2daa66.a4f3859a"
             ]
         ]
-    },
-    {
-        "id": "468fad81.3fe364",
-        "type": "debug",
-        "z": "9f1169a9.8e23c8",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "true",
-        "targetType": "full",
-        "x": 570,
-        "y": 280,
-        "wires": []
     },
     {
         "id": "2daa66.a4f3859a",
@@ -1449,8 +1423,8 @@
         "working": false,
         "ccuConfig": "6db20085.21293",
         "topic": "${CCU}/${Interface}/${channel}/${datapoint}",
-        "x": 370,
-        "y": 360,
+        "x": 590,
+        "y": 40,
         "wires": [
             []
         ]
@@ -1799,7 +1773,7 @@
         "name": "Shows a table of parsed_message flattened topics and values ",
         "info": "",
         "x": 260,
-        "y": 420,
+        "y": 640,
         "wires": []
     },
     {
@@ -1811,7 +1785,7 @@
             "376a4260.2d545e"
         ],
         "x": 235,
-        "y": 460,
+        "y": 680,
         "wires": [
             [
                 "7c67de4d.1bc8e"
@@ -1827,7 +1801,7 @@
         "outputs": 1,
         "noerr": 0,
         "x": 720,
-        "y": 460,
+        "y": 680,
         "wires": [
             []
         ]
@@ -1841,7 +1815,7 @@
         "outputs": 1,
         "noerr": 0,
         "x": 400,
-        "y": 460,
+        "y": 680,
         "wires": [
             [
                 "712b939e.dbf4ac"
@@ -1862,7 +1836,7 @@
         "outputs": 0,
         "cts": false,
         "x": 850,
-        "y": 500,
+        "y": 720,
         "wires": []
     },
     {
@@ -1881,7 +1855,7 @@
         "delay": 300,
         "topic": "key_filter",
         "x": 130,
-        "y": 500,
+        "y": 720,
         "wires": [
             [
                 "bcdb3175.c8ee7"
@@ -1907,7 +1881,7 @@
         "payloadType": "flow",
         "topic": "refresh",
         "x": 120,
-        "y": 540,
+        "y": 760,
         "wires": [
             [
                 "bcdb3175.c8ee7"
@@ -1923,7 +1897,7 @@
         "outputs": 1,
         "noerr": 0,
         "x": 430,
-        "y": 520,
+        "y": 740,
         "wires": [
             [
                 "ad020571.6cba28",
@@ -1945,7 +1919,7 @@
         "fwdInMessages": true,
         "templateScope": "local",
         "x": 810,
-        "y": 540,
+        "y": 760,
         "wires": [
             []
         ]
@@ -1957,7 +1931,7 @@
         "name": "Displays the available_datapoints and datapoint_map objects as sent/received.",
         "info": "",
         "x": 310,
-        "y": 620,
+        "y": 840,
         "wires": []
     },
     {
@@ -1979,7 +1953,7 @@
         "payloadType": "global",
         "topic": "",
         "x": 200,
-        "y": 660,
+        "y": 880,
         "wires": [
             [
                 "4bcc3a07.424d34"
@@ -2000,7 +1974,7 @@
         "fwdInMessages": true,
         "templateScope": "local",
         "x": 640,
-        "y": 660,
+        "y": 880,
         "wires": [
             []
         ]
@@ -2024,7 +1998,7 @@
         "payloadType": "global",
         "topic": "",
         "x": 180,
-        "y": 700,
+        "y": 920,
         "wires": [
             [
                 "d8caa46.dd61a58"
@@ -2040,7 +2014,7 @@
         "action": "str",
         "pretty": true,
         "x": 450,
-        "y": 700,
+        "y": 920,
         "wires": [
             [
                 "4507b8af.253ee8"
@@ -2061,7 +2035,7 @@
         "fwdInMessages": true,
         "templateScope": "local",
         "x": 640,
-        "y": 700,
+        "y": 920,
         "wires": [
             []
         ]
@@ -2075,7 +2049,7 @@
         "action": "str",
         "pretty": true,
         "x": 450,
-        "y": 660,
+        "y": 880,
         "wires": [
             [
                 "30c7f276.a9e29e"
@@ -2248,7 +2222,7 @@
         "name": "Display detail tables for available_datapoints and datapoint_map",
         "info": "",
         "x": 270,
-        "y": 780,
+        "y": 1000,
         "wires": []
     },
     {
@@ -2264,7 +2238,7 @@
         "outputs": 0,
         "cts": false,
         "x": 630,
-        "y": 820,
+        "y": 1040,
         "wires": []
     },
     {
@@ -2283,7 +2257,7 @@
         "delay": 300,
         "topic": "key_filter",
         "x": 110,
-        "y": 820,
+        "y": 1040,
         "wires": [
             [
                 "ed612b04.ea45f8"
@@ -2309,7 +2283,7 @@
         "payloadType": "global",
         "topic": "refresh",
         "x": 100,
-        "y": 860,
+        "y": 1080,
         "wires": [
             [
                 "ed612b04.ea45f8"
@@ -2325,7 +2299,7 @@
         "outputs": 1,
         "noerr": 0,
         "x": 330,
-        "y": 840,
+        "y": 1060,
         "wires": [
             [
                 "b2146a8f.158db8",
@@ -2347,7 +2321,7 @@
         "fwdInMessages": true,
         "templateScope": "local",
         "x": 590,
-        "y": 860,
+        "y": 1080,
         "wires": [
             []
         ]
@@ -2365,7 +2339,7 @@
         "outputs": 0,
         "cts": false,
         "x": 630,
-        "y": 900,
+        "y": 1120,
         "wires": []
     },
     {
@@ -2384,7 +2358,7 @@
         "delay": 300,
         "topic": "key_filter",
         "x": 110,
-        "y": 900,
+        "y": 1120,
         "wires": [
             [
                 "387c24fc.96d81c"
@@ -2410,7 +2384,7 @@
         "payloadType": "global",
         "topic": "refresh",
         "x": 100,
-        "y": 940,
+        "y": 1160,
         "wires": [
             [
                 "387c24fc.96d81c"
@@ -2426,7 +2400,7 @@
         "outputs": 1,
         "noerr": 0,
         "x": 320,
-        "y": 920,
+        "y": 1140,
         "wires": [
             [
                 "2afc048d.4f007c",
@@ -2448,9 +2422,283 @@
         "fwdInMessages": true,
         "templateScope": "local",
         "x": 590,
-        "y": 940,
+        "y": 1160,
         "wires": [
             []
         ]
+    },
+    {
+        "id": "e5c4b7c3.f599b8",
+        "type": "comment",
+        "z": "8addb331.0233e",
+        "name": "Can be used to inject a message to actuator (without MQTT)",
+        "info": "",
+        "x": 260,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "b3691dd5.a3cce",
+        "type": "ui_dropdown",
+        "z": "8addb331.0233e",
+        "name": "Select actuator key",
+        "label": "",
+        "tooltip": "",
+        "place": "Select Actuator Key",
+        "group": "5bf81584.67e6cc",
+        "order": 2,
+        "width": "15",
+        "height": "1",
+        "passthru": false,
+        "options": [
+            {
+                "label": "",
+                "value": "",
+                "type": "str"
+            }
+        ],
+        "payload": "",
+        "topic": "",
+        "x": 890,
+        "y": 480,
+        "wires": [
+            [
+                "a4732fa1.e7125"
+            ]
+        ]
+    },
+    {
+        "id": "ee250c37.124a9",
+        "type": "ui_button",
+        "z": "8addb331.0233e",
+        "name": "",
+        "group": "5bf81584.67e6cc",
+        "order": 3,
+        "width": "4",
+        "height": "1",
+        "passthru": false,
+        "label": "Refresh Actuator Keys",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "icon": "",
+        "payload": "available_datapoints.actuator",
+        "payloadType": "flow",
+        "topic": "refresh",
+        "x": 360,
+        "y": 480,
+        "wires": [
+            [
+                "3a2a8ac2.605ff6"
+            ]
+        ]
+    },
+    {
+        "id": "3a2a8ac2.605ff6",
+        "type": "function",
+        "z": "8addb331.0233e",
+        "name": "Build dropdown choices",
+        "func": "\nlet available_datapoints = global.get(\"available_datapoints\") || {\"actuator\": {}}\nlet actuator_keys = []\nfor ( let key in available_datapoints.actuator ){\n    actuator_keys.push(key)\n}\nreturn {\"options\": actuator_keys}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 630,
+        "y": 480,
+        "wires": [
+            [
+                "b3691dd5.a3cce"
+            ]
+        ]
+    },
+    {
+        "id": "a4732fa1.e7125",
+        "type": "change",
+        "z": "8addb331.0233e",
+        "name": "Store selected actuator",
+        "rules": [
+            {
+                "t": "set",
+                "p": "selected_actuator",
+                "pt": "flow",
+                "to": "payload",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1170,
+        "y": 480,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "d07d7241.d568e",
+        "type": "ui_text",
+        "z": "8addb331.0233e",
+        "group": "5bf81584.67e6cc",
+        "order": 1,
+        "width": "3",
+        "height": "1",
+        "name": "Actuator Key:",
+        "label": "",
+        "format": "Actuator Key:",
+        "layout": "row-left",
+        "x": 120,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "8c8f86a3.0d1c28",
+        "type": "ui_text",
+        "z": "8addb331.0233e",
+        "group": "5bf81584.67e6cc",
+        "order": 4,
+        "width": "3",
+        "height": "1",
+        "name": "Value:",
+        "label": "",
+        "format": "Value:",
+        "layout": "row-left",
+        "x": 90,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "cc5cc02b.4cea8",
+        "type": "ui_text_input",
+        "z": "8addb331.0233e",
+        "name": "",
+        "label": "Type in Value here",
+        "tooltip": "",
+        "group": "5bf81584.67e6cc",
+        "order": 5,
+        "width": "19",
+        "height": "1",
+        "passthru": true,
+        "mode": "text",
+        "delay": 300,
+        "topic": "",
+        "x": 350,
+        "y": 520,
+        "wires": [
+            [
+                "aeac869b.914d68"
+            ]
+        ]
+    },
+    {
+        "id": "aeac869b.914d68",
+        "type": "change",
+        "z": "8addb331.0233e",
+        "name": "Store actuator value",
+        "rules": [
+            {
+                "t": "set",
+                "p": "actuator_value",
+                "pt": "flow",
+                "to": "payload",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1160,
+        "y": 520,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "d310ba48.1a6a18",
+        "type": "ui_button",
+        "z": "8addb331.0233e",
+        "name": "",
+        "group": "5bf81584.67e6cc",
+        "order": 7,
+        "width": "10",
+        "height": "1",
+        "passthru": false,
+        "label": "Send to actuator",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "icon": "",
+        "payload": "",
+        "payloadType": "str",
+        "topic": "",
+        "x": 340,
+        "y": 560,
+        "wires": [
+            [
+                "402d49b2.197308"
+            ]
+        ]
+    },
+    {
+        "id": "8ad114c4.071798",
+        "type": "ui_text",
+        "z": "8addb331.0233e",
+        "group": "5bf81584.67e6cc",
+        "order": 6,
+        "width": "6",
+        "height": "1",
+        "name": "Spacer",
+        "label": "",
+        "format": "",
+        "layout": "row-left",
+        "x": 100,
+        "y": 560,
+        "wires": []
+    },
+    {
+        "id": "402d49b2.197308",
+        "type": "function",
+        "z": "8addb331.0233e",
+        "name": "Create acuator message",
+        "func": "let selected_actuator = flow.get(\"selected_actuator\")\nlet actuator_value = flow.get(\"actuator_value\")\nreturn {\n    \"payload\": {\n        [selected_actuator]: actuator_value\n        \n    }\n}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 630,
+        "y": 560,
+        "wires": [
+            [
+                "de9b93ab.f0871"
+            ]
+        ]
+    },
+    {
+        "id": "de9b93ab.f0871",
+        "type": "link out",
+        "z": "8addb331.0233e",
+        "name": "",
+        "links": [
+            "3b3d9738.5b6e88"
+        ],
+        "x": 1075,
+        "y": 560,
+        "wires": []
+    },
+    {
+        "id": "6fae26ce.206a68",
+        "type": "function",
+        "z": "927c9b3e.6d8038",
+        "name": "Convert to internal keys",
+        "func": "let datapoint_map = global.get(\"datapoint_map\")\nlet actuator_map = datapoint_map[\"actuator\"]\nlet internal_key = actuator_map[msg.topic]\nreturn {\n    \"payload\": {\n        [internal_key]: msg.payload.value,\n        \n    }\n}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 930,
+        "y": 580,
+        "wires": [
+            [
+                "3ed4277f.ed75d8"
+            ]
+        ],
+        "info": "Maps the topics of the incoming actuator messages on internal keys, i.e. the \nkeys that can be interpreted by the gateway or device.\n\nWe thereby ignore the timestamp, all actuator messages will be sent ASAP, \ndelaying messages and scheduling should be done externaly, not in connecetors \nto keep them lean and focused.\n\n# Given \n... that a datapoint_map is stored in global context with content:\n```\n{\n    \"sensor\": {\n        \"device_1__sensor_1\": \"example-connector/msgs/0001\",\n        \"device_1__sensor_2\": \"example-connector/msgs/0002\"\n    },\n    \"actuator\": {\n        \"example-connector/msgs/0003\": \"device_1__actuator_1\"\n    }\n}\n```\n\n# Receives\nAnd this block would receive the following input: \n```\nmsg = {\n    \"payload\": {\n        \"value\": \"2.12\",\n        \"timestamp\": 1573680749000,\n    }\n    \"topic\": \"example-connector/msgs/0003\"\n}\n```\n\n# Returns\nThe node would return the following two message:\n```\nmsg = {\n    \"payload\": {\n        \"device_1__actuator_1\": \"2.12\",\n    }\n}\n```\n"
     }
 ]
