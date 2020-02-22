@@ -38,7 +38,7 @@
         "id": "8addb331.0233e",
         "type": "tab",
         "label": "Debug Dashboard",
-        "disabled": false,
+        "disabled": true,
         "info": "This is dashboard that should help while developing or debugging the connector. \n\nGot to [/ui](/ui) to open it."
     },
     {
@@ -1167,7 +1167,7 @@
         "type": "function",
         "z": "a96a98ee.ee4868",
         "name": "Validate received datapoint_map",
-        "func": "/*\nCheck that the datapoint map is structured as follows:\n{\"sensor\": {}, \"actuator\": {}}\nThe empty objects above may contain the actuall mappings or not in reality, but\nmust exist. Else the filter nodes in the Main flow will fail and throw erros.\n*/\n\n// Based on an anwser here: \n// https://stackoverflow.com/questions/8511281/check-if-a-value-is-an-object-in-javascript\nisObject = function(a) {\n    return Object.prototype.toString.call(a) === \"[object Object]\"\n}\n\nlet reject_datapoint_map_reason = \"\"\n\nlet datapoint_map = msg.payload\n\nif ( ! isObject(datapoint_map) ) {\n    reject_datapoint_map_reason = \"Datapoint_map is no object.\"\n} else if ( ! (\"sensor\" in datapoint_map) ) {\n    reject_datapoint_map_reason = \"No sensor key in datapoint_map.\"\n} else if ( ! (\"actuator\" in datapoint_map) ) {\n    reject_datapoint_map_reason = \"No actuator key in datapoint_map.\"\n} else if ( ! isObject(datapoint_map[\"sensor\"]) ) {\n    reject_datapoint_map_reason = \"Sensor key in datapoint_map contains no object.\"\n} else if ( ! isObject(datapoint_map[\"actuator\"]) ) {\n    reject_datapoint_map_reason = \"Actuator key in datapoint_map contains no object.\"\n}\n\nif ( reject_datapoint_map_reason !== \"\" ){\n    node.error(\"Rejecting datapoint_map with reason: \" + reject_datapoint_map_reason)\n} else {\n    node.warn(\"got datapoint map\", msg)\n    return msg\n}",
+        "func": "/*\nCheck that the datapoint map is structured as follows:\n{\"sensor\": {}, \"actuator\": {}}\nThe empty objects above may contain the actuall mappings or not in reality, but\nmust exist. Else the filter nodes in the Main flow will fail and throw erros.\n*/\n\n// Based on an anwser here: \n// https://stackoverflow.com/questions/8511281/check-if-a-value-is-an-object-in-javascript\nisObject = function(a) {\n    return Object.prototype.toString.call(a) === \"[object Object]\"\n}\n\nlet reject_datapoint_map_reason = \"\"\n\nlet datapoint_map = msg.payload\n\nif ( ! isObject(datapoint_map) ) {\n    reject_datapoint_map_reason = \"Datapoint_map is no object.\"\n} else if ( ! (\"sensor\" in datapoint_map) ) {\n    reject_datapoint_map_reason = \"No sensor key in datapoint_map.\"\n} else if ( ! (\"actuator\" in datapoint_map) ) {\n    reject_datapoint_map_reason = \"No actuator key in datapoint_map.\"\n} else if ( ! isObject(datapoint_map[\"sensor\"]) ) {\n    reject_datapoint_map_reason = \"Sensor key in datapoint_map contains no object.\"\n} else if ( ! isObject(datapoint_map[\"actuator\"]) ) {\n    reject_datapoint_map_reason = \"Actuator key in datapoint_map contains no object.\"\n}\n\nif ( reject_datapoint_map_reason !== \"\" ){\n    node.error(\"Rejecting datapoint_map with reason: \" + reject_datapoint_map_reason)\n} else {\n    return msg\n}",
         "outputs": 1,
         "noerr": 0,
         "x": 550,
