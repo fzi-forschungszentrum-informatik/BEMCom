@@ -1,0 +1,19 @@
+version: '3'
+
+services:
+
+    brand-new-connector:
+
+        ports:
+            - 8200:1880
+
+        build:
+            context: .
+
+        restart: always
+
+        environment:
+            - CONNECTOR_NAME=brand-new-connector
+            - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}
+            - MQTT_BROKER_PORT=${MQTT_BROKER_PORT}
+            - SEND_RAW_MESSAGE_TO_DB=${SEND_RAW_MESSAGE_TO_DB}
