@@ -35,6 +35,13 @@
         "info": ""
     },
     {
+        "id": "ba2c58d0.842478",
+        "type": "tab",
+        "label": "Debug Dashboard",
+        "disabled": false,
+        "info": "This is dashboard that should help while developing or debugging the connector. \n\nGot to [/ui](/ui) to open it."
+    },
+    {
         "id": "2f246a38.edf956",
         "type": "subflow",
         "name": "Log handler",
@@ -180,6 +187,265 @@
         "willTopic": "",
         "willQos": "0",
         "willPayload": ""
+    },
+    {
+        "id": "d40b3e81.4a626",
+        "type": "ui_group",
+        "z": "",
+        "name": "Last raw_message",
+        "tab": "d22380a8.cca2",
+        "disp": true,
+        "width": "12",
+        "collapse": false
+    },
+    {
+        "id": "90cf35fe.3ff9d8",
+        "type": "ui_group",
+        "z": "",
+        "name": "Last parsed_message",
+        "tab": "d22380a8.cca2",
+        "disp": true,
+        "width": "12",
+        "collapse": false
+    },
+    {
+        "id": "f6d99364.449b2",
+        "type": "ui_group",
+        "z": "",
+        "name": "All flattened keys  ",
+        "tab": "9a20b6e4.569488",
+        "disp": true,
+        "width": "24",
+        "collapse": false
+    },
+    {
+        "id": "f7b52d3.cc139d",
+        "type": "ui_group",
+        "z": "",
+        "name": "available_datapoints",
+        "tab": "aeed67ce.2dfdd8",
+        "order": 1,
+        "disp": true,
+        "width": "12",
+        "collapse": false
+    },
+    {
+        "id": "7b23f305.8778cc",
+        "type": "ui_group",
+        "z": "",
+        "name": "datapoint_map",
+        "tab": "aeed67ce.2dfdd8",
+        "order": 2,
+        "disp": true,
+        "width": "12",
+        "collapse": false
+    },
+    {
+        "id": "937255ce.c229f8",
+        "type": "ui_group",
+        "z": "",
+        "name": "Logs & Heartbeats",
+        "tab": "16ec1045.2cca3",
+        "disp": true,
+        "width": "24",
+        "collapse": false
+    },
+    {
+        "id": "1e6ee9ed.600766",
+        "type": "ui_group",
+        "z": "",
+        "name": "available_datapoints",
+        "tab": "af6f642f.2d2fd8",
+        "disp": true,
+        "width": "24",
+        "collapse": false
+    },
+    {
+        "id": "bf97b865.56edd8",
+        "type": "ui_group",
+        "z": "",
+        "name": "datapoint_map",
+        "tab": "e3beb0b4.9771b",
+        "disp": true,
+        "width": "24",
+        "collapse": false
+    },
+    {
+        "id": "39fb1930.ca35b6",
+        "type": "ui_group",
+        "z": "",
+        "name": "Send Message",
+        "tab": "bf8141e6.e1e51",
+        "order": 1,
+        "disp": true,
+        "width": "22",
+        "collapse": false
+    },
+    {
+        "id": "d22380a8.cca2",
+        "type": "ui_tab",
+        "z": "",
+        "name": "Sensor Messages",
+        "icon": "dashboard",
+        "order": 2,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "9a20b6e4.569488",
+        "type": "ui_tab",
+        "z": "",
+        "name": "Sensor Keys & Values",
+        "icon": "dashboard",
+        "order": 4,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "aeed67ce.2dfdd8",
+        "type": "ui_tab",
+        "z": "",
+        "name": "Available Datapoints & Map JSON",
+        "icon": "dashboard",
+        "order": 5,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "16ec1045.2cca3",
+        "type": "ui_tab",
+        "z": "",
+        "name": "Logs & Heartbeats",
+        "icon": "dashboard",
+        "order": 1,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "af6f642f.2d2fd8",
+        "type": "ui_tab",
+        "z": "",
+        "name": "Available Datapoints Table",
+        "icon": "dashboard",
+        "order": 6,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "e3beb0b4.9771b",
+        "type": "ui_tab",
+        "z": "",
+        "name": "Datapoint Map Table",
+        "icon": "dashboard",
+        "order": 7,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "bf8141e6.e1e51",
+        "type": "ui_tab",
+        "z": "",
+        "name": "Send Actuator Message",
+        "icon": "dashboard",
+        "order": 3,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "801560c8.ca464",
+        "type": "ui_base",
+        "theme": {
+            "name": "theme-light",
+            "lightTheme": {
+                "default": "#0094CE",
+                "baseColor": "#0094CE",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif",
+                "edited": true,
+                "reset": false
+            },
+            "darkTheme": {
+                "default": "#097479",
+                "baseColor": "#097479",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif",
+                "edited": false
+            },
+            "customTheme": {
+                "name": "Untitled Theme 1",
+                "default": "#4B7930",
+                "baseColor": "#4B7930",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif"
+            },
+            "themeState": {
+                "base-color": {
+                    "default": "#0094CE",
+                    "value": "#0094CE",
+                    "edited": false
+                },
+                "page-titlebar-backgroundColor": {
+                    "value": "#0094CE",
+                    "edited": false
+                },
+                "page-backgroundColor": {
+                    "value": "#fafafa",
+                    "edited": false
+                },
+                "page-sidebar-backgroundColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "group-textColor": {
+                    "value": "#1bbfff",
+                    "edited": false
+                },
+                "group-borderColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "group-backgroundColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "widget-textColor": {
+                    "value": "#111111",
+                    "edited": false
+                },
+                "widget-backgroundColor": {
+                    "value": "#0094ce",
+                    "edited": false
+                },
+                "widget-borderColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "base-font": {
+                    "value": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif"
+                }
+            },
+            "angularTheme": {
+                "primary": "indigo",
+                "accents": "blue",
+                "warn": "red",
+                "background": "grey"
+            }
+        },
+        "site": {
+            "name": "Node-RED Dashboard",
+            "hideToolbar": "false",
+            "allowSwipe": "false",
+            "lockMenu": "false",
+            "allowTempTheme": "true",
+            "dateFormat": "DD/MM/YYYY",
+            "sizes": {
+                "sx": 48,
+                "sy": 48,
+                "gx": 6,
+                "gy": 6,
+                "cx": 6,
+                "cy": 6,
+                "px": 0,
+                "py": 0
+            }
+        }
     },
     {
         "id": "1980e6e1.5dc979",
@@ -783,11 +1049,11 @@
         "func": "let datapoint_map = global.get(\"datapoint_map\")\nlet actuator_map = datapoint_map[\"actuator\"]\n\nif (msg.topic in actuator_map){\n    return msg\n}",
         "outputs": 1,
         "noerr": 0,
-        "x": 760,
+        "x": 640,
         "y": 580,
         "wires": [
             [
-                "3ed4277f.ed75d8"
+                "84f4a234.40bd8"
             ]
         ],
         "info": "This notes lets only these messages through that are actuator messages for this particular connector. This filtering is necessary as there is no way (known to the author) of using dynmic topic lists for receiving MQTT messages in Node-RED.\n\n# Given \n... that a datapoint_map is stored in global context with content:\n```\n{\n    \"sensor\": {\n        \"device_1__sensor_1\": \"example-connector/msgs/0001\",\n        \"device_1__sensor_2\": \"example-connector/msgs/0002\"\n    },\n    \"actuator\": {\n        \"example-connector/msgs/0003\": \"device_1__actuator_1\"\n    }\n}\n```\n\n# Returns\nThis node would only let messages pass through that have been received on topic `example-connector/msgs/0003`."
@@ -1323,7 +1589,7 @@
         "type": "function",
         "z": "a96a98ee.ee4868",
         "name": "Validate received datapoint_map",
-        "func": "/*\nCheck that the datapoint map is structured as follows:\n{\"sensor\": {}, \"actuator\": {}}\nThe empty objects above may contain the actuall mappings or not in reality, but\nmust exist. Else the filter nodes in the Main flow will fail and throw erros.\n*/\n\n// Based on an anwser here: \n// https://stackoverflow.com/questions/8511281/check-if-a-value-is-an-object-in-javascript\nisObject = function(a) {\n    return Object.prototype.toString.call(a) === \"[object Object]\"\n}\n\nlet reject_datapoint_map_reason = \"\"\n\nlet datapoint_map = msg.payload\n\nif ( ! isObject(datapoint_map) ) {\n    reject_datapoint_map_reason = \"Datapoint_map is no object.\"\n} else if ( ! (\"sensor\" in datapoint_map) ) {\n    reject_datapoint_map_reason = \"No sensor key in datapoint_map.\"\n} else if ( ! (\"actuator\" in datapoint_map) ) {\n    reject_datapoint_map_reason = \"No actuator key in datapoint_map.\"\n} else if ( ! isObject(datapoint_map[\"sensor\"]) ) {\n    reject_datapoint_map_reason = \"Sensor key in datapoint_map contains no object.\"\n} else if ( ! isObject(datapoint_map[\"actuator\"]) ) {\n    reject_datapoint_map_reason = \"Actuator key in datapoint_map contains no object.\"\n}\n\nif ( reject_datapoint_map_reason !== \"\" ){\n    node.error(\"Rejecting datapoint_map with reason: \" + reject_datapoint_map_reason)\n} else {\n    node.warn(\"got datapoint map\", msg)\n    return msg\n}",
+        "func": "/*\nCheck that the datapoint map is structured as follows:\n{\"sensor\": {}, \"actuator\": {}}\nThe empty objects above may contain the actuall mappings or not in reality, but\nmust exist. Else the filter nodes in the Main flow will fail and throw erros.\n*/\n\n// Based on an anwser here: \n// https://stackoverflow.com/questions/8511281/check-if-a-value-is-an-object-in-javascript\nisObject = function(a) {\n    return Object.prototype.toString.call(a) === \"[object Object]\"\n}\n\nlet reject_datapoint_map_reason = \"\"\n\nlet datapoint_map = msg.payload\n\nif ( ! isObject(datapoint_map) ) {\n    reject_datapoint_map_reason = \"Datapoint_map is no object.\"\n} else if ( ! (\"sensor\" in datapoint_map) ) {\n    reject_datapoint_map_reason = \"No sensor key in datapoint_map.\"\n} else if ( ! (\"actuator\" in datapoint_map) ) {\n    reject_datapoint_map_reason = \"No actuator key in datapoint_map.\"\n} else if ( ! isObject(datapoint_map[\"sensor\"]) ) {\n    reject_datapoint_map_reason = \"Sensor key in datapoint_map contains no object.\"\n} else if ( ! isObject(datapoint_map[\"actuator\"]) ) {\n    reject_datapoint_map_reason = \"Actuator key in datapoint_map contains no object.\"\n}\n\nif ( reject_datapoint_map_reason !== \"\" ){\n    node.error(\"Rejecting datapoint_map with reason: \" + reject_datapoint_map_reason)\n} else {\n    return msg\n}",
         "outputs": 1,
         "noerr": 0,
         "x": 550,
@@ -1384,6 +1650,1155 @@
         "broker": "f0d21eb0.93967",
         "x": 570,
         "y": 160,
+        "wires": []
+    },
+    {
+        "id": "84f4a234.40bd8",
+        "type": "function",
+        "z": "927c9b3e.6d8038",
+        "name": "Convert to internal keys",
+        "func": "let datapoint_map = global.get(\"datapoint_map\")\nlet actuator_map = datapoint_map[\"actuator\"]\nlet internal_key = actuator_map[msg.topic]\nreturn {\n    \"payload\": {\n        [internal_key]: msg.payload.value,\n        \n    }\n}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 930,
+        "y": 580,
+        "wires": [
+            [
+                "3ed4277f.ed75d8"
+            ]
+        ],
+        "info": "Maps the topics of the incoming actuator messages on internal keys, i.e. the \nkeys that can be interpreted by the gateway or device.\n\nWe thereby ignore the timestamp, all actuator messages will be sent ASAP, \ndelaying messages and scheduling should be done externaly, not in connecetors \nto keep them lean and focused.\n\n# Given \n... that a datapoint_map is stored in global context with content:\n```\n{\n    \"sensor\": {\n        \"device_1__sensor_1\": \"example-connector/msgs/0001\",\n        \"device_1__sensor_2\": \"example-connector/msgs/0002\"\n    },\n    \"actuator\": {\n        \"example-connector/msgs/0003\": \"device_1__actuator_1\"\n    }\n}\n```\n\n# Receives\nAnd this block would receive the following input: \n```\nmsg = {\n    \"payload\": {\n        \"value\": \"2.12\",\n        \"timestamp\": 1573680749000,\n    }\n    \"topic\": \"example-connector/msgs/0003\"\n}\n```\n\n# Returns\nThe node would return the following two message:\n```\nmsg = {\n    \"payload\": {\n        \"device_1__actuator_1\": \"2.12\",\n    }\n}\n```\n"
+    },
+    {
+        "id": "25d404f4.b1e31c",
+        "type": "link in",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "links": [
+            "6aae28b2.fb2688"
+        ],
+        "x": 235,
+        "y": 300,
+        "wires": [
+            [
+                "405bedb4.dd6f14"
+            ]
+        ]
+    },
+    {
+        "id": "405bedb4.dd6f14",
+        "type": "change",
+        "z": "ba2c58d0.842478",
+        "name": "Store last raw_message",
+        "rules": [
+            {
+                "t": "set",
+                "p": "raw_message",
+                "pt": "flow",
+                "to": "payload.raw_message",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 430,
+        "y": 300,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "79337c3a.001bd4",
+        "type": "ui_button",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "group": "d40b3e81.4a626",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "Show last raw_message",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "icon": "",
+        "payload": "raw_message",
+        "payloadType": "flow",
+        "topic": "",
+        "x": 710,
+        "y": 300,
+        "wires": [
+            [
+                "9cb121f.2eb6fe"
+            ]
+        ]
+    },
+    {
+        "id": "91786950.905078",
+        "type": "ui_template",
+        "z": "ba2c58d0.842478",
+        "group": "d40b3e81.4a626",
+        "name": "Display formated json",
+        "order": 2,
+        "width": "12",
+        "height": "10",
+        "format": "<div style=\"white-space: pre-wrap;\">\n{{msg.payload}}\n</div>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "templateScope": "local",
+        "x": 1140,
+        "y": 300,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "30d4f5b2.0e54ba",
+        "type": "link in",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "links": [
+            "376a4260.2d545e"
+        ],
+        "x": 235,
+        "y": 340,
+        "wires": [
+            [
+                "d9c2ecf1.027ea"
+            ]
+        ]
+    },
+    {
+        "id": "d9c2ecf1.027ea",
+        "type": "change",
+        "z": "ba2c58d0.842478",
+        "name": "Store last paresed_message",
+        "rules": [
+            {
+                "t": "set",
+                "p": "parsed_message",
+                "pt": "flow",
+                "to": "payload.parsed_message",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 440,
+        "y": 340,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "45e0fb5a.a74c44",
+        "type": "ui_button",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "group": "90cf35fe.3ff9d8",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "Show last parsed_message",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "icon": "",
+        "payload": "parsed_message",
+        "payloadType": "flow",
+        "topic": "",
+        "x": 720,
+        "y": 340,
+        "wires": [
+            [
+                "e6d25af5.f93458"
+            ]
+        ]
+    },
+    {
+        "id": "e6d25af5.f93458",
+        "type": "json",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "property": "payload",
+        "action": "str",
+        "pretty": true,
+        "x": 950,
+        "y": 340,
+        "wires": [
+            [
+                "6eddad9c.6fdd74"
+            ]
+        ]
+    },
+    {
+        "id": "6eddad9c.6fdd74",
+        "type": "ui_template",
+        "z": "ba2c58d0.842478",
+        "group": "90cf35fe.3ff9d8",
+        "name": "Display formated json",
+        "order": 2,
+        "width": "12",
+        "height": "10",
+        "format": "<div style=\"white-space: pre-wrap;\">\n{{msg.payload}}\n</div>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "templateScope": "local",
+        "x": 1140,
+        "y": 340,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "9cb121f.2eb6fe",
+        "type": "json",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "property": "payload",
+        "action": "str",
+        "pretty": true,
+        "x": 950,
+        "y": 300,
+        "wires": [
+            [
+                "91786950.905078"
+            ]
+        ]
+    },
+    {
+        "id": "a3df5db1.e2a97",
+        "type": "comment",
+        "z": "ba2c58d0.842478",
+        "name": "Shows the raw and incomming messages of the sensors",
+        "info": "",
+        "x": 240,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "2e6f9709.c8ab68",
+        "type": "comment",
+        "z": "ba2c58d0.842478",
+        "name": "Shows a table of parsed_message flattened topics and values ",
+        "info": "",
+        "x": 260,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "6a80edce.f64254",
+        "type": "link in",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "links": [
+            "376a4260.2d545e"
+        ],
+        "x": 235,
+        "y": 680,
+        "wires": [
+            [
+                "7fcf9377.05ee6c"
+            ]
+        ]
+    },
+    {
+        "id": "ae0dc3d6.17293",
+        "type": "function",
+        "z": "ba2c58d0.842478",
+        "name": "Store last value for all parsed messages as array",
+        "func": "// Store the last value for each message key\nlet flattened_messages = flow.get(\"flattened_messages\") || {}\nfor ( let key in msg.payload.flattened_message ){\n    flattened_messages[key] =  msg.payload.flattened_message[key]\n}\nflow.set(\"flattened_messages\", flattened_messages)\n\n// Convert into required format for table node.\nlet payload = []\nfor ( let key in flattened_messages ){\n    payload.push({\n        \"key\": key ,\n        \"value\": flattened_messages[key],\n    })\n}\nreturn {\"payload\": payload}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 720,
+        "y": 680,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "7fcf9377.05ee6c",
+        "type": "function",
+        "z": "ba2c58d0.842478",
+        "name": "Flatten object",
+        "func": "// from https://stackoverflow.com/questions/44134212/best-way-to-flatten-js-object-keys-and-values-to-a-single-depth-array\nfunction flattenObject(ob) {\n    var toReturn = {};\n\n    for (var i in ob) {\n        if (!ob.hasOwnProperty(i)) continue;\n\n        if ((typeof ob[i]) == 'object' && ob[i] !== null) {\n            var flatObject = flattenObject(ob[i]);\n            for (var x in flatObject) {\n                if (!flatObject.hasOwnProperty(x)) continue;\n\n                toReturn[i + '__' + x] = flatObject[x];\n            }\n        } else {\n            toReturn[i] = ob[i];\n        }\n    }\n    return toReturn;\n}\n\nlet parsed_message = msg.payload.parsed_message\nlet flattened_message = flattenObject(parsed_message)\ndelete msg.payload.parsed_message\nmsg.payload[\"flattened_message\"] = flattened_message\n\nreturn msg",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 400,
+        "y": 680,
+        "wires": [
+            [
+                "ae0dc3d6.17293"
+            ]
+        ],
+        "info": "Flattens the incomming object to depth 1, i.e that every leaf of the incomming object can be accessed with a unique key directly from flat_message object.\n# Returns\nShould return the a message with the flattend data like:\n```\nmsg = {\n    \"payload\": {\n        \"flattened_message\": <the parsed data as flattend object>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"flattened_message\": {\n            \"device_1__sensor_1\": \"2.12\"\n            \"device_1__sensor_2\": \"3.12\"\n        },\n        \"timestamp\": 1573680749000\n    }\n}\n```"
+    },
+    {
+        "id": "42b85927.b20a98",
+        "type": "ui_table",
+        "z": "ba2c58d0.842478",
+        "group": "f6d99364.449b2",
+        "name": "",
+        "order": 4,
+        "width": "24",
+        "height": "10",
+        "columns": [],
+        "outputs": 0,
+        "cts": false,
+        "x": 850,
+        "y": 720,
+        "wires": []
+    },
+    {
+        "id": "898f9f6a.67078",
+        "type": "ui_text_input",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "label": "Filter keys",
+        "tooltip": "",
+        "group": "f6d99364.449b2",
+        "order": 1,
+        "width": "20",
+        "height": "1",
+        "passthru": true,
+        "mode": "text",
+        "delay": 300,
+        "topic": "key_filter",
+        "x": 130,
+        "y": 720,
+        "wires": [
+            [
+                "39855de.c0de3a2"
+            ]
+        ]
+    },
+    {
+        "id": "64f58760.1f53c8",
+        "type": "ui_button",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "group": "f6d99364.449b2",
+        "order": 2,
+        "width": "4",
+        "height": "1",
+        "passthru": false,
+        "label": "Refresh",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "icon": "",
+        "payload": "flattened_messages",
+        "payloadType": "flow",
+        "topic": "refresh",
+        "x": 120,
+        "y": 760,
+        "wires": [
+            [
+                "39855de.c0de3a2"
+            ]
+        ]
+    },
+    {
+        "id": "39855de.c0de3a2",
+        "type": "function",
+        "z": "ba2c58d0.842478",
+        "name": "Filter flattened messages",
+        "func": "// Cache the inputs received from other nodes.\nif (msg.topic === 'key_filter') {\n    context.set('key_filter', msg.payload)\n} else {\n    context.set('current_flattened_messages', msg.payload)\n}\n\n// Apply the filter and convert to format expected by table node\nlet payload = []\nlet current_flattened_messages = context.get('current_flattened_messages') || {}\nlet key_filter = context.get('key_filter') || ''\n\nfor (let key in current_flattened_messages) {\n    if (key.includes(key_filter)) {\n        payload.push({\n            \"key\": key ,\n            \"value\": current_flattened_messages[key],\n        })\n    }\n}\n\nreturn {\"payload\": payload, \"count\": payload.length}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 430,
+        "y": 740,
+        "wires": [
+            [
+                "42b85927.b20a98",
+                "d908b97c.f1a7d8"
+            ]
+        ]
+    },
+    {
+        "id": "d908b97c.f1a7d8",
+        "type": "ui_template",
+        "z": "ba2c58d0.842478",
+        "group": "f6d99364.449b2",
+        "name": "Show item count",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "format": "<p>Count: {{msg.count}}</p>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "templateScope": "local",
+        "x": 810,
+        "y": 760,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "c0c98234.f13e5",
+        "type": "comment",
+        "z": "ba2c58d0.842478",
+        "name": "Displays the available_datapoints and datapoint_map objects as sent/received.",
+        "info": "",
+        "x": 310,
+        "y": 840,
+        "wires": []
+    },
+    {
+        "id": "3d50fa49.e64aa6",
+        "type": "ui_button",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "group": "f7b52d3.cc139d",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "Show last version of available_datapoints",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "icon": "",
+        "payload": "available_datapoints",
+        "payloadType": "global",
+        "topic": "",
+        "x": 200,
+        "y": 880,
+        "wires": [
+            [
+                "132de5f5.d8e39a"
+            ]
+        ]
+    },
+    {
+        "id": "d3d1b85c.bdac08",
+        "type": "ui_template",
+        "z": "ba2c58d0.842478",
+        "group": "f7b52d3.cc139d",
+        "name": "Display formated json",
+        "order": 2,
+        "width": "12",
+        "height": "10",
+        "format": "<div style=\"white-space: pre-wrap;\">\n{{msg.payload}}\n</div>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "templateScope": "local",
+        "x": 640,
+        "y": 880,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "79b3a92e.eb84e8",
+        "type": "ui_button",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "group": "7b23f305.8778cc",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "Show last version of datapoint_map",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "icon": "",
+        "payload": "datapoint_map",
+        "payloadType": "global",
+        "topic": "",
+        "x": 180,
+        "y": 920,
+        "wires": [
+            [
+                "f7be04bb.c0c3b8"
+            ]
+        ]
+    },
+    {
+        "id": "f7be04bb.c0c3b8",
+        "type": "json",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "property": "payload",
+        "action": "str",
+        "pretty": true,
+        "x": 450,
+        "y": 920,
+        "wires": [
+            [
+                "1ee59d22.b20973"
+            ]
+        ]
+    },
+    {
+        "id": "1ee59d22.b20973",
+        "type": "ui_template",
+        "z": "ba2c58d0.842478",
+        "group": "7b23f305.8778cc",
+        "name": "Display formated json",
+        "order": 2,
+        "width": "12",
+        "height": "10",
+        "format": "<div style=\"white-space: pre-wrap;\">\n{{msg.payload}}\n</div>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "templateScope": "local",
+        "x": 640,
+        "y": 920,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "132de5f5.d8e39a",
+        "type": "json",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "property": "payload",
+        "action": "str",
+        "pretty": true,
+        "x": 450,
+        "y": 880,
+        "wires": [
+            [
+                "d3d1b85c.bdac08"
+            ]
+        ]
+    },
+    {
+        "id": "549f70b3.597d9",
+        "type": "comment",
+        "z": "ba2c58d0.842478",
+        "name": "Display last heartbeat and log messages ",
+        "info": "",
+        "x": 200,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "6f833c50.f39274",
+        "type": "mqtt in",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "topic": "$(MQTT_TOPIC_LOGS)",
+        "qos": "2",
+        "datatype": "json",
+        "broker": "f0d21eb0.93967",
+        "x": 150,
+        "y": 160,
+        "wires": [
+            [
+                "8baaef61.e1d13"
+            ]
+        ]
+    },
+    {
+        "id": "8baaef61.e1d13",
+        "type": "function",
+        "z": "ba2c58d0.842478",
+        "name": "Store logs in array",
+        "func": "let stored_logs = flow.get(\"stored_logs\") || []\nif (msg.topic === 'reset_logs') {\n    stored_logs = []\n}else{\n\n    let log_entry = msg.payload\n    //Convert timestamp to human readable time\n    log_entry.timestamp = new Date(log_entry.timestamp).toISOString()\n    stored_logs.push(msg.payload)\n}\nflow.set(\"stored_logs\", stored_logs)\n\nreturn {\"payload\": stored_logs}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 490,
+        "y": 160,
+        "wires": [
+            [
+                "113589eb.271c46"
+            ]
+        ]
+    },
+    {
+        "id": "113589eb.271c46",
+        "type": "ui_table",
+        "z": "ba2c58d0.842478",
+        "group": "937255ce.c229f8",
+        "name": "",
+        "order": 3,
+        "width": "24",
+        "height": "10",
+        "columns": [
+            {
+                "field": "timestamp",
+                "title": "Time",
+                "width": "15%",
+                "align": "left",
+                "formatter": "plaintext",
+                "formatterParams": {
+                    "target": "_blank"
+                }
+            },
+            {
+                "field": "emitter",
+                "title": "Emitter",
+                "width": "10%",
+                "align": "left",
+                "formatter": "plaintext",
+                "formatterParams": {
+                    "target": "_blank"
+                }
+            },
+            {
+                "field": "level",
+                "title": "Level",
+                "width": "10%",
+                "align": "left",
+                "formatter": "plaintext",
+                "formatterParams": {
+                    "target": "_blank"
+                }
+            },
+            {
+                "field": "msg",
+                "title": "Message",
+                "width": "64%",
+                "align": "left",
+                "formatter": "plaintext",
+                "formatterParams": {
+                    "target": "_blank"
+                }
+            }
+        ],
+        "outputs": 0,
+        "cts": false,
+        "x": 700,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "887dbc26.3cb2",
+        "type": "mqtt in",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "topic": "$(MQTT_TOPIC_HEARTBEAT)",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "f0d21eb0.93967",
+        "x": 170,
+        "y": 80,
+        "wires": [
+            [
+                "400fa3b3.4fa64c"
+            ]
+        ]
+    },
+    {
+        "id": "400fa3b3.4fa64c",
+        "type": "ui_text",
+        "z": "ba2c58d0.842478",
+        "group": "937255ce.c229f8",
+        "order": 1,
+        "width": "20",
+        "height": "1",
+        "name": "",
+        "label": "Last heartbeat:",
+        "format": "{{msg.payload.this_heartbeats_timestamp | date: 'yyyy-MM-ddTHH:mm:ss'}}",
+        "layout": "row-left",
+        "x": 670,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "6df9ad4b.a9b434",
+        "type": "ui_button",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "group": "937255ce.c229f8",
+        "order": 2,
+        "width": "4",
+        "height": "1",
+        "passthru": false,
+        "label": "Reset Logs",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "icon": "",
+        "payload": "[]",
+        "payloadType": "json",
+        "topic": "reset_logs",
+        "x": 190,
+        "y": 120,
+        "wires": [
+            [
+                "8baaef61.e1d13"
+            ]
+        ]
+    },
+    {
+        "id": "cfe4a7c4.559b08",
+        "type": "comment",
+        "z": "ba2c58d0.842478",
+        "name": "Display detail tables for available_datapoints and datapoint_map",
+        "info": "",
+        "x": 270,
+        "y": 1000,
+        "wires": []
+    },
+    {
+        "id": "dffe4afb.e62448",
+        "type": "ui_table",
+        "z": "ba2c58d0.842478",
+        "group": "1e6ee9ed.600766",
+        "name": "",
+        "order": 4,
+        "width": "24",
+        "height": "10",
+        "columns": [],
+        "outputs": 0,
+        "cts": false,
+        "x": 630,
+        "y": 1040,
+        "wires": []
+    },
+    {
+        "id": "daef8396.0fdda",
+        "type": "ui_text_input",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "label": "Filter keys",
+        "tooltip": "",
+        "group": "1e6ee9ed.600766",
+        "order": 1,
+        "width": "20",
+        "height": "1",
+        "passthru": true,
+        "mode": "text",
+        "delay": 300,
+        "topic": "key_filter",
+        "x": 110,
+        "y": 1040,
+        "wires": [
+            [
+                "85b5bad4.403848"
+            ]
+        ]
+    },
+    {
+        "id": "36b8b868.1c2ea8",
+        "type": "ui_button",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "group": "1e6ee9ed.600766",
+        "order": 2,
+        "width": "4",
+        "height": "1",
+        "passthru": false,
+        "label": "Refresh",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "icon": "",
+        "payload": "available_datapoints",
+        "payloadType": "global",
+        "topic": "refresh",
+        "x": 100,
+        "y": 1080,
+        "wires": [
+            [
+                "85b5bad4.403848"
+            ]
+        ]
+    },
+    {
+        "id": "85b5bad4.403848",
+        "type": "function",
+        "z": "ba2c58d0.842478",
+        "name": "Filter available datapoints",
+        "func": "// Cache the inputs received from other nodes.\nif (msg.topic === 'key_filter') {\n    context.set('key_filter', msg.payload)\n} else {\n    context.set('current_available_datapoints', msg.payload)\n}\n\n// Apply the filter and convert to format expected by table node\nlet payload = []\nlet current_available_datapoints = context.get('current_available_datapoints') || {}\nlet key_filter = context.get('key_filter') || ''\n\nfor (let type in current_available_datapoints) {\n    for (let key in current_available_datapoints[type]) {\n        if (key.includes(key_filter)) {\n            payload.push({\n                \"key\": key,\n                \"type\": type,\n                \"value\": current_available_datapoints[type][key],\n            })\n        }\n    }\n}\n\nreturn {\"payload\": payload, \"count\": payload.length}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 330,
+        "y": 1060,
+        "wires": [
+            [
+                "dffe4afb.e62448",
+                "a54dac2c.dca0c"
+            ]
+        ]
+    },
+    {
+        "id": "a54dac2c.dca0c",
+        "type": "ui_template",
+        "z": "ba2c58d0.842478",
+        "group": "1e6ee9ed.600766",
+        "name": "Show item count",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "format": "<p>Count: {{msg.count}}</p>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "templateScope": "local",
+        "x": 590,
+        "y": 1080,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "e9ec5992.3ed218",
+        "type": "ui_table",
+        "z": "ba2c58d0.842478",
+        "group": "bf97b865.56edd8",
+        "name": "",
+        "order": 4,
+        "width": "24",
+        "height": "10",
+        "columns": [],
+        "outputs": 0,
+        "cts": false,
+        "x": 630,
+        "y": 1120,
+        "wires": []
+    },
+    {
+        "id": "bb1e45ef.c40e28",
+        "type": "ui_text_input",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "label": "Filter keys",
+        "tooltip": "",
+        "group": "bf97b865.56edd8",
+        "order": 1,
+        "width": "20",
+        "height": "1",
+        "passthru": true,
+        "mode": "text",
+        "delay": 300,
+        "topic": "key_filter",
+        "x": 110,
+        "y": 1120,
+        "wires": [
+            [
+                "ba0bb491.bde048"
+            ]
+        ]
+    },
+    {
+        "id": "49ae7e37.6ee7b",
+        "type": "ui_button",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "group": "bf97b865.56edd8",
+        "order": 2,
+        "width": "4",
+        "height": "1",
+        "passthru": false,
+        "label": "Refresh",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "icon": "",
+        "payload": "datapoint_map",
+        "payloadType": "global",
+        "topic": "refresh",
+        "x": 100,
+        "y": 1160,
+        "wires": [
+            [
+                "ba0bb491.bde048"
+            ]
+        ]
+    },
+    {
+        "id": "ba0bb491.bde048",
+        "type": "function",
+        "z": "ba2c58d0.842478",
+        "name": "Filter datapoint map",
+        "func": "// Cache the inputs received from other nodes.\nif (msg.topic === 'key_filter') {\n    context.set('key_filter', msg.payload)\n} else {\n    context.set('current_datapoint_map', msg.payload)\n}\n\n// Apply the filter and convert to format expected by table node\nlet payload = []\nlet current_datapoint_map = context.get('current_datapoint_map') || {}\nlet key_filter = context.get('key_filter') || ''\n\nfor (let type in current_datapoint_map) {\n    for (let key in current_datapoint_map[type]) {\n        if (key.includes(key_filter)) {\n            payload.push({\n                \"key\": key,\n                \"type\": type,\n                \"topic\": current_datapoint_map[type][key],\n            })\n        }\n    }\n}\n\nreturn {\"payload\": payload, \"count\": payload.length}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 320,
+        "y": 1140,
+        "wires": [
+            [
+                "e9ec5992.3ed218",
+                "ea9bee32.921ee"
+            ]
+        ]
+    },
+    {
+        "id": "ea9bee32.921ee",
+        "type": "ui_template",
+        "z": "ba2c58d0.842478",
+        "group": "bf97b865.56edd8",
+        "name": "Show item count",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "format": "<p>Count: {{msg.count}}</p>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "templateScope": "local",
+        "x": 590,
+        "y": 1160,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "5c6c501a.9bd94",
+        "type": "comment",
+        "z": "ba2c58d0.842478",
+        "name": "Can be used to inject a message to actuator (without MQTT)",
+        "info": "",
+        "x": 260,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "29b5c13f.5a932e",
+        "type": "ui_dropdown",
+        "z": "ba2c58d0.842478",
+        "name": "Select actuator key",
+        "label": "",
+        "tooltip": "",
+        "place": "Select Actuator Key",
+        "group": "39fb1930.ca35b6",
+        "order": 2,
+        "width": "15",
+        "height": "1",
+        "passthru": false,
+        "options": [
+            {
+                "label": "",
+                "value": "",
+                "type": "str"
+            }
+        ],
+        "payload": "",
+        "topic": "",
+        "x": 890,
+        "y": 480,
+        "wires": [
+            [
+                "1520c576.a3389b"
+            ]
+        ]
+    },
+    {
+        "id": "e682e526.d01ad8",
+        "type": "ui_button",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "group": "39fb1930.ca35b6",
+        "order": 3,
+        "width": "4",
+        "height": "1",
+        "passthru": false,
+        "label": "Refresh Actuator Keys",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "icon": "",
+        "payload": "available_datapoints.actuator",
+        "payloadType": "flow",
+        "topic": "refresh",
+        "x": 360,
+        "y": 480,
+        "wires": [
+            [
+                "497e5b0d.48b304"
+            ]
+        ]
+    },
+    {
+        "id": "497e5b0d.48b304",
+        "type": "function",
+        "z": "ba2c58d0.842478",
+        "name": "Build dropdown choices",
+        "func": "\nlet available_datapoints = global.get(\"available_datapoints\") || {\"actuator\": {}}\nlet actuator_keys = []\nfor ( let key in available_datapoints.actuator ){\n    actuator_keys.push(key)\n}\nreturn {\"options\": actuator_keys}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 630,
+        "y": 480,
+        "wires": [
+            [
+                "29b5c13f.5a932e"
+            ]
+        ]
+    },
+    {
+        "id": "1520c576.a3389b",
+        "type": "change",
+        "z": "ba2c58d0.842478",
+        "name": "Store selected actuator",
+        "rules": [
+            {
+                "t": "set",
+                "p": "selected_actuator",
+                "pt": "flow",
+                "to": "payload",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1170,
+        "y": 480,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "475d0836.c013b8",
+        "type": "ui_text",
+        "z": "ba2c58d0.842478",
+        "group": "39fb1930.ca35b6",
+        "order": 1,
+        "width": "3",
+        "height": "1",
+        "name": "Actuator Key:",
+        "label": "",
+        "format": "Actuator Key:",
+        "layout": "row-left",
+        "x": 120,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "1f5e4a9b.27ff95",
+        "type": "ui_text",
+        "z": "ba2c58d0.842478",
+        "group": "39fb1930.ca35b6",
+        "order": 4,
+        "width": "3",
+        "height": "1",
+        "name": "Value:",
+        "label": "",
+        "format": "Value:",
+        "layout": "row-left",
+        "x": 90,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "a95a1be3.099078",
+        "type": "ui_text_input",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "label": "Type in Value here",
+        "tooltip": "",
+        "group": "39fb1930.ca35b6",
+        "order": 5,
+        "width": "19",
+        "height": "1",
+        "passthru": true,
+        "mode": "text",
+        "delay": 300,
+        "topic": "",
+        "x": 350,
+        "y": 520,
+        "wires": [
+            [
+                "eb9886bb.4d8148"
+            ]
+        ]
+    },
+    {
+        "id": "eb9886bb.4d8148",
+        "type": "change",
+        "z": "ba2c58d0.842478",
+        "name": "Store actuator value",
+        "rules": [
+            {
+                "t": "set",
+                "p": "actuator_value",
+                "pt": "flow",
+                "to": "payload",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1160,
+        "y": 520,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "bf9415fa.edbfd8",
+        "type": "ui_button",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "group": "39fb1930.ca35b6",
+        "order": 7,
+        "width": "10",
+        "height": "1",
+        "passthru": false,
+        "label": "Send to actuator",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "icon": "",
+        "payload": "",
+        "payloadType": "str",
+        "topic": "",
+        "x": 340,
+        "y": 560,
+        "wires": [
+            [
+                "e90e6eca.41658"
+            ]
+        ]
+    },
+    {
+        "id": "338f04cf.d3ec3c",
+        "type": "ui_text",
+        "z": "ba2c58d0.842478",
+        "group": "39fb1930.ca35b6",
+        "order": 6,
+        "width": "6",
+        "height": "1",
+        "name": "Spacer",
+        "label": "",
+        "format": "",
+        "layout": "row-left",
+        "x": 100,
+        "y": 560,
+        "wires": []
+    },
+    {
+        "id": "e90e6eca.41658",
+        "type": "function",
+        "z": "ba2c58d0.842478",
+        "name": "Create acuator message",
+        "func": "let selected_actuator = flow.get(\"selected_actuator\")\nlet actuator_value = flow.get(\"actuator_value\")\nreturn {\n    \"payload\": {\n        [selected_actuator]: actuator_value\n        \n    }\n}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 630,
+        "y": 560,
+        "wires": [
+            [
+                "5881d104.a92b2"
+            ]
+        ]
+    },
+    {
+        "id": "5881d104.a92b2",
+        "type": "link out",
+        "z": "ba2c58d0.842478",
+        "name": "",
+        "links": [
+            "3b3d9738.5b6e88"
+        ],
+        "x": 1075,
+        "y": 560,
         "wires": []
     }
 ]
