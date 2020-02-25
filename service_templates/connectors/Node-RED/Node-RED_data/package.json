@@ -3,5 +3,8 @@
     "description": "A Node-RED Project",
     "version": "0.0.1",
     "private": true,
-    "dependencies": {}
+    "dependencies": {
+        "node-red-dashboard": "~2.19.4",
+        "node-red-node-ui-table": "~0.2.2"
+    }
 }
