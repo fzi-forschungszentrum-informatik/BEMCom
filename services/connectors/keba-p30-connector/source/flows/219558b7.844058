@@ -3,7 +3,6 @@
         "id": "219558b7.844058",
         "type": "tab",
         "label": "Receive raw_message",
-        "disabled": false,
         "info": "All logic necessary to receive data (sensor datapoints) from the device, gateway or data source.\n\n# Should return\n... the received message as raw message in the format:\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": <the raw data>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": \"device_1:{sensor_1:2.12,sensor_2:3.12}\"\n    }\n}\n```"
     },
     {
@@ -111,30 +110,19 @@
         "y": 100,
         "wires": [
             [
-                "14931ccd.5691d3"
+                "e6d9a255.36293"
             ]
         ]
     },
     {
-        "id": "14931ccd.5691d3",
-        "type": "change",
+        "id": "e6d9a255.36293",
+        "type": "function",
         "z": "219558b7.844058",
         "name": "Place raw_message in payload.raw_message",
-        "rules": [
-            {
-                "t": "set",
-                "p": "payload",
-                "pt": "msg",
-                "to": "{'raw_message': msg}",
-                "tot": "jsonata"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 420,
+        "func": "return {\n    \"payload\": {\n        \"raw_message\": msg\n    }\n}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 480,
         "y": 100,
         "wires": [
             [
