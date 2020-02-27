@@ -14,3 +14,6 @@ secrets.env
 
 # Ignore automatically generated config files for Homematic CCUs
 ccu_*.json
+
+# Is used to store personal development variables.
+.env
