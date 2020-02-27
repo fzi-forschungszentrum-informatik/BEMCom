@@ -1,0 +1,109 @@
+{
+    "id": "68dfd515.661f7c",
+    "info": "This flow should be used to specify available_datapoints. This can be useful to\n* Define available actuators, as these will not be detected automatically by default.\n* Some logic in the flow \"Receive raw_message\" needs to explicitly requiest the data, e.g. by polling some API.\n* If you can simply detect all available datapoints, e.g. by calling some API of the gateway.\n\nDepending on the situation one can simply manually add the data on available datapoints to the \"Manually define additional datapoint\" node, or implement some more advanced logic here that does the sensing automatically.\n\n",
+    "label": "Specify available_datapoints",
+    "nodes": [
+        {
+            "env": [],
+            "id": "5e4aacbf.6c95d4",
+            "name": "",
+            "subflow": "3674b7d8.02a168",
+            "type": "subflow:3674b7d8.02a168",
+            "wires": [],
+            "x": 900,
+            "y": 160,
+            "z": "68dfd515.661f7c"
+        },
+        {
+            "id": "2a8520d8.ce254",
+            "links": [
+                "376a4260.2d545e"
+            ],
+            "name": "",
+            "type": "link in",
+            "wires": [
+                [
+                    "da31404a.dc22f"
+                ]
+            ],
+            "x": 215,
+            "y": 80,
+            "z": "68dfd515.661f7c"
+        },
+        {
+            "func": "// from https://stackoverflow.com/questions/44134212/best-way-to-flatten-js-object-keys-and-values-to-a-single-depth-array\nfunction flattenObject(ob) {\n    var toReturn = {};\n\n    for (var i in ob) {\n        if (!ob.hasOwnProperty(i)) continue;\n\n        if ((typeof ob[i]) == 'object' && ob[i] !== null) {\n            var flatObject = flattenObject(ob[i]);\n            for (var x in flatObject) {\n                if (!flatObject.hasOwnProperty(x)) continue;\n\n                toReturn[i + '__' + x] = flatObject[x];\n            }\n        } else {\n            toReturn[i] = ob[i];\n        }\n    }\n    return toReturn;\n}\n\nlet parsed_message = msg.payload.parsed_message\nlet flattened_message = flattenObject(parsed_message)\ndelete msg.payload.parsed_message\nmsg.payload[\"flattened_message\"] = flattened_message\n\nreturn msg",
+            "id": "da31404a.dc22f",
+            "info": "Flattens the incomming object to depth 1, i.e that every leaf of the incomming object can be accessed with a unique key directly from flat_message object.\n# Returns\nShould return the a message with the flattend data like:\n```\nmsg = {\n    \"payload\": {\n        \"flattened_message\": <the parsed data as flattend object>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"flattened_message\": {\n            \"device_1__sensor_1\": \"2.12\"\n            \"device_1__sensor_2\": \"3.12\"\n        },\n        \"timestamp\": 1573680749000\n    }\n}\n```",
+            "name": "Flatten object",
+            "noerr": 0,
+            "outputs": 1,
+            "type": "function",
+            "wires": [
+                [
+                    "f1755585.6fd928"
+                ]
+            ],
+            "x": 360,
+            "y": 80,
+            "z": "68dfd515.661f7c"
+        },
+        {
+            "action": "",
+            "from": "",
+            "id": "bb6b2c86.4eb77",
+            "name": "convert format to update available_datapoints with the currently processed actuator datapoints",
+            "property": "",
+            "reg": false,
+            "rules": [
+                {
+                    "p": "payload.flattened_message",
+                    "pt": "msg",
+                    "t": "move",
+                    "to": "payload.actuator",
+                    "tot": "msg"
+                },
+                {
+                    "p": "payload.timestamp",
+                    "pt": "msg",
+                    "t": "delete"
+                }
+            ],
+            "to": "",
+            "type": "change",
+            "wires": [
+                [
+                    "5e4aacbf.6c95d4"
+                ]
+            ],
+            "x": 390,
+            "y": 160,
+            "z": "68dfd515.661f7c"
+        },
+        {
+            "id": "bd332b36.0374c8",
+            "info": "",
+            "name": "Some of the datapoints received are also writeable (actuators). Send those as available datapoints too.",
+            "type": "comment",
+            "wires": [],
+            "x": 370,
+            "y": 40,
+            "z": "68dfd515.661f7c"
+        },
+        {
+            "func": "// Filter for messages that are also actuator datapoints.\n// Until now we know only about the Temperature setpoints.\nfor ( let key in msg.payload.flattened_message ){\n    if ( key.includes(\"SET_TEMPERATURE\") ){\n        return msg\n    }\n}\n",
+            "id": "f1755585.6fd928",
+            "name": "Filter for actuator datapoints.",
+            "noerr": 0,
+            "outputs": 1,
+            "type": "function",
+            "wires": [
+                [
+                    "bb6b2c86.4eb77"
+                ]
+            ],
+            "x": 600,
+            "y": 80,
+            "z": "68dfd515.661f7c"
+        }
+    ]
+}

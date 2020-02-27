@@ -1,3 +1,6 @@
+* Here all steps required to create a new connector
+* Also all steps required to update the template itself.
+
 # Setting 
 
 * MQTT Broker as central communication interface
