@@ -7,7 +7,7 @@
         "info": "Parse an object from the received raw sensor datapoint data.\n\n# Receives\n... a message structured like this:\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": <the raw data>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": \"device_1:{sensor_1:2.12,sensor_2:3.12}\",\n        \"timestamp\": 1573680749000\n    }\n}\n```\n\n# Should return\n... a message containing the a parsed version of the raw data, structured like this:\n```\nmsg = {\n    \"payload\": {\n        \"parsed_message\": <the parsed data as object>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"parsed_message\": {\n            \"device_1\": {\n                \"sensor_1\": \"2.12\",\n                \"sensor_2\": \"3.12\"\n            }\n        },\n        \"timestamp\": 1573680749000\n    }\n}\n```"
     },
     {
-        "id": "b29cb5a0.079da8",
+        "id": "6a1342ab.73305c",
         "type": "link in",
         "z": "545ec5f2.a5913c",
         "name": "flow \"Parse raw_message\" in",
@@ -23,7 +23,7 @@
         ]
     },
     {
-        "id": "e15eb503.006e98",
+        "id": "376a4260.2d545e,
         "type": "link out",
         "z": "545ec5f2.a5913c",
         "name": "flow \"Parse raw_message\" out",
