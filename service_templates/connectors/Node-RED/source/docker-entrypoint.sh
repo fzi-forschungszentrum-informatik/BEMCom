@@ -33,6 +33,11 @@ then
     for fnp in /flows/*
     do
         flow_id=$( echo "$fnp" | rev | cut -d / -f 1 | rev )
+        if [ "$flow_id" = "Readme.md" ]
+        then
+            continue
+        fi
+
         api_url="http://localhost:1880/flow/$flow_id"
         # Get the current flow definition from Node-RED
         flow=$(curl --silent -X GET $api_url)

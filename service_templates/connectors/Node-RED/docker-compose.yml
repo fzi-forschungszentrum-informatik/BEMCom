@@ -10,7 +10,10 @@ services:
         build:
             context: ./source
 
-        restart: always
+        user: 1000:1000
+
+        volumes: 
+            - ./source/Node-RED_data:/data        
 
         environment:
             - CONNECTOR_NAME=node-red-connector-template

@@ -1042,7 +1042,7 @@
         "type": "function",
         "z": "927c9b3e.6d8038",
         "name": "Filter for actuator messages",
-        "func": "let datapoint_map = global.get(\"datapoint_map\")\nlet actuator_map = datapoint_map[\"actuator\"]\n\nif (msg.topic in actuator_map){\n    return msg\n}",
+        "func": "let datapoint_map = global.get(\"datapoint_map\") || {\"sensor\": {}, \"actuator\": {}}\nlet actuator_map = datapoint_map[\"actuator\"]\n\nif (msg.topic in actuator_map){\n    return msg\n}",
         "outputs": 1,
         "noerr": 0,
         "x": 640,
