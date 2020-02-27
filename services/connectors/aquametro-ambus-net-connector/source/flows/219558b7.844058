@@ -1,0 +1,323 @@
+[
+    {
+        "id": "219558b7.844058",
+        "type": "tab",
+        "label": "Receive raw_message",
+        "disabled": false,
+        "info": "All logic necessary to receive data (sensor datapoints) from the device, gateway or data source.\n\n# Should return\n... the received message as raw message in the format:\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": <the raw data>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": \"device_1:{sensor_1:2.12,sensor_2:3.12}\"\n    }\n}\n```"
+    },
+    {
+        "id": "6aae28b2.fb2688",
+        "type": "link out",
+        "z": "219558b7.844058",
+        "name": "flow \"Receive raw_message\" out",
+        "links": [
+            "b6c60262.69fb9"
+        ],
+        "x": 1135,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "db22ed45.08115",
+        "type": "inject",
+        "z": "219558b7.844058",
+        "name": "Start request for meters with $(METER_IDS) every $(POLLSECONDS)",
+        "topic": "",
+        "payload": "$(METER_IDS)",
+        "payloadType": "json",
+        "repeat": "$(POLL_SECONDS)",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "5",
+        "x": 300,
+        "y": 360,
+        "wires": [
+            [
+                "dc22b911.725038"
+            ]
+        ]
+    },
+    {
+        "id": "dc22b911.725038",
+        "type": "split",
+        "z": "219558b7.844058",
+        "name": "",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "x": 690,
+        "y": 360,
+        "wires": [
+            [
+                "99199b3c.9a8018"
+            ]
+        ]
+    },
+    {
+        "id": "99199b3c.9a8018",
+        "type": "delay",
+        "z": "219558b7.844058",
+        "name": "Delay requests to prevent DDOSing the Ambus Net device",
+        "pauseType": "rate",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "$(MAX_POLLS_PER_PERIOD)",
+        "nbRateUnits": "$(POLL_SECONDS)",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "x": 1050,
+        "y": 360,
+        "wires": [
+            [
+                "ba88a3ff.acbe3"
+            ]
+        ]
+    },
+    {
+        "id": "ba88a3ff.acbe3",
+        "type": "function",
+        "z": "219558b7.844058",
+        "name": "Build Soap Request in XML",
+        "func": "var meter_number = msg.payload\nvar xml_req = `\n<?xml version='1.0' encoding='UTF-8'?>\n<S:Envelope xmlns:S=\"http://schemas.xmlsoap.org/soap/envelope/\">\n    <S:Body>\n        <getMeter xmlns=\"http://tempuri.org/\">\n            <primAddr>\n                ${meter_number}\n            </primAddr>\n        </getMeter>\n    </S:Body>\n</S:Envelope>\n`\nvar headers = {}\nheaders['content-type'] = 'text/xml; charset=utf-8'\nheaders['SOAPAction'] = '\"http://tempuri.org/getMeter\"'\n//headers['Connection'] = 'keep-alive'\n//headers['Accept'] = 'text/xml, multipart/related'\n\nreturn {payload: xml_req,\n        headers: headers}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 160,
+        "y": 620,
+        "wires": [
+            [
+                "f92a5bb5.7dbac8"
+            ]
+        ]
+    },
+    {
+        "id": "f92a5bb5.7dbac8",
+        "type": "http request",
+        "z": "219558b7.844058",
+        "name": "Send XML Request to AmbusNet Webservice",
+        "method": "POST",
+        "ret": "bin",
+        "url": "http://141.21.47.85/AmbusNetWS/Service1.asmx",
+        "tls": "",
+        "x": 490,
+        "y": 620,
+        "wires": [
+            [
+                "667c5083.fa922"
+            ]
+        ]
+    },
+    {
+        "id": "7076aa68.3870d4",
+        "type": "inject",
+        "z": "219558b7.844058",
+        "name": "On flow init",
+        "topic": "",
+        "payload": "$(METER_IDS)",
+        "payloadType": "json",
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "1",
+        "x": 110,
+        "y": 80,
+        "wires": [
+            [
+                "9eeceb97.8d3748"
+            ]
+        ]
+    },
+    {
+        "id": "250c7959.7c8bf6",
+        "type": "function",
+        "z": "219558b7.844058",
+        "name": "Log requested METER_IDS",
+        "func": "let meter_ids = msg.payload\nnode.log(`Using the following meter ids: ${meter_ids}`)",
+        "outputs": 0,
+        "noerr": 0,
+        "x": 580,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "9eeceb97.8d3748",
+        "type": "json",
+        "z": "219558b7.844058",
+        "name": "",
+        "property": "payload",
+        "action": "str",
+        "pretty": false,
+        "x": 310,
+        "y": 80,
+        "wires": [
+            [
+                "250c7959.7c8bf6"
+            ]
+        ]
+    },
+    {
+        "id": "968aca5b.3d7fb8",
+        "type": "inject",
+        "z": "219558b7.844058",
+        "name": "On flow init",
+        "topic": "",
+        "payload": "$(AMBUSNETWS_SOAP_URL)",
+        "payloadType": "str",
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "1",
+        "x": 110,
+        "y": 120,
+        "wires": [
+            [
+                "862e9d1d.0b42e"
+            ]
+        ]
+    },
+    {
+        "id": "862e9d1d.0b42e",
+        "type": "function",
+        "z": "219558b7.844058",
+        "name": "Log AMBUSNETWS_SOAP_URL",
+        "func": "let url = msg.payload\nnode.log(`Using the following Ambus Net SOAP URL: ${url}`)",
+        "outputs": 0,
+        "noerr": 0,
+        "x": 600,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "251b3c6c.59ab74",
+        "type": "comment",
+        "z": "219558b7.844058",
+        "name": "Log the current configuration (via environment variable) to support debugging.",
+        "info": "",
+        "x": 290,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "5128b5e4.e9614c",
+        "type": "inject",
+        "z": "219558b7.844058",
+        "name": "On flow init",
+        "topic": "",
+        "payload": "$(POLL_SECONDS)",
+        "payloadType": "str",
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "1",
+        "x": 110,
+        "y": 160,
+        "wires": [
+            [
+                "9e95e3d5.ae0ac"
+            ]
+        ]
+    },
+    {
+        "id": "9e95e3d5.ae0ac",
+        "type": "function",
+        "z": "219558b7.844058",
+        "name": "Log POLL_SECONDS",
+        "func": "let poll_seconds = msg.payload\nnode.log(`Polling meters every: ${poll_seconds} seconds`)",
+        "outputs": 0,
+        "noerr": 0,
+        "x": 560,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "b442aaf8.4af3c8",
+        "type": "function",
+        "z": "219558b7.844058",
+        "name": "Log MAX_POLLS_PER_PERIOD",
+        "func": "let max_polls = msg.payload\nnode.log(`Polling no more then ${max_polls} per poll period.`)",
+        "outputs": 0,
+        "noerr": 0,
+        "x": 600,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "82181b52.1c7648",
+        "type": "inject",
+        "z": "219558b7.844058",
+        "name": "On flow init",
+        "topic": "",
+        "payload": "$(MAX_POLLS_PER_PERIOD)",
+        "payloadType": "str",
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "1",
+        "x": 110,
+        "y": 200,
+        "wires": [
+            [
+                "b442aaf8.4af3c8"
+            ]
+        ]
+    },
+    {
+        "id": "a5d4df27.77163",
+        "type": "comment",
+        "z": "219558b7.844058",
+        "name": "Here the actual request to the Ambus Net meters.",
+        "info": "",
+        "x": 200,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "667c5083.fa922",
+        "type": "change",
+        "z": "219558b7.844058",
+        "name": "Place raw_message in payload.raw_message",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "{'raw_message': msg.payload}",
+                "tot": "jsonata"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 880,
+        "y": 620,
+        "wires": [
+            [
+                "6aae28b2.fb2688",
+                "4bf0939e.b1115c"
+            ]
+        ]
+    },
+    {
+        "id": "4bf0939e.b1115c",
+        "type": "debug",
+        "z": "219558b7.844058",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "x": 1120,
+        "y": 720,
+        "wires": []
+    }
+]
