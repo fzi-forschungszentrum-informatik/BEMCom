@@ -17,3 +17,4 @@ This is a conncetor for
 * Ports optional/mandatory
 * Volumes, you should not though.
 * Start your development 
+* Changelog
