@@ -38,7 +38,7 @@
         "id": "2efd25f0.1862ca",
         "type": "tab",
         "label": "Debug Dashboard",
-        "disabled": true,
+        "disabled": false,
         "info": "This is dashboard that should help while developing or debugging the connector. \n\nGot to [/ui](/ui) to open it."
     },
     {
@@ -1340,9 +1340,9 @@
         "rules": [
             {
                 "t": "set",
-                "p": "raw_message",
+                "p": "raw_message_payload",
                 "pt": "flow",
-                "to": "payload.raw_message",
+                "to": "payload",
                 "tot": "msg"
             }
         ],
@@ -1372,7 +1372,7 @@
         "color": "",
         "bgcolor": "",
         "icon": "",
-        "payload": "raw_message",
+        "payload": "raw_message_payload",
         "payloadType": "flow",
         "topic": "",
         "x": 710,
