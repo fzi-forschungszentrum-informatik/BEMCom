@@ -1,0 +1,80 @@
+[
+    {
+        "id": "545ec5f2.a5913c",
+        "type": "tab",
+        "label": "Parse raw_message",
+        "disabled": false,
+        "info": "Parse an object from the received raw sensor datapoint data.\n\n# Receives\n... a message structured like this:\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": <the raw data>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": \"device_1:{sensor_1:2.12,sensor_2:3.12}\",\n        \"timestamp\": 1573680749000\n    }\n}\n```\n\n# Should return\n... a message containing the a parsed version of the raw data, structured like this:\n```\nmsg = {\n    \"payload\": {\n        \"parsed_message\": <the parsed data as object>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"parsed_message\": {\n            \"device_1\": {\n                \"sensor_1\": \"2.12\",\n                \"sensor_2\": \"3.12\"\n            }\n        },\n        \"timestamp\": 1573680749000\n    }\n}\n```"
+    },
+    {
+        "id": "6a1342ab.73305c",
+        "type": "link in",
+        "z": "545ec5f2.a5913c",
+        "name": "flow \"Parse raw_message\" in",
+        "links": [
+            "5d6ccddc.75fcd4"
+        ],
+        "x": 155,
+        "y": 40,
+        "wires": [
+            [
+                "468659b.68083a8"
+            ]
+        ]
+    },
+    {
+        "id": "376a4260.2d545e",
+        "type": "link out",
+        "z": "545ec5f2.a5913c",
+        "name": "flow \"Parse raw_message\" out",
+        "links": [
+            "498bc454.265e5c"
+        ],
+        "x": 795,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "468659b.68083a8",
+        "type": "json",
+        "z": "545ec5f2.a5913c",
+        "name": "",
+        "property": "payload.raw_message.payload",
+        "action": "obj",
+        "pretty": false,
+        "x": 290,
+        "y": 40,
+        "wires": [
+            [
+                "788abb93.29b264"
+            ]
+        ]
+    },
+    {
+        "id": "788abb93.29b264",
+        "type": "change",
+        "z": "545ec5f2.a5913c",
+        "name": "Rename raw_message to parsed_messag",
+        "rules": [
+            {
+                "t": "move",
+                "p": "payload.raw_message",
+                "pt": "msg",
+                "to": "payload.parsed_message",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 560,
+        "y": 40,
+        "wires": [
+            [
+                "376a4260.2d545e"
+            ]
+        ]
+    }
+]
