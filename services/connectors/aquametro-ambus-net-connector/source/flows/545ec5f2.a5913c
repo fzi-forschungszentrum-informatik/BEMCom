@@ -18,12 +18,12 @@
         "y": 40,
         "wires": [
             [
-                "71c054e8.136a6c"
+                "ee54551e.b95b68"
             ]
         ]
     },
     {
-        "id": "376a4260.2d545e,
+        "id": "376a4260.2d545e",
         "type": "link out",
         "z": "545ec5f2.a5913c",
         "name": "flow \"Parse raw_message\" out",
@@ -35,37 +35,7 @@
         "wires": []
     },
     {
-        "id": "ef8b1578.a2ed58",
-        "type": "converter",
-        "z": "545ec5f2.a5913c",
-        "name": "Convert ISO-8859-1 to UTF-8",
-        "from": "ISO-8859-1 ",
-        "x": 630,
-        "y": 40,
-        "wires": [
-            [
-                "ed89d5c6.cb5bf8"
-            ]
-        ]
-    },
-    {
-        "id": "ed89d5c6.cb5bf8",
-        "type": "xml",
-        "z": "545ec5f2.a5913c",
-        "name": "parse xml anwser to json",
-        "property": "payload",
-        "attr": "",
-        "chr": "",
-        "x": 930,
-        "y": 40,
-        "wires": [
-            [
-                "6b1a1f6d.5468a"
-            ]
-        ]
-    },
-    {
-        "id": "71c054e8.136a6c",
+        "id": "ee54551e.b95b68",
         "type": "change",
         "z": "545ec5f2.a5913c",
         "name": "raw_message to payload",
@@ -90,16 +60,62 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 330,
+        "x": 350,
         "y": 40,
         "wires": [
             [
-                "ef8b1578.a2ed58"
+                "58165dfe.c82824"
             ]
         ]
     },
     {
-        "id": "ac85e461.ebd108",
+        "id": "58165dfe.c82824",
+        "type": "converter",
+        "z": "545ec5f2.a5913c",
+        "name": "Convert ISO-8859-1 to UTF-8",
+        "from": "ISO-8859-1 ",
+        "x": 650,
+        "y": 40,
+        "wires": [
+            [
+                "255c6527.17117a"
+            ]
+        ]
+    },
+    {
+        "id": "255c6527.17117a",
+        "type": "xml",
+        "z": "545ec5f2.a5913c",
+        "name": "parse xml anwser to json",
+        "property": "payload",
+        "attr": "",
+        "chr": "",
+        "x": 950,
+        "y": 40,
+        "wires": [
+            [
+                "455cfe70.e893"
+            ]
+        ]
+    },
+    {
+        "id": "455cfe70.e893",
+        "type": "function",
+        "z": "545ec5f2.a5913c",
+        "name": "Add meter number and reduce bloat",
+        "func": "/*\nThe JSON object received at this point starts with something like this:\n{\n    \"soap:Envelope\": {\n        \"$\": {\n            \"xmlns:soap\": \"http://schemas.xmlsoap.org/soap/envelope/\",\n            \"xmlns:xsi\": \"http://www.w3.org/2001/XMLSchema-instance\",\n            \"xmlns:xsd\": \"http://www.w3.org/2001/XMLSchema\"\n        },\n        \"soap:Body\": [\n            {\n                \"getMeterResponse\": [\n                    {\n                        \"$\": {\n                            \"xmlns\": \"http://tempuri.org/\"\n                        },\n                        \"getMeterResult\": [\n                            {\n                                \"primAddr\": [\n                                    \"2\"\n                                ],\n                                \"deviceName\": [\n                                    \"FZI  Forschugszentrum Informatik Karlsr\"\n                                ],\n                                \"desc\": [\n                                    \"WMZ Rueck\"\n                                ],\n                                \"type\": [\n                                    \"CALEC ST\"\n                                ],\n                                \"info\": [\n                                    \"AQUAMETRO MESSTECHNIK GmbH\"\n                                ],\n                                \"supplier\": [\n                                    \"AMT\"\n                                ],\n                                \"serial\": [\n                                    \"05331543\"\n                                ],\n                                \"medium\": [\n                                    \"Heat\"\n                                ],\n                                \"instPoint\": [\n                                    \"Cold side\"\n                                ],\n                                \"readout\": [\n                                    \"09.01.20 17:33\"\n                                ],\n                                \"status\": [\n                                    \"ok\"\n                                ],\n                                \"opTime\": [\n                                    {\n                                        \"value\": [\n                                            \"   46753\"\n                                        ],\n                                        \"unit\": [\n                                            \"h\"\n                                        ]\n                                    }\n                                ],\n                                \"errorTime\": [\n                                    {\n                                        \"value\": [\n                                            \"       0\"\n                                        ],\n                                        \"unit\": [\n                                            \"h\"\n                                        ]\n                                    }\n                                ],\n                                \"channel\": [\n                                    {\n                                        \"Channel\": [\n                                            {\n                                                \"P\": [\n                                                    {\n                                                        \"value\": [\n                                                            \"    0.000\"\n                                                        ],\n\n\nThis message has two issues.\n1) It will generate a lot of bloat keys in the flat message, e.g. starting with\n\"soap:Envelope__soap:Body__0__getMeterResponse__0__getMeterResult\"\n2) The meter number is not part of the flattend keys, which makes the values \nof all meters have identical keys.\n\nThe following code fixes both issues.\n*/\nlet payload = msg.payload\nlet meter_result = payload[\"soap:Envelope\"][\"soap:Body\"][0][\"getMeterResponse\"][0][\"getMeterResult\"][0]\nlet meter_number = meter_result[\"primAddr\"]\n\n// Erase the old dict and add the shortend one with the meter number.\nmsg.payload = {}\nmsg.payload[\"meter_\" + meter_number] = meter_result\n\nreturn msg",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 350,
+        "y": 120,
+        "wires": [
+            [
+                "bc12ebb8.686f08"
+            ]
+        ]
+    },
+    {
+        "id": "bc12ebb8.686f08",
         "type": "change",
         "z": "545ec5f2.a5913c",
         "name": "Restore output message format",
@@ -129,27 +145,11 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 690,
+        "x": 710,
         "y": 120,
         "wires": [
             [
-                "e15eb503.006e98"
-            ]
-        ]
-    },
-    {
-        "id": "6b1a1f6d.5468a",
-        "type": "function",
-        "z": "545ec5f2.a5913c",
-        "name": "Add meter number and reduce bloat",
-        "func": "/*\nThe JSON object received at this point starts with something like this:\n{\n    \"soap:Envelope\": {\n        \"$\": {\n            \"xmlns:soap\": \"http://schemas.xmlsoap.org/soap/envelope/\",\n            \"xmlns:xsi\": \"http://www.w3.org/2001/XMLSchema-instance\",\n            \"xmlns:xsd\": \"http://www.w3.org/2001/XMLSchema\"\n        },\n        \"soap:Body\": [\n            {\n                \"getMeterResponse\": [\n                    {\n                        \"$\": {\n                            \"xmlns\": \"http://tempuri.org/\"\n                        },\n                        \"getMeterResult\": [\n                            {\n                                \"primAddr\": [\n                                    \"2\"\n                                ],\n                                \"deviceName\": [\n                                    \"FZI  Forschugszentrum Informatik Karlsr\"\n                                ],\n                                \"desc\": [\n                                    \"WMZ Rueck\"\n                                ],\n                                \"type\": [\n                                    \"CALEC ST\"\n                                ],\n                                \"info\": [\n                                    \"AQUAMETRO MESSTECHNIK GmbH\"\n                                ],\n                                \"supplier\": [\n                                    \"AMT\"\n                                ],\n                                \"serial\": [\n                                    \"05331543\"\n                                ],\n                                \"medium\": [\n                                    \"Heat\"\n                                ],\n                                \"instPoint\": [\n                                    \"Cold side\"\n                                ],\n                                \"readout\": [\n                                    \"09.01.20 17:33\"\n                                ],\n                                \"status\": [\n                                    \"ok\"\n                                ],\n                                \"opTime\": [\n                                    {\n                                        \"value\": [\n                                            \"   46753\"\n                                        ],\n                                        \"unit\": [\n                                            \"h\"\n                                        ]\n                                    }\n                                ],\n                                \"errorTime\": [\n                                    {\n                                        \"value\": [\n                                            \"       0\"\n                                        ],\n                                        \"unit\": [\n                                            \"h\"\n                                        ]\n                                    }\n                                ],\n                                \"channel\": [\n                                    {\n                                        \"Channel\": [\n                                            {\n                                                \"P\": [\n                                                    {\n                                                        \"value\": [\n                                                            \"    0.000\"\n                                                        ],\n\n\nThis message has two issues.\n1) It will generate a lot of bloat keys in the flat message, e.g. starting with\n\"soap:Envelope__soap:Body__0__getMeterResponse__0__getMeterResult\"\n2) The meter number is not part of the flattend keys, which makes the values \nof all meters have identical keys.\n\nThe following code fixes both issues.\n*/\nlet payload = msg.payload\nlet meter_result = payload[\"soap:Envelope\"][\"soap:Body\"][0][\"getMeterResponse\"][0][\"getMeterResult\"][0]\nlet meter_number = meter_result[\"primAddr\"]\n\n// Erase the old dict and add the shortend one with the meter number.\nmsg.payload = {}\nmsg.payload[\"meter_\" + meter_number] = meter_result\n\nreturn msg",
-        "outputs": 1,
-        "noerr": 0,
-        "x": 330,
-        "y": 120,
-        "wires": [
-            [
-                "ac85e461.ebd108"
+                "376a4260.2d545e"
             ]
         ]
     }
