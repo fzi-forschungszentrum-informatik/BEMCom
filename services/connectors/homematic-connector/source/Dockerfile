@@ -1,4 +1,4 @@
-FROM bemcom/node-red-connector-template:0.0.1
+FROM bemcom/node-red-connector-template:0.1.0
 
 COPY ./flows /flows
 

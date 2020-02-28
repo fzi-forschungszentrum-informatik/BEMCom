@@ -1,1 +1,1 @@
-docker build ./source -t bemcom/homematic-connector:0.1.0
+docker build ./source -t bemcom/homematic-connector:0.1.1
