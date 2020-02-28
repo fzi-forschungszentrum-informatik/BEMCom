@@ -25,7 +25,7 @@ trap "kill -TERM $node_red_pid" SIGTERM
 trap "kill -INT $node_red_pid" INT
 
 # Write the stored flows into the running Node-RED instance.
-sleep 2
+sleep 5
 if [ -d "/flows" ]
 then
     # fnp is the full path of the file e.g. /flows/219558b7.844058
