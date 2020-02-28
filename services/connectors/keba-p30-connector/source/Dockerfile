@@ -1,4 +1,4 @@
-FROM bemcom/node-red-connector-template:0.0.1
+FROM bemcom/node-red-connector-template:0.1.0
 
 # Export your flows to the flows folder. They will be installed on startup.
 COPY ./flows /flows
