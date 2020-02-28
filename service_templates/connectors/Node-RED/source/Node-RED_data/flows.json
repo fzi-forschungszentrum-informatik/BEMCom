@@ -38,7 +38,7 @@
         "id": "2efd25f0.1862ca",
         "type": "tab",
         "label": "Debug Dashboard",
-        "disabled": false,
+        "disabled": true,
         "info": "This is dashboard that should help while developing or debugging the connector. \n\nGot to [/ui](/ui) to open it."
     },
     {
