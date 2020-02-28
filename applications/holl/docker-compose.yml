@@ -2,15 +2,25 @@ version: '3'
 
 services:
     message-broker:
+        ports:
+            - 1883:1883
         container_name: message-broker
         image: "eclipse-mosquitto:1.5.4"
         user: "${USER_ID}:${GROUP_ID}"
         restart: always
 
+    message-broker-monitor:
+        ports:
+            - 8199:1880
+        image: bemcom/message-broker-monitor:0.1.0
+        environment:
+            - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}
+            - MQTT_BROKER_PORT=${MQTT_BROKER_PORT}
+
     aquametro-ambus-net-connector:
         ports:
             - 8206:1880
-        image: bemcom/aquametro-ambus-net-connector:0.1.0
+        image: bemcom/aquametro-ambus-net-connector:0.1.1
         restart: always
         environment:
             - CONNECTOR_NAME=aquametro-ambus-net-connector
@@ -27,7 +37,7 @@ services:
             - 8207:1880
             - 7090:7090
 
-        image: bemcom/keba-p30-connector:0.0.1
+        image: bemcom/keba-p30-connector:0.1.0
         restart: always
         environment:
             - CONNECTOR_NAME=keba-p30-connector-aussen
@@ -35,3 +45,57 @@ services:
             - MQTT_BROKER_PORT=${MQTT_BROKER_PORT}
             - SEND_RAW_MESSAGE_TO_DB=${SEND_RAW_MESSAGE_TO_DB}
             - KEBA_P30_URL=iik-ladesaeule-aussen.fzi.de
+
+    homematic-connector-iik:
+        ports:
+            - 8208:1880
+            - "${CALLBACK_BINRPC_PORT_IIK}:${CALLBACK_BINRPC_PORT_IIK}"
+            - "${CALLBACK_XMLRPC_PORT_IIK}:${CALLBACK_XMLRPC_PORT_IIK}"
+        image: bemcom/homematic-connector:0.1.1
+        restart: always
+
+        environment:
+            - CONNECTOR_NAME=homematic-connector-iik
+            - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}
+            - MQTT_BROKER_PORT=${MQTT_BROKER_PORT}
+            - SEND_RAW_MESSAGE_TO_DB=${SEND_RAW_MESSAGE_TO_DB}
+            - CCU_DNS_NAME=${CCU_DNS_NAME_IIK}
+            - CALLBACK_DNS_NAME=${CALLBACK_DNS_NAME}
+            - CALLBACK_BINRPC_PORT=${CALLBACK_BINRPC_PORT_IIK}
+            - CALLBACK_XMLRPC_PORT=${CALLBACK_XMLRPC_PORT_IIK}
+
+    homematic-connector-ids:
+        ports:
+            - 8209:1880
+            - "${CALLBACK_BINRPC_PORT_IDS}:${CALLBACK_BINRPC_PORT_IDS}"
+            - "${CALLBACK_XMLRPC_PORT_IDS}:${CALLBACK_XMLRPC_PORT_IDS}"
+        image: bemcom/homematic-connector:0.1.1
+        restart: always
+
+        environment:
+            - CONNECTOR_NAME=homematic-connector-ids
+            - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}
+            - MQTT_BROKER_PORT=${MQTT_BROKER_PORT}
+            - SEND_RAW_MESSAGE_TO_DB=${SEND_RAW_MESSAGE_TO_DB}
+            - CCU_DNS_NAME=${CCU_DNS_NAME_IDS}
+            - CALLBACK_DNS_NAME=${CALLBACK_DNS_NAME}
+            - CALLBACK_BINRPC_PORT=${CALLBACK_BINRPC_PORT_IDS}
+            - CALLBACK_XMLRPC_PORT=${CALLBACK_XMLRPC_PORT_IDS}
+
+    homematic-connector-sim:
+        ports:
+            - 8210:1880
+            - "${CALLBACK_BINRPC_PORT_SIM}:${CALLBACK_BINRPC_PORT_SIM}"
+            - "${CALLBACK_XMLRPC_PORT_SIM}:${CALLBACK_XMLRPC_PORT_SIM}"
+        image: bemcom/homematic-connector:0.1.1
+        restart: always
+
+        environment:
+            - CONNECTOR_NAME=homematic-connector-sim
+            - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}
+            - MQTT_BROKER_PORT=${MQTT_BROKER_PORT}
+            - SEND_RAW_MESSAGE_TO_DB=${SEND_RAW_MESSAGE_TO_DB}
+            - CCU_DNS_NAME=${CCU_DNS_NAME_SIM}
+            - CALLBACK_DNS_NAME=${CALLBACK_DNS_NAME}
+            - CALLBACK_BINRPC_PORT=${CALLBACK_BINRPC_PORT_SIM}
+            - CALLBACK_XMLRPC_PORT=${CALLBACK_XMLRPC_PORT_SIM}
