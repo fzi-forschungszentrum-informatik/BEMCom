@@ -1,0 +1,68 @@
+[
+    {
+        "id": "9f1169a9.8e23c8",
+        "type": "tab",
+        "label": "Send command",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "3b3d9738.5b6e88",
+        "type": "link in",
+        "z": "9f1169a9.8e23c8",
+        "name": "flow \"Send command\" in",
+        "links": [
+            "3ed4277f.ed75d8",
+            "de9b93ab.f0871"
+        ],
+        "x": 155,
+        "y": 40,
+        "wires": [
+            [
+                "74708e14.36573"
+            ]
+        ]
+    },
+    {
+        "id": "74708e14.36573",
+        "type": "function",
+        "z": "9f1169a9.8e23c8",
+        "name": "Build CCU message format",
+        "func": "let _msg = {}\nlet msgs = []\nfor ( let key in msg.payload ){\n    _msg = {\n        \"payload\": msg.payload[key],\n        \"channel\": key.split(\"__\")[0],\n        \"datapoint\": key.split(\"__\")[1],\n    }\n    msgs.push(_msg)\n}\nreturn msgs",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 360,
+        "y": 40,
+        "wires": [
+            [
+                "2daa66.a4f3859a"
+            ]
+        ]
+    },
+    {
+        "id": "2daa66.a4f3859a",
+        "type": "ccu-value",
+        "z": "9f1169a9.8e23c8",
+        "name": "",
+        "iface": "BidCos-RF",
+        "channel": "",
+        "datapoint": "",
+        "mode": "",
+        "start": true,
+        "change": true,
+        "cache": false,
+        "queue": false,
+        "on": 0,
+        "onType": "undefined",
+        "ramp": 0,
+        "rampType": "undefined",
+        "working": false,
+        "ccuConfig": "6db20085.21293",
+        "topic": "${CCU}/${Interface}/${channel}/${datapoint}",
+        "x": 590,
+        "y": 40,
+        "wires": [
+            []
+        ]
+    },
+]

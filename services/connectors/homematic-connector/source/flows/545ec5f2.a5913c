@@ -1,0 +1,56 @@
+[
+    {
+        "id": "545ec5f2.a5913c",
+        "type": "tab",
+        "label": "Parse raw_message",
+        "disabled": false,
+        "info": "Parse an object from the received raw sensor datapoint data.\n\n# Receives\n... a message structured like this:\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": <the raw data>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": \"device_1:{sensor_1:2.12,sensor_2:3.12}\",\n        \"timestamp\": 1573680749000\n    }\n}\n```\n\n# Should return\n... a message containing the a parsed version of the raw data, structured like this:\n```\nmsg = {\n    \"payload\": {\n        \"parsed_message\": <the parsed data as object>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"parsed_message\": {\n            \"device_1\": {\n                \"sensor_1\": \"2.12\",\n                \"sensor_2\": \"3.12\"\n            }\n        },\n        \"timestamp\": 1573680749000\n    }\n}\n```"
+    },
+    {
+        "id": "6a1342ab.73305c",
+        "type": "link in",
+        "z": "545ec5f2.a5913c",
+        "name": "flow \"Parse raw_message\" in",
+        "links": [
+            "5d6ccddc.75fcd4"
+        ],
+        "x": 155,
+        "y": 40,
+        "wires": [
+            [
+                "1fbe1ba1.ce6c54"
+            ]
+        ]
+    },
+    {
+        "id": "376a4260.2d545e",
+        "type": "link out",
+        "z": "545ec5f2.a5913c",
+        "name": "flow \"Parse raw_message\" out",
+        "links": [
+            "498bc454.265e5c",
+            "2a8520d8.ce254",
+            "1e213525.ab1f5b",
+            "6bfea7df.b55098"
+        ],
+        "x": 515,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "1fbe1ba1.ce6c54",
+        "type": "function",
+        "z": "545ec5f2.a5913c",
+        "name": "Parse Message",
+        "func": "// This is the unique channel that emitted the data, the device id and a \n// channel id. E.g. \"OEQ1572982:2\"\nlet channel = msg.payload.raw_message.channel\n// The datapoint specifies which the information send on the channel.\n// E.g. \"HUMIDITY\"\nlet datapoint = msg.payload.raw_message.datapoint\n// Here is the actual value, e.g. 55\nlet value = msg.payload.raw_message.value\n\n//let parsed_message = {}\n//parsed_message[channel] = {}\n//parsed_message[channel][datapoint] = value\n\n\nlet payload = {\n    \"parsed_message\": {\n        [channel]: {\n            [datapoint]: value\n        }\n    }\n}\nreturn {\"payload\": payload}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 320,
+        "y": 40,
+        "wires": [
+            [
+                "376a4260.2d545e"
+            ]
+        ]
+    }
+]

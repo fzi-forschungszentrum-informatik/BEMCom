@@ -2,55 +2,24 @@ version: '3'
 
 services:
 
-    # This should be unique and as best practice identical to ${CONNECTOR_NAME}
     homematic-connector:
 
-        container_name: ${CONNECTOR_NAME}
-
         ports:
-            - ${NODE_RED_PORT}:1880
+            - 8205:1880
             - "${CALLBACK_BINRPC_PORT}:${CALLBACK_BINRPC_PORT}"
             - "${CALLBACK_XMLRPC_PORT}:${CALLBACK_XMLRPC_PORT}"
 
-        # Slightly modified version of the default node-red image
-        # to ensure that Node-RED writes it's files with the 
-        # user_id/group_id that is configured below. 
         build:
-            context: .
-            dockerfile: Dockerfile_Node-RED_with_custom_user_id
-            args: 
-                - USER_ID=${USER_ID}
-                - GROUP_ID=${GROUP_ID}
-                - NODE_RED_TAG=${NODE_RED_TAG}
-
-        volumes: 
-            - ./Node-RED_data:/data
+            context: ./source
 
         restart: always
 
-        # Pass connector configuration in container.
-        # See additional documentation and default values in .env file
         environment:
-            - CONNECTOR_NAME=${CONNECTOR_NAME}
+            - CONNECTOR_NAME=homematic-connector
             - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}
             - MQTT_BROKER_PORT=${MQTT_BROKER_PORT}
-            - MQTT_TOPIC_LOGS=${CONNECTOR_NAME}/logs
-            - MQTT_TOPIC_HEARTBEAT=${CONNECTOR_NAME}/heartbeat
-            - MQTT_TOPIC_AVAILABLE_DATAPOINTS=${CONNECTOR_NAME}/available_datapoints
-            - MQTT_TOPIC_DATAPOINT_MAP=${CONNECTOR_NAME}/datapoint_map
-            - MQTT_TOPIC_RAW_MESSAGE_TO_DB=${CONNECTOR_NAME}/raw_message_to_db
-            - MQTT_TOPIC_RAW_MESSAGE_REPROCESS=${CONNECTOR_NAME}/raw_message_reprocess
-            - MQTT_TOPIC_DATAPOINT_MESSAGE_WILDCARD=${CONNECTOR_NAME}/messages/#
             - SEND_RAW_MESSAGE_TO_DB=${SEND_RAW_MESSAGE_TO_DB}
             - CCU_DNS_NAME=${CCU_DNS_NAME}
             - CALLBACK_DNS_NAME=${CALLBACK_DNS_NAME}
             - CALLBACK_BINRPC_PORT=${CALLBACK_BINRPC_PORT}
             - CALLBACK_XMLRPC_PORT=${CALLBACK_XMLRPC_PORT}
-
-    message-broker:
-        container_name: message-broker
-        image: "eclipse-mosquitto:1.5.4"
-        user: "${USER_ID}:${GROUP_ID}"
-        restart: always
-        ports:
-            - 1883:1883
