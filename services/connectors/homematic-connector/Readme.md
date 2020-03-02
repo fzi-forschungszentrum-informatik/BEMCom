@@ -40,7 +40,7 @@ The connector should be able to process sensor datapoints of all existing Homema
 | Enironment Variable    | Example  Value      | Usage/Remarks                                                |
 | ---------------------- | ------------------- | ------------------------------------------------------------ |
 | CONNECTOR_NAME         | brand-new-connector | The name of the connector. Must be unique and is used to compute the MQTT topics. Use all lowercase chars and only dashes for separation to prevent clashes with Dockers internal name resolution system. |
-| MQTT_BROKER_HOST       | localhost           | The DNS name or IP address of the MQTT broker.               |
+| MQTT_BROKER_HOST       | broker.domain.de    | The DNS name or IP address of the MQTT broker. `localhost` will not work, use the full DNS name of the host machine instead. |
 | MQTT_BROKER_HOST       | 1883                | The port of the MQTT broker.                                 |
 | SEND_RAW_MESSAGE_TO_DB | TRUE                | If set to `TRUE` (that is a string of capital letters) will publish all received raw messages on topic `${CONNECTOR_NAME}/raw_message_to_db` |
 | CCU_DNS_NAME           | ccu.domain.de       | The DNS name or IP address of the CCU to connect to.         |
