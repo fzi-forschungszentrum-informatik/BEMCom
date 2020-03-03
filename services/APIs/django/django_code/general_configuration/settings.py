@@ -168,5 +168,5 @@ ASGI_APPLICATION = "general_configuration.routing.application"
 # Settings for connection to MQTT broker.
 MQTT_BROKER = {
     'host': 'ipe-ht-02.fzi.de',
-    'port': 1883,
+    'port': 1884,
 }

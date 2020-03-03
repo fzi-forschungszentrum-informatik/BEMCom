@@ -167,11 +167,15 @@ class DatapointAdmin(admin.ModelAdmin):
     )
 
     def mark_active(self, request, queryset):
-        queryset.update(is_active=True)
+        for datapoint in queryset:
+            datapoint.is_active = True
+            datapoint.save()
     mark_active.short_description = "Mark datapoints as active"
 
     def mark_not_active(self, request, queryset):
-        queryset.update(is_active=False)
+        for datapoint in queryset:
+            datapoint.is_active = False
+            datapoint.save()
     mark_not_active.short_description = "Mark datapoints as not active"
 
     def mark_data_format_as_generic_text(self, request, queryset):
@@ -237,8 +241,3 @@ class DatapointAdmin(admin.ModelAdmin):
         """
         return False
 
-    def has_delete_permission(cls, *args, **kwargs):
-        """
-        Remove `delete` button, the deleted datapoints
-        """
-        return False

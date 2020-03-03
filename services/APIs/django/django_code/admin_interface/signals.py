@@ -44,8 +44,8 @@ def trigger_datapoint_map_update(sender, instance, **kwargs):
     Trigger that a new datapoint map is created and sent on changes.
 
     This is required if ether the Connector is saved, (as the name could have
-    been changed and with it the MQTT topics), or if the `use_as` value of a
-    Datatpoint object is changed, or if a Datapoint is deleted.
+    been changed and with it the MQTT topics), or if the `data_format` value of
+    a Datatpoint object is changed, or if a Datapoint is deleted.
 
     TODO: This deserves an additional logic tests.
           However it is already tested as part of an integration test
@@ -72,9 +72,9 @@ def trigger_datapoint_map_update(sender, instance, **kwargs):
             uf = kwargs["update_fields"]
             # Trigger update if we ether do not know what fields have been
             # changed, if id has changed as this affects the mqtt_topic or
-            # if we use_as has changed as this might have an affect wether the
-            # datapoint is in datapoint_map or not.
-            if uf is None or "id" in uf or "use_as" in uf:
+            # if we data_fromat has changed as this might have an affect wether
+            # the datapoint is in datapoint_map or not.
+            if uf is None or "id" in uf or "data_format" in uf:
                 cmi.create_and_send_datapoint_map(connector=connector)
         # If Datapoint is deleted.
         else:
