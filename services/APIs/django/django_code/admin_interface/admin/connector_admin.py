@@ -29,7 +29,7 @@ class UsedDatapointsInline(admin.TabularInline):
         "example_value"
     )
     ordering = ('key_in_connector', )
-    verbose_name_plural = "Used datapoints of connector"
+    verbose_name_plural = "Active datapoints of connector"
     can_delete = False
     show_change_link = True
     classes = ['collapse']
