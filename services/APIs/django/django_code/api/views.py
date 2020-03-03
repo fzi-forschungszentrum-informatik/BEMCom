@@ -5,5 +5,5 @@ from admin_interface.models.datapoint import Datapoint
 
 
 class DatapointViewSet(viewsets.ModelViewSet):
-    queryset = Datapoint.objects.exclude(use_as="not used")
+    queryset = Datapoint.objects.all()
     serializer_class = DatapointSerializer
