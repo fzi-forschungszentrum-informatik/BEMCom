@@ -2,16 +2,40 @@ from django.urls import include, path
 from rest_framework import routers
 
 from .views import DatapointViewSet
+from .views import DatapointValueViewSet
+from .views import DatapointScheduleViewSet
+from .views import DatapointSetpointViewSet
 
-router = routers.DefaultRouter()
-router.register(r'datapoints', DatapointViewSet)
 
-# Wire up our API using automatic URL routing.
-# Additionally, we include login URLs for the browsable API.
 urlpatterns = [
-    path('', include(router.urls)),
     path(
-        "api-auth/",
-        include("rest_framework.urls", namespace="rest_framework")
-    )
+        "datapoints/",
+        DatapointViewSet.as_view({
+            "get": "list",
+        })
+    ),
+    path(
+        "datapoint/<pk>/",
+        DatapointViewSet.as_view({
+            "get": "retrieve",
+        })
+    ),
+    path(
+        "datapoint/<pk>/value/",
+        DatapointValueViewSet.as_view({
+            "get": "retrieve",
+        })
+    ),
+    path(
+        "datapoint/<pk>/schedule/",
+        DatapointScheduleViewSet.as_view({
+            "get": "retrieve",
+        })
+    ),
+    path(
+        "datapoint/<pk>/setpoint/",
+        DatapointSetpointViewSet.as_view({
+            "get": "retrieve",
+        })
+    ),
 ]
