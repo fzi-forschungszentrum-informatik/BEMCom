@@ -270,6 +270,7 @@ Conventions for timestamps for Datapoint Schedule apply, additionally:
 			"to_timestamp": <unix timestamp in ms or null.>,
 			"min_value": <numeric value or null>,
 			"max_value": <numeric value or null>,
+			"preferred_value": <numeric/text value>,
 			"acceptable_values": null or [
 				<numeric/text value>,
 				<numeric/text value>,
@@ -281,6 +282,7 @@ Conventions for timestamps for Datapoint Schedule apply, additionally:
 			"to_timestamp": <unix timestamp in ms or null.>,
 			"min_value": <numeric value or null>,
 			"max_value": <numeric value or null>,
+			"preferred_value": <numeric/text value>,
 			"acceptable_values": null or [
 				<numeric/text value>,
 				<numeric/text value>,
