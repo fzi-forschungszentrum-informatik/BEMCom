@@ -14,12 +14,6 @@ class DatapointViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Datapoint.objects.filter(is_active=True)
     serializer_class = DatapointSerializer
 
-    @action(methods=["get", "put"], detail=True)
-    def value(self, request, pk=None):
-        datapoint = self.get_object()
-        addition_object = datapoint.get_addition_object()
-        return Response({"last_value": addition_object.last_value})
-
 
 class DatapointValueViewSet(viewsets.ViewSet):
 
