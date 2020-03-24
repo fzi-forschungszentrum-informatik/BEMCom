@@ -74,9 +74,12 @@ class DatapointValueSerializer(serializers.Serializer):
         addition_object = instance.get_addition_object()
         fields_values["value"] = addition_object.last_value
         # Return datetime in ms.
-        timestamp = datetime.timestamp(addition_object.last_timestamp)
-        timestamp_ms = round(timestamp * 1000)
-        fields_values["timestamp"] = timestamp_ms
+        if addition_object.last_timestamp is not None:
+            timestamp = datetime.timestamp(addition_object.last_timestamp)
+            timestamp_ms = round(timestamp * 1000)
+            fields_values["timestamp"] = timestamp_ms
+        else:
+            fields_values["timestamp"] = None
         return fields_values
 
 
