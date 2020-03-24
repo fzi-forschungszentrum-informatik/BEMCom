@@ -12,17 +12,32 @@ from admin_interface.utils import datetime_iso_format
 
 class UsedDatapointsInline(admin.TabularInline):
     """
-    Inline view of the datapoints used by a connector.
-
-    Does not show datapoits marked as "not_used" to limit spam.
+    Inline view of the active datapoints by a connector.
     """
     model = Datapoint
-    fields = ("key_in_connector", "use_as", "type", "example_value", )
-    readonly_fields = fields
+    fields = (
+        "key_in_connector",
+        "type",
+        "example_value",
+        "is_active",
+        "data_format",
+        "description"
+        )
+    readonly_fields = (
+        "key_in_connector",
+        "type",
+        "example_value"
+    )
     ordering = ('key_in_connector', )
-    verbose_name_plural = "Used datapoints of connector"
+    verbose_name_plural = "Active datapoints of connector"
     can_delete = False
+    show_change_link = True
     classes = ['collapse']
+    # Display wider version of normal TextInput for all text fields, as
+    # default forms look ugly.
+    formfield_overrides = {
+        db.models.TextField: {'widget': forms.TextInput(attrs={'size': '60'})},
+    }
 
     def has_add_permission(self, request):
         """
@@ -36,7 +51,7 @@ class UsedDatapointsInline(admin.TabularInline):
         Limit query to Datapoints marked not as "not_used"
         """
         queryset = super(UsedDatapointsInline, self).get_queryset(request)
-        return queryset.exclude(use_as='not used')
+        return queryset.filter(is_active=True)
 
 
 class ConnectorLogEntryInline(admin.TabularInline):
@@ -124,7 +139,7 @@ class ConnectorAdmin(admin.ModelAdmin):
         Numer of used datapoints.
         """
         dpo = Datapoint.objects
-        return dpo.filter(connector=obj.id).exclude(use_as="not used").count()
+        return dpo.filter(connector=obj.id).filter(is_active=True).count()
     num_used_datapoints.short_description = "Number of used datapoints"
 
     @staticmethod

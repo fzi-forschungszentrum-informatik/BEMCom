@@ -10,10 +10,12 @@ if __name__ == "__main__":
     setup()
 
 from admin_interface.models.connector import Connector
-from admin_interface.models.datapoint import Datapoint, TextDatapointAddition
-from admin_interface.models.datapoint import NumericDatapointAddition
+from admin_interface.models.datapoint import Datapoint
+from admin_interface.models.datapoint import GenericTextDatapointAddition
+from admin_interface.models.datapoint import GenericNumericDatapointAddition
 from admin_interface.connector_mqtt_integration import ConnectorMQTTIntegration
 from admin_interface.tests.fake_mqtt import FakeMQTTBroker, FakeMQTTClient
+
 
 @pytest.fixture(scope='class')
 def datapoint_save_setup(request, django_db_setup, django_db_blocker):
@@ -36,8 +38,8 @@ def datapoint_save_setup(request, django_db_setup, django_db_blocker):
 
     # These are the Models of the Datapoint additions used in the tests.
     dp_addition_models = {
-        "numeric": NumericDatapointAddition,
-        "text": TextDatapointAddition,
+        "numeric": GenericNumericDatapointAddition,
+        "text": GenericTextDatapointAddition,
     }
 
     # We need one connector to create Datapoint objects in the tests
@@ -67,45 +69,6 @@ def datapoint_save_setup(request, django_db_setup, django_db_blocker):
 @pytest.mark.usefixtures('datapoint_save_setup')
 class TestDatapointSave():
 
-    def test_new_datapoint_not_used(self):
-        """
-        test case for a new datapoint marked as not_used, as it would be
-        created for any entry in available_datapoints automatically. This
-        should lead to entries in the datapoint addition models.
-        """
-        # Here the generic test datapoint.
-        test_datapoint = Datapoint(
-            connector=self.test_connector,
-            type="sensor",
-            key_in_connector="some_key_in_connector",
-            example_value="42"
-        )
-
-        # Now the test specific setting
-        test_datapoint.use_as = "not used"
-
-        # Call save to trigger the handling of the datapoint additions.
-        test_datapoint.save()
-
-        # After save returned we expect the following counts of DB entries
-        # with a foreign key to test_datapoint.
-        expected_counts = {
-            "numeric": 0,
-            "text": 0,
-        }
-
-        # Evaluate that the expected state is what we get.
-        for addition_type in expected_counts:
-            expected_count = expected_counts[addition_type]
-            addition_model = self.dp_addition_models[addition_type]
-            actual_count = addition_model.objects.filter(
-                datapoint=test_datapoint,
-            ).count()
-            assert actual_count == expected_count
-
-        # Finally clean up.
-        test_datapoint.delete()
-
     def test_new_datapoint_numeric(self):
         """
         test case for a new datapoint marked as numeric by default, which
@@ -121,7 +84,7 @@ class TestDatapointSave():
         )
 
         # Now the test specific setting
-        test_datapoint.use_as = "numeric"
+        test_datapoint.data_format = "generic_numeric"
 
         # Call save to trigger the handling of the datapoint additions.
         test_datapoint.save()
@@ -160,7 +123,7 @@ class TestDatapointSave():
         )
 
         # Now the test specific setting
-        test_datapoint.use_as = "text"
+        test_datapoint.data_format = "generic_text"
 
         # Call save to trigger the handling of the datapoint additions.
         test_datapoint.save()
@@ -170,139 +133,6 @@ class TestDatapointSave():
         expected_counts = {
             "numeric": 0,
             "text": 1,
-        }
-
-        # Evaluate that the expected state is what we get.
-        for addition_type in expected_counts:
-            expected_count = expected_counts[addition_type]
-            addition_model = self.dp_addition_models[addition_type]
-            actual_count = addition_model.objects.filter(
-                datapoint=test_datapoint,
-            ).count()
-            assert actual_count == expected_count
-
-        # Finally clean up.
-        test_datapoint.delete()
-
-    def test_datapoint_changed_not_used_to_text(self):
-        """
-        Test case for changing the use_as attribute of a datapoint, which
-        should affect the datapoint addition objects too.
-        """
-        # Here the generic test datapoint.
-        test_datapoint = Datapoint(
-            connector=self.test_connector,
-            type="sensor",
-            key_in_connector="some_key_in_connector",
-            example_value="42"
-        )
-
-        # Now the test specific inital setting
-        test_datapoint.use_as = "not used"
-
-        # Call save to trigger the handling of the datapoint additions.
-        test_datapoint.save()
-
-        # Now we modify the datapooint to a new (test specific) use_as type.
-        test_datapoint.use_as = "text"
-
-        # Call save to trigger the handling of the datapoint additions.
-        test_datapoint.save()
-
-        # After save returned we expect the following counts of DB entries
-        # with a foreign key to test_datapoint.
-        expected_counts = {
-            "numeric": 0,
-            "text": 1,
-        }
-
-        # Evaluate that the expected state is what we get.
-        for addition_type in expected_counts:
-            expected_count = expected_counts[addition_type]
-            addition_model = self.dp_addition_models[addition_type]
-            actual_count = addition_model.objects.filter(
-                datapoint=test_datapoint,
-            ).count()
-            assert actual_count == expected_count
-
-        # Finally clean up.
-        test_datapoint.delete()
-
-
-    def test_datapoint_changed_numeric_to_not_used(self):
-        """
-        Test case for changing the use_as attribute of a datapoint, which
-        should affect the datapoint addition objects too.
-        """
-        # Here the generic test datapoint.
-        test_datapoint = Datapoint(
-            connector=self.test_connector,
-            type="sensor",
-            key_in_connector="some_key_in_connector",
-            example_value="42"
-        )
-
-        # Now the test specific inital setting
-        test_datapoint.use_as = "numeric"
-
-        # Call save to trigger the handling of the datapoint additions.
-        test_datapoint.save()
-
-        # Now we modify the datapooint to a new (test specific) use_as type.
-        test_datapoint.use_as = "not_used"
-
-        # Call save to trigger the handling of the datapoint additions.
-        test_datapoint.save()
-
-        # After save returned we expect the following counts of DB entries
-        # with a foreign key to test_datapoint.
-        expected_counts = {
-            "numeric": 0,
-            "text": 0,
-        }
-
-        # Evaluate that the expected state is what we get.
-        for addition_type in expected_counts:
-            expected_count = expected_counts[addition_type]
-            addition_model = self.dp_addition_models[addition_type]
-            actual_count = addition_model.objects.filter(
-                datapoint=test_datapoint,
-            ).count()
-            assert actual_count == expected_count
-
-        # Finally clean up.
-        test_datapoint.delete()
-
-    def test_datapoint_changed_text_to_not_used(self):
-        """
-        Test case for changing the use_as attribute of a datapoint, which
-        should affect the datapoint addition objects too.
-        """
-        # Here the generic test datapoint.
-        test_datapoint = Datapoint(
-            connector=self.test_connector,
-            type="sensor",
-            key_in_connector="some_key_in_connector",
-            example_value="42"
-        )
-
-        # Now the test specific inital setting
-        test_datapoint.use_as = "text"
-
-        # Call save to trigger the handling of the datapoint additions.
-        test_datapoint.save()
-
-        # Now we modify the datapooint to a new (test specific) use_as type.
-        test_datapoint.use_as = "not_used"
-
-        # Call save to trigger the handling of the datapoint additions.
-        test_datapoint.save()
-
-        # After save returned we expect the following counts of DB entries
-        # with a foreign key to test_datapoint.
-        expected_counts = {
-            "numeric": 0,
-            "text": 0,
         }
 
         # Evaluate that the expected state is what we get.
@@ -319,7 +149,7 @@ class TestDatapointSave():
 
     def test_datapoint_changed_numeric_to_text(self):
         """
-        Test case for changing the use_as attribute of a datapoint, which
+        Test case for changing the data_format attribute of a datapoint, which
         should affect the datapoint addition objects too.
         """
         # Here the generic test datapoint.
@@ -331,13 +161,13 @@ class TestDatapointSave():
         )
 
         # Now the test specific inital setting
-        test_datapoint.use_as = "numeric"
+        test_datapoint.data_format = "generic_numeric"
 
         # Call save to trigger the handling of the datapoint additions.
         test_datapoint.save()
 
-        # Now we modify the datapooint to a new (test specific) use_as type.
-        test_datapoint.use_as = "text"
+        # Now modify the datapooint to a new (test specific) data_format type.
+        test_datapoint.data_format = "generic_text"
 
         # Call save to trigger the handling of the datapoint additions.
         test_datapoint.save()
@@ -363,7 +193,7 @@ class TestDatapointSave():
 
     def test_datapoint_changed_text_to_numeric(self):
         """
-        Test case for changing the use_as attribute of a datapoint, which
+        Test case for changing the data_format attribute of a datapoint, which
         should affect the datapoint addition objects too.
         """
         # Here the generic test datapoint.
@@ -375,13 +205,13 @@ class TestDatapointSave():
         )
 
         # Now the test specific inital setting
-        test_datapoint.use_as = "text"
+        test_datapoint.data_format = "generic_text"
 
         # Call save to trigger the handling of the datapoint additions.
         test_datapoint.save()
 
-        # Now we modify the datapooint to a new (test specific) use_as type.
-        test_datapoint.use_as = "numeric"
+        # Now modify the datapooint to a new (test specific) data_format type.
+        test_datapoint.data_format = "generic_numeric"
 
         # Call save to trigger the handling of the datapoint additions.
         test_datapoint.save()

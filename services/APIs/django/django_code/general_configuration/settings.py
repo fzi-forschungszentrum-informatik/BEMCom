@@ -67,8 +67,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
     'channels',
     'admin_interface.apps.AdminInterfaceConfig',
+    'api.apps.ApiConfig',
 ]
 
 MIDDLEWARE = [
@@ -166,5 +168,5 @@ ASGI_APPLICATION = "general_configuration.routing.application"
 # Settings for connection to MQTT broker.
 MQTT_BROKER = {
     'host': 'ipe-ht-02.fzi.de',
-    'port': 1883,
+    'port': 1884,
 }

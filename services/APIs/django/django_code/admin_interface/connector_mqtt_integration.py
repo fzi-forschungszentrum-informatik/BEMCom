@@ -144,9 +144,9 @@ class ConnectorMQTTIntegration():
 
             # Also store the topics of the used datapoints.
             datapoint_set = connector.datapoint_set
-            used_datapoints = datapoint_set.exclude(use_as="not used")
-            for used_datapoint in used_datapoints:
-                datapoint_topic = used_datapoint.get_mqtt_topic()
+            active_datapoints = datapoint_set.filter(is_active=True)
+            for active_datapoint in active_datapoints:
+                datapoint_topic = active_datapoint.get_mqtt_topic()
                 topics[datapoint_topic] = (
                     connector,
                     "mqtt_topic_datapoint_message",
@@ -207,17 +207,17 @@ class ConnectorMQTTIntegration():
             # Connectors.
             datapoint_map = {"sensor": {}, "actuator": {}}
             datapoints = connector.datapoint_set
-            used_datapoints = datapoints.exclude(use_as="not used")
+            active_datapoint = datapoints.filter(is_active=True)
 
             # Create the map entry for every used datapoint
-            for used_datapoint in used_datapoints:
+            for active_datapoint in active_datapoint:
 
-                _type = used_datapoint.type
-                key_in_connector = used_datapoint.key_in_connector
-                mqtt_topic = used_datapoint.get_mqtt_topic()
+                _type = active_datapoint.type
+                key_in_connector = active_datapoint.key_in_connector
+                mqtt_topic = active_datapoint.get_mqtt_topic()
 
-                if used_datapoint.type not in datapoint_map:
-                    datapoint_map[used_datapoint.type] = {}
+                if active_datapoint.type not in datapoint_map:
+                    datapoint_map[active_datapoint.type] = {}
                 datapoint_map[_type][key_in_connector] = mqtt_topic
 
             # Send the final datapoint_map to the connector.
@@ -249,10 +249,8 @@ class ConnectorMQTTIntegration():
         if message_type == "mqtt_topic_datapoint_message":
             # If this message has reached that point, i.e. has had a
             # topic entry it means that the Datapoint object must exist, as
-            # else the MQTT topic coulc not habe been computed.
+            # else the MQTT topic could not have been computed.
             try:
-                # TODO Remove this.
-                logger.error('Got Message on topic: {}\nWith payload\n{}'.format(msg.topic, msg.payload))
                 # Make use of the convention that the Datapoint topic ends
                 # with the primary key of the Datapoint.
                 datapoint_id = msg.topic.split("/")[-1]

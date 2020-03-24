@@ -14,21 +14,11 @@ class Datapoint(models.Model):
     represents. By default a datapoint can ether hold a numeric information
     (e.g. 2.0912) or a text information (e.g. "OK").
 
-    The use_as attribute of Datapoint defines how the Datapoint should be used.
-    It can be ether:
-        "not used": The datapoint will not be used, i.e ignored. That means
-                    the connector will not publish values for this datapoint
-                    over MQTT.
-        "numeric":  The datapoint will be used and it represents a numeric
-                    information.
-        "text":     The datapoint will be used and it represents a string,
-                    or at least something that can be stored as a string.
-
     Depeding on the use case, the datapoint may require (or should be able to
     carry) additional metadata fields. If you encounter Datapoints that require
-    other metadata then is defined in NumericDatapointAddition or
-    TextDatapointAddition simply generate a new DatapointAddition model and
-    extend use_as_choices and `use_as_addition_models` accordingly.
+    other metadata then is defined in DatapointAddition models below, simply
+    generate a new DatapointAddition model and extend `data_format_choices`
+    and `data_format_addition_models` accordingly.
 
     TODO: May be replace delete with deactivate, else we will might end with
           entries in the ValueDB with unknown origin (deleted datapoints will
@@ -40,18 +30,58 @@ class Datapoint(models.Model):
         on_delete=models.CASCADE,
         editable=False,
     )
-    # Defines the usage of the datapoint, i.e. the additional metadata fields.
-    # The 'actual value' (i.e. the first element of the tuple) must match the
-    # key in use_as_addition_models.
+    is_active = models.BooleanField(
+        default=False,
+        help_text=(
+            "Flag if the connector should publish values for this datapoint."
+        )
+    )
+    is_accessible = models.BooleanField(
+        default=False,
+        help_text=(
+            "Flag if the datapoint is accessible via the API."
+        )
+    )
+    # This must be unlimeted to prevent errors from cut away keys while
+    # using the datapoint map by the connector.
+    key_in_connector = models.TextField(
+        editable=False,
+        help_text=(
+            "Internal key used by the connector to identify the datapoint "
+            "in the incoming/outgoing data streams."
+        )
+    )
+    type = models.CharField(
+        max_length=8,
+        editable=False,
+        default=None,
+        help_text=(
+            "Datapoint type, can be ether sensor or actuator. Is defined by "
+            "the connector."
+        )
+    )
+    # Defines the data format of the datapoint, i.e. the additional metadata
+    # fields. The 'actual value' (i.e. the first element of the tuple) must
+    # match the key in data_format_addition_models.
     #
-    # Be very careful to not change the "not used" string, it's expected
+    # The formats have the following meanings:
+    #   numeric: The value of the datapoint can be stored as a float.
+    #   text: The value of the datapoint can be stored as a string.
+    #   generic: No additional information.
+    #   continuous: The value is a continuous variable with an optional max
+    #               and min value, that can take any value in between.
+    #   discrete: The value of the datapoint can take one value of limited set
+    #             of possible values.
+    #
+    # Be very careful to not change the "generic" string, it's expected
     # exactly like this in a lot of places.
-    use_as_choices = [
-        ("not used", "Not used"),
-        ("numeric", "Numeric"),
-        ("text", "Text"),
+    data_format_choices = [
+        ("generic_numeric", "Generic Numeric"),
+        ("continuous_numeric", "Continuous Numeric"),
+        ("discrete_numeric", "Discrete Numeric"),
+        ("generic_text", "Generic Text"),
+        ("discrete_text", "Discrete Text"),
     ]
-
     # Mapping to which model to use for the addtional metadata fields.
     # The value must be a dict of valid kwargs expected by
     # django.contrib.contenttypes.models.ContentType.objects.get()
@@ -63,37 +93,61 @@ class Datapoint(models.Model):
     # it is not fully defined yet,and the addition models must follow below
     # as they reference Datapoint. Computing app_label however allows us to use
     # the Datapoint model in several django apps.
+
     class TempModel(models.Model):
         pass
     app_label = TempModel._meta.app_label
-    use_as_addition_models = {
-        "numeric": {
+    data_format_addition_models = {
+        "generic_numeric": {
             "app_label": app_label,
-            "model": "numericdatapointaddition",
+            "model": "genericnumericdatapointaddition",
         },
-        "text": {
+        "continuous_numeric": {
             "app_label": app_label,
-            "model": "textdatapointaddition",
+            "model": "continuousnumericdatapointaddition",
+        },
+        "discrete_numeric": {
+            "app_label": app_label,
+            "model": "discretenumericdatapointaddition",
+        },
+        "generic_text": {
+            "app_label": app_label,
+            "model": "generictextdatapointaddition",
+        },
+        "discrete_text": {
+            "app_label": app_label,
+            "model": "discretetextdatapointaddition",
         },
     }
-    use_as = models.CharField(
-        max_length=8,
-        choices=use_as_choices,
-        default="not used",
-    )
-    type = models.CharField(
-        max_length=8,
-        editable=False,
-        default=None,
-    )
-    # This must be unlimeted to prevent errors from cut away keys while
-    # using the datapoint map by the connector.
-    key_in_connector = models.TextField(
-        editable=False,
+    # Use generic_text as default as it imposes no constraints on the datapoint
+    # apart from that the value can be stored as string, which should always
+    # be possible as the value has been received as a JSON string.
+    data_format = models.CharField(
+        max_length=18,
+        choices=data_format_choices,
+        default="generic_text",
+        help_text=(
+            "Format of the datapoint value. Additionally defines which meta"
+            "data is available for it. See documentation for details."
+        )
     )
     example_value = models.CharField(
         max_length=30,
-        editable=False
+        editable=False,
+        help_text=(
+            "One example value for this datapoint. Should help admins while "
+            "mangeing datapoints, i.e. to specify the correct data format."
+        )
+    )
+    # Don't limit this, people should never need to use abbreviations or
+    # shorten their thoughts just b/c the field is too short.
+    description = models.TextField(
+        editable=True,
+        blank=True,
+        help_text=(
+            "A human readable description of the datapoint targeted on "
+            "users of the API wihtout knowledge about connector details."
+        )
     )
 
     def __str__(self):
@@ -102,7 +156,7 @@ class Datapoint(models.Model):
     def save(self, *args, **kwargs):
         """
         Handle the potentially changed usage value, and manage (i.e.
-        create/delete) the respective objects in the addition models.
+        create/delete) the respective objects of the addition models.
         """
 
         # New instance, create a new object for the respective
@@ -113,16 +167,14 @@ class Datapoint(models.Model):
             # use it as a relation.
             super(Datapoint, self).save(*args, **kwargs)
 
-            # This is False for "not used" and potentially an other
-            # datapoint usage pattern that requires no additional metadata.
+            # Create a new instance of the addition model.
             try:
-                if self.use_as in self.use_as_addition_models:
-                    ct_kwargs = self.use_as_addition_models[self.use_as]
-                    addition_type = ContentType.objects.get(**ct_kwargs)
-                    addition_model = addition_type.model_class()
-                    addition_model(
-                        datapoint=self,
-                    ).save()
+                ct_kwargs = self.data_format_addition_models[self.data_format]
+                addition_type = ContentType.objects.get(**ct_kwargs)
+                addition_model = addition_type.model_class()
+                addition_model(
+                    datapoint=self,
+                ).save()
             except Exception:
                 # Undo save if the creation of the addition object failed to
                 # prevent inconsistent states in DB.
@@ -133,32 +185,30 @@ class Datapoint(models.Model):
         #
         # Below here only for Existing datapoint instance.
         #
-        # Check if use_as has changed and trigger a normal save if not.
-        use_as_as_in_db = Datapoint.objects.get(id=self.id).use_as
-        if use_as_as_in_db == self.use_as:
+        # Check if data_format has changed and trigger a normal save if not.
+        data_format_as_in_db = Datapoint.objects.get(id=self.id).data_format
+        if data_format_as_in_db == self.data_format:
             super(Datapoint, self).save(*args, **kwargs)
             return
 
-        # Now we now that use_as has chaged, delete the object for the old
-        # datapoint addition (if the if statement below is true there should
-        # exist one and only one entry in the respective model, as it should
-        # have been created by the last run of this method)
-        if use_as_as_in_db in self.use_as_addition_models:
-            ct_kwargs = self.use_as_addition_models[use_as_as_in_db]
-            addition_type = ContentType.objects.get(**ct_kwargs)
-            addition_model = addition_type.model_class()
-            # DatapointAddition should use a OneToOne relation, hence there
-            # should be onyl one entry for this query.
-            addition_model.objects.get(datapoint=self.id).delete()
+        # Now we know that data_format has chaged, delete the object for the
+        # old datapoint addition (there should exist one and only one entry
+        # in the respective model, as it should have been created by the last
+        # run of this method)
+        ct_kwargs = self.data_format_addition_models[data_format_as_in_db]
+        addition_type = ContentType.objects.get(**ct_kwargs)
+        addition_model = addition_type.model_class()
+        # DatapointAddition should use a OneToOne relation, hence there
+        # should be onyl one entry for this query.
+        addition_model.objects.get(datapoint=self.id).delete()
 
-        # Finally create the new datapoint addition entry if applicable.
-        if self.use_as in self.use_as_addition_models:
-            ct_kwargs = self.use_as_addition_models[self.use_as]
-            addition_type = ContentType.objects.get(**ct_kwargs)
-            addition_model = addition_type.model_class()
-            addition_model(
-                datapoint=self,
-            ).save()
+        # Finally create the new datapoint addition.
+        ct_kwargs = self.data_format_addition_models[self.data_format]
+        addition_type = ContentType.objects.get(**ct_kwargs)
+        addition_model = addition_type.model_class()
+        addition_model(
+            datapoint=self,
+        ).save()
 
         super(Datapoint, self).save(*args, **kwargs)
 
@@ -179,29 +229,30 @@ class Datapoint(models.Model):
         prefix = self.connector.mqtt_topic_datapoint_message_wildcard[:-1]
         return prefix + str(self.id)
 
-    def get_addition_model(self,  use_as=None):
+    def get_addition_model(self,  data_format=None):
         """
         A convenient shorthand to return the model of a Datapoint Additon.
 
         Arguements:
         -----------
-        use_as: string or None
-            The `use_as` value to compute the corresponding DatapointAddition.
-            If None will use the `use_as` value of self.
+        data_format: string or None
+            The `data_format` value to compute the corresponding
+            DatapointAddition. If None will use the `data_format` value of
+            self.
 
         Returns:
         --------
         addition_model: django.db.models.Model or None
-            The corresponding DatapointAddition model if existing for `use_as`.
-            Will be None if no such model exists.
+            The corresponding DatapointAddition model if existing for
+            `data_format`. Will be None if no such model exists.
         """
-        if use_as is None:
-            use_as = self.use_as
+        if data_format is None:
+            data_format = self.data_format
 
-        if use_as not in self.use_as_addition_models:
+        if data_format not in self.data_format_addition_models:
             addition_model = None
         else:
-            ct_kwargs = self.use_as_addition_models[use_as]
+            ct_kwargs = self.data_format_addition_models[data_format]
             addition_type = ContentType.objects.get(**ct_kwargs)
             addition_model = addition_type.model_class()
         return addition_model
@@ -213,7 +264,7 @@ class Datapoint(models.Model):
         Returns:
         --------
         addition_object: DatapointAddition.object or None
-            Returns None if not additon object exists (e.g. use_as="not_used").
+            Returns None if not additon object exists .
             Else returns the object.
         """
         addition_model = self.get_addition_model()
@@ -226,12 +277,12 @@ class Datapoint(models.Model):
         return addition_object
 
 
-class TextDatapointAddition(models.Model):
+class BaseDatapointAddition(models.Model):
     """
-    This extends the Datapoint model with metadata specific for text
-    datapoints.
-    """
+    Generic fields that all DatapointAddition models should have.
 
+    Overload last_value if it should not be stored as string.
+    """
     # The metadata belongs to exactly one datapoint.
     datapoint = models.OneToOneField(
         Datapoint,
@@ -254,60 +305,105 @@ class TextDatapointAddition(models.Model):
         )
     )
 
-
-#class DatapointUnit(models.Model):
-#
-#    def __str__(self):
-#        return self.unit_quantity + " [" + self.unit_symbol + "]"
-#
-#    unit_quantity = models.TextField(
-#        help_text="The quantity of the unit, e.g. Temperature or Power"
-#    )
-#    unit_symbol = models.TextField(
-#        help_text="The short symbol of the unit, e.g. °C or kW"
-#    )
+    class Meta:
+        abstract = True
 
 
-class NumericDatapointAddition(models.Model):
-    """
-    This extends the Datapoint model with metadata specific for numeric
-    datapoints.
+class DiscreteDatapointAdditionMixin(models.Model):
 
-    TODO: Define abstract base class DatapointAddition.
-    """
-
-    # The metadata belongs to exactly one datapoint.
-    datapoint = models.OneToOneField(
-        Datapoint,
-        on_delete=models.CASCADE,
-        primary_key=True,
+    allowed_values = models.TextField(
         editable=False,
+        null=True,
+        help_text=(
+            "Allowed values"
+        )
     )
+
+    class Meta:
+        abstract = True
+
+
+class NumericDatapointAdditionMixin(models.Model):
+    """
+    Changes last_value to FloatField to enforece that the last value can
+    be parsed as a number. Adds unit.
+    """
+    unit = models.TextField(
+        editable=True,
+        default="",
+        blank=True,
+        help_text=(
+            "The unit in SI notation, e.g.  Mg*m*s^-2 aka. kN"
+        )
+    )
+
+    class Meta:
+        abstract = True
+
+
+class GenericTextDatapointAddition(BaseDatapointAddition):
+    """
+    Generic Text Datapoint, no additional metadata.
+    """
+    pass
+
+
+class DiscreteTextDatapointAddition(BaseDatapointAddition,
+                                    DiscreteDatapointAdditionMixin):
+    """
+    Text Datapoint that can/should only have a limited set of discrete values.
+    """
+    pass
+
+
+class GenericNumericDatapointAddition(BaseDatapointAddition,
+                                      NumericDatapointAdditionMixin):
+    """
+    Generic Numeric Datapoint with no range restrictions.
+    """
     last_value = models.FloatField(
         editable=False,
         null=True,
         help_text=(
-            "The last value received via MQTT."
+            "The last numeric value received via MQTT."
         )
     )
-    last_timestamp = models.DateTimeField(
+
+
+class DiscreteNumericDatapointAddition(BaseDatapointAddition,
+                                       DiscreteDatapointAdditionMixin,
+                                       NumericDatapointAdditionMixin):
+    """
+    Numeric Datapoint that can/should only have a limited set of discrete
+    values.
+    """
+    last_value = models.FloatField(
         editable=False,
         null=True,
         help_text=(
-            "The timestamp of the last value received via MQTT."
+            "The last numeric value received via MQTT."
         )
     )
-#    unit = models.ForeignKey(
-#        DatapointUnit,
-#        on_delete=models.SET('')
-#    )
+
+
+class ContinuousNumericDatapointAddition(BaseDatapointAddition,
+                                         NumericDatapointAdditionMixin):
+    """
+    Numeric Datapoint that can/should only have values within a range.
+    """
+    last_value = models.FloatField(
+        editable=False,
+        null=True,
+        help_text=(
+            "The last numeric value received via MQTT."
+        )
+    )
     min_value = models.FloatField(
         blank=True,
         null=True,
         default=None,
         help_text=(
-            "The minimal expected value of the datapoint. Is uesed for "
-            "automatically scaling plots."
+            "The minimal expected value of the datapoint."
         )
     )
     max_value = models.FloatField(
@@ -315,7 +411,6 @@ class NumericDatapointAddition(models.Model):
         null=True,
         default=None,
         help_text=(
-            "The maximal expected value of the datapoint. Is uesed for "
-            "automatically scaling plots."
+            "The maximal expected value of the datapoint."
         )
     )

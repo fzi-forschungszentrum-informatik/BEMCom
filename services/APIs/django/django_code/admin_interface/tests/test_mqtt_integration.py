@@ -56,7 +56,7 @@ def connector_factory(connector_name=None):
     return test_connector
 
 
-def datapoint_factory(connector, key_in_connector=None, use_as="not_used",
+def datapoint_factory(connector, key_in_connector=None, data_format="generic_text",
                       type="sensor"):
     """
     Create a dummy datapoint in DB.
@@ -71,7 +71,7 @@ def datapoint_factory(connector, key_in_connector=None, use_as="not_used",
     key_in_connector:
         If string uses it's value as key_in_connector. Else will automatically
         generate a key that is "key__in__connector__" + id of Datapoint.
-    use_as: str
+    data_format: str
         See Datapoint.
     type: str
         See Datapoint.
@@ -88,8 +88,9 @@ def datapoint_factory(connector, key_in_connector=None, use_as="not_used",
     test_datapoint = Datapoint(
         connector=connector,
         key_in_connector=key_in_connector,
-        use_as=use_as,
+        data_format=data_format,
         type=type,
+        is_active=True,
     )
     test_datapoint.save()
 
@@ -523,9 +524,14 @@ def update_subscription_setup(request, django_db_setup, django_db_blocker):
 
     # Create some test datapoints used for checking that normal datapoint
     # messages will be handled correctly too.
-    not_used_datapoint = datapoint_factory(test_connector_5, use_as="not used")
-    numeric_datapoint = datapoint_factory(test_connector_5, use_as="numeric")
-    text_datapoint = datapoint_factory(test_connector_5, use_as="text")
+    numeric_datapoint = datapoint_factory(
+        test_connector_5,
+        data_format="generic_numeric"
+    )
+    text_datapoint = datapoint_factory(
+        test_connector_5,
+        data_format="generic_text"
+    )
 
     # Give django a seconds to receive the signal and call update_topcis
     # as well as update_subscriptions.
@@ -538,7 +544,6 @@ def update_subscription_setup(request, django_db_setup, django_db_blocker):
     request.cls.test_connector_3 = test_connector_3
     request.cls.test_connector_4 = test_connector_4
     request.cls.cmi = cmi
-    request.cls.not_used_datapoint = not_used_datapoint
     request.cls.numeric_datapoint = numeric_datapoint
     request.cls.text_datapoint = text_datapoint
     yield
@@ -782,10 +787,6 @@ class TestUpdateSubscription():
             "timestamp": 1571927666666,
         }
 
-        # TODO Remove this once update_topics reacts on changed datapoints.
-        self.cmi.update_topics()
-        self.cmi.update_subscriptions()
-
         payload_numeric = json.dumps(datapoint_message_numeric)
         payload_text = json.dumps(datapoint_message_text)
         topic_numeric = numeric_dp.get_mqtt_topic()
@@ -860,13 +861,13 @@ class TestUpdateSubscription():
         test_datapoint_1 = datapoint_factory(
             connector=self.test_connector_4,
             key_in_connector="test_datapoint_map",
-            use_as="numeric",
+            data_format="generic_numeric",
             type="sensor"
         )
         test_datapoint_2 = datapoint_factory(
             connector=self.test_connector_4,
             key_in_connector="test_datapoint_map_2",
-            use_as="text",
+            data_format="generic_text",
             type="actuator"
         )
         waited_seconds = 0
