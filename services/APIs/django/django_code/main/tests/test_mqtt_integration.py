@@ -18,84 +18,7 @@ from main.models.connector import ConnectorLogEntry
 from main.connector_mqtt_integration import ConnectorMQTTIntegration
 from main.utils import datetime_from_timestamp
 from main.tests.fake_mqtt import FakeMQTTBroker, FakeMQTTClient
-
-# TODO This is devl stuff, Remove.
-import logging
-logger = logging.getLogger(__name__)
-
-
-def connector_factory(connector_name=None):
-    """
-    Create a test connector in DB.
-
-    This function is not thread save and may produce errors if other code
-    inserts objects in models.Connector in parallel.
-
-    Arguments:
-    ----------
-    connector_name: string or None
-        If string uses this name as connector name. Else will automatically
-        generate a name that is "test_connector_" + id of Connector. Be aware
-        that mqtt topics are automatically generated from the name and that
-        name and mqtt_topics must be unique.
-
-    Returns:
-    --------
-    test_connector: Connector object
-        A dummy Connector for tests.
-    """
-    if connector_name is None:
-        next_id = Connector.objects.count() + 1
-        connector_name = "test_connector_" + str(next_id)
-
-    test_connector = Connector(
-        name=connector_name,
-    )
-    test_connector.save()
-
-    return test_connector
-
-
-def datapoint_factory(connector, key_in_connector=None, data_format="generic_text",
-                      type="sensor"):
-    """
-    Create a dummy datapoint in DB.
-
-    This function is not thread save and may produce errors if other code
-    inserts objects in Datapoint in parallel.
-
-    Arguments:
-    ----------
-    connector: Connector object
-        The connector the datapoint belongs to.
-    key_in_connector:
-        If string uses it's value as key_in_connector. Else will automatically
-        generate a key that is "key__in__connector__" + id of Datapoint.
-    data_format: str
-        See Datapoint.
-    type: str
-        See Datapoint.
-
-    Returns:
-    --------
-    test_datapoint: Datapoint object
-        A dummy datapoint for tests.
-    """
-    if key_in_connector is None:
-        next_id = Datapoint.objects.count() + 1
-        key_in_connector = "key__in__connector__" + str(next_id)
-
-    test_datapoint = Datapoint(
-        connector=connector,
-        key_in_connector=key_in_connector,
-        data_format=data_format,
-        type=type,
-        is_active=True,
-    )
-    test_datapoint.save()
-
-    return test_datapoint
-
+from main.tests.helpers import connector_factory, datapoint_factory
 
 @pytest.fixture(scope='class')
 def connector_integration_setup(request, django_db_setup, django_db_blocker):
@@ -851,8 +774,6 @@ class TestUpdateSubscription():
             Store the received message so we can test it's correctness later.
             """
             if msg.topic == "test_connector_4/datapoint_map":
-                logger.error(msg.topic)
-                logger.error(msg.payload)
                 client.userdata = msg.payload
         self.mqtt_client.subscribe("test_connector_4/datapoint_map")
         self.mqtt_client.on_message = on_message
