@@ -4,7 +4,7 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import action
 
-from admin_interface.models.datapoint import Datapoint
+from main.models.datapoint import Datapoint
 from .serializers import DatapointSerializer
 from .serializers import DatapointValueSerializer
 from .serializers import DatapointScheduleSerializer

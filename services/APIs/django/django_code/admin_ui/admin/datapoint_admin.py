@@ -4,7 +4,7 @@ from django import forms, db
 from django.contrib import admin
 from django.contrib.contenttypes.models import ContentType
 
-from ..models.datapoint import Datapoint
+from main.models.datapoint import Datapoint
 
 logger = logging.getLogger(__name__)
 

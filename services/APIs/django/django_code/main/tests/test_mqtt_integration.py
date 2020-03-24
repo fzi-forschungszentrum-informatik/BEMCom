@@ -12,12 +12,12 @@ if __name__ == "__main__":
     os.chdir('../..')
     setup()
 
-from admin_interface.models.datapoint import Datapoint
-from admin_interface.models.connector import Connector, ConnectorHeartbeat
-from admin_interface.models.connector import ConnectorLogEntry
-from admin_interface.connector_mqtt_integration import ConnectorMQTTIntegration
-from admin_interface.utils import datetime_from_timestamp
-from admin_interface.tests.fake_mqtt import FakeMQTTBroker, FakeMQTTClient
+from main.models.datapoint import Datapoint
+from main.models.connector import Connector, ConnectorHeartbeat
+from main.models.connector import ConnectorLogEntry
+from main.connector_mqtt_integration import ConnectorMQTTIntegration
+from main.utils import datetime_from_timestamp
+from main.tests.fake_mqtt import FakeMQTTBroker, FakeMQTTClient
 
 # TODO This is devl stuff, Remove.
 import logging

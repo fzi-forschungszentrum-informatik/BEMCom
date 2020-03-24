@@ -69,8 +69,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'channels',
-    'admin_interface.apps.AdminInterfaceConfig',
-    'api.apps.ApiConfig',
+    'main.apps.MainConfig',
+    'admin_ui.apps.AdminUIConfig',
+    'rest_api.apps.RESTApiConfig',
 ]
 
 MIDDLEWARE = [
@@ -101,8 +102,8 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'general_configuration.wsgi.application'
-
+# Settings for channels server
+ASGI_APPLICATION = "general_configuration.routing.application"
 
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
@@ -142,7 +143,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/2.2/topics/i18n/
 
@@ -161,9 +161,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
 STATIC_URL = '/static/'
-
-# Settings for channels
-ASGI_APPLICATION = "general_configuration.routing.application"
 
 # Settings for connection to MQTT broker.
 MQTT_BROKER = {

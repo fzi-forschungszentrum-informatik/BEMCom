@@ -1,12 +1,11 @@
 import sys
 from django.apps import AppConfig
-#from django.db.models import signals
 
-class AdminInterfaceConfig(AppConfig):
-    name = 'admin_interface'
+class MainConfig(AppConfig):
+    name = 'main'
 
     def ready(self):
-        import admin_interface.signals
+        import main.signals
 
         if 'runserver' in sys.argv:
             # Startup the MQTT integration.

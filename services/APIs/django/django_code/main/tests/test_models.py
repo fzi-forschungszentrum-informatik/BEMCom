@@ -9,12 +9,12 @@ if __name__ == "__main__":
     os.chdir('../..')
     setup()
 
-from admin_interface.models.connector import Connector
-from admin_interface.models.datapoint import Datapoint
-from admin_interface.models.datapoint import GenericTextDatapointAddition
-from admin_interface.models.datapoint import GenericNumericDatapointAddition
-from admin_interface.connector_mqtt_integration import ConnectorMQTTIntegration
-from admin_interface.tests.fake_mqtt import FakeMQTTBroker, FakeMQTTClient
+from main.models.connector import Connector
+from main.models.datapoint import Datapoint
+from main.models.datapoint import GenericTextDatapointAddition
+from main.models.datapoint import GenericNumericDatapointAddition
+from main.connector_mqtt_integration import ConnectorMQTTIntegration
+from main.tests.fake_mqtt import FakeMQTTBroker, FakeMQTTClient
 
 
 @pytest.fixture(scope='class')

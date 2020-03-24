@@ -4,10 +4,10 @@ from django import forms, db
 from django.contrib import admin
 from django.http import HttpResponseRedirect
 
-from admin_interface.models.connector import Connector, ConnectorHeartbeat
-from admin_interface.models.connector import ConnectorLogEntry
-from admin_interface.models.datapoint import Datapoint
-from admin_interface.utils import datetime_iso_format
+from main.models.connector import Connector, ConnectorHeartbeat
+from main.models.connector import ConnectorLogEntry
+from main.models.datapoint import Datapoint
+from main.utils import datetime_iso_format
 
 
 class UsedDatapointsInline(admin.TabularInline):

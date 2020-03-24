@@ -1,7 +1,7 @@
 import pytest
 
-from admin_interface.tests.fake_mqtt import FakeMQTTBroker, FakeMQTTClient
-from admin_interface.tests.helpers import TestClassWithFixtures
+from main.tests.fake_mqtt import FakeMQTTBroker, FakeMQTTClient
+from main.tests.helpers import TestClassWithFixtures
 
 
 class TestFakeMQTTClient(TestClassWithFixtures):
@@ -428,7 +428,7 @@ class TestFakeMQTTEndToEnd(TestClassWithFixtures):
         # Validate the message has not been received.
         out, err = self.capsys.readouterr()
         assert out == ''
-        
+
     def test_user_data_set_updates_userdata(self):
         # Setup broker and client as one would do in test.
         fake_broker = FakeMQTTBroker()
