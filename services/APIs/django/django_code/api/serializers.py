@@ -53,9 +53,11 @@ class DatapointSerializer(serializers.Serializer):
             "/datapoint/%s/" % instance.id
         )
         fields_values["value_url"] = fields_values["url"] + "value/"
-        fields_values["schedule_url"] = fields_values["url"] + "schedule/"
-        fields_values["setpoint_url"] = fields_values["url"] + "setpoint/"
 
+        # Only actuators have schedules and setpoints.
+        if instance.type == "actuator":
+            fields_values["schedule_url"] = fields_values["url"] + "schedule/"
+            fields_values["setpoint_url"] = fields_values["url"] + "setpoint/"
 
         return fields_values
 
