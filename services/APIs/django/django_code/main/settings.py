@@ -83,7 +83,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'general_configuration.urls'
+ROOT_URLCONF = 'main.urls'
 
 TEMPLATES = [
     {
@@ -100,8 +100,6 @@ TEMPLATES = [
         },
     },
 ]
-
-WSGI_APPLICATION = 'general_configuration.wsgi.application'
 
 
 # Database
@@ -163,7 +161,7 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 # Settings for channels
-ASGI_APPLICATION = "general_configuration.routing.application"
+ASGI_APPLICATION = "main.routing.application"
 
 # Settings for connection to MQTT broker.
 MQTT_BROKER = {

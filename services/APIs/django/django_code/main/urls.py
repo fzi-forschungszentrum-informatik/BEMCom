@@ -16,8 +16,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
-admin.site.site_header = "FZI Entity Connector Admin"
-admin.site.site_title = "FZI Entity Connector"
+admin.site.site_header = "BEMCom Admin"
+admin.site.site_title = "BEMCom"
 admin.site.index_title = "Connector and Datapoint Adminsitration"
 
 
