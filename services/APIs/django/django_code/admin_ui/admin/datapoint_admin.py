@@ -1,93 +1,8 @@
-import logging
-
 from django import forms, db
 from django.contrib import admin
-from django.contrib.contenttypes.models import ContentType
 
 from main.models.datapoint import Datapoint
-
-logger = logging.getLogger(__name__)
-
-
-def create_datapoint_addition_inlines():
-    """
-    This creates StackedInline admin objects for all ModelAdditions known
-    to datapoint. It is used by the DatapointAdmin.
-    """
-    datapoint_addition_inlines = {}
-    data_format_addition_models = Datapoint.data_format_addition_models
-    for data_format in data_format_addition_models.keys():
-
-        # Get te model of the DatapointAddition
-        ct_kwargs = data_format_addition_models[data_format]
-        addition_type = ContentType.objects.get(**ct_kwargs)
-        addition_model = addition_type.model_class()
-
-        # Compute fields and readonly fields. Access to _meta following
-        # https://docs.djangoproject.com/en/3.0/ref/models/meta/
-        model_fields = addition_model._meta.get_fields()
-        # datapoint is not relevant to display.
-        fields = [f.name for f in model_fields if f.name != "datapoint"]
-
-        # Define an order how the fields will be sorted from top to bottom
-        # if the fields exist in the addition model.
-        field_sorting_order = [
-            "last_value",
-            "last_timestamp",
-            "unit",
-            "min_value",
-            "max_value",
-            "allowed_values",
-        ]
-        fields_sorted = []
-        for field in field_sorting_order:
-            if field in fields:
-                fields_sorted.append(field)
-                fields.remove(field)
-        fields_sorted.extend(fields)
-        fields = fields_sorted
-        fieldsets = (
-            (None, {
-                "fields": fields
-            }),
-        )
-
-        # There might be more fields that must be set readonly.
-        readonly_fields = [f.name for f in model_fields if f.editable is False]
-
-        # Display Text Input for text field in Addition Models.
-        formfield_overrides = {
-            db.models.TextField: {
-                'widget': forms.TextInput()
-            },
-        }
-
-        # Now build the inline class based on the above and store it.
-        class DatapointAdditionInline(admin.StackedInline):
-            can_delete = False
-            verbose_name_plural = "Additional metadata"
-        DatapointAdditionInline.model = addition_model
-        DatapointAdditionInline.fields = fields
-        DatapointAdditionInline.fieldsets = fieldsets
-        DatapointAdditionInline.readonly_fields = readonly_fields
-        DatapointAdditionInline.formfield_overrides = formfield_overrides
-        datapoint_addition_inlines[data_format] = DatapointAdditionInline
-
-    return datapoint_addition_inlines
-
-
-# This fails while creating the inital migrations as the django_content_type
-# table does not exist yet.
-try:
-    datapoint_addition_inlines = create_datapoint_addition_inlines()
-except Exception:
-    logger.warning(
-        "Could not load Inline Models for Datapoint Additions. The content"
-        "of the Datapoint Additions may not be displayed correclty. "
-        "Ignore this warning if initially executing makemigrations or "
-        "migrating."
-    )
-    datapoint_addition_inlines = {}
+from main.utils import datetime_iso_format
 
 
 @admin.register(Datapoint)
@@ -104,6 +19,8 @@ class DatapointAdmin(admin.ModelAdmin):
         "key_in_connector",
         "type",
         "example_value",
+        "last_value",
+        "last_value_timestamp_pretty",
         "is_active",
         "data_format",
         "description"
@@ -113,6 +30,7 @@ class DatapointAdmin(admin.ModelAdmin):
     )
     list_editable = (
         "description",
+        "data_format",
     )
     list_filter = (
         "type",
@@ -130,20 +48,103 @@ class DatapointAdmin(admin.ModelAdmin):
         "key_in_connector",
         "type",
         "example_value",
+        "last_value",
+        "last_value_timestamp_pretty",
+        "last_setpoint",
+        "last_setpoint_timestamp_pretty",
+        "last_schedule",
+        "last_schedule_timestamp_pretty",
     )
-    fieldsets = (
-            ('GENERIC METADATA', {
-                "fields": (
-                    "connector",
-                    "key_in_connector",
-                    "type",
-                    "example_value",
-                    "is_active",
-                    "data_format",
-                    "description",
-                )
-            }),
-    )
+
+    def last_value_timestamp_pretty(self, obj):
+        """
+        Displays a prettier timestamp format.
+        """
+        ts = obj.last_value_timestamp
+        if ts is None:
+            return "-"
+        return datetime_iso_format(ts, hide_microsec=True)
+    last_value_timestamp_pretty.admin_order_field = "last_value_timestamp"
+    last_value_timestamp_pretty.short_description = "Last value timestamp"
+
+    def last_setpoint_timestamp_pretty(self, obj):
+        """
+        Displays a prettier timestamp format.
+        """
+        ts = obj.last_setpoint_timestamp
+        if ts is None:
+            return "-"
+        return datetime_iso_format(ts, hide_microsec=True)
+    last_setpoint_timestamp_pretty.admin_order_field = "last_setpoint_timestamp"
+    last_setpoint_timestamp_pretty.short_description = "Last setpoint timestamp"
+
+    def last_schedule_timestamp_pretty(self, obj):
+        """
+        Displays a prettier timestamp format.
+        """
+        ts = obj.last_schedule_timestamp
+        if ts is None:
+            return "-"
+        return datetime_iso_format(ts, hide_microsec=True)
+    last_schedule_timestamp_pretty.admin_order_field = "last_schedule_timestamp"
+    last_schedule_timestamp_pretty.short_description = "Last schedule timestamp"
+
+    def get_fieldsets(self, request, obj=None):
+        """
+        Dynamically add fields that are only relevant for specific values
+        of data_format or additional fields for actuators.
+        """
+        generic_metadata_fields = [
+                "connector",
+                "key_in_connector",
+                "type",
+                "example_value",
+                "is_active",
+                "data_format",
+                "description",
+        ]
+
+        data_format_specific_fields = []
+        if "_numeric" in obj.data_format:
+            data_format_specific_fields.append("unit")
+        if "discrete_" in obj.data_format:
+            data_format_specific_fields.append("allowed_values")
+        if "continuous_numeric" in obj.data_format:
+            data_format_specific_fields.append("min_value")
+            data_format_specific_fields.append("max_value")
+
+        last_datapoint_msg_fields = [
+            "last_value",
+            "last_value_timestamp_pretty",
+        ]
+        if obj.type == "actuator":
+            last_datapoint_msg_fields.append("last_setpoint")
+            last_datapoint_msg_fields.append("last_setpoint_timestamp_pretty")
+            last_datapoint_msg_fields.append("last_schedule")
+            last_datapoint_msg_fields.append("last_schedule_timestamp_pretty")
+
+        fieldsets = (
+            (
+                "GENERIC METADATA",
+                {
+                    "fields": generic_metadata_fields
+                }
+            ),
+            (
+                "DATA FORMAT SPECIFIC METADATA",
+                {
+                    "fields": data_format_specific_fields
+                }
+            ),
+            (
+                "LAST DATAPOINT MESSAGES",
+                {
+                    "fields": last_datapoint_msg_fields
+                }
+            ),
+        )
+        return fieldsets
+
     # Display wider version of normal TextInput for all text fields, as
     # default forms look ugly.
     formfield_overrides = {
@@ -155,6 +156,7 @@ class DatapointAdmin(admin.ModelAdmin):
     Actions changing the data format should not call queryset.update, as this
     will not call the Datapoints save() method, and hence the Datapoint
     Addition models will not be updated.
+    TODO: This is outdated.
     """
     actions = (
         "mark_active",
@@ -218,19 +220,6 @@ class DatapointAdmin(admin.ModelAdmin):
         "Mark data_format of datapoints as continuous_numeric"
     )
 
-    def change_view(self, request, object_id, form_url='', extra_context=None):
-        """
-        Dynamically display the according DatapointAdditionInline based on
-        `data_format`
-        """
-        data_format = Datapoint.objects.get(id=object_id).data_format
-        if data_format not in datapoint_addition_inlines:
-            self.inlines = ()
-        else:
-            DatapointAdditionInline = datapoint_addition_inlines[data_format]
-            self.inlines = (DatapointAdditionInline, )
-        return super().change_view(request, object_id)
-
     @staticmethod
     def connector(obj):
         return obj.connector.name
@@ -240,4 +229,3 @@ class DatapointAdmin(admin.ModelAdmin):
         Remove `add` and `save and add another` button.
         """
         return False
-

@@ -255,15 +255,16 @@ class ConnectorMQTTIntegration():
                 # with the primary key of the Datapoint.
                 datapoint_id = msg.topic.split("/")[-1]
                 datapoint = Datapoint.objects.get(id=datapoint_id)
-
-                # Get the object of the Datapoint's DatapointAddition and
-                # update it with the currenttly received timestamp and value.
-                addition_object = datapoint.get_addition_object()
-                addition_object.last_value = payload["value"]
-                addition_object.last_timestamp = datetime_from_timestamp(
+                datapoint.last_value = payload["value"]
+                datapoint.last_value_timestamp = datetime_from_timestamp(
                     payload["timestamp"]
                 )
-                addition_object.save()
+                datapoint.save(
+                    update_fields=[
+                        "last_value",
+                        "last_value_timestamp",
+                    ]
+                )
             except Exception:
                 logger.exception(
                     'Exception while updating datapoint_message in DB.'

@@ -74,7 +74,7 @@ def trigger_datapoint_map_update(sender, instance, **kwargs):
             # changed, if id has changed as this affects the mqtt_topic or
             # if we data_fromat has changed as this might have an affect wether
             # the datapoint is in datapoint_map or not.
-            if uf is None or "id" in uf or "data_format" in uf:
+            if uf is None or "id" in uf or "is_active" in uf:
                 cmi.create_and_send_datapoint_map(connector=connector)
         # If Datapoint is deleted.
         else:

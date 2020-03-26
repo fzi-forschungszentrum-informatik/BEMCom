@@ -235,7 +235,7 @@ class ConnectorAdmin(admin.ModelAdmin):
         """
         if "_av_dp" in request.POST:
             return HttpResponseRedirect(
-                "/admin/admin_interface/datapoint/?connector__id__exact={}"
+                "/admin/main/datapoint/?connector__id__exact={}"
                 .format(obj.id)
             )
         return super().response_change(request, obj)

@@ -30,16 +30,6 @@ class DatapointSerializer(serializers.Serializer):
             if field.name in self.fields:
                 fields_values[field.name] = getattr(instance, field.name)
 
-        # Add also metadata from the addition models.
-        addition_object = instance.get_addition_object()
-        for field in addition_object._meta.fields:
-            # Skip related fields as they cannot be serialized.
-            if field.name in ["datapoint"]:
-                continue
-            if field.name in self.fields:
-                field_value = getattr(addition_object, field.name)
-                fields_values[field.name] = field_value
-
         # Compute the URLs of the datapoint related messages. Prefer absolute
         # URLs but fall back to relative if we have no request object to
         # determine the absolute path.
@@ -71,11 +61,10 @@ class DatapointValueSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         fields_values = {}
-        addition_object = instance.get_addition_object()
-        fields_values["value"] = addition_object.last_value
+        fields_values["value"] = instance.last_value
         # Return datetime in ms.
-        if addition_object.last_timestamp is not None:
-            timestamp = datetime.timestamp(addition_object.last_timestamp)
+        if instance.last_value_timestamp is not None:
+            timestamp = datetime.timestamp(instance.last_timestamp)
             timestamp_ms = round(timestamp * 1000)
             fields_values["timestamp"] = timestamp_ms
         else:
