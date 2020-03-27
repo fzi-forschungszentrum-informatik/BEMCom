@@ -28,12 +28,18 @@ def update_connector_mqtt_integration_settings(sender, instance, **kwargs):
             cmi = ConnectorMQTTIntegration.get_instance()
             cmi.update_topics()
             cmi.update_subscriptions()
-    # TODO Reactivate once fake mqtt is able to unsubscribe as tests will
-    # fail else.
-#    if sender == models.Datapoint:
-#        cmi = ConnectorMQTTIntegration.get_instance()
-#        cmi.update_topics()
-#        cmi.update_subscriptions()
+
+    if sender == Datapoint:
+        # Trigger updates of topics only if the topic could have changed, i.e.
+        # the id has changed or we don't know which files have been changed.
+        if "update_fields" in kwargs:
+            uf = kwargs["update_fields"]
+        else:
+            uf = None
+        if uf is None or "id" in uf:
+            cmi = ConnectorMQTTIntegration.get_instance()
+            cmi.update_topics()
+            cmi.update_subscriptions()
 
 
 @receiver(signals.post_save, sender=Datapoint)
@@ -72,7 +78,7 @@ def trigger_datapoint_map_update(sender, instance, **kwargs):
             uf = kwargs["update_fields"]
             # Trigger update if we ether do not know what fields have been
             # changed, if id has changed as this affects the mqtt_topic or
-            # if we data_fromat has changed as this might have an affect wether
+            # if is_active has been changed as this might have an affect wether
             # the datapoint is in datapoint_map or not.
             if uf is None or "id" in uf or "is_active" in uf:
                 cmi.create_and_send_datapoint_map(connector=connector)

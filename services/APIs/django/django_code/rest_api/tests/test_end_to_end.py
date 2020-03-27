@@ -40,7 +40,7 @@ def datapoint_detail_setup(request, django_db_setup, django_db_blocker):
         mqtt_client=fake_client_1
     )
 
-    test_connector = connector_factory()
+    test_connector = connector_factory("test_connector6")
     client = APIClient()
 
     # Inject objects into test class.
@@ -92,11 +92,10 @@ class TestDatapointDetails():
         Ensure that the value detail page contains the correct data.
         """
         dp = datapoint_factory(self.test_connector)
-        addition_object = dp.get_addition_object()
-        addition_object.last_value = "last_value!"
+        dp.last_value = "last_value!"
         timestamp = 1585092224000
-        addition_object.last_timestamp = datetime_from_timestamp(timestamp)
-        addition_object.save()
+        dp.last_timestamp = datetime_from_timestamp(timestamp)
+        dp.save()
 
         request = self.client.get("/datapoint/%s/value/" % dp.id)
 

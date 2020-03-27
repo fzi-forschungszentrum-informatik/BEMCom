@@ -64,7 +64,7 @@ class DatapointValueSerializer(serializers.Serializer):
         fields_values["value"] = instance.last_value
         # Return datetime in ms.
         if instance.last_value_timestamp is not None:
-            timestamp = datetime.timestamp(instance.last_timestamp)
+            timestamp = datetime.timestamp(instance.last_value_timestamp)
             timestamp_ms = round(timestamp * 1000)
             fields_values["timestamp"] = timestamp_ms
         else:

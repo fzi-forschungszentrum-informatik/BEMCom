@@ -4,6 +4,9 @@ import time
 
 import pytest
 
+import logging
+logger = logging.getLogger(__name__)
+
 # Sets path and django such that we can execute this file stand alone and
 # develop interactive too.
 if __name__ == "__main__":
@@ -445,17 +448,6 @@ def update_subscription_setup(request, django_db_setup, django_db_blocker):
     test_connector_4 = connector_factory("test_connector_4")
     test_connector_5 = connector_factory("test_connector_5")
 
-    # Create some test datapoints used for checking that normal datapoint
-    # messages will be handled correctly too.
-    numeric_datapoint = datapoint_factory(
-        test_connector_5,
-        data_format="generic_numeric"
-    )
-    text_datapoint = datapoint_factory(
-        test_connector_5,
-        data_format="generic_text"
-    )
-
     # Give django a seconds to receive the signal and call update_topcis
     # as well as update_subscriptions.
     time.sleep(0.5)
@@ -466,9 +458,8 @@ def update_subscription_setup(request, django_db_setup, django_db_blocker):
     request.cls.test_connector_2 = test_connector_2
     request.cls.test_connector_3 = test_connector_3
     request.cls.test_connector_4 = test_connector_4
+    request.cls.test_connector_5 = test_connector_5
     request.cls.cmi = cmi
-    request.cls.numeric_datapoint = numeric_datapoint
-    request.cls.text_datapoint = text_datapoint
     yield
 
     # Close connections and objects.
@@ -691,15 +682,20 @@ class TestUpdateSubscription():
 
     def test_datapoint_message_received(self):
         """
-        Test that datapoint messages received via MQTT correctly update the
-        Addition models of Datapoint.
+        Test that datapoint messages received via MQTT correctly updates the
+        last_value and last_value_timestamp fields.
 
         TODO: Also test that datapoint maps always contain sensor and actuator
         key.
         """
-        text_dp = self.text_datapoint
-        numeric_dp = self.numeric_datapoint
-        numeric_dp.save()
+        numeric_dp = datapoint_factory(
+            self.test_connector_5,
+            data_format="generic_numeric"
+        )
+        text_dp = datapoint_factory(
+            self.test_connector_5,
+            data_format="generic_text"
+        )
 
         datapoint_message_numeric = {
             "value": 13.37,
@@ -714,15 +710,24 @@ class TestUpdateSubscription():
         payload_text = json.dumps(datapoint_message_text)
         topic_numeric = numeric_dp.get_mqtt_topic()
         topic_text = text_dp.get_mqtt_topic()
+
+        # This is a safeguard from debugging too long into the wrong direction.
+        # If this fails the message cannot reach the DB as cmi is not connected
+        # to the topic of the two datapoints (yet).
+        cmi_subscribed_topics = self.cmi.client.fake_broker.subscribed_topics
+        assert topic_text in cmi_subscribed_topics
+        assert id(self.cmi.client) in cmi_subscribed_topics[topic_text]
+        assert topic_numeric in cmi_subscribed_topics
+        assert id(self.cmi.client) in cmi_subscribed_topics[topic_numeric]
+
         self.mqtt_client.publish(topic_numeric, payload_numeric, qos=2)
         self.mqtt_client.publish(topic_text, payload_text, qos=2)
 
         # Wait for the data to reach the DB
         waited_seconds = 0
-        datapointaddition = text_dp.get_addition_object()
         while True:
-
-            if datapointaddition.last_timestamp is None:
+            text_dp.refresh_from_db()
+            if text_dp.last_value_timestamp is None:
                 # That means no update to this datapoint yet.
                 time.sleep(0.005)
                 waited_seconds += 0.005
@@ -735,7 +740,9 @@ class TestUpdateSubscription():
                 continue
             break
 
-        expected_numeric_value = datapoint_message_numeric["value"]
+        # We expect a string as numeric value as the DB saves everything
+        # as strings for simplicity.
+        expected_numeric_value = str(datapoint_message_numeric["value"])
         expected_numeric_timestamp = datapoint_message_numeric["timestamp"]
         expected_numeric_datetime = datetime_from_timestamp(
             expected_numeric_timestamp
@@ -746,13 +753,12 @@ class TestUpdateSubscription():
             expected_text_timestamp
         )
 
-        datapointaddition = numeric_dp.get_addition_object()
-        actual_numeric_value = datapointaddition.last_value
-        actual_numeric_datetime = datapointaddition.last_timestamp
+        numeric_dp.refresh_from_db()
+        actual_numeric_value = numeric_dp.last_value
+        actual_numeric_datetime = numeric_dp.last_value_timestamp
 
-        datapointaddition = text_dp.get_addition_object()
-        actual_text_value = datapointaddition.last_value
-        actual_text_datetime = datapointaddition.last_timestamp
+        actual_text_value = text_dp.last_value
+        actual_text_datetime = text_dp.last_value_timestamp
 
         assert expected_numeric_value == actual_numeric_value
         assert expected_numeric_datetime == actual_numeric_datetime
