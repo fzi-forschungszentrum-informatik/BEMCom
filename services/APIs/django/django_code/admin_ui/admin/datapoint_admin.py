@@ -13,6 +13,10 @@ class DatapointAdmin(admin.ModelAdmin):
 
     This model does not allow adding datapoints manually, it doesn't make
     sense, all datapoints are created by the connectors.
+
+    TODO: Verify that the fields are correct on save, i.e. that those fields
+    that are required for a data_format are set with appropriate values, and
+    that e.g. jsons fields are parsable.
     """
     list_display = (
         "connector",

@@ -35,20 +35,22 @@ urlpatterns = [
         "datapoint/<pk>/value/",
         DatapointValueViewSet.as_view({
             "get": "retrieve",
+            "put": "update",
         })
     ),
     path(
         "datapoint/<pk>/schedule/",
         DatapointScheduleViewSet.as_view({
             "get": "retrieve",
+            "put": "update",
         })
     ),
     path(
         "datapoint/<pk>/setpoint/",
         DatapointSetpointViewSet.as_view({
             "get": "retrieve",
+            "put": "update",
         })
     ),
     path('', include(selected_urls)),
 ]
-

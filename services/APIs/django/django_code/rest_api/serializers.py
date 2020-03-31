@@ -1,6 +1,10 @@
+import json
+import logging
 from datetime import datetime
 
 from rest_framework import serializers
+
+logger = logging.getLogger(__name__)
 
 
 class DatapointSerializer(serializers.Serializer):
@@ -14,7 +18,7 @@ class DatapointSerializer(serializers.Serializer):
     unit = serializers.CharField()
     min_value = serializers.FloatField()
     max_value = serializers.FloatField()
-    allowed_values = serializers.CharField()
+    allowed_values = serializers.JSONField()
     url = serializers.URLField()
     value_url = serializers.URLField()
     schedule_url = serializers.URLField()
@@ -22,13 +26,27 @@ class DatapointSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         fields_values = {}
-        # Put in all fields of the main datapoint model.
-        for field in instance._meta.fields:
-            # Skip related fields as they cannot be serialized.
-            if field.name in ["connector"]:
-                continue
-            if field.name in self.fields:
-                fields_values[field.name] = getattr(instance, field.name)
+        fields_values["id"] = instance.id
+        fields_values["type"] = instance.type
+        fields_values["data_format"] = instance.data_format
+        fields_values["description"] = instance.description
+        if "_numeric" in instance.data_format:
+            fields_values["unit"] = instance.unit
+        if "discrete_" in instance.data_format:
+            allowed_values = instance.allowed_values
+            try:
+                allowed_values = json.loads(allowed_values)
+            except Exception:
+                logger.exception(
+                    "Failed to parse JSON of allowed_values for datapoint "
+                    "id: %s. allowed_values field was: %s"
+                    % (instance.id, allowed_values)
+                )
+                allowed_values = None
+            fields_values["allowed_values"] = allowed_values
+        if "continuous_numeric" in instance.data_format:
+            fields_values["min_value"] = instance.min_value
+            fields_values["max_value"] = instance.max_value
 
         # Compute the URLs of the datapoint related messages. Prefer absolute
         # URLs but fall back to relative if we have no request object to

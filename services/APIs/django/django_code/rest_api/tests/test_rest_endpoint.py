@@ -94,12 +94,20 @@ class TestRESTEndpoint():
         """
         Request the data of one sensor datapoint from the REST API and
         check that the all expected fields are delivered.
+
+        This checks also that optional metadata fields, that should only be
+        displayed for certain data_foramt values, are returned correctly.
         """
         dp = datapoint_factory(self.test_connector)
         dp.description = "A sensor datapoint for testing"
+        dp.unit = "Test Unit"
+        dp.allowed_values = '[1.0, 2.0]'
+        dp.min_value = 1.0
+        dp.max_value = 2.0
         dp.save()
-        request = self.client.get("/datapoint/%s/" % dp.id)
 
+        # First miniaml metadata.
+        request = self.client.get("/datapoint/%s/" % dp.id)
         expected_data = {
             "id": dp.id,
             "type": "sensor",
@@ -108,7 +116,75 @@ class TestRESTEndpoint():
             "url": "http://testserver/datapoint/%s/" % dp.id,
             "value_url": "http://testserver/datapoint/%s/value/" % dp.id,
         }
+        assert request.data == expected_data
 
+        # Below repitions of the same test, but with changed expected_data
+        # due to the changes of data_format
+        dp.data_format = "discrete_text"
+        dp.save()
+        expected_data = {
+            **expected_data,
+            "allowed_values": [1.0, 2.0],
+            "data_format": "discrete_text",
+        }
+        request = self.client.get("/datapoint/%s/" % dp.id)
+        assert request.data == expected_data
+
+        dp.data_format = "discrete_numeric"
+        dp.save()
+        expected_data = {
+            **expected_data,
+            "unit": "Test Unit",
+            "data_format": "discrete_numeric",
+        }
+        request = self.client.get("/datapoint/%s/" % dp.id)
+        assert request.data == expected_data
+
+        dp.data_format = "generic_numeric"
+        dp.save()
+        expected_data = {
+            **expected_data,
+            "data_format": "generic_numeric",
+        }
+        del expected_data["allowed_values"]
+        request = self.client.get("/datapoint/%s/" % dp.id)
+        assert request.data == expected_data
+
+        dp.data_format = "continuous_numeric"
+        dp.save()
+        expected_data = {
+            **expected_data,
+            "data_format": "continuous_numeric",
+            "min_value": 1.0,
+            "max_value": 2.0,
+        }
+        request = self.client.get("/datapoint/%s/" % dp.id)
+        assert request.data == expected_data
+
+    def test_get_datapoint_detail_for_sensor_allowed_value_error(self):
+        """
+        This checks that a incorrect field for allowed values is handled.
+        It will return an empty list on error and log an expcetion.
+
+        TODO: Also test that the log messages is written out.
+        """
+        dp = datapoint_factory(self.test_connector)
+        dp.data_format = "discrete_text"
+        dp.description = "A sensor datapoint for testing"
+        dp.allowed_values = None
+        dp.save()
+
+        # First miniaml metadata.
+        request = self.client.get("/datapoint/%s/" % dp.id)
+        expected_data = {
+            "id": dp.id,
+            "type": "sensor",
+            "data_format": "discrete_text",
+            "description": "A sensor datapoint for testing",
+            "allowed_values": None,
+            "url": "http://testserver/datapoint/%s/" % dp.id,
+            "value_url": "http://testserver/datapoint/%s/value/" % dp.id,
+        }
         assert request.data == expected_data
 
     def test_get_datapoint_detail_for_actuator(self):
@@ -117,6 +193,11 @@ class TestRESTEndpoint():
         check that the expected fields are delivered.
         """
         dp = datapoint_factory(self.test_connector, type="actuator")
+        dp.unit = "Test Unit"
+        dp.allowed_values = '[1.0, 2.0]'
+        dp.min_value = 1.0
+        dp.max_value = 2.0
+        dp.save()
         request = self.client.get("/datapoint/%s/" % dp.id)
 
         expected_data = {
@@ -130,6 +211,49 @@ class TestRESTEndpoint():
             "setpoint_url": "http://testserver/datapoint/%s/setpoint/" % dp.id,
         }
 
+        assert request.data == expected_data
+
+        # Below repitions of the same test, but with changed expected_data
+        # due to the changes of data_format
+        dp.data_format = "discrete_text"
+        dp.save()
+        expected_data = {
+            **expected_data,
+            "allowed_values": [1.0, 2.0],
+            "data_format": "discrete_text",
+        }
+        request = self.client.get("/datapoint/%s/" % dp.id)
+        assert request.data == expected_data
+
+        dp.data_format = "discrete_numeric"
+        dp.save()
+        expected_data = {
+            **expected_data,
+            "unit": "Test Unit",
+            "data_format": "discrete_numeric",
+        }
+        request = self.client.get("/datapoint/%s/" % dp.id)
+        assert request.data == expected_data
+
+        dp.data_format = "generic_numeric"
+        dp.save()
+        expected_data = {
+            **expected_data,
+            "data_format": "generic_numeric",
+        }
+        del expected_data["allowed_values"]
+        request = self.client.get("/datapoint/%s/" % dp.id)
+        assert request.data == expected_data
+
+        dp.data_format = "continuous_numeric"
+        dp.save()
+        expected_data = {
+            **expected_data,
+            "data_format": "continuous_numeric",
+            "min_value": 1.0,
+            "max_value": 2.0,
+        }
+        request = self.client.get("/datapoint/%s/" % dp.id)
         assert request.data == expected_data
 
     def test_get_datapoint_value_detail_for_sensor(self):

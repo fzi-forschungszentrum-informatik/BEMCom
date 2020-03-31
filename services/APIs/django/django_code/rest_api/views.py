@@ -23,6 +23,18 @@ class DatapointValueViewSet(viewsets.ViewSet):
         serializer = DatapointValueSerializer(datapoint)
         return Response(serializer.data)
 
+    def update(self, request, *args, pk=None, **kwargs):
+        """
+        Updates the fields last_value and last_value_timestamp.
+        Inspred by:
+        https://github.com/encode/django-rest-framework/blob/734c534dbb9c5758af335dba1fdbc2690388f076/rest_framework/mixins.py#L59
+        .. but ignores the partial updates as we only allow put and not patch.
+        """
+        datapoint = get_object_or_404(Datapoint, pk=pk)
+        serializer = DatapointValueSerializer(datapoint, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
 
 class DatapointScheduleViewSet(viewsets.ViewSet):
 
