@@ -42,7 +42,7 @@ class DatapointValueViewSet(viewsets.ViewSet):
         # values can only be sent by the devices.
         if datapoint.type != "actuator":
             return Response(
-                "This datapoint does not support setting values.",
+                {"detail": "This datapoint does not support setting values."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
