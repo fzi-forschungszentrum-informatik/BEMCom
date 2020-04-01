@@ -29,10 +29,12 @@ class DatapointValueViewSet(viewsets.ViewSet):
 
     def update(self, request, *args, pk=None, **kwargs):
         """
-        Updates the fields last_value and last_value_timestamp.
-        Inspred by:
-        https://github.com/encode/django-rest-framework/blob/734c534dbb9c5758af335dba1fdbc2690388f076/rest_framework/mixins.py#L59
-        .. but ignores the partial updates as we only allow put and not patch.
+        Receive a Datapoint value message and send it to the broker.
+
+        This will not save the value in the database, instead we rely on the
+        automatic save after the message returns from the broker. This way
+        it is ensured that current state displayed to the API user is always
+        the all components received from the broker.
         """
         datapoint = get_object_or_404(Datapoint, pk=pk)
 
