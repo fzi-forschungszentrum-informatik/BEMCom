@@ -7,6 +7,78 @@ from rest_framework import serializers
 logger = logging.getLogger(__name__)
 
 
+class GenericValidators():
+    """
+    Generic functions to validate the fields during deserialization.
+
+    Generic Docstring for all validate_* functions
+
+    Arguments:
+    ----------
+    datapoint: datapoint instance.
+        .. matching thecurrently processed message.
+    value:
+        The value to validate. See also:
+        https://www.django-rest-framework.org/api-guide/serializers/#validation
+
+    Returns:
+    --------
+    value:
+        The input value if and only if valid.
+
+    Raises:
+    -------
+    serializers.ValidationError:
+        If input value is not valid.
+    """
+
+    @staticmethod
+    def validate_value(datapoint, value):
+
+        if "_numeric" in datapoint.data_format:
+            # None is also a valid value for a Django float field, also for
+            # BEMCom values.
+            if value is not None:
+                try:
+                    value = float(value)
+                except ValueError:
+                    raise serializers.ValidationError(
+                        "Value (%s) for numeric datapoint cannot be parsed to"
+                        " float." % value
+                    )
+
+        if "continuous_numeric" in datapoint.data_format:
+            if datapoint.min_value is not None and value is not None:
+                if value < datapoint.min_value:
+                    raise serializers.ValidationError(
+                        "Value (%s) for numeric datapoint is smaller then "
+                        "minimum allowed value (%s)." %
+                        (value, datapoint.min_value)
+                    )
+            if datapoint.max_value is not None and value is not None:
+                if value > datapoint.max_value:
+                    raise serializers.ValidationError(
+                        "Value (%s) for numeric datapoint is larger then "
+                        "maximum allowed value (%s)." %
+                        (value, datapoint.max_value)
+                    )
+        if "discrete_" in datapoint.data_format:
+            # Could be None or emptry string, both should be handled no values
+            # allowed.
+            if datapoint.allowed_values:
+                allowed_values = json.loads(datapoint.allowed_values)
+            else:
+                allowed_values = []
+            if value not in allowed_values:
+                raise serializers.ValidationError(
+                    "Value (%s) for discrete datapoint in list of"
+                    "allowed_values (%s)." %
+                    (value, datapoint.allowed_values)
+                )
+
+        return value
+
+
 class DatapointSerializer(serializers.Serializer):
     """
     Show metadata for one/many datapoints.
@@ -74,8 +146,12 @@ class DatapointValueSerializer(serializers.Serializer):
     """
     Return the latest sensor/actuator msg of the datapoint.
     """
-    value = serializers.CharField()
-    timestamp = serializers.IntegerField()
+    value = serializers.CharField(
+        allow_null=True
+    )
+    timestamp = serializers.IntegerField(
+        read_only=True
+    )
 
     def to_representation(self, instance):
         fields_values = {}
@@ -88,6 +164,11 @@ class DatapointValueSerializer(serializers.Serializer):
         else:
             fields_values["timestamp"] = None
         return fields_values
+
+    def validate_value(self, value):
+        datapoint = self.instance
+        gv = GenericValidators()
+        return gv.validate_value(datapoint, value)
 
 
 class DatapointScheduleSerializer(serializers.Serializer):

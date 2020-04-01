@@ -1,10 +1,14 @@
+import json
+
 from django.http import Http404
 from django.shortcuts import get_object_or_404
+from rest_framework import status
 from rest_framework import viewsets
 from rest_framework.response import Response
-from rest_framework.decorators import action
 
+from main.utils import timestamp_utc_now
 from main.models.datapoint import Datapoint
+from main.connector_mqtt_integration import ConnectorMQTTIntegration
 from .serializers import DatapointSerializer
 from .serializers import DatapointValueSerializer
 from .serializers import DatapointScheduleSerializer
@@ -31,9 +35,34 @@ class DatapointValueViewSet(viewsets.ViewSet):
         .. but ignores the partial updates as we only allow put and not patch.
         """
         datapoint = get_object_or_404(Datapoint, pk=pk)
+
+        # Only actuator datapoints can be set externally. Sensor datapoint
+        # values can only be sent by the devices.
+        if datapoint.type != "actuator":
+            return Response(
+                "This datapoint does not support setting values.",
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         serializer = DatapointValueSerializer(datapoint, data=request.data)
+
+        # Returns HTTP 400 (by exception) if sent data is not valid.
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+
+        # This is now a valid value. Add the current timestamp as time the
+        # system has been received by BEMCom to complete the message.
+        validated_data = serializer.validated_data
+        validated_data["timestamp"] = timestamp_utc_now()
+
+        # Send the message to the MQTT broker.
+        mqtt_topic = datapoint.get_mqtt_topic()
+        cmi = ConnectorMQTTIntegration.get_instance()
+        cmi.client.publish(
+            topic=mqtt_topic,
+            payload=json.dumps(validated_data)
+        )
+
+        return Response(validated_data, status=status.HTTP_200_OK)
 
 
 class DatapointScheduleViewSet(viewsets.ViewSet):
@@ -51,8 +80,20 @@ class DatapointScheduleViewSet(viewsets.ViewSet):
         )
         return Response(serializer.data)
 
+    def update(self, request, *args, pk=None, **kwargs):
+        """
+        TODO
+        """
+        datapoint = get_object_or_404(Datapoint, pk=pk)
+
+        # Only actuators have schedules and setpoints.
+        if datapoint.type != "actuator":
+            raise Http404("Not found.")
+
 
 class DatapointSetpointViewSet(viewsets.ViewSet):
+
+
 
     def retrieve(self, request, pk=None):
         datapoint = get_object_or_404(Datapoint, pk=pk)
@@ -63,3 +104,13 @@ class DatapointSetpointViewSet(viewsets.ViewSet):
 
         serializer = DatapointSetpointSerializer(datapoint)
         return Response(serializer.data)
+
+    def update(self, request, *args, pk=None, **kwargs):
+        """
+        TODO
+        """
+        datapoint = get_object_or_404(Datapoint, pk=pk)
+
+        # Only actuators have schedules and setpoints.
+        if datapoint.type != "actuator":
+            raise Http404("Not found.")

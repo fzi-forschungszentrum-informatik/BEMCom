@@ -33,3 +33,12 @@ def datetime_iso_format(dt, hide_microsec=True):
         dt = dt.replace(microsecond=0)
     dt = dt.astimezone(timezone.utc).replace(tzinfo=None).isoformat(sep=' ')
     return dt + " (UTC)"
+
+
+def timestamp_utc_now():
+    """
+    Returns the timestamp of the current UTC time in milliseconds.
+    Rounded to full microseconds.
+    """
+    timestamp_utc_now = datetime.timestamp(datetime.utcnow()) * 1000
+    return round(timestamp_utc_now)

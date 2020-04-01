@@ -66,13 +66,14 @@ def rest_endpoint_setup(request, django_db_setup, django_db_blocker):
     request.cls.client = client
     yield
 
+    # Remove DB entries, as the restore command below does not seem to work.
+    test_connector.delete()
+
     # Close connections and objects.
     mqtt_client.disconnect()
     mqtt_client.loop_stop()
     cmi.disconnect()
 
-    # Remove DB entries, as the restore command below does not seem to work.
-    test_connector.delete()
 
     # Remove access to DB.
     django_db_blocker.block()
@@ -264,7 +265,7 @@ class TestRESTEndpoint():
         dp = datapoint_factory(self.test_connector)
         dp.last_value = "last_value!"
         timestamp = 1585092224000
-        dp.last_timestamp = datetime_from_timestamp(timestamp)
+        dp.last_value_timestamp = datetime_from_timestamp(timestamp)
         dp.save()
 
         request = self.client.get("/datapoint/%s/value/" % dp.id)
@@ -298,7 +299,7 @@ class TestRESTEndpoint():
         This does not make sense, sensor messages should only be generated
         by the devices.
         """
-        dp = datapoint_factory(self.test_connector, type="actuator")
+        dp = datapoint_factory(self.test_connector)
         dp.last_value = "last_value!"
         timestamp = 1585092224000
         dp.last_timestamp = datetime_from_timestamp(timestamp)
@@ -308,14 +309,13 @@ class TestRESTEndpoint():
         # denied as expected.
         update_msg = {
             "value": "updated_value!",
-            "timestamp": 1585096161000,
         }
         request = self.client.put(
             "/datapoint/%s/value/" % dp.id,
             update_msg,
             format='json'
         )
-        assert request.status_code == 405
+        assert request.status_code == 403
 
     def test_put_datapoint_value_detail_for_actuator(self):
         """
@@ -346,7 +346,6 @@ class TestRESTEndpoint():
         # successful.
         update_msg = {
             "value": "updated_value!",
-            "timestamp": 1585096161000,
         }
         request = self.client.put(
             "/datapoint/%s/value/" % dp.id,
@@ -354,6 +353,14 @@ class TestRESTEndpoint():
             format='json'
         )
         assert request.status_code == 200
+
+        # The server has given the new message a timestamp. Combining the
+        # timestamp and the sent value gives us the message we expect on the
+        # broker.
+        expected_msg = {
+            "value": update_msg["value"],
+            "timestamp": request.data["timestamp"]
+        }
 
         # Check if the message has been sent. This might happen in async, so
         # we may have to wait a little. If this code fails, the fault likely
@@ -371,7 +378,7 @@ class TestRESTEndpoint():
 
         # Now that we know the message has been published on the broker,
         # verify it holds the expected information.
-        assert self.mqtt_client.userdata[dp_mqtt_value_topic] == update_msg
+        assert self.mqtt_client.userdata[dp_mqtt_value_topic] == expected_msg
 
         # After the MQTT message has now arrived the updated value should now
         # be available on the REST interface. As above this might happen async,
@@ -390,7 +397,7 @@ class TestRESTEndpoint():
                 )
 
         request = self.client.get("/datapoint/%s/value/" % dp.id)
-        assert request.data == update_msg
+        assert request.data == expected_msg
 
     def test_get_datapoint_schedule_detail_rejected_for_sensor(self):
         """
@@ -398,7 +405,7 @@ class TestRESTEndpoint():
         this kind of message does only exist for actuators.
         """
         dp = datapoint_factory(self.test_connector)
-        request = self.client.get("/datapoint/%s/setpoint/" % dp.id)
+        request = self.client.get("/datapoint/%s/schedule/" % dp.id)
 
         assert request.status_code == 404
 
@@ -415,7 +422,7 @@ class TestRESTEndpoint():
             "timestamp": 1585096161000,
         }
         request = self.client.put(
-            "/datapoint/%s/value/" % dp.id,
+            "/datapoint/%s/schedule/" % dp.id,
             update_msg,
             format='json'
         )
@@ -436,9 +443,13 @@ class TestRESTEndpoint():
 
     def test_get_datapoint_setpoint_detail_rejected_for_sensor(self):
         """
-        TODO
+        Check that a setpoint detail cannot be retrieved for a sensor, as
+        this kind of message does only exist for actuators.
         """
-        assert False
+        dp = datapoint_factory(self.test_connector)
+        request = self.client.get("/datapoint/%s/setpoint/" % dp.id)
+
+        assert request.status_code == 404
 
     def test_put_datapoint_setpoint_detail_rejected_for_sensor(self):
         """

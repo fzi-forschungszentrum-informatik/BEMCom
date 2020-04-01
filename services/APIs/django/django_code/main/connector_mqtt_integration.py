@@ -107,6 +107,8 @@ class ConnectorMQTTIntegration():
         """
         self.client.disconnect()
         self.client.loop_stop()
+        # Remove the client, so init can establish a new connection.
+        del self.client
 
     def update_topics(self):
         """
