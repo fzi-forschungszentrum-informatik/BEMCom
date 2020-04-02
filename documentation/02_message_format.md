@@ -228,17 +228,20 @@ Conventions for timestamps and values.
 Will set an actuator to the value 21 from the time the message is received by the controller until time 1564489613491 after which the actuator is set to off.
 
 ```
-"payload": {
-		{
-			"from_timestamp": null,
-			"to_timestamp": 1564489613491,
-			"value": 21,
-		},
-		{
-			"from_timestamp": 1564489613491,
-			"to_timestamp": null,
-			"value": null,
-		},
+{
+    "schedule": [
+        {
+            "from_timestamp": null,
+            "to_timestamp": 1564489613491,
+            "value": 21
+        },
+        {
+            "from_timestamp": 1564489613491,
+            "to_timestamp": null,
+            "value": null
+        }
+    ],
+    "timestamp": 1564489613491
 }
 ```
 

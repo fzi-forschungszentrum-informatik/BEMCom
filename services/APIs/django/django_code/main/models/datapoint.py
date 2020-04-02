@@ -1,6 +1,8 @@
+import json
+
 from django.db import models
 from django.utils.text import slugify
-from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 
 from .connector import Connector
 
@@ -161,11 +163,12 @@ class Datapoint(models.Model):
         )
     )
     allowed_values = models.TextField(
-        blank=True,
-        null=True,
-        default=None,
+        blank=False,
+        null=False,
+        default="[]",
         help_text=(
-            "Allowed values. Applicable to discrete valued datapoints."
+            "Allowed values. Applicable to discrete valued datapoints. "
+            "Must be a valid JSON string."
         )
     )
     min_value = models.FloatField(
@@ -215,3 +218,13 @@ class Datapoint(models.Model):
         # Removes the trailing wildcard `#`
         prefix = self.connector.mqtt_topic_datapoint_message_wildcard[:-1]
         return prefix + str(self.id)
+
+    def clean(self):
+        """
+        """
+        try:
+            _ = json.loads(self.allowed_values)
+        except Exception:
+            raise ValidationError(
+                "Allowed values contains no valid JSON string."
+            )
