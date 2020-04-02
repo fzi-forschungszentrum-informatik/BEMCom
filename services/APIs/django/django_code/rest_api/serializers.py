@@ -4,6 +4,8 @@ from datetime import datetime
 
 from rest_framework import serializers
 
+from main.utils import timestamp_utc_now
+
 logger = logging.getLogger(__name__)
 
 
@@ -78,6 +80,131 @@ class GenericValidators():
 
         return value
 
+    @staticmethod
+    def validate_timestamp(datapoint, timestamp):
+        # No further checking for None, it's ok.
+        if timestamp is None:
+            return None
+        # Validate that the timestamp can be parsed as int.
+        try:
+            timestamp = int(timestamp)
+        except Exception:
+            raise serializers.ValidationError(
+                "Timestamp (%s) could not be parsed to integer." %
+                str(timestamp)
+            )
+
+        # Check that the timestamp is within a reasonable range for
+        # milliseconds. Check that the timestamp is within a range of
+        # ~3 years.
+        now = timestamp_utc_now()
+        if timestamp > now + 1e11:
+            raise serializers.ValidationError(
+                "Timestamp (%s) seems unreasonably high. Check if it is "
+                "in milliseconds and contact your adminstrator if this is the "
+                "case." %
+                str(timestamp)
+            )
+        if timestamp < now - 1e11:
+            raise serializers.ValidationError(
+                "Timestamp (%s) seems unreasonably low. Check if it is "
+                "in milliseconds and contact your adminstrator if this is the "
+                "case." %
+                str(timestamp)
+            )
+
+        return timestamp
+
+    def validate_schedule(self, datapoint, schedule):
+        # None is ok but pointless to check further.
+        if schedule is None:
+            return schedule
+
+        # Verify that we can parse the incomming schedule as json.
+        try:
+            schedule = json.loads(schedule)
+        except Exception:
+            raise serializers.ValidationError(
+                "Schedule (%s) is not valid JSON." %
+                schedule
+            )
+
+        if not isinstance(schedule, list):
+            raise serializers.ValidationError(
+                "Schedule (%s) is not a list of schedule items." %
+                str(schedule)
+            )
+
+        for schedule_item in schedule:
+            if not isinstance(schedule_item, dict):
+                raise serializers.ValidationError(
+                    "Schedule Item (%s) is not a Dict." %
+                    str(schedule_item)
+                )
+
+            # Verify that only the expected keys are given in schedule item.
+            if "from_timestamp" not in schedule_item:
+                raise serializers.ValidationError(
+                    "Key \"from_timestamp\" is missing Schedule Item (%s)." %
+                    str(schedule_item)
+                )
+            if "to_timestamp" not in schedule_item:
+                raise serializers.ValidationError(
+                    "Key \"to_timestamp\" is missing Schedule Item (%s)." %
+                    str(schedule_item)
+                )
+            if "value" not in schedule_item:
+                raise serializers.ValidationError(
+                    "Key \"value\" is missing Schedule Item (%s)." %
+                    str(schedule_item)
+                )
+            if len(schedule_item.keys()) > 3:
+                raise serializers.ValidationError(
+                    "Found unexpected key in Schedule Item (%s)." %
+                    str(schedule_item)
+                )
+
+            # Now that we are sure that the message format itself is correct
+            # verify that the values are ok.
+            si_value = schedule_item["value"]
+            si_from_ts = schedule_item["from_timestamp"]
+            si_to_ts = schedule_item["to_timestamp"]
+            try:
+                si_value = self.validate_value(datapoint, si_value)
+            except serializers.ValidationError as ve:
+                raise serializers.ValidationError(
+                    "Validation of value of Schedule Item (%s) failed. The"
+                    "error was: %s" %
+                    (str(schedule_item), str(ve.detail))
+                )
+            if si_from_ts is not None and si_to_ts is not None:
+                if si_from_ts >= si_to_ts:
+                    raise serializers.ValidationError(
+                        "Validation of timestamps of Schedule Item (%s) "
+                        "failed. to_timestamp must be larger then "
+                        "from_timestamp" %
+                        str(schedule_item)
+                    )
+            try:
+                si_from_ts = self.validate_timestamp(datapoint, si_from_ts)
+            except serializers.ValidationError as ve:
+                raise serializers.ValidationError(
+                    "Validation of from_timestamp of Schedule Item (%s) "
+                    "failed. The error was: %s" %
+                    (str(schedule_item), str(ve.detail))
+                )
+
+            try:
+                si_to_ts = self.validate_timestamp(datapoint, si_to_ts)
+            except serializers.ValidationError as ve:
+                raise serializers.ValidationError(
+                    "Validation of to_timestamp of Schedule Item (%s) "
+                    "failed. The error was: %s" %
+                    (str(schedule_item), str(ve.detail))
+                )
+
+        return schedule
+
 
 class DatapointSerializer(serializers.Serializer):
     """
@@ -144,7 +271,8 @@ class DatapointSerializer(serializers.Serializer):
 
 class DatapointValueSerializer(serializers.Serializer):
     """
-    Return the latest sensor/actuator msg of the datapoint.
+    Generate the outgoing "Datapoint Value" messages, and validate the
+    incomming messages.
     """
     value = serializers.CharField(
         allow_null=True
@@ -173,23 +301,59 @@ class DatapointValueSerializer(serializers.Serializer):
 
 class DatapointScheduleSerializer(serializers.Serializer):
     """
-    TODO: Fix datapoint model and return appropriate values here.
+    Generate the outgoing "Datapoint Schedule" messages, and validate the
+    incomming messages.
     """
-    schedule = serializers.CharField()
-    timestamp = serializers.IntegerField()
+    schedule = serializers.CharField(
+        allow_null=True
+    )
+    timestamp = serializers.IntegerField(
+        read_only=True
+    )
 
     def to_representation(self, instance):
         fields_values = {}
+        schedule = instance.last_schedule
+        if schedule:
+            schedule = json.loads(schedule)
+        fields_values["schedule"] = schedule
+        # Return datetime in ms.
+        if instance.last_schedule_timestamp is not None:
+            timestamp = datetime.timestamp(instance.last_schedule_timestamp)
+            timestamp_ms = round(timestamp * 1000)
+            fields_values["timestamp"] = timestamp_ms
+        else:
+            fields_values["timestamp"] = None
         return fields_values
+
+    def validate_schedule(self, value):
+        datapoint = self.instance
+        gv = GenericValidators()
+        return gv.validate_schedule(datapoint, value)
 
 
 class DatapointSetpointSerializer(serializers.Serializer):
     """
     TODO: Fix datapoint model and return appropriate values here.
     """
-    setpoint = serializers.CharField()
-    timestamp = serializers.IntegerField()
+    setpoint = serializers.CharField(
+        allow_null=True
+    )
+    timestamp = serializers.IntegerField(
+        read_only=True
+    )
 
     def to_representation(self, instance):
         fields_values = {}
+        setpoint = instance.last_setpoint
+        if setpoint:
+            setpoint = json.loads(setpoint)
+        fields_values["setpoint"] = setpoint
+        # Return datetime in ms.
+        if instance.last_setpoint_timestamp is not None:
+            timestamp = datetime.timestamp(instance.last_setpoint_timestamp)
+            timestamp_ms = round(timestamp * 1000)
+            fields_values["timestamp"] = timestamp_ms
+        else:
+            fields_values["timestamp"] = None
         return fields_values

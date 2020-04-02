@@ -92,6 +92,25 @@ class DatapointScheduleViewSet(viewsets.ViewSet):
         if datapoint.type != "actuator":
             raise Http404("Not found.")
 
+        serializer = DatapointScheduleSerializer(datapoint, data=request.data)
+
+        # Returns HTTP 400 (by exception) if sent data is not valid.
+        serializer.is_valid(raise_exception=True)
+
+        # This is now a valid schedule. Add the current timestamp as time the
+        # system has been received by BEMCom to complete the message.
+        validated_data = serializer.validated_data
+        validated_data["timestamp"] = timestamp_utc_now()
+
+        # Send the message to the MQTT broker.
+        mqtt_topic = datapoint.get_mqtt_topics()["schedule"]
+        cmi = ConnectorMQTTIntegration.get_instance()
+        cmi.client.publish(
+            topic=mqtt_topic,
+            payload=json.dumps(validated_data)
+        )
+
+        return Response(validated_data, status=status.HTTP_200_OK)
 
 class DatapointSetpointViewSet(viewsets.ViewSet):
 

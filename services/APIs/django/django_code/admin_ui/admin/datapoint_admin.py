@@ -1,5 +1,7 @@
+import json
 from django import forms, db
 from django.contrib import admin
+from django.utils.safestring import mark_safe
 
 from main.models.datapoint import Datapoint
 from main.utils import datetime_iso_format
@@ -54,9 +56,9 @@ class DatapointAdmin(admin.ModelAdmin):
         "example_value",
         "last_value",
         "last_value_timestamp_pretty",
-        "last_setpoint",
+        "last_setpoint_pretty",
         "last_setpoint_timestamp_pretty",
-        "last_schedule",
+        "last_schedule_pretty",
         "last_schedule_timestamp_pretty",
     )
 
@@ -93,6 +95,39 @@ class DatapointAdmin(admin.ModelAdmin):
     last_schedule_timestamp_pretty.admin_order_field = "last_schedule_timestamp"
     last_schedule_timestamp_pretty.short_description = "Last schedule timestamp"
 
+    def last_schedule_pretty(self, obj):
+        """
+        Pretty print json of schedule.
+        """
+        schedule = obj.last_schedule
+        if schedule is None:
+            return "-"
+        try:
+            schedule = json.dumps(json.loads(schedule), indent=4)
+            schedule = mark_safe("<pre>" + schedule + "</pre>")
+
+        except Exception:
+            pass
+        return schedule
+    last_schedule_pretty.short_description = "Last schedule"
+
+    def last_setpoint_pretty(self, obj):
+        """
+        Pretty print json of setpoint.
+        """
+        setpoint = obj.last_setpoint
+        if setpoint is None:
+            return "-"
+
+        try:
+            setpoint = json.dumps(json.loads(setpoint), indent=4)
+            setpoint = mark_safe("<pre>" + setpoint + "</pre>")
+
+        except Exception:
+            pass
+        return setpoint
+    last_setpoint_pretty.short_description = "Last setpoint"
+
     def get_fieldsets(self, request, obj=None):
         """
         Dynamically add fields that are only relevant for specific values
@@ -122,9 +157,9 @@ class DatapointAdmin(admin.ModelAdmin):
             "last_value_timestamp_pretty",
         ]
         if obj.type == "actuator":
-            last_datapoint_msg_fields.append("last_setpoint")
+            last_datapoint_msg_fields.append("last_setpoint_pretty")
             last_datapoint_msg_fields.append("last_setpoint_timestamp_pretty")
-            last_datapoint_msg_fields.append("last_schedule")
+            last_datapoint_msg_fields.append("last_schedule_pretty")
             last_datapoint_msg_fields.append("last_schedule_timestamp_pretty")
 
         fieldsets = (

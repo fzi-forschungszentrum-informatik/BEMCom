@@ -416,10 +416,21 @@ class TestRESTEndpoint():
         """
         dp = datapoint_factory(self.test_connector)
 
-        # TODO: Correct this message.
         update_msg = {
-            "value": "updated_value!",
-            "timestamp": 1585096161000,
+            "schedule": json.dumps(
+                [
+                    {
+                        'from_timestamp': None,
+                        'to_timestamp': 1564489613491,
+                        'value': 21
+                    },
+                    {
+                        'from_timestamp': 1564489613491,
+                        'to_timestamp': None,
+                        'value': None
+                    }
+                ]
+            ),
         }
         request = self.client.put(
             "/datapoint/%s/schedule/" % dp.id,
@@ -429,17 +440,132 @@ class TestRESTEndpoint():
 
         assert request.status_code == 404
 
-    def test_get_datapoint_schedule_detail_rejected_for_actuator(self):
+    def test_get_datapoint_schedule_detail_for_actuator(self):
         """
-        TODO
+        Check that the schedule of an actuator is returend as expected.
         """
-        assert False
+        dp = datapoint_factory(self.test_connector, type="actuator")
+        dp.description = "A actuator datapoint for schedule testing."
+        last_schedule = [
+            {
+                'from_timestamp': None,
+                'to_timestamp': 1564489613491,
+                'value': 21
+            },
+            {
+                'from_timestamp': 1564489613491,
+                'to_timestamp': None,
+                'value': None
+            }
+        ]
+        dp.last_schedule = json.dumps(last_schedule)
+        timestamp = 1564489613491
+        dp.last_schedule_timestamp = datetime_from_timestamp(timestamp)
+        dp.save()
+
+        request = self.client.get("/datapoint/%s/schedule/" % dp.id)
+
+        expected_data = {
+            "schedule": last_schedule,
+            "timestamp": timestamp,
+        }
+
+        assert request.data == expected_data
 
     def test_put_datapoint_schedule_detail_rejected_for_actuator(self):
         """
-        TODO
+        Write (PUT) a schedule message, that should trigger that the
+        corresponding message is sent to the message broker and after that also
+        stored in the database, from which it should be readable as usual.
+
+        This should by definition only be possible for actuators.
         """
-        assert False
+        dp = datapoint_factory(self.test_connector, type="actuator")
+        dp.description = "A actuator datapoint for schedule testing."
+        dp.save()
+
+        # Subscribe to the MQTT topic of the datapoint so we can check if the
+        # expected message was sent.
+        def on_message(client, userdata, msg):
+            """
+            Store the received message so we can test it's correctness later.
+            """
+            client.userdata[msg.topic] = json.loads(msg.payload)
+        # XXX This is wrong
+        dp_mqtt_schedule_topic = dp.get_mqtt_topics()["schedule"]
+        self.mqtt_client.subscribe(dp_mqtt_schedule_topic)
+        self.mqtt_client.on_message = on_message
+
+        # Now put an update for the datapoint and check that the put was
+        # successful.
+        update_msg = {
+            "schedule": json.dumps(
+                [
+                    {
+                        'from_timestamp': None,
+                        'to_timestamp': 1564489613491,
+                        'value': 21
+                    },
+                    {
+                        'from_timestamp': 1564489613491,
+                        'to_timestamp': None,
+                        'value': None
+                    }
+                ]
+            ),
+        }
+        request = self.client.put(
+            "/datapoint/%s/schedule/" % dp.id,
+            update_msg,
+            format='json'
+        )
+        assert request.status_code == 200
+
+        # The server has given the new message a timestamp. Combining the
+        # timestamp and the sent value gives us the message we expect on the
+        # broker.
+        expected_msg = {
+            "value": update_msg["schedule"],
+            "timestamp": request.data["timestamp"]
+        }
+
+        # Check if the message has been sent. This might happen in async, so
+        # we may have to wait a little. If this code fails, the fault likely
+        # resides in the mqtt_integration.
+        waited_seconds = 0
+        while dp_mqtt_schedule_topic not in self.mqtt_client.userdata:
+            time.sleep(0.005)
+            waited_seconds += 0.005
+
+            if waited_seconds >= 3:
+                raise RuntimeError(
+                    "Expected datapoint schedule message has not been "
+                    "published on broker."
+                )
+
+        # Now that we know the message has been published on the broker,
+        # verify it holds the expected information.
+        assert self.mqtt_client.userdata[dp_mqtt_schedule_topic] == expected_msg
+
+        # After the MQTT message has now arrived the updated value should now
+        # be available on the REST interface. As above this might happen async,
+        # hence we might give the message a bit time to arrive.
+        waited_seconds = 0
+        while True:
+            dp.refresh_from_db()
+            if dp.last_schedule_timestamp == expected_msg["timestamp"]:
+                break
+
+            time.sleep(0.005)
+            waited_seconds += 0.005
+            if waited_seconds >= 3:
+                raise RuntimeError(
+                    "Expected datapoint schedule message has not reached the "
+                    "DB."
+                )
+
+        request = self.client.get("/datapoint/%s/schedule/" % dp.id)
+        assert request.data == expected_msg
 
     def test_get_datapoint_setpoint_detail_rejected_for_sensor(self):
         """

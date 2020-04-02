@@ -154,7 +154,7 @@ soap:Envelope__soap:Body__0__getMeterResponse__0__getMeterResult:__0__channel__0
 }
 ```
 
-# Datapoint Message (from/to Connector)
+# Datapoint Value (from/to Connector)
 
 ### Topic:
 
