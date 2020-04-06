@@ -172,7 +172,7 @@ class TestRESTEndpoint():
         dp = datapoint_factory(self.test_connector)
         dp.data_format = "discrete_text"
         dp.description = "A sensor datapoint for testing"
-        dp.allowed_values = None
+        dp.allowed_values = "[}"
         dp.save()
 
         # First miniaml metadata.
@@ -338,7 +338,7 @@ class TestRESTEndpoint():
             Store the received message so we can test it's correctness later.
             """
             client.userdata[msg.topic] = json.loads(msg.payload)
-        dp_mqtt_value_topic = dp.get_mqtt_topic()
+        dp_mqtt_value_topic = dp.get_mqtt_topics()["value"]
         self.mqtt_client.subscribe(dp_mqtt_value_topic)
         self.mqtt_client.on_message = on_message
 
@@ -472,7 +472,7 @@ class TestRESTEndpoint():
 
         assert request.data == expected_data
 
-    def test_put_datapoint_schedule_detail_rejected_for_actuator(self):
+    def test_put_datapoint_schedule_detail_actuator(self):
         """
         Write (PUT) a schedule message, that should trigger that the
         corresponding message is sent to the message broker and after that also
@@ -491,7 +491,7 @@ class TestRESTEndpoint():
             Store the received message so we can test it's correctness later.
             """
             client.userdata[msg.topic] = json.loads(msg.payload)
-        # XXX This is wrong
+
         dp_mqtt_schedule_topic = dp.get_mqtt_topics()["schedule"]
         self.mqtt_client.subscribe(dp_mqtt_schedule_topic)
         self.mqtt_client.on_message = on_message
@@ -525,7 +525,7 @@ class TestRESTEndpoint():
         # timestamp and the sent value gives us the message we expect on the
         # broker.
         expected_msg = {
-            "value": update_msg["schedule"],
+            "schedule": json.loads(update_msg["schedule"]),
             "timestamp": request.data["timestamp"]
         }
 
@@ -545,7 +545,8 @@ class TestRESTEndpoint():
 
         # Now that we know the message has been published on the broker,
         # verify it holds the expected information.
-        assert self.mqtt_client.userdata[dp_mqtt_schedule_topic] == expected_msg
+        received_msg = self.mqtt_client.userdata[dp_mqtt_schedule_topic]
+        assert received_msg == expected_msg
 
         # After the MQTT message has now arrived the updated value should now
         # be available on the REST interface. As above this might happen async,
@@ -553,7 +554,7 @@ class TestRESTEndpoint():
         waited_seconds = 0
         while True:
             dp.refresh_from_db()
-            if dp.last_schedule_timestamp == expected_msg["timestamp"]:
+            if dp.last_schedule_timestamp is not None:
                 break
 
             time.sleep(0.005)

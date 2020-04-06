@@ -310,6 +310,93 @@ class TestConnectorIntegration():
         for item in ad_db:
             item.delete()
 
+    def test_datpoint_value_received(self):
+        """
+        Check that a datapoint value message is received from CMI and stored
+        in DB as expected.
+        """
+        dp = datapoint_factory(self.test_connector)
+        dp.last_value = "The inital value"
+        timestamp = 1585092224000
+        dp.save()
+
+        # Define test data and send to mqtt integration.
+        update_msg = {
+            "timestamp": 1585092224000,
+            "value": "An update value"
+        }
+        payload = json.dumps(update_msg)
+        topic = dp.get_mqtt_topics()["value"]
+        self.mqtt_client.publish(topic, payload, qos=2)
+
+        # Give the message some time to arrive, as MQTT could be async.
+        waited_seconds = 0
+        while True:
+            dp.refresh_from_db()
+            if dp.last_value_timestamp is not None:
+                break
+
+            time.sleep(0.005)
+            waited_seconds += 0.005
+            if waited_seconds >= 3:
+                raise RuntimeError(
+                    "Expected datapoint value message has not reached the DB."
+                )
+
+        assert dp.last_value == update_msg["value"]
+        expected_ts_as_dt = datetime_from_timestamp(update_msg["timestamp"])
+        assert dp.last_value_timestamp == expected_ts_as_dt
+
+    def test_datpoint_schedule_received(self):
+        """
+        Check that a datapoint schedule message is received from CMI and stored
+        in DB as expected.
+        """
+        dp = datapoint_factory(self.test_connector, type="actuator")
+        dp.description = "A actuator datapoint for schedule testing."
+        dp.last_schedule = None
+        dp.last_schedule_timestamp = None
+        dp.save()
+
+        # Define test data and send to mqtt integration.
+        update_schedule = [
+            {
+                'from_timestamp': None,
+                'to_timestamp': 1564489613495,
+                'value': 23
+            },
+            {
+                'from_timestamp': 1564489613495,
+                'to_timestamp': None,
+                'value': 22
+            }
+        ]
+        update_msg = {
+            "timestamp": 1564489613491,
+            "schedule": update_schedule,
+        }
+        payload = json.dumps(update_msg)
+        topic = dp.get_mqtt_topics()["schedule"]
+        self.mqtt_client.publish(topic, payload, qos=2)
+
+        # Give the message some time to arrive, as MQTT could be async.
+        waited_seconds = 0
+        while True:
+            dp.refresh_from_db()
+            if dp.last_schedule_timestamp is not None:
+                break
+
+            time.sleep(0.005)
+            waited_seconds += 0.005
+            if waited_seconds >= 3:
+                raise RuntimeError(
+                    "Expected datapoint schedule has not reached the DB."
+                )
+
+        assert dp.last_schedule == json.dumps(update_schedule)
+        expected_ts_as_dt = datetime_from_timestamp(update_msg["timestamp"])
+        assert dp.last_schedule_timestamp == expected_ts_as_dt
+
 
 @pytest.fixture(scope='class')
 def allow_db_setup(request, django_db_setup, django_db_blocker):
@@ -708,8 +795,8 @@ class TestUpdateSubscription():
 
         payload_numeric = json.dumps(datapoint_message_numeric)
         payload_text = json.dumps(datapoint_message_text)
-        topic_numeric = numeric_dp.get_mqtt_topic()
-        topic_text = text_dp.get_mqtt_topic()
+        topic_numeric = numeric_dp.get_mqtt_topics()["value"]
+        topic_text = text_dp.get_mqtt_topics()["value"]
 
         # This is a safeguard from debugging too long into the wrong direction.
         # If this fails the message cannot reach the DB as cmi is not connected
@@ -807,8 +894,10 @@ class TestUpdateSubscription():
                     'Expected datapoint map not received via MQTT.'
                 )
 
-        dp1_topic = "test_connector_4/messages/" + str(test_datapoint_1.id)
-        dp2_topic = "test_connector_4/messages/" + str(test_datapoint_2.id)
+        dp1_topic = ("test_connector_4/messages/%s/value" %
+                     str(test_datapoint_1.id))
+        dp2_topic = ("test_connector_4/messages/%s/value" %
+                     str(test_datapoint_2.id))
 
         # Following the datapoint_map format
         expected_payload = {

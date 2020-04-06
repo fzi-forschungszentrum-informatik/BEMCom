@@ -148,11 +148,13 @@ class ConnectorMQTTIntegration():
             datapoint_set = connector.datapoint_set
             active_datapoints = datapoint_set.filter(is_active=True)
             for active_datapoint in active_datapoints:
-                datapoint_topic = active_datapoint.get_mqtt_topic()
-                topics[datapoint_topic] = (
-                    connector,
-                    "mqtt_topic_datapoint_message",
-                )
+                datapoint_topics = active_datapoint.get_mqtt_topics()
+                for datapoint_msg_type in datapoint_topics:
+                    datapoint_topic = datapoint_topics[datapoint_msg_type]
+                    topics[datapoint_topic] = (
+                        connector,
+                        "mqtt_topic_datapoint_%s_message" % datapoint_msg_type,
+                    )
 
         # Store the topics and update the client userdata, so the callbacks
         # will have up to date data.
@@ -216,7 +218,7 @@ class ConnectorMQTTIntegration():
 
                 _type = active_datapoint.type
                 key_in_connector = active_datapoint.key_in_connector
-                mqtt_topic = active_datapoint.get_mqtt_topic()
+                mqtt_topic = active_datapoint.get_mqtt_topics()["value"]
 
                 if active_datapoint.type not in datapoint_map:
                     datapoint_map[active_datapoint.type] = {}
@@ -248,14 +250,14 @@ class ConnectorMQTTIntegration():
 
         connector, message_type = topics[msg.topic]
         payload = json.loads(msg.payload)
-        if message_type == "mqtt_topic_datapoint_message":
+        if message_type == "mqtt_topic_datapoint_value_message":
             # If this message has reached that point, i.e. has had a
             # topic entry it means that the Datapoint object must exist, as
             # else the MQTT topic could not have been computed.
             try:
-                # Make use of the convention that the Datapoint topic ends
-                # with the primary key of the Datapoint.
-                datapoint_id = msg.topic.split("/")[-1]
+                # The datapoint id is encoded into the MQTT topic.
+                # Check the datapoint definiton.
+                datapoint_id = msg.topic.split("/")[-2]
                 datapoint = Datapoint.objects.get(id=datapoint_id)
                 datapoint.last_value = payload["value"]
                 datapoint.last_value_timestamp = datetime_from_timestamp(
@@ -269,7 +271,28 @@ class ConnectorMQTTIntegration():
                 )
             except Exception:
                 logger.exception(
-                    'Exception while updating datapoint_message in DB.'
+                    'Exception while updating datapoint with a value in DB.'
+                )
+                # This raise will be caught by paho mqtt. It should not though.
+                raise
+        elif message_type == "mqtt_topic_datapoint_schedule_message":
+            # see the handling of datapoint_value_message above for comments.
+            try:
+                datapoint_id = msg.topic.split("/")[-2]
+                datapoint = Datapoint.objects.get(id=datapoint_id)
+                datapoint.last_schedule = json.dumps(payload["schedule"])
+                datapoint.last_schedule_timestamp = datetime_from_timestamp(
+                    payload["timestamp"]
+                )
+                datapoint.save(
+                    update_fields=[
+                        "last_schedule",
+                        "last_schedule_timestamp",
+                    ]
+                )
+            except Exception:
+                logger.exception(
+                    'Exception while updating datapoint with a schedule in DB.'
                 )
                 # This raise will be caught by paho mqtt. It should not though.
                 raise

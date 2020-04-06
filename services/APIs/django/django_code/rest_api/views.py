@@ -57,7 +57,7 @@ class DatapointValueViewSet(viewsets.ViewSet):
         validated_data["timestamp"] = timestamp_utc_now()
 
         # Send the message to the MQTT broker.
-        mqtt_topic = datapoint.get_mqtt_topic()
+        mqtt_topic = datapoint.get_mqtt_topics()["value"]
         cmi = ConnectorMQTTIntegration.get_instance()
         cmi.client.publish(
             topic=mqtt_topic,
@@ -101,6 +101,10 @@ class DatapointScheduleViewSet(viewsets.ViewSet):
         # system has been received by BEMCom to complete the message.
         validated_data = serializer.validated_data
         validated_data["timestamp"] = timestamp_utc_now()
+
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(json.dumps(validated_data))
 
         # Send the message to the MQTT broker.
         mqtt_topic = datapoint.get_mqtt_topics()["schedule"]

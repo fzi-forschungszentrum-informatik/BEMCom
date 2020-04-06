@@ -202,7 +202,7 @@ class Datapoint(models.Model):
     def __str__(self):
         return slugify(self.key_in_connector)
 
-    def get_mqtt_topic(self):
+    def get_mqtt_topics(self):
         """
         Computes the MQTT topic of the datapoint.
 
@@ -212,12 +212,17 @@ class Datapoint(models.Model):
 
         Returns:
         --------
-        mqtt_topic: str
-            A string with the mqtt_topic of the datapoint.
+        mqtt_topics: dict
+            A dict containing a mqtt_topic for each datapoint_msg_type.
         """
         # Removes the trailing wildcard `#`
         prefix = self.connector.mqtt_topic_datapoint_message_wildcard[:-1]
-        return prefix + str(self.id)
+        topic_base = prefix + str(self.id) + "/"
+        mqtt_topics = {}
+        mqtt_topics["value"] = topic_base + "value"
+        mqtt_topics["schedule"] = topic_base + "schedule"
+        mqtt_topics["setpoint"] = topic_base + "setpoint"
+        return mqtt_topics
 
     def clean(self):
         """
