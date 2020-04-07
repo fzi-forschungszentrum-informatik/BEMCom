@@ -398,13 +398,13 @@ class TestDatapointScheduleSerializer():
         dp.description = "An actuator datapoint for schedule testing."
         last_schedule = [
             {
-                'from_timestamp': None,
-                'to_timestamp': 1564489613491,
+                "from_timestamp": None,
+                "to_timestamp": 1564489613491,
                 'value': 21
             },
             {
-                'from_timestamp': 1564489613491,
-                'to_timestamp': None,
+                "from_timestamp": 1564489613491,
+                "to_timestamp": None,
                 'value': None
             }
         ]
@@ -447,7 +447,7 @@ class TestDatapointScheduleSerializer():
         dp.description = "An actuator datapoint for schedule testing."
         dp.save()
 
-        test_data = json.loads('{}')
+        test_data = {}
         serializer = DatapointScheduleSerializer(dp, data=test_data)
 
         caught_execption = None
@@ -470,13 +470,13 @@ class TestDatapointScheduleSerializer():
 
         # First this is correct json.
         test_data = {
-            "schedule": json.dumps([
+            "schedule": [
                 {
-                    'from_timestamp': None,
-                    'to_timestamp': 1564489613491,
-                    'value': 'not a number'
-                },
-            ])
+                    "from_timestamp": None,
+                    "to_timestamp": 1564489613491,
+                    "value": "not a number"
+                }
+            ]
         }
         serializer = DatapointScheduleSerializer(dp, data=test_data)
         assert serializer.is_valid()
@@ -488,21 +488,6 @@ class TestDatapointScheduleSerializer():
         serializer = DatapointScheduleSerializer(dp, data=test_data)
         assert serializer.is_valid()
 
-        # This is not a correcto json message.
-        test_data = {
-            "schedule": ""
-        }
-        serializer = DatapointScheduleSerializer(dp, data=test_data)
-        caught_execption = None
-        try:
-            serializer.is_valid(raise_exception=True)
-        except Exception as e:
-            caught_execption = e
-
-        assert caught_execption is not None
-        assert caught_execption.status_code == 400
-        assert "schedule" in caught_execption.detail
-
     def test_schedule_validated_as_list(self):
         """
         Check that the schedule is validated to be a list.
@@ -513,7 +498,7 @@ class TestDatapointScheduleSerializer():
 
         # This is correct json but not a list of schedule items.
         test_data = {
-            "schedule": '{"Nope": 1}'
+            "schedule": {"Nope": 1}
         }
         serializer = DatapointScheduleSerializer(dp, data=test_data)
         caught_execption = None
@@ -525,6 +510,8 @@ class TestDatapointScheduleSerializer():
         assert caught_execption is not None
         assert caught_execption.status_code == 400
         assert "schedule" in caught_execption.detail
+        exception_detail = str(caught_execption.detail["schedule"])
+        assert "not a list of schedule items." in exception_detail
 
     def test_schedule_items_validated_as_dict(self):
         """
@@ -536,7 +523,7 @@ class TestDatapointScheduleSerializer():
 
         # This is correct json but not a list of schedule items.
         test_data = {
-            "schedule": '["Nope", 1]'
+            "schedule": ["Nope", 1]
         }
         serializer = DatapointScheduleSerializer(dp, data=test_data)
         caught_execption = None
@@ -548,6 +535,8 @@ class TestDatapointScheduleSerializer():
         assert caught_execption is not None
         assert caught_execption.status_code == 400
         assert "schedule" in caught_execption.detail
+        exception_detail = str(caught_execption.detail["schedule"])
+        assert "is not a Dict." in exception_detail
 
     def test_schedule_items_validated_for_expected_keys(self):
         """
@@ -560,12 +549,12 @@ class TestDatapointScheduleSerializer():
 
         # Missing from_timestamp
         test_data = {
-            "schedule": json.dumps([
+            "schedule": [
                 {
-                    'to_timestamp': 1564489613491,
-                    'value': 'not a number'
-                },
-            ])
+                    "to_timestamp": 1564489613491,
+                    "value": "not a number"
+                }
+            ]
         }
         serializer = DatapointScheduleSerializer(dp, data=test_data)
         caught_execption = None
@@ -577,15 +566,17 @@ class TestDatapointScheduleSerializer():
         assert caught_execption is not None
         assert caught_execption.status_code == 400
         assert "schedule" in caught_execption.detail
+        exception_detail = str(caught_execption.detail["schedule"])
+        assert "from_timestamp" in exception_detail
 
         # Missing to_timestamp
         test_data = {
-            "schedule": json.dumps([
+            "schedule": [
                 {
-                    'from_timestamp': None,
-                    'value': 'not a number'
-                },
-            ])
+                    "from_timestamp": None,
+                    "value": "not a number"
+                }
+            ]
         }
         serializer = DatapointScheduleSerializer(dp, data=test_data)
         caught_execption = None
@@ -597,15 +588,17 @@ class TestDatapointScheduleSerializer():
         assert caught_execption is not None
         assert caught_execption.status_code == 400
         assert "schedule" in caught_execption.detail
+        exception_detail = str(caught_execption.detail["schedule"])
+        assert "to_timestamp" in exception_detail
 
         # Missing value
         test_data = {
-            "schedule": json.dumps([
+            "schedule": [
                 {
-                    'from_timestamp': None,
-                    'to_timestamp': 1564489613491,
-                },
-            ])
+                    "from_timestamp": None,
+                    "to_timestamp": 1564489613491
+                }
+            ]
         }
         serializer = DatapointScheduleSerializer(dp, data=test_data)
         caught_execption = None
@@ -617,17 +610,19 @@ class TestDatapointScheduleSerializer():
         assert caught_execption is not None
         assert caught_execption.status_code == 400
         assert "schedule" in caught_execption.detail
+        exception_detail = str(caught_execption.detail["schedule"])
+        assert "value" in exception_detail
 
         # Additional value
         test_data = {
-            "schedule": json.dumps([
+            "schedule": [
                 {
-                    'from_timestamp': None,
-                    'to_timestamp': 1564489613491,
-                    'value': 'not a number',
-                    'not_expected_field': 'Should fail'
-                },
-            ])
+                    "from_timestamp": None,
+                    "to_timestamp": 1564489613491,
+                    "value": "not a number",
+                    "not_expected_field": "Should fail"
+                }
+            ]
         }
         serializer = DatapointScheduleSerializer(dp, data=test_data)
         caught_execption = None
@@ -639,6 +634,8 @@ class TestDatapointScheduleSerializer():
         assert caught_execption is not None
         assert caught_execption.status_code == 400
         assert "schedule" in caught_execption.detail
+        exception_detail = str(caught_execption.detail["schedule"])
+        assert "Found unexpected key" in exception_detail
 
     def test_numeric_value_of_schedule_validated(self):
         """
@@ -660,13 +657,13 @@ class TestDatapointScheduleSerializer():
             dp.save()
 
             test_data = {
-                "schedule": json.dumps([
+                "schedule": [
                     {
-                        'from_timestamp': None,
-                        'to_timestamp': 1564489613491,
-                        'value': 'not a number'
-                    },
-                ])
+                        "from_timestamp": None,
+                        "to_timestamp": 1564489613491,
+                        "value": "not a number"
+                    }
+                ]
             }
             serializer = DatapointScheduleSerializer(dp, data=test_data)
             caught_execption = None
@@ -678,6 +675,8 @@ class TestDatapointScheduleSerializer():
             assert caught_execption is not None
             assert caught_execption.status_code == 400
             assert "schedule" in caught_execption.detail
+            exception_detail = str(caught_execption.detail["schedule"])
+            assert "cannot be parsed to float" in exception_detail
 
         # Also verify the oposite, that text values are not rejected
         text_data_formats = [
@@ -689,13 +688,13 @@ class TestDatapointScheduleSerializer():
             dp.save()
 
             test_data = {
-                "schedule": json.dumps([
+                "schedule": [
                     {
-                        'from_timestamp': None,
-                        'to_timestamp': 1564489613491,
-                        'value': 'not a number'
-                    },
-                ])
+                        "from_timestamp": None,
+                        "to_timestamp": 1564489613491,
+                        "value": "not a number"
+                    }
+                ]
             }
             serializer = DatapointScheduleSerializer(dp, data=test_data)
             caught_execption = None
@@ -730,13 +729,13 @@ class TestDatapointScheduleSerializer():
             dp.save()
 
             test_data = {
-                "schedule": json.dumps([
+                "schedule": [
                     {
-                        'from_timestamp': None,
-                        'to_timestamp': 1564489613491,
-                        'value': valid_combination["value"]
-                    },
-                ])
+                        "from_timestamp": None,
+                        "to_timestamp": 1564489613491,
+                        "value": valid_combination["value"]
+                    }
+                ]
             }
             serializer = DatapointScheduleSerializer(dp, data=test_data)
 
@@ -761,13 +760,13 @@ class TestDatapointScheduleSerializer():
             dp.max_value = invalid_combination["max"]
 
             test_data = {
-                "schedule": json.dumps([
+                "schedule": [
                     {
-                        'from_timestamp': None,
-                        'to_timestamp': 1564489613491,
-                        'value': invalid_combination["value"]
+                        "from_timestamp": None,
+                        "to_timestamp": 1564489613491,
+                        "value": invalid_combination["value"]
                     },
-                ])
+                ]
             }
             serializer = DatapointScheduleSerializer(dp, data=test_data)
 
@@ -786,6 +785,8 @@ class TestDatapointScheduleSerializer():
             assert caught_execption is not None
             assert caught_execption.status_code == 400
             assert "schedule" in caught_execption.detail
+            exception_detail = str(caught_execption.detail["schedule"])
+            assert "numeric datapoint" in exception_detail
 
     def test_value_in_allowed_values(self):
         """
@@ -825,13 +826,13 @@ class TestDatapointScheduleSerializer():
             dp.save()
 
             test_data = {
-                "schedule": json.dumps([
+                "schedule": [
                     {
-                        'from_timestamp': None,
-                        'to_timestamp': 1564489613491,
-                        'value': valid_combination["value"]
+                        "from_timestamp": None,
+                        "to_timestamp": 1564489613491,
+                        "value": valid_combination["value"]
                     },
-                ])
+                ]
             }
             serializer = DatapointScheduleSerializer(dp, data=test_data)
 
@@ -884,13 +885,13 @@ class TestDatapointScheduleSerializer():
             dp.save()
 
             test_data = {
-                "schedule": json.dumps([
+                "schedule": [
                     {
-                        'from_timestamp': None,
-                        'to_timestamp': 1564489613491,
-                        'value': valid_combination["value"]
+                        "from_timestamp": None,
+                        "to_timestamp": 1564489613491,
+                        "value": valid_combination["value"]
                     },
-                ])
+                ]
             }
             serializer = DatapointScheduleSerializer(dp, data=test_data)
 
@@ -910,6 +911,8 @@ class TestDatapointScheduleSerializer():
             assert caught_execption is not None
             assert caught_execption.status_code == 400
             assert "schedule" in caught_execption.detail
+            exception_detail = str(caught_execption.detail["schedule"])
+            assert "discrete datapoint" in exception_detail
 
     def test_timestamps_are_validated_against_each_other(self):
         """
@@ -922,13 +925,13 @@ class TestDatapointScheduleSerializer():
 
         # Missing from_timestamp
         test_data = {
-            "schedule": json.dumps([
+            "schedule": [
                 {
-                    'from_timestamp': 1564489613492,
-                    'to_timestamp': 1564489613491,
-                    'value': 'not a number'
-                },
-            ])
+                    "from_timestamp": 1564489613492,
+                    "to_timestamp": 1564489613491,
+                    "value": "not a number"
+                }
+            ]
         }
         serializer = DatapointScheduleSerializer(dp, data=test_data)
         caught_execption = None
@@ -940,6 +943,8 @@ class TestDatapointScheduleSerializer():
         assert caught_execption is not None
         assert caught_execption.status_code == 400
         assert "schedule" in caught_execption.detail
+        exception_detail = str(caught_execption.detail["schedule"])
+        assert "timestamp must be larger" in exception_detail
 
     def test_timestamps_are_validated_to_be_numbers(self):
         """
@@ -951,13 +956,13 @@ class TestDatapointScheduleSerializer():
         dp.save()
 
         test_data = {
-            "schedule": json.dumps([
+            "schedule": [
                 {
-                    'from_timestamp': None,
-                    'to_timestamp': 'not 1564489613491',
-                    'value': 'not a number'
-                },
-            ])
+                    "from_timestamp": None,
+                    "to_timestamp": "not 1564489613491",
+                    "value": 'not a number'
+                }
+            ]
         }
         serializer = DatapointScheduleSerializer(dp, data=test_data)
         caught_execption = None
@@ -969,15 +974,17 @@ class TestDatapointScheduleSerializer():
         assert caught_execption is not None
         assert caught_execption.status_code == 400
         assert "schedule" in caught_execption.detail
+        exception_detail = str(caught_execption.detail["schedule"])
+        assert "could not be parsed to integer" in exception_detail
 
         test_data = {
-            "schedule": json.dumps([
+            "schedule": [
                 {
-                    'from_timestamp': 'not 1564489613491',
-                    'to_timestamp': None,
-                    'value': 'not a number'
-                },
-            ])
+                    "from_timestamp": "not 1564489613491",
+                    "to_timestamp": None,
+                    "value": "not a number"
+                }
+            ]
         }
         serializer = DatapointScheduleSerializer(dp, data=test_data)
         caught_execption = None
@@ -989,11 +996,13 @@ class TestDatapointScheduleSerializer():
         assert caught_execption is not None
         assert caught_execption.status_code == 400
         assert "schedule" in caught_execption.detail
+        exception_detail = str(caught_execption.detail["schedule"])
+        assert "could not be parsed to integer" in exception_detail
 
-    def test_timestamps_in_seconds_yield_error(self):
+    def test_timestamps_not_in_milliseconds_yield_error(self):
         """
         Check that an error message is yielded if the timestamp is in
-        seconds rather then milliseconds.
+        obviously not in milliseconds.
         """
         dp = datapoint_factory(self.test_connector, type="actuator")
         dp.description = "An actuator datapoint for schedule testing."
@@ -1001,13 +1010,13 @@ class TestDatapointScheduleSerializer():
 
         # timestamp in seconds.
         test_data = {
-            "schedule": json.dumps([
+            "schedule": [
                 {
-                    'from_timestamp': None,
-                    'to_timestamp': 1564489613,
-                    'value': 'not a number'
-                },
-            ])
+                    "from_timestamp": None,
+                    "to_timestamp": 1564489613,
+                    "value": "not a number"
+                }
+            ]
         }
         serializer = DatapointScheduleSerializer(dp, data=test_data)
         caught_execption = None
@@ -1019,15 +1028,17 @@ class TestDatapointScheduleSerializer():
         assert caught_execption is not None
         assert caught_execption.status_code == 400
         assert "schedule" in caught_execption.detail
+        exception_detail = str(caught_execption.detail["schedule"])
+        assert "seems unreasonably low" in exception_detail
 
         test_data = {
-            "schedule": json.dumps([
+            "schedule": [
                 {
-                    'from_timestamp': 1564489613,
-                    'to_timestamp': None,
-                    'value': 'not a number'
-                },
-            ])
+                    "from_timestamp": 1564489613,
+                    "to_timestamp": None,
+                    "value": "not a number"
+                }
+            ]
         }
         serializer = DatapointScheduleSerializer(dp, data=test_data)
         caught_execption = None
@@ -1039,16 +1050,18 @@ class TestDatapointScheduleSerializer():
         assert caught_execption is not None
         assert caught_execption.status_code == 400
         assert "schedule" in caught_execption.detail
+        exception_detail = str(caught_execption.detail["schedule"])
+        assert "seems unreasonably low" in exception_detail
 
         # timestamp in microseconds.
         test_data = {
-            "schedule": json.dumps([
+            "schedule": [
                 {
-                    'from_timestamp': None,
-                    'to_timestamp': 1564489613000000,
-                    'value': 'not a number'
-                },
-            ])
+                    "from_timestamp": None,
+                    "to_timestamp": 1564489613000000,
+                    "value": "not a number'"
+                }
+            ]
         }
         serializer = DatapointScheduleSerializer(dp, data=test_data)
         caught_execption = None
@@ -1060,15 +1073,17 @@ class TestDatapointScheduleSerializer():
         assert caught_execption is not None
         assert caught_execption.status_code == 400
         assert "schedule" in caught_execption.detail
+        exception_detail = str(caught_execption.detail["schedule"])
+        assert "seems unreasonably high" in exception_detail
 
         test_data = {
-            "schedule": json.dumps([
+            "schedule": [
                 {
-                    'from_timestamp': 1564489613000000,
-                    'to_timestamp': None,
-                    'value': 'not a number'
-                },
-            ])
+                    "from_timestamp": 1564489613000000,
+                    "to_timestamp": None,
+                    "value": "not a number"
+                }
+            ]
         }
         serializer = DatapointScheduleSerializer(dp, data=test_data)
         caught_execption = None
@@ -1080,6 +1095,8 @@ class TestDatapointScheduleSerializer():
         assert caught_execption is not None
         assert caught_execption.status_code == 400
         assert "schedule" in caught_execption.detail
+        exception_detail = str(caught_execption.detail["schedule"])
+        assert "seems unreasonably high" in exception_detail
 
 
 @pytest.fixture(scope='class')
@@ -1136,15 +1153,15 @@ class TestDatapointSetpointSerializer():
         dp.data_format = "discrete_numeric"
         last_setpoint = [
             {
-                'from_timestamp': None,
-                'to_timestamp': 1564489613491,
+                "from_timestamp": None,
+                "to_timestamp": 1564489613491,
                 'preferred_value': 21,
                 'acceptable_values': [20.5, 21, 21.5],
 
             },
             {
-                'from_timestamp': 1564489613491,
-                'to_timestamp': None,
+                "from_timestamp": 1564489613491,
+                "to_timestamp": None,
                 'preferred_value': None,
                 'acceptable_values': [None]
             }
@@ -1165,16 +1182,16 @@ class TestDatapointSetpointSerializer():
         dp.data_format = "continuous_numeric"
         last_setpoint = [
             {
-                'from_timestamp': None,
-                'to_timestamp': 1564489613491,
+                "from_timestamp": None,
+                "to_timestamp": 1564489613491,
                 'preferred_value': 21,
                 'min_value': 20,
                 'max_value': 22,
 
             },
             {
-                'from_timestamp': 1564489613491,
-                'to_timestamp': None,
+                "from_timestamp": 1564489613491,
+                "to_timestamp": None,
                 'preferred_value': None,
                 'min_value': None,
                 'max_value': None,
@@ -1217,7 +1234,7 @@ class TestDatapointSetpointSerializer():
         dp.description = "An actuator datapoint for setpoint testing."
         dp.save()
 
-        test_data = json.loads('{}')
+        test_data = {}
         serializer = DatapointSetpointSerializer(dp, data=test_data)
 
         caught_execption = None
@@ -1240,13 +1257,13 @@ class TestDatapointSetpointSerializer():
 
         # First this is correct json.
         test_data = {
-            "setpoint": json.dumps([
+            "setpoint": [
                 {
-                    'from_timestamp': None,
-                    'to_timestamp': 1564489613491,
+                    "from_timestamp": None,
+                    "to_timestamp": 1564489613491,
                     'preferred_value': 'not a number'
                 },
-            ])
+            ]
         }
         serializer = DatapointSetpointSerializer(dp, data=test_data)
         assert serializer.is_valid()
@@ -1258,21 +1275,6 @@ class TestDatapointSetpointSerializer():
         serializer = DatapointSetpointSerializer(dp, data=test_data)
         assert serializer.is_valid()
 
-        # This is not a correcto json message.
-        test_data = {
-            "setpoint": ""
-        }
-        serializer = DatapointSetpointSerializer(dp, data=test_data)
-        caught_execption = None
-        try:
-            serializer.is_valid(raise_exception=True)
-        except Exception as e:
-            caught_execption = e
-
-        assert caught_execption is not None
-        assert caught_execption.status_code == 400
-        assert "setpoint" in caught_execption.detail
-
     def test_setpoint_validated_as_list(self):
         """
         Check that the setpoint is validated to be a list.
@@ -1283,7 +1285,7 @@ class TestDatapointSetpointSerializer():
 
         # This is correct json but not a list of setpoint items.
         test_data = {
-            "setpoint": '{"Nope": 1}'
+            "setpoint": {"Nope": 1}
         }
         serializer = DatapointSetpointSerializer(dp, data=test_data)
         caught_execption = None
@@ -1295,6 +1297,8 @@ class TestDatapointSetpointSerializer():
         assert caught_execption is not None
         assert caught_execption.status_code == 400
         assert "setpoint" in caught_execption.detail
+        exception_detail = str(caught_execption.detail["setpoint"])
+        assert "not a list of setpoint items." in exception_detail
 
     def test_setpoint_items_validated_as_dict(self):
         """
@@ -1306,7 +1310,7 @@ class TestDatapointSetpointSerializer():
 
         # This is correct json but not a list of setpoint items.
         test_data = {
-            "setpoint": '["Nope", 1]'
+            "setpoint": ["Nope", 1]
         }
         serializer = DatapointSetpointSerializer(dp, data=test_data)
         caught_execption = None
@@ -1318,6 +1322,8 @@ class TestDatapointSetpointSerializer():
         assert caught_execption is not None
         assert caught_execption.status_code == 400
         assert "setpoint" in caught_execption.detail
+        exception_detail = str(caught_execption.detail["setpoint"])
+        assert "is not a Dict." in exception_detail
 
     def test_setpoint_items_validated_for_expected_keys(self):
         """
@@ -1353,7 +1359,7 @@ class TestDatapointSetpointSerializer():
         # Here a list of keys which will be tested as extra keys, that should
         # be refused. The keys that are valid for other data_formats are of
         # course especially interesting.
-        nvk = ['no_valid_key']
+        nvk = ["no_valid_key"]
         unexpected_keys_per_data_format = {
             "generic_numeric": nvk + only_con_keys + only_dis_keys,
             "continuous_numeric": nvk + only_dis_keys,
@@ -1364,16 +1370,18 @@ class TestDatapointSetpointSerializer():
 
         # Here the dummy values for all fields used above.
         setpoint_all_fields = {
-            'from_timestamp': None,
-            'to_timestamp': 1564489613491,
-            'preferred_value': 21,
-            'acceptable_values': [20.5, 21, 21.5],
-            'min_value': 20.5,
-            'max_value': 21.5,
-            'no_valid_key': 1337
+            "from_timestamp": None,
+            "to_timestamp": 1564489613491,
+            "preferred_value": 21,
+            "acceptable_values": [20.5, 21, 21.5],
+            "min_value": 20.5,
+            "max_value": 21.5,
+            "no_valid_key": 1337
         }
 
         for data_format in required_keys_per_data_format:
+            dp.data_format = data_format
+            dp.save()
             required_keys = required_keys_per_data_format[data_format]
 
             # Now construct per data_format test cases to verify that every
@@ -1386,7 +1394,7 @@ class TestDatapointSetpointSerializer():
                     setpoint[key] = setpoint_all_fields[key]
 
                 test_data = {
-                    "setpoint": json.dumps(setpoint)
+                    "setpoint": [setpoint]
                 }
 
                 serializer = DatapointSetpointSerializer(dp, data=test_data)
@@ -1404,10 +1412,14 @@ class TestDatapointSetpointSerializer():
                 assert caught_execption is not None
                 assert caught_execption.status_code == 400
                 assert "setpoint" in caught_execption.detail
+                exception_detail = str(caught_execption.detail["setpoint"])
+                assert key_left_out in exception_detail
 
         # Now construct test cases to verify that additional unexpected
         # keys are rejected.
         for data_format in unexpected_keys_per_data_format:
+            dp.data_format = data_format
+            dp.save()
             unexpected_keys = unexpected_keys_per_data_format[data_format]
             required_keys = required_keys_per_data_format[data_format]
 
@@ -1419,7 +1431,7 @@ class TestDatapointSetpointSerializer():
                 setpoint[unexpected_key] = setpoint_all_fields[unexpected_key]
 
                 test_data = {
-                    "setpoint": json.dumps(setpoint)
+                    "setpoint": [setpoint]
                 }
 
                 serializer = DatapointSetpointSerializer(dp, data=test_data)
@@ -1437,6 +1449,8 @@ class TestDatapointSetpointSerializer():
                 assert caught_execption is not None
                 assert caught_execption.status_code == 400
                 assert "setpoint" in caught_execption.detail
+                exception_detail = str(caught_execption.detail["setpoint"])
+                assert "Found unexpected key" in exception_detail
 
     def test_numeric_value_of_setpoint_validated(self):
         """
@@ -1472,12 +1486,12 @@ class TestDatapointSetpointSerializer():
 
         # Here the dummy values for all fields used above.
         setpoint_all_fields = {
-            'from_timestamp': None,
-            'to_timestamp': 1564489613491,
-            'preferred_value': "Not a number",
-            'acceptable_values': ["Not a number"],
-            'min_value': 20.5,
-            'max_value': 21.5,
+            "from_timestamp": None,
+            "to_timestamp": 1564489613491,
+            "preferred_value": "not a number",
+            "acceptable_values": ["not a number"],
+            "min_value": 20.5,
+            "max_value": 21.5,
         }
 
         numeric_data_formats = [
@@ -1486,13 +1500,15 @@ class TestDatapointSetpointSerializer():
             "discrete_numeric",
         ]
         for data_format in numeric_data_formats:
+            dp.data_format = data_format
+            dp.save()
             required_keys = required_keys_per_data_format[data_format]
             setpoint = {}
             for key in required_keys:
                 setpoint[key] = setpoint_all_fields[key]
 
             test_data = {
-                "setpoint": json.dumps(setpoint)
+                "setpoint": [setpoint]
             }
 
             serializer = DatapointSetpointSerializer(dp, data=test_data)
@@ -1510,6 +1526,8 @@ class TestDatapointSetpointSerializer():
             assert caught_execption is not None
             assert caught_execption.status_code == 400
             assert "setpoint" in caught_execption.detail
+            exception_detail = str(caught_execption.detail["setpoint"])
+            assert "cannot be parsed to float" in exception_detail
 
         # Also verify the oposite, that text values are not rejected
         text_data_formats = [
@@ -1517,13 +1535,15 @@ class TestDatapointSetpointSerializer():
             "discrete_text",
         ]
         for data_format in text_data_formats:
+            dp.data_format = data_format
+            dp.save()
             required_keys = required_keys_per_data_format[data_format]
             setpoint = {}
             for key in required_keys:
                 setpoint[key] = setpoint_all_fields[key]
 
             test_data = {
-                "setpoint": json.dumps(setpoint)
+                "setpoint": [setpoint]
             }
 
             serializer = DatapointSetpointSerializer(dp, data=test_data)
@@ -1532,15 +1552,16 @@ class TestDatapointSetpointSerializer():
                 assert serializer.is_valid(raise_exception=True)
             except Exception as e:
                 caught_execption = e
+                logger.exception("")
 
             assert caught_execption is None
 
-    def test_value_in_min_max(self):
+    def test_preferred_value_in_min_max(self):
         """
-        Check that for continous numeric datapoints only those values are
-        accepted that reside within the min/max bound, at least if min/max
+        Check that for continous numeric datapoints only those preferred_value
+        are accepted that reside within the min/max bound, at least if min/max
         are set.
-        TODO
+
         """
         dp = datapoint_factory(self.test_connector, type="actuator")
         dp.description = "An actuator datapoint for setpoint testing."
@@ -1548,11 +1569,11 @@ class TestDatapointSetpointSerializer():
         dp.save()
 
         valid_combinations = [
-            {"min": 1.00, "max": 3.00, "value": 2.00},
-            {"min": None, "max": None, "value": 2.00},
-            {"min": 1.00, "max": 3.00, "value": None},
-            {"min": None, "max": 3.00, "value": 0.00},
-            {"min": 1.00, "max": None, "value": 4.00},
+            {"min": 1.00, "max": 3.00, "preferred_value": 2.00},
+            {"min": None, "max": None, "preferred_value": 2.00},
+            {"min": 1.00, "max": 3.00, "preferred_value": None},
+            {"min": None, "max": 3.00, "preferred_value": 0.00},
+            {"min": 1.00, "max": None, "preferred_value": 4.00},
         ]
         for valid_combination in valid_combinations:
             dp.min_value = valid_combination["min"]
@@ -1560,13 +1581,16 @@ class TestDatapointSetpointSerializer():
             dp.save()
 
             test_data = {
-                "setpoint": json.dumps([
+                "setpoint": [
                     {
-                        'from_timestamp': None,
-                        'to_timestamp': 1564489613491,
-                        'value': valid_combination["value"]
-                    },
-                ])
+                        "from_timestamp": None,
+                        "to_timestamp": 1564489613491,
+                        "preferred_value":
+                            valid_combination["preferred_value"],
+                        "min_value": None,
+                        "max_value": None
+                    }
+                ]
             }
             serializer = DatapointSetpointSerializer(dp, data=test_data)
 
@@ -1581,23 +1605,26 @@ class TestDatapointSetpointSerializer():
             assert is_valid
 
         invalid_combinations = [
-            {"min": 1.00, "max": 3.00, "value": 4.00},
-            {"min": 1.00, "max": 3.00, "value": 0.00},
-            {"min": None, "max": 3.00, "value": 4.00},
-            {"min": 1.00, "max": None, "value": 0.00},
+            {"min": 1.00, "max": 3.00, "preferred_value": 4.00},
+            {"min": 1.00, "max": 3.00, "preferred_value": 0.00},
+            {"min": None, "max": 3.00, "preferred_value": 4.00},
+            {"min": 1.00, "max": None, "preferred_value": 0.00},
         ]
         for invalid_combination in invalid_combinations:
             dp.min_value = invalid_combination["min"]
             dp.max_value = invalid_combination["max"]
 
             test_data = {
-                "setpoint": json.dumps([
+                "setpoint": [
                     {
-                        'from_timestamp': None,
-                        'to_timestamp': 1564489613491,
-                        'value': invalid_combination["value"]
+                        "from_timestamp": None,
+                        "to_timestamp": 1564489613491,
+                        "preferred_value":
+                            invalid_combination["preferred_value"],
+                        "min_value": None,
+                        "max_value": None
                     },
-                ])
+                ]
             }
             serializer = DatapointSetpointSerializer(dp, data=test_data)
 
@@ -1616,12 +1643,13 @@ class TestDatapointSetpointSerializer():
             assert caught_execption is not None
             assert caught_execption.status_code == 400
             assert "setpoint" in caught_execption.detail
+            exception_detail = str(caught_execption.detail["setpoint"])
+            assert "numeric datapoint" in exception_detail
 
-    def test_value_in_allowed_values(self):
+    def test_preferred_value_in_allowed_values(self):
         """
-        Check that for discrete valued datapoints only those values are
-        accepted that have one of the accepted values.
-        TODO
+        Check that for discrete valued datapoints only those preferred_value
+        are accepted that have one of the accepted values.
         """
         dp = datapoint_factory(self.test_connector, type="actuator")
         dp.description = "An actuator datapoint for setpoint testing."
@@ -1630,22 +1658,22 @@ class TestDatapointSetpointSerializer():
 
         valid_combinations = [
             {
-                "value": 2.0,
+                "preferred_value": 2.0,
                 "data_format": "discrete_numeric",
                 "allowed_values": '[1.0, 2.0, 3.0]'
             },
             {
-                "value": 2,
+                "preferred_value": 2,
                 "data_format": "discrete_numeric",
                 "allowed_values": '[1, 2, 3]'
             },
             {
-                "value": "OK",
+                "preferred_value": "OK",
                 "data_format": "discrete_text",
                 "allowed_values": '["OK", "Done"]'
             },
             {
-                "value": None,
+                "preferred_value": None,
                 "data_format": "discrete_text",
                 "allowed_values": '[null, "Nope"]'
             },
@@ -1656,13 +1684,16 @@ class TestDatapointSetpointSerializer():
             dp.save()
 
             test_data = {
-                "setpoint": json.dumps([
+                "setpoint": [
                     {
-                        'from_timestamp': None,
-                        'to_timestamp': 1564489613491,
-                        'value': valid_combination["value"]
-                    },
-                ])
+                        "from_timestamp": None,
+                        "to_timestamp": 1564489613491,
+                        "preferred_value":
+                            valid_combination["preferred_value"],
+                        "acceptable_values":
+                            [valid_combination["preferred_value"]]
+                    }
+                ]
             }
             serializer = DatapointSetpointSerializer(dp, data=test_data)
 
@@ -1670,7 +1701,7 @@ class TestDatapointSetpointSerializer():
                 is_valid = serializer.is_valid(raise_exception=True)
             except Exception:
                 logger.exception(
-                    "test_value_in_allowed_values failed for valid "
+                    "test_preferred_value_in_allowed_values failed for valid "
                     "combination %s",
                     str(valid_combination)
                 )
@@ -1679,32 +1710,32 @@ class TestDatapointSetpointSerializer():
 
         invalid_combinations = [
             {
-                "value": 2.0,
+                "preferred_value": 2.0,
                 "data_format": "discrete_numeric",
                 "allowed_values": '[1.0, 3.0]'
             },
             {
-                "value": 2,
+                "preferred_value": 2,
                 "data_format": "discrete_numeric",
                 "allowed_values": '[1, 3]'
             },
             {
-                "value": 2,
+                "preferred_value": 2,
                 "data_format": "discrete_numeric",
                 "allowed_values": '[]'
             },
             {
-                "value": "OK",
+                "preferred_value": "OK",
                 "data_format": "discrete_text",
                 "allowed_values": '["NotOK", "OK "]'
             },
             {
-                "value": "",
+                "preferred_value": "",
                 "data_format": "discrete_text",
                 "allowed_values": '["OK"]'
             },
             {
-                "value": None,
+                "preferred_value": None,
                 "data_format": "discrete_text",
                 "allowed_values": '["OK"]'
             },
@@ -1715,13 +1746,16 @@ class TestDatapointSetpointSerializer():
             dp.save()
 
             test_data = {
-                "setpoint": json.dumps([
+                "setpoint": [
                     {
-                        'from_timestamp': None,
-                        'to_timestamp': 1564489613491,
-                        'value': valid_combination["value"]
-                    },
-                ])
+                        "from_timestamp": None,
+                        "to_timestamp": 1564489613491,
+                        "preferred_value":
+                            invalid_combination["preferred_value"],
+                        "acceptable_values":
+                            [invalid_combination["preferred_value"]]
+                    }
+                ]
             }
             serializer = DatapointSetpointSerializer(dp, data=test_data)
 
@@ -1741,12 +1775,13 @@ class TestDatapointSetpointSerializer():
             assert caught_execption is not None
             assert caught_execption.status_code == 400
             assert "setpoint" in caught_execption.detail
+            exception_detail = str(caught_execption.detail["setpoint"])
+            assert "discrete datapoint" in exception_detail
 
     def test_timestamps_are_validated_against_each_other(self):
         """
         Check that if from_timestamp and to_timestamp is set not None,
         it is validated that to_timestamp is larger.
-        TODO
         """
         dp = datapoint_factory(self.test_connector, type="actuator")
         dp.description = "An actuator datapoint for setpoint testing."
@@ -1754,13 +1789,13 @@ class TestDatapointSetpointSerializer():
 
         # Missing from_timestamp
         test_data = {
-            "setpoint": json.dumps([
+            "setpoint": [
                 {
-                    'from_timestamp': 1564489613492,
-                    'to_timestamp': 1564489613491,
-                    'value': 'not a number'
+                    "from_timestamp": 1564489613492,
+                    "to_timestamp": 1564489613491,
+                    "preferred_value": "not a number"
                 },
-            ])
+            ]
         }
         serializer = DatapointSetpointSerializer(dp, data=test_data)
         caught_execption = None
@@ -1772,25 +1807,26 @@ class TestDatapointSetpointSerializer():
         assert caught_execption is not None
         assert caught_execption.status_code == 400
         assert "setpoint" in caught_execption.detail
+        exception_detail = str(caught_execption.detail["setpoint"])
+        assert "timestamp must be larger" in exception_detail
 
     def test_timestamps_are_validated_to_be_numbers(self):
         """
         Check that if from_timestamp and to_timestamp are validated to be
         None or convertable to a number.
-        TODO
         """
         dp = datapoint_factory(self.test_connector, type="actuator")
         dp.description = "An actuator datapoint for setpoint testing."
         dp.save()
 
         test_data = {
-            "setpoint": json.dumps([
+            "setpoint": [
                 {
-                    'from_timestamp': None,
-                    'to_timestamp': 'not 1564489613491',
-                    'value': 'not a number'
-                },
-            ])
+                    "from_timestamp": None,
+                    "to_timestamp": "not 1564489613491",
+                    "preferred_value": "not a number"
+                }
+            ]
         }
         serializer = DatapointSetpointSerializer(dp, data=test_data)
         caught_execption = None
@@ -1802,15 +1838,17 @@ class TestDatapointSetpointSerializer():
         assert caught_execption is not None
         assert caught_execption.status_code == 400
         assert "setpoint" in caught_execption.detail
+        exception_detail = str(caught_execption.detail["setpoint"])
+        assert "could not be parsed to integer" in exception_detail
 
         test_data = {
-            "setpoint": json.dumps([
+            "setpoint": [
                 {
-                    'from_timestamp': 'not 1564489613491',
-                    'to_timestamp': None,
-                    'value': 'not a number'
-                },
-            ])
+                    "from_timestamp": "not 1564489613491",
+                    "to_timestamp": None,
+                    "preferred_value": "not a number"
+                }
+            ]
         }
         serializer = DatapointSetpointSerializer(dp, data=test_data)
         caught_execption = None
@@ -1822,12 +1860,13 @@ class TestDatapointSetpointSerializer():
         assert caught_execption is not None
         assert caught_execption.status_code == 400
         assert "setpoint" in caught_execption.detail
+        exception_detail = str(caught_execption.detail["setpoint"])
+        assert "could not be parsed to integer" in exception_detail
 
-    def test_timestamps_in_seconds_yield_error(self):
+    def test_timestamps_not_in_milliseconds_yield_error(self):
         """
         Check that an error message is yielded if the timestamp is in
-        seconds rather then milliseconds.
-        TODO
+        obviously not in milliseconds.
         """
         dp = datapoint_factory(self.test_connector, type="actuator")
         dp.description = "An actuator datapoint for setpoint testing."
@@ -1835,13 +1874,13 @@ class TestDatapointSetpointSerializer():
 
         # timestamp in seconds.
         test_data = {
-            "setpoint": json.dumps([
+            "setpoint": [
                 {
-                    'from_timestamp': None,
-                    'to_timestamp': 1564489613,
-                    'value': 'not a number'
-                },
-            ])
+                    "from_timestamp": None,
+                    "to_timestamp": 1564489613,
+                    "preferred_value": "not a number"
+                }
+            ]
         }
         serializer = DatapointSetpointSerializer(dp, data=test_data)
         caught_execption = None
@@ -1853,15 +1892,17 @@ class TestDatapointSetpointSerializer():
         assert caught_execption is not None
         assert caught_execption.status_code == 400
         assert "setpoint" in caught_execption.detail
+        exception_detail = str(caught_execption.detail["setpoint"])
+        assert "seems unreasonably low" in exception_detail
 
         test_data = {
-            "setpoint": json.dumps([
+            "setpoint": [
                 {
-                    'from_timestamp': 1564489613,
-                    'to_timestamp': None,
-                    'value': 'not a number'
-                },
-            ])
+                    "from_timestamp": 1564489613,
+                    "to_timestamp": None,
+                    "preferred_value": "not a number"
+                }
+            ]
         }
         serializer = DatapointSetpointSerializer(dp, data=test_data)
         caught_execption = None
@@ -1873,16 +1914,18 @@ class TestDatapointSetpointSerializer():
         assert caught_execption is not None
         assert caught_execption.status_code == 400
         assert "setpoint" in caught_execption.detail
+        exception_detail = str(caught_execption.detail["setpoint"])
+        assert "seems unreasonably low" in exception_detail
 
         # timestamp in microseconds.
         test_data = {
-            "setpoint": json.dumps([
+            "setpoint": [
                 {
-                    'from_timestamp': None,
-                    'to_timestamp': 1564489613000000,
-                    'value': 'not a number'
-                },
-            ])
+                    "from_timestamp": None,
+                    "to_timestamp": 1564489613000000,
+                    "preferred_value": "not a number"
+                }
+            ]
         }
         serializer = DatapointSetpointSerializer(dp, data=test_data)
         caught_execption = None
@@ -1894,15 +1937,17 @@ class TestDatapointSetpointSerializer():
         assert caught_execption is not None
         assert caught_execption.status_code == 400
         assert "setpoint" in caught_execption.detail
+        exception_detail = str(caught_execption.detail["setpoint"])
+        assert "seems unreasonably high" in exception_detail
 
         test_data = {
-            "setpoint": json.dumps([
+            "setpoint": [
                 {
-                    'from_timestamp': 1564489613000000,
-                    'to_timestamp': None,
-                    'value': 'not a number'
-                },
-            ])
+                    "from_timestamp": 1564489613000000,
+                    "to_timestamp": None,
+                    "preferred_value": "not a number"
+                }
+            ]
         }
         serializer = DatapointSetpointSerializer(dp, data=test_data)
         caught_execption = None
@@ -1914,6 +1959,8 @@ class TestDatapointSetpointSerializer():
         assert caught_execption is not None
         assert caught_execption.status_code == 400
         assert "setpoint" in caught_execption.detail
+        exception_detail = str(caught_execption.detail["setpoint"])
+        assert "seems unreasonably high" in exception_detail
 
 
 if __name__ == '__main__':

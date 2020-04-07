@@ -275,6 +275,7 @@ class ConnectorMQTTIntegration():
                 )
                 # This raise will be caught by paho mqtt. It should not though.
                 raise
+
         elif message_type == "mqtt_topic_datapoint_schedule_message":
             # see the handling of datapoint_value_message above for comments.
             try:
@@ -296,6 +297,29 @@ class ConnectorMQTTIntegration():
                 )
                 # This raise will be caught by paho mqtt. It should not though.
                 raise
+
+        elif message_type == "mqtt_topic_datapoint_setpoint_message":
+            # see the handling of datapoint_value_message above for comments.
+            try:
+                datapoint_id = msg.topic.split("/")[-2]
+                datapoint = Datapoint.objects.get(id=datapoint_id)
+                datapoint.last_setpoint = json.dumps(payload["setpoint"])
+                datapoint.last_setpoint_timestamp = datetime_from_timestamp(
+                    payload["timestamp"]
+                )
+                datapoint.save(
+                    update_fields=[
+                        "last_setpoint",
+                        "last_setpoint_timestamp",
+                    ]
+                )
+            except Exception:
+                logger.exception(
+                    'Exception while updating datapoint with a setpoint in DB.'
+                )
+                # This raise will be caught by paho mqtt. It should not though.
+                raise
+
         elif message_type == 'mqtt_topic_logs':
             timestamp = datetime_from_timestamp(payload['timestamp'])
             try:

@@ -18,7 +18,7 @@
   * [ ] High Level Introduction to components.
 * [ ] Services
   * [ ] API
-    * [ ] REST API pull
+    * [x] REST API pull
     * [ ] REST API push incl. Docs
     * [ ] Token authentication and access control
     * [ ] Prod Settings (Daphne, Debug, PG Database, HTTPs, self signed certs?)

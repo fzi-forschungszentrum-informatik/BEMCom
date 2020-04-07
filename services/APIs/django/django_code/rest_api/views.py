@@ -84,7 +84,12 @@ class DatapointScheduleViewSet(viewsets.ViewSet):
 
     def update(self, request, *args, pk=None, **kwargs):
         """
-        TODO
+        Receive a Datapoint schedule message and send it to the broker.
+
+        This will not save the schedule in the database, instead we rely on the
+        automatic save after the message returns from the broker. This way
+        it is ensured that current state displayed to the API user is always
+        the all components received from the broker.
         """
         datapoint = get_object_or_404(Datapoint, pk=pk)
 
@@ -102,10 +107,6 @@ class DatapointScheduleViewSet(viewsets.ViewSet):
         validated_data = serializer.validated_data
         validated_data["timestamp"] = timestamp_utc_now()
 
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.warning(json.dumps(validated_data))
-
         # Send the message to the MQTT broker.
         mqtt_topic = datapoint.get_mqtt_topics()["schedule"]
         cmi = ConnectorMQTTIntegration.get_instance()
@@ -116,9 +117,8 @@ class DatapointScheduleViewSet(viewsets.ViewSet):
 
         return Response(validated_data, status=status.HTTP_200_OK)
 
+
 class DatapointSetpointViewSet(viewsets.ViewSet):
-
-
 
     def retrieve(self, request, pk=None):
         datapoint = get_object_or_404(Datapoint, pk=pk)
@@ -132,10 +132,35 @@ class DatapointSetpointViewSet(viewsets.ViewSet):
 
     def update(self, request, *args, pk=None, **kwargs):
         """
-        TODO
+        Receive a Datapoint setpoint message and send it to the broker.
+
+        This will not save the setpoint in the database, instead we rely on the
+        automatic save after the message returns from the broker. This way
+        it is ensured that current state displayed to the API user is always
+        the all components received from the broker.
         """
         datapoint = get_object_or_404(Datapoint, pk=pk)
 
         # Only actuators have schedules and setpoints.
         if datapoint.type != "actuator":
             raise Http404("Not found.")
+
+        serializer = DatapointSetpointSerializer(datapoint, data=request.data)
+
+        # Returns HTTP 400 (by exception) if sent data is not valid.
+        serializer.is_valid(raise_exception=True)
+
+        # This is now a valid schedule. Add the current timestamp as time the
+        # system has been received by BEMCom to complete the message.
+        validated_data = serializer.validated_data
+        validated_data["timestamp"] = timestamp_utc_now()
+
+        # Send the message to the MQTT broker.
+        mqtt_topic = datapoint.get_mqtt_topics()["setpoint"]
+        cmi = ConnectorMQTTIntegration.get_instance()
+        cmi.client.publish(
+            topic=mqtt_topic,
+            payload=json.dumps(validated_data)
+        )
+
+        return Response(validated_data, status=status.HTTP_200_OK)
