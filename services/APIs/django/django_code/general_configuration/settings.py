@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework.authtoken',
     'channels',
     'main.apps.MainConfig',
     'admin_ui.apps.AdminUIConfig',
@@ -166,4 +167,12 @@ STATIC_URL = '/static/'
 MQTT_BROKER = {
     'host': 'ipe-ht-02.fzi.de',
     'port': 1884,
+}
+
+# Setup Auth and Permissions for DRF.
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+    ],
 }

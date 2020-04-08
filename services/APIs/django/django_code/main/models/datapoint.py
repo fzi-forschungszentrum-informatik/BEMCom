@@ -199,6 +199,42 @@ class Datapoint(models.Model):
         )
     )
 
+    class Meta:
+        """
+        Defines the custom permission labels of Datapoit of external access.
+        """
+        permissions = [
+            (
+                "rest_get_dp_value",
+                "Can read a datapoints value msg via the REST API."
+            ),
+            (
+                "rest_put_dp_value",
+                "Can write a datapoints value msg via the REST API. "
+                "(For actuators only)."
+            ),
+            (
+                "rest_get_dp_schedule",
+                "Can read a datapoints schedule msg via the REST API. "
+                "(For actuators only)."
+            ),
+            (
+                "rest_put_dp_schedule",
+                "Can write a datapoints schedule msg via the REST API. "
+                "(For actuators only)."
+            ),
+            (
+                "rest_get_dp_setpoint",
+                "Can read a datapoints setpoint msg via the REST API. "
+                "(For actuators only)."
+            ),
+            (
+                "rest_put_dp_setpoint",
+                "Can write a datapoints setpoint msg via the REST API. "
+                "(For actuators only)."
+            ),
+        ]
+
     def __str__(self):
         return slugify(self.key_in_connector)
 

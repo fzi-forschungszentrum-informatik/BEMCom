@@ -1,5 +1,6 @@
 from django.urls import include, path
 from rest_framework import routers
+from rest_framework.authtoken import views
 
 from .views import DatapointViewSet
 from .views import DatapointValueViewSet
@@ -53,4 +54,6 @@ urlpatterns = [
         })
     ),
     path('', include(selected_urls)),
+    # Add Login and logout function to browsable API.
+    path('api-auth/', include('rest_framework.urls')),
 ]
