@@ -383,7 +383,15 @@ class DatapointValueSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         fields_values = {}
-        fields_values["value"] = instance.last_value
+        value = instance.last_value
+        # values for numeric datapoints must be representable as float
+        # else they are invalid or simply None.
+        if "numeric" in instance.data_format:
+            try:
+                value = float(value)
+            except:
+                value = None 
+        fields_values["value"] = value
         # Return datetime in ms.
         if instance.last_value_timestamp is not None:
             timestamp = datetime.timestamp(instance.last_value_timestamp)
