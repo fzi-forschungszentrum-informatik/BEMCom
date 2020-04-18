@@ -17,3 +17,6 @@ ccu_*.json
 
 # Is used to store personal development variables.
 .env
+
+# Some folder that is used to store mongo db data while developing.
+mongo_db_data
