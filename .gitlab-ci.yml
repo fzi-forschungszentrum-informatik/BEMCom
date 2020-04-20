@@ -1,0 +1,30 @@
+image: debian:stable-slim
+
+variables:
+    TEST_SSH_USER_HOST: 'iik@ipe-ht-02.fzi.de'
+    ## Be aware that everything in this direcotry will be erased every now and then.
+    TEST_DEPLOY_DIR: '~/deploys/HoLL-Therm/bemcom'
+
+before_script:
+    ## Following https://docs.gitlab.com/ee/ci/ssh_keys/
+    - apt-get update -y 
+    - apt-get install openssh-client rsync -y
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    ## Disable host key checking, seems save that our servers are not manipulated
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+
+deploy-test:
+    only:
+        - testing
+
+    script:
+        ## Remove old files.
+        - 'ssh $TEST_SSH_USER_HOST "rm -rf $TEST_DEPLOY_DIR"'
+        # Copy current state and build all docker images.
+        - 'ssh $TEST_SSH_USER_HOST "mkdir -p $TEST_DEPLOY_DIR"'
+        - 'rsync -av -e ssh . $TEST_SSH_USER_HOST:$TEST_DEPLOY_DIR'
+        - 'ssh $TEST_SSH_USER_HOST "cd $TEST_DEPLOY_DIR && bash build_all_services.sh"'
+    
