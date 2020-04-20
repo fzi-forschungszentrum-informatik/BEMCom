@@ -48,6 +48,7 @@ This is a MongoDB based Raw Message DB for BEMCom.
 
 ### Changelog
 
-| Tag   | Changes                                                  |
-| ----- | -------------------------------------------------------- |
-| 0.0.1 | Initial version, some bug while shutting down container. |
+| Tag   | Changes                                                      |
+| ----- | ------------------------------------------------------------ |
+| 0.0.1 | Initial version, some bug while shutting down container.     |
+| 0.1.0 | Should be fully functional now. Container shutdown stops everything gracefully now. |
