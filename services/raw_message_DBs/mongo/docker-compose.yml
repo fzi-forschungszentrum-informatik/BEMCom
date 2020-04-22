@@ -18,10 +18,9 @@ services:
         user: "${USER_ID}:${GROUP_ID}"
 
         environment:
-            - "MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}"
-            - "MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}"
             - "MONGO_USERNAME=${MONGO_USERNAME}"
             - "MONGO_PASSWORD=${MONGO_PASSWORD}"
+            - "MONGO_LOGIN_DB=${MONGO_PASSWORD}"
             - "MQTT_BROKER_HOST=${MQTT_BROKER_HOST}"
             - "MQTT_BROKER_PORT=${MQTT_BROKER_PORT}"
             - "MQTT_TOPIC_ALL_RAW_MESSAGES=+/raw_message_to_db"

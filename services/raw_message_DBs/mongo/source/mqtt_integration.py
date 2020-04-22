@@ -21,6 +21,7 @@ MONGO_HOST = "localhost"
 MONGO_PORT = 27017
 MONGO_USERNAME = os.getenv("MONGO_USERNAME")
 MONGO_PASSWORD = os.getenv("MONGO_PASSWORD")
+MONGO_LOGIN_DB = os.getenv("MONGO_LOGIN_DB")
 MQTT_TOPIC_ALL_RAW_MESSAGES = os.getenv("MQTT_TOPIC_ALL_RAW_MESSAGES")
 MQTT_INTEGRATION_LOG_LEVEL = os.getenv("MQTT_INTEGRATION_LOG_LEVEL")
 
@@ -45,7 +46,7 @@ logger.info("Starting up monog-raw-message-db MQTT integration")
 # Connect ot MongoDb, handle potentially given usernames and passwords.
 logger.info('Initiating mongodb client')
 
-def create_mongo_host_str(username, password, host, port):
+def create_mongo_host_str(username, password, host, port, login_db):
     """
     Build host str, add username and password only if set.
     The full template looks like this: 'mongodb://%s:%s@%s:%s'
@@ -61,24 +62,28 @@ def create_mongo_host_str(username, password, host, port):
         host,
         port,
     )
+    if login_db:
+        mongo_host_str += '/?authSource=%s' % quote_plus(login_db)
     return mongo_host_str
 
 mongo_host_str = create_mongo_host_str(
     username=MONGO_USERNAME,
     password=MONGO_PASSWORD,
     host=MONGO_HOST,
-    port=MONGO_PORT
+    port=MONGO_PORT,
+    login_db=MONGO_LOGIN_DB
 )
 
 # Create a version without password for the log.
 password_blinded = MONGO_PASSWORD
 if password_blinded:
-    password_blinded = '*'*10
+    password_blinded = 'x'*10
 mongo_host_str_blinded = create_mongo_host_str(
     username=MONGO_USERNAME,
-    password=MONGO_PASSWORD,
+    password=password_blinded,
     host=MONGO_HOST,
-    port=MONGO_PORT
+    port=MONGO_PORT,
+    login_db=MONGO_LOGIN_DB
 )
 logger.debug('Connecting to MongoDB: %s', mongo_host_str_blinded)
 mc = MongoClient(mongo_host_str)
