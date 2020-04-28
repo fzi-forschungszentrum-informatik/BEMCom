@@ -1,12 +1,13 @@
 # Track to OS Release
 
 * [ ] Repo root
-  * [ ] Make build script process connector templates first
+  * [x] Make build script process connector templates first
+  * [ ] Add test stages to pipeline
   * [ ] Add license
   * [ ] Update Readme
-  * [ ] Remove application_builder, applications and application_templates folders
+  * [x] Remove application_builder, applications and application_templates folders
 * [ ] Demo
-  * [ ] Move demo folder to root
+  * [x] Move demo folder to root
   * [ ] docker compose file
   * [ ] Instructions how to build
   * [ ] Instructions how to use the API.
@@ -23,6 +24,7 @@
     * [ ] Token authentication and access control
     * [ ] Prod Settings (Daphne, Debug, PG Database, HTTPs, self signed certs?)
     * [ ] Service Documentation.
+    * [ ] OpenAPI specification of REST API.
   * [ ] Connectors
     * [ ] Aquametro
       * [ ] Service Documentation
@@ -35,9 +37,10 @@
   * [ ] Controller
     * [ ] Service Documentation
     * [ ] Implementation
-  * [ ] Raw Message DB
-    * [ ] Implement with Mongo + Python script to connect to MQTT.
-    * [ ] Service Documentation
+  * [x] Raw Message DB
+    * [x] Implement with Mongo + Python script to connect to MQTT.
+    * [x] Service Documentation
+    * [x] Fix auth bug
   * [ ] Message Broker Monitor
     * [ ] Service Documentation
     * [ ] Rename to something with Node-RED
