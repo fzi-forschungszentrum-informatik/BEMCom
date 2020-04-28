@@ -1,26 +1,27 @@
 version: '3'
 
 services:
-    db:
-        container_name: db
-        ports:
-            - "${DB_PORT}:5432"
-        image: "postgres:${POSTGRES_TAG}"
-        user: "${USER_ID}:${GROUP_ID}"
-        volumes: 
-            - "${POSTGRES_VOLUME}:/var/lib/postgresql/data"
-            - "/etc/passwd:/etc/passwd:ro"  
+
+    django-api:
+
+        container_name: django-api
+
+        build:
+            context: ./source
+
         restart: always
-        environment:
-            - POSTGRES_PASSWORD=aklsjdkajsd188271827kajs
-            - POSTGRES_USER=django
-    web:
-        build: .
-        command: python3 /code/manage.py runserver 0.0.0.0:8000 #bash /code/start_django_devl_server.sh
-        volumes:
-            - ./django_code:/code
+
         ports:
             - "8000:8000"
-        depends_on:
-            - db
+
+        volumes:
+            - ./source/django_code:/bemcom/code
+            - /tmp/db.sqlite3:/bemcom/db.sqlite3
+
         user: "${USER_ID}:${GROUP_ID}"
+
+        environment:
+            - "MQTT_BROKER_HOST=${MQTT_BROKER_HOST}"
+            - "MQTT_BROKER_PORT=${MQTT_BROKER_PORT}"
+            - "MODE=${MODE}"
+

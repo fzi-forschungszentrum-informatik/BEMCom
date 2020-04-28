@@ -12,6 +12,17 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 
 import os
 
+# Load configuration from environment variable
+MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST")
+MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT"))
+MODE=os.getenv("MODE")
+
+# Settings for connection to MQTT broker.
+MQTT_BROKER = {
+    'host': MQTT_BROKER_HOST,
+    'port': MQTT_BROKER_PORT,
+}
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -23,11 +34,19 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = '@0z#-)rncp$vd+*!vivprtefmbhvc_t%rxvtwsty2s(@@19=k8'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+if MODE == "DEVL":
+    DEBUG = True
+else:
+    DEBUG = False
 
-ALLOWED_HOSTS = []
+# TODO This should be more restrictive.
+ALLOWED_HOSTS = ["*"]
 
-# Logging as suggested by practical django book
+# Logging inspired by practical django book
+if MODE == "DEVL":
+    loglevel = "DEBUG"
+else:
+    loglevel = "INFO"
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -38,7 +57,7 @@ LOGGING = {
     },
     'handlers': {
         'console': {
-            'level': 'DEBUG',
+            'level': loglevel,
             'class': 'logging.StreamHandler',
             'formatter': 'simple'
         },
@@ -46,12 +65,12 @@ LOGGING = {
     'loggers': {
         'core': {
             'handlers': ['console'],
-            'level': 'DEBUG',
+            'level': loglevel,
             'propagate': True,
         },
         'manager': {
             'handlers': ['console'],
-            'level': 'DEBUG',
+            'level': loglevel,
             'propagate': True,
         },
     },
@@ -106,19 +125,9 @@ TEMPLATES = [
 # Settings for channels server
 ASGI_APPLICATION = "general_configuration.routing.application"
 
-# Database
-# https://docs.djangoproject.com/en/2.2/ref/settings/#databases
-
-#DATABASES = {
-#    'default': {
-#        'ENGINE': 'django.db.backends.postgresql',
-#        'NAME': 'django',
-#        'USER': 'django',
-#        'PASSWORD': 'aklsjdkajsd188271827kajs',
-#        'HOST': 'db',
-#        'PORT': 5432,
-#    }
-#}
+# The bemcom api should not see to much data. The sqlite should
+# be sufficient thus.
+# TODO: Remove DB from code dir.
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -162,12 +171,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
 STATIC_URL = '/static/'
-
-# Settings for connection to MQTT broker.
-MQTT_BROKER = {
-    'host': 'ipe-ht-02.fzi.de',
-    'port': 1884,
-}
 
 # Setup Auth and Permissions for DRF.
 REST_FRAMEWORK = {

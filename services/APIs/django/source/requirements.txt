@@ -1,0 +1,7 @@
+Django==2.2
+Pillow
+channels==2.3
+service_identity  # is required by channels.
+paho-mqtt==1.5
+pytest-django
+djangorestframework==3.11
