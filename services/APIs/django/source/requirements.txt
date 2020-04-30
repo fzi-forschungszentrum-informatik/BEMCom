@@ -1,7 +1,14 @@
+# Django itself plus addon packages. 
 Django==2.2
-Pillow
 channels==2.3
 service_identity  # is required by channels.
+djangorestframework==3.11
+
+# Other packages required for the app.
 paho-mqtt==1.5
 pytest-django
-djangorestframework==3.11
+python-dotenv==0.13
+
+# Production servers.
+daphne==2.5
+whitenoise==5.0

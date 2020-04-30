@@ -20,3 +20,6 @@ ccu_*.json
 
 # Some folder that is used to store mongo db data while developing.
 mongo_db_data
+
+# The folder django will look for the SQLite DB if developing not in container
+django/source/db

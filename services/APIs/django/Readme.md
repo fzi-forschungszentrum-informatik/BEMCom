@@ -2,7 +2,17 @@
 
 This is a connector to integrate [eQ-3 Homematic](https://www.eq-3.com/products/homematic.html) devices.
 
+### To document:
 
+* [ ] Mounts for DB
+* [ ] SECRET_KEY
+* [ ] ALLOWED_HOSTS? -> Rather Host FQDN
+* [ ] ADMIN
+* [ ] `MODE=PROD SSL_KEY_PEM=$(cat key.pem) SSL_CERT_PEM=$(cat cert.pem) docker-compose up --build`
+
+### TODO
+
+* [ ] E-Mail Backend
 
 ### Supported Gateways
 

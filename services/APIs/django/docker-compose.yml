@@ -16,7 +16,7 @@ services:
 
         volumes:
             - ./source/django_code:/bemcom/code
-            - /tmp/db.sqlite3:/bemcom/db.sqlite3
+#            - /source/db:/bemcom/db
 
         user: "${USER_ID}:${GROUP_ID}"
 
@@ -24,4 +24,10 @@ services:
             - "MQTT_BROKER_HOST=${MQTT_BROKER_HOST}"
             - "MQTT_BROKER_PORT=${MQTT_BROKER_PORT}"
             - "MODE=${MODE}"
+            - "DJANGO_ADMINS=${DJANGO_ADMINS}"
+            - "DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}"
+            - "HOSTNAME=${HOSTNAME}"
+            - "SSL_CERT_PEM=${SSL_CERT_PEM}"
+            - "SSL_KEY_PEM=${SSL_KEY_PEM}"
+
 

@@ -12,10 +12,20 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 
 import os
 
-# Load configuration from environment variable
+from dotenv import load_dotenv
+
+
+# This should read in variables stored in the env files of the parent directores
+# which is only relevant for developing outside of the container.
+load_dotenv()
+
+# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Load custom configuration variables from environment variable
 MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST")
 MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT"))
-MODE=os.getenv("MODE")
+MODE = os.getenv("MODE")
 
 # Settings for connection to MQTT broker.
 MQTT_BROKER = {
@@ -23,24 +33,22 @@ MQTT_BROKER = {
     'port': MQTT_BROKER_PORT,
 }
 
-# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
+# Also set some config variables used by django
+SECRET_KEY=os.getenv("DJANGO_SECRET_KEY")
+if os.getenv("ALLOWED_HOSTS"):
+    ALLOWED_HOSTS = eval(os.getenv("ALLOWED_HOSTS"))
+DJANGO_ADMINS = os.getenv("DJANGO_ADMINS")
+if DJANGO_ADMINS:
+    ADMINS = eval(DJANGO_ADMINS)
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '@0z#-)rncp$vd+*!vivprtefmbhvc_t%rxvtwsty2s(@@19=k8'
+SECRET_KEY = SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
 if MODE == "DEVL":
     DEBUG = True
 else:
     DEBUG = False
-
-# TODO This should be more restrictive.
-ALLOWED_HOSTS = ["*"]
 
 # Logging inspired by practical django book
 if MODE == "DEVL":
@@ -78,7 +86,6 @@ LOGGING = {
 
 
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -96,6 +103,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -126,18 +134,18 @@ TEMPLATES = [
 ASGI_APPLICATION = "general_configuration.routing.application"
 
 # The bemcom api should not see to much data. The sqlite should
-# be sufficient thus.
-# TODO: Remove DB from code dir.
+# be sufficient thus. The folder for the DB is exepcted under /bemcom/db
+# if executed in the container or in a db folder next to django_code if 
+# developing outside of the container.
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'NAME': os.path.join(BASE_DIR, os.pardir, 'db', 'db.sqlite3'),
     }
 }
 
 # Password validation
 # https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators
-
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -155,7 +163,6 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 # https://docs.djangoproject.com/en/2.2/topics/i18n/
-
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'
@@ -169,8 +176,8 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
-
 STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, os.pardir, 'static')
 
 # Setup Auth and Permissions for DRF.
 REST_FRAMEWORK = {
@@ -179,3 +186,18 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.TokenAuthentication',
     ],
 }
+
+# Finally some security related stuff, that is only relevant for production 
+# where we don't offer a plain HTTP page. The first two are suggested by 
+# Django's deployment checklist, the remaining by the check --deploy result.
+#
+# Don't activate SECURE_HSTS_SECONDS and SECURE_SSL_REDIRECT, they will break
+# the tests but don't provide anything useful as the API does not expose a non
+# SSL endpoint in PROD mode.
+if MODE != "DEVL":
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER = True
+    X_FRAME_OPTIONS = "DENY"
+
