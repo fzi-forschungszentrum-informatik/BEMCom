@@ -1,0 +1,100 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "BEMCom Django API",
+    "version": "0.0.1"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000"
+    }
+  ],
+  "tags": [
+    {
+      "name": "datapoint"
+    },
+    {
+      "name": "datapoint value"
+    },
+    {
+      "name": "datapoint schedule"
+    },
+    {
+      "name": "datapoint setpoint"
+    }
+  ],
+  "paths": {
+    "/datapoint/{datapoint_id}/": {
+      "parameters": [
+        {
+          "name": "datapoint_id",
+          "in": "path",
+          "description": "ID of the datapoint to return",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "datapoint"
+        ],
+        "summary": "Lists all relevant metadata of a datapoint for external applications.",
+        "operationId": "get_datapoint_by_id",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/datapoint"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The datapoint id does not exist or the user has no rights to access this datapoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/drf_error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "datapoint": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "drf_error": {
+        "type": "object",
+        "properties": {
+          "detail": {
+            "type": "string",
+            "example": "Not found."
+          }
+        }
+      }
+    }
+  }
+}

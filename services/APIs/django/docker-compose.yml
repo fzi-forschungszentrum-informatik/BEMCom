@@ -30,4 +30,16 @@ services:
             - "SSL_CERT_PEM=${SSL_CERT_PEM}"
             - "SSL_KEY_PEM=${SSL_KEY_PEM}"
 
+# This is a tool for developing the OpenAPI specification of the API.
+# See also: https://swagger.io/tools/open-source/the-new-swagger-editor-and-swagger-ui/
+    swagger-editor:
+        
+        container_name: django-api-swagger-editor
 
+        image: swaggerapi/swagger-editor:latest
+
+        ports:
+            - "7999:8080"
+
+        volumes:
+            - ./source/openapi:/usr/share/nginx/html/django-api
