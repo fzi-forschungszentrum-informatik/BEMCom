@@ -12,12 +12,14 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 
 import os
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
-
-# This should read in variables stored in the env files of the parent directores
-# which is only relevant for developing outside of the container.
-load_dotenv()
+# This should read in variables stored in the env files of the parent directores.
+# This is used in container mode to load auto generated values like SECRET_KEY
+# and ALLOWED_HOSTS. While developing outside of the container you can place
+# development values for the variables in the .env file next to docker-compose.yml
+# it is also found here.
+load_dotenv(find_dotenv(), verbose=True, override=True)
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -34,15 +36,13 @@ MQTT_BROKER = {
 }
 
 # Also set some config variables used by django
-SECRET_KEY=os.getenv("DJANGO_SECRET_KEY")
-if os.getenv("ALLOWED_HOSTS"):
-    ALLOWED_HOSTS = eval(os.getenv("ALLOWED_HOSTS"))
+ALLOWED_HOSTS = eval(os.getenv("ALLOWED_HOSTS"))
 DJANGO_ADMINS = os.getenv("DJANGO_ADMINS")
 if DJANGO_ADMINS:
     ADMINS = eval(DJANGO_ADMINS)
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = SECRET_KEY
+SECRET_KEY=os.getenv("DJANGO_SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 if MODE == "DEVL":

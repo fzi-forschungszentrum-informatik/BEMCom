@@ -1,9 +1,14 @@
+#!/bin/
 set -e
 # Create a fallback SECRET_KEY for django, that can be used if the user has 
-# not specified SECRET_KEY explicitly.
+# not specified SECRET_KEY explicitly. Exporting the env variable here will
+# work for starting up the django app, but not for any other shell that requires
+# django settings to be set up correctly, like e.g. creating a super user from 
+# terminal. Hence we store the secret key in an env file where it is picked
+# up by settings.py.
 if [ -z "$DJANGO_SECRET_KEY" ]
 then
-    DJANGO_SECRET_KEY=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c64)
+    echo "DJANGO_SECRET_KEY=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c64)" > /bemcom/code/.env
 fi
 
 # Check that the Hostname is not empty in production. It's absolutely required.
@@ -15,7 +20,7 @@ then
 fi
 
 # Add Hostname to Allowed hosts to make the server accesible.
-export ALLOWED_HOSTS="['$HOSTNAME']"
+echo ALLOWED_HOSTS="['$HOSTNAME']" >> /bemcom/code/.env
 
 # Ensure the DB layout matches the current state of the application
 python3 /bemcom/code/manage.py makemigrations
