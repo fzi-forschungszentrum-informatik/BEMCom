@@ -271,7 +271,8 @@ class ConnectorMQTTIntegration():
                 )
             except Exception:
                 logger.exception(
-                    'Exception while updating datapoint with a value in DB.'
+                    'Exception while updating datapoint with a value in DB.\n'
+                    'The topic was: %s' % msg.topic
                 )
                 # This raise will be caught by paho mqtt. It should not though.
                 raise
@@ -293,7 +294,8 @@ class ConnectorMQTTIntegration():
                 )
             except Exception:
                 logger.exception(
-                    'Exception while updating datapoint with a schedule in DB.'
+                    'Exception while updating datapoint with a schedule in DB.\n'
+                    'The topic was: %s' % msg.topic
                 )
                 # This raise will be caught by paho mqtt. It should not though.
                 raise
@@ -315,7 +317,8 @@ class ConnectorMQTTIntegration():
                 )
             except Exception:
                 logger.exception(
-                    'Exception while updating datapoint with a setpoint in DB.'
+                    'Exception while updating datapoint with a setpoint in DB.\n'
+                    'The topic was: %s' % msg.topic
                 )
                 # This raise will be caught by paho mqtt. It should not though.
                 raise
@@ -331,7 +334,10 @@ class ConnectorMQTTIntegration():
                     level=payload['level'],
                 ).save()
             except Exception:
-                logger.exception('Exception while writing Log into DB.')
+                logger.exception(
+                    'Exception while writing Log into DB.\n'
+                    'The topic was: %s' % msg.topic
+                )
                 # This raise will be caught by paho mqtt. It should not though.
                 raise
 
@@ -366,7 +372,10 @@ class ConnectorMQTTIntegration():
                     )
                     hb_object.save()
             except Exception:
-                logger.exception('Exception while writing heartbeat into DB.')
+                logger.exception(
+                    'Exception while writing heartbeat into DB.\n'
+                    'The topic was: %s' % msg.topic
+                )
                 # This raise will be caught by paho mqtt. It should not though.
                 raise
 
@@ -388,7 +397,8 @@ class ConnectorMQTTIntegration():
                         except Exception:
                             logger.exception(
                                 'Exception while writing available datapoint '
-                                'into DB.'
+                                'into DB.\n'
+                                'The topic was: %s' % msg.topic
                             )
                             # This raise will be caught by paho mqtt.
                             # It should not though.
