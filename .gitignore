@@ -22,4 +22,4 @@ ccu_*.json
 mongo_db_data
 
 # The folder django will look for the SQLite DB if developing not in container
-django/source/db
+**/django/source/db/

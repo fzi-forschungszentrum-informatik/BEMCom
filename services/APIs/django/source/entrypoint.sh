@@ -39,7 +39,7 @@ fi
 # If not create self signed certificates.
 # Use a directory in tmp as the user might have no write access for the /bemcom folder.
 echo "Checking the certificate situation."
-mkdir /tmp/cert
+mkdir -p /tmp/cert
 chmod 700 /tmp/cert
 cd /tmp/cert
 if [ -z "$SSL_CERT_PEM" ] || [ -z "$SSL_KEY_PEM" ]

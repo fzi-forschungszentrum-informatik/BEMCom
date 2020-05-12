@@ -16,7 +16,7 @@ services:
 
         volumes:
             - ./source/django_code:/bemcom/code
-#            - /source/db:/bemcom/db
+            - ./source/db:/bemcom/db
 
         user: "${USER_ID}:${GROUP_ID}"
 
