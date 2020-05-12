@@ -2,7 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "BEMCom Django API",
-    "version": "0.0.1"
+    "version": "0.0.1",
+    "description": "This defines the communication between the BEMCOM django REST endpoint and the clinet. The later is thereby a REST endpoint too.\n"
   },
   "servers": [
     {
@@ -27,21 +28,14 @@
     "/datapoint/{datapoint_id}/": {
       "parameters": [
         {
-          "name": "datapoint_id",
-          "in": "path",
-          "description": "ID of the datapoint to return",
-          "required": true,
-          "schema": {
-            "type": "integer",
-            "minimum": 1
-          }
+          "$ref": "#/components/parameters/datapoint_id"
         }
       ],
       "get": {
+        "summary": "[Available in BEMCom] Lists all relevant metadata of a datapoint for external applications.",
         "tags": [
           "datapoint"
         ],
-        "summary": "Lists all relevant metadata of a datapoint for external applications.",
         "operationId": "get_datapoint_by_id",
         "responses": {
           "200": {
@@ -49,18 +43,310 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/datapoint"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/datapoint_sensor"
+                    },
+                    {
+                      "$ref": "#/components/schemas/datapoint_actuator"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                      "sensor": "#/components/schemas/datapoint_sensor",
+                      "actuator": "#/components/schemas/datapoint_actuator"
+                    }
+                  }
                 }
               }
             }
           },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          },
           "404": {
-            "description": "The datapoint id does not exist or the user has no rights to access this datapoint.",
+            "$ref": "#/components/responses/not_found"
+          }
+        }
+      },
+      "put": {
+        "summary": "[NOT available in BEMCom] Update the datapoint metedata on client side.",
+        "tags": [
+          "datapoint"
+        ],
+        "operationId": "put_datapoint_by_id",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/datapoint_sensor"
+                  },
+                  {
+                    "$ref": "#/components/schemas/datapoint_actuator"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "type",
+                  "mapping": {
+                    "sensor": "#/components/schemas/datapoint_sensor",
+                    "actuator": "#/components/schemas/datapoint_actuator"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/drf_error"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/datapoint_sensor"
+                    },
+                    {
+                      "$ref": "#/components/schemas/datapoint_actuator"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                      "sensor": "#/components/schemas/datapoint_sensor",
+                      "actuator": "#/components/schemas/datapoint_actuator"
+                    }
+                  }
                 }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          }
+        }
+      }
+    },
+    "/datapoint/{datapoint_id}/value/": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/datapoint_id"
+        }
+      ],
+      "get": {
+        "summary": "[Available in BEMCom] Retrieves the last value message of a sensor/actuator datapoint.",
+        "tags": [
+          "datapoint value"
+        ],
+        "operationId": "get_datapoint_value",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/datapoint_value_number"
+                    },
+                    {
+                      "$ref": "#/components/schemas/datapoint_value_string"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found"
+          }
+        }
+      },
+      "put": {
+        "summary": "[Available in BEMCom] Sends a value message to an actuator datapoint. Is not supported for sensor datapoints. Should also be implemented in the client to allow receiving updates.",
+        "tags": [
+          "datapoint value"
+        ],
+        "operationId": "put_datapoint_value",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/datapoint_value_number"
+                    },
+                    {
+                      "$ref": "#/components/schemas/datapoint_value_string"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/bad_request"
+          },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/datapoint_value_number"
+                  },
+                  {
+                    "$ref": "#/components/schemas/datapoint_value_string"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/datapoint/{datapoint_id}/schedule/": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/datapoint_id"
+        }
+      ],
+      "get": {
+        "summary": "[Available in BEMCom] Retrieves the last schedule message for an actuator datapoint. Is not supported for sensor datapoints.",
+        "tags": [
+          "datapoint schedule"
+        ],
+        "operationId": "get_datapoint_schedule",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/datapoint_schedule"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found"
+          }
+        }
+      },
+      "put": {
+        "summary": "[Available in BEMCom] Sends a schedule message to the controller. Is not supported for sensor datapoints. Should also be implemented in the client to allow receiving updates.",
+        "tags": [
+          "datapoint schedule"
+        ],
+        "operationId": "put_datapoint_schedule",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/datapoint_schedule"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/bad_request"
+          },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/datapoint_schedule"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/datapoint/{datapoint_id}/setpoint/": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/datapoint_id"
+        }
+      ],
+      "get": {
+        "summary": "[Available in BEMCom] Retrieves the last setpoint message for an actuator datapoint. Is not supported for sensor datapoints.",
+        "tags": [
+          "datapoint setpoint"
+        ],
+        "operationId": "get_datapoint_setpoint",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/datapoint_setpoint"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found"
+          }
+        }
+      },
+      "put": {
+        "summary": "[Available in BEMCom] Sends a setpoint message to the controller. Is not supported for sensor datapoints. Should also be implemented in the client to allow receiving updates.",
+        "tags": [
+          "datapoint setpoint"
+        ],
+        "operationId": "put_datapoint_setpoint",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/datapoint_setpoint"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/bad_request"
+          },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/datapoint_setpoint"
               }
             }
           }
@@ -69,23 +355,51 @@
     }
   },
   "components": {
-    "schemas": {
-      "datapoint": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "name": {
-            "type": "string"
+    "parameters": {
+      "datapoint_id": {
+        "name": "datapoint_id",
+        "in": "path",
+        "description": "ID of the datapoint to return",
+        "required": true,
+        "schema": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "responses": {
+      "bad_request": {
+        "description": "The data of the request does not match the expected conventions. Detailed information is provided.\n",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/drf_error"
+            }
           }
-        },
-        "required": [
-          "id",
-          "name"
-        ]
+        }
       },
+      "forbidden": {
+        "description": "The user is not authenticated.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/drf_error"
+            }
+          }
+        }
+      },
+      "not_found": {
+        "description": "The datapoint id does not exist.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/drf_error"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
       "drf_error": {
         "type": "object",
         "properties": {
@@ -94,6 +408,438 @@
             "example": "Not found."
           }
         }
+      },
+      "datapoint_sensor": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/datapoint_sensor_generic_text"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_sensor_discrete_text"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_sensor_generic_numeric"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_sensor_discrete_numeric"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_sensor_continuous_numeric"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "data_format",
+          "mapping": {
+            "generic_text": "#/components/schemas/datapoint_sensor_generic_text",
+            "discrete_text": "#/components/schemas/datapoint_sensor_discrete_text",
+            "generic_numeric": "#/components/schemas/datapoint_sensor_generic_numeric",
+            "discrete_numeric": "#/components/schemas/datapoint_sensor_discrete_numeric",
+            "continuous_numeric": "#/components/schemas/datapoint_sensor_continuous_numeric"
+          }
+        }
+      },
+      "datapoint_actuator": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/datapoint_actuator_generic_text"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_actuator_discrete_text"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_actuator_generic_numeric"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_actuator_discrete_numeric"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_actuator_continuous_numeric"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "data_format",
+          "mapping": {
+            "generic_text": "#/components/schemas/datapoint_actuator_generic_text",
+            "discrete_text": "#/components/schemas/datapoint_actuator_discrete_text",
+            "generic_numeric": "#/components/schemas/datapoint_actuator_generic_numeric",
+            "discrete_numeric": "#/components/schemas/datapoint_actuator_discrete_numeric",
+            "continuous_numeric": "#/components/schemas/datapoint_actuator_continuous_numeric"
+          }
+        }
+      },
+      "datapoint_sensor_generic_text": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/datapoint_base"
+          }
+        ]
+      },
+      "datapoint_sensor_discrete_text": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/datapoint_base"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_discrete_addition"
+          }
+        ]
+      },
+      "datapoint_sensor_generic_numeric": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/datapoint_base"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_numeric_addition"
+          }
+        ]
+      },
+      "datapoint_sensor_discrete_numeric": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/datapoint_base"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_numeric_addition"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_discrete_addition"
+          }
+        ]
+      },
+      "datapoint_sensor_continuous_numeric": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/datapoint_base"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_numeric_addition"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_continuous_addition"
+          }
+        ]
+      },
+      "datapoint_actuator_generic_text": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/datapoint_base"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_actuator_addition"
+          }
+        ]
+      },
+      "datapoint_actuator_discrete_text": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/datapoint_base"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_discrete_addition"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_actuator_addition"
+          }
+        ]
+      },
+      "datapoint_actuator_generic_numeric": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/datapoint_base"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_numeric_addition"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_actuator_addition"
+          }
+        ]
+      },
+      "datapoint_actuator_discrete_numeric": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/datapoint_base"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_numeric_addition"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_discrete_addition"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_actuator_addition"
+          }
+        ]
+      },
+      "datapoint_actuator_continuous_numeric": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/datapoint_base"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_numeric_addition"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_continuous_addition"
+          },
+          {
+            "$ref": "#/components/schemas/datapoint_actuator_addition"
+          }
+        ]
+      },
+      "datapoint_base": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "The ID of the datapoint within BEMComs metadata database.",
+            "minimum": 1
+          },
+          "type": {
+            "type": "string",
+            "description": "The type of the datapoint, either `sensor` or `actuator`.",
+            "enum": [
+              "sensor",
+              "actuator"
+            ]
+          },
+          "data_format": {
+            "type": "string",
+            "description": "The type of data a datapoint value can be have. This is especially useful for setting actuator datapoints, then to prevent errors from disallowed values and for the adaption of UI elements. Possible values are:<br />`generic_text`: A datapoint for which the value can be stored as string.<br />`discrete_text`: A datapoint for which the value can be stored as string but which can take only a limited set of values.<br />`generic_numeric`: A datapoint for which the value can be stored as float.<br />`discrete_numeric`: A datapoint for which the value can be stored as float but which can take only a limited set of values.<br />`continuous_numeric`: A datapoint for which the value can be stored as float but for which min and max values may be specified.\n",
+            "enum": [
+              "generic_text",
+              "discrete_text",
+              "generic_numeric",
+              "discrete_numeric",
+              "continuous_numeric"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "description": "A string describing the datapoint as free text."
+          },
+          "url": {
+            "type": "string",
+            "description": "The URL under which this datapoint metadata message can be accessed."
+          },
+          "value_url": {
+            "type": "string",
+            "description": "The URL under which the last datapoint value message (see below) can be accessed and set."
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data_format",
+          "description",
+          "url",
+          "value_url"
+        ]
+      },
+      "datapoint_discrete_addition": {
+        "type": "object",
+        "properties": {
+          "allowed_values": {
+            "type": "array",
+            "description": "Is only given for datapoints with discrete data format. Lists all possible values.",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "allowed_values"
+        ]
+      },
+      "datapoint_numeric_addition": {
+        "type": "object",
+        "properties": {
+          "unit": {
+            "type": "string",
+            "description": "Is only given for datapoints with numeric data format. Lists the unit corresponding to the value as string."
+          }
+        },
+        "required": [
+          "unit"
+        ]
+      },
+      "datapoint_continuous_addition": {
+        "type": "object",
+        "properties": {
+          "min_value": {
+            "type": "number",
+            "description": "Is only given for datapoints with `continuous_numeric` data format. Defines the minimum allowed value for the datapoint. Can be `null` to indicate no minimum value.",
+            "nullable": true
+          },
+          "max_value": {
+            "type": "number",
+            "description": "Is only given for datapoints with `continuous_numeric` data format. Defines the maximum allowed value for the datapoint. Can be `null` to indicate no maximum value.",
+            "nullable": true
+          }
+        },
+        "required": [
+          "min_value",
+          "max_value"
+        ]
+      },
+      "datapoint_actuator_addition": {
+        "type": "object",
+        "properties": {
+          "schedule_url": {
+            "type": "string",
+            "description": "Is only given for actuator datapoints. The URL under which the last datapoint schedule message (see below) can be accessed and set."
+          },
+          "setpoint_url": {
+            "type": "string",
+            "description": "Is only given for actuator datapoints. The URL under which the last datapoint setpoint message (see below) can be accessed and set."
+          }
+        },
+        "required": [
+          "schedule_url",
+          "setpoint_url"
+        ]
+      },
+      "datapoint_value_timestamp": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "number",
+            "description": "For sensor datapoints: The time the value was received by the connector.<br />For actuator datapoints: The time the BEMCom API received the value message for the actuator. It is not necessary to include the timestamp field while putting a value to BEMCom, it will be ignored and overwritten by the BEMComs REST API.<br />Timestamp is in milliseconds since 1970-01-01 UTC.\n"
+          }
+        }
+      },
+      "datapoint_value_number": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/datapoint_value_timestamp"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number",
+                "nullable": true,
+                "description": "The last value of the datapoint. Will be a string or null for text datapoints, and a float or null for numeric datapoints.<br />If using `PUT` to send a message, to the value must obey the following rules.<br />The value must be larger or equal min_value (as listed in datapoint metadata) if the datapoints data format is continuous_numeric. <br />The value must be smaller or equal max_value (as listed in datapoint metadata) if the datapoints data format is continuous_numeric. <br />The value must be in the list of acceptable_values (as listed in datapoint metadata) if the datapoints data format is discrete.\n"
+              }
+            },
+            "required": [
+              "value"
+            ]
+          }
+        ]
+      },
+      "datapoint_value_string": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "nullable": true,
+            "description": "The last value of the datapoint. Will be a string or null for text datapoints, and a float or null for numeric datapoints.<br />If using `PUT` to send a message, to the value must obey the following rules.<br />The value must be larger or equal min_value (as listed in datapoint metadata) if the datapoints data format is continuous_numeric. <br />The value must be smaller or equal max_value (as listed in datapoint metadata) if the datapoints data format is continuous_numeric. <br />The value must be in the list of acceptable_values (as listed in datapoint metadata) if the datapoints data format is discrete.\n"
+          }
+        },
+        "required": [
+          "value"
+        ]
+      },
+      "datapoint_schedule": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "number",
+            "description": "The time the REST API received the schedule message in milliseconds since 1970-01-01 UTC. It is not necessary to include the timestamp field while putting a schedule, it will be ignored and overwritten by the REST API.\n"
+          },
+          "schedule": {
+            "type": "array",
+            "description": "The last schedule of the datapoint. Each schedule array will hold zero or more schedule items as defined below.\n",
+            "items": {
+              "type": "object",
+              "properties": {
+                "from_timestamp": {
+                  "type": "number",
+                  "nullable": true,
+                  "description": "The time in milliseconds since 1970-01-01 UTC that the value should be applied. Can be `null` in which case the value should be applied immediately after the schedule is received by the controller.\n"
+                },
+                "to_timestamp": {
+                  "type": "number",
+                  "nullable": true,
+                  "description": "The time in milliseconds since 1970-01-01 UTC that the value should no longer be applied. Can be `null` in which case the value should be applied forever, or more realistic, until a new schedule is received.\n"
+                },
+                "value": {
+                  "type": "string",
+                  "nullable": true,
+                  "description": "The value that should be sent to the actuator datapoint. <br />The value must be larger or equal min_value (as listed in datapoint metadata) if the datapoints data format is continuous_numeric. <br />The value must be smaller or equal max_value (as listed in datapoint metadata) if the datapoints data format is continuous_numeric. <br />The value must be in the list of acceptable_values (as listed in datapoint metadata) if the datapoints data format is discrete.\n"
+                }
+              },
+              "required": [
+                "from_timestamp",
+                "to_timestamp",
+                "value"
+              ]
+            }
+          }
+        },
+        "required": [
+          "schedule"
+        ]
+      },
+      "datapoint_setpoint": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "number",
+            "description": "The time the REST API received the setpoint message in milliseconds since 1970-01-01 UTC. It is not necessary to include the timestamp field while putting a setpoint, it will be ignored and overwritten by the REST API.\n"
+          },
+          "setpoint": {
+            "type": "array",
+            "description": "The last setpoint of the datapoint. Each setpoint array will hold zero or more setpoint items as defined below.\n",
+            "items": {
+              "type": "object",
+              "properties": {
+                "from_timestamp": {
+                  "type": "number",
+                  "nullable": true,
+                  "description": "The time in milliseconds since 1970-01-01 UTC that the setpoint item should be applied. Can be `null` in which case it should be applied immediately after the setpoint is received by the controller.\n"
+                },
+                "to_timestamp": {
+                  "type": "number",
+                  "nullable": true,
+                  "description": "The time in milliseconds since 1970-01-01 UTC that the setpoint item should no longer be applied Can be `null` in which case it should be applied forever, or more realistic, until a new setpoint is received.\n"
+                },
+                "preferred_value": {
+                  "type": "string",
+                  "nullable": true,
+                  "description": "The preferred value of the user.<br />The value must be larger or equal min_value (as listed in datapoint metadata) if the datapoints data format is continuous_numeric. <br />The value must be smaller or equal max_value (as listed in datapoint metadata) if the datapoints data format is continuous_numeric. <br />The value must be in the list of acceptable_values (as listed in datapoint metadata) if the datapoints data format is discrete.\n"
+                },
+                "acceptable_values": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Only applicable to datapoints with discrete data format.<br />A listing of other set values that are acceptable for the user. The controller will ensure that controlled datapoint value remains in the values listed here. Can be an empty array to indicate that there is no flexibility, the controller will always execute the `preferred_value` and ignore the schedule.\n"
+                },
+                "min_value": {
+                  "type": "number",
+                  "nullable": true,
+                  "description": "Only applicable to datapoints with continuous_numeric data format.<br />Indicates the minimum value of the controlled variable the user is willing to accept. The range between minimum_value and maximum_value is the flexibility of the user. Can be `null` to indicate that no minimum exists. The controller will ignore the schedule and execute `preferred_value` if the controlled datapoint value is below `min_value`.\n"
+                },
+                "max_value": {
+                  "type": "number",
+                  "nullable": true,
+                  "description": "Only applicable to datapoints with continuous_numeric data format.<br />Indicates the maximum value of the controlled variable the user is willing to accept. The range between minimum_value and maximum_value is the flexibility of the user. Can be `null` to indicate that no maximum exists. The controller will ignore the schedule and execute `preferred_value` if the controlled datapoint value is above `max_value`.\n"
+                }
+              },
+              "required": [
+                "from_timestamp",
+                "to_timestamp",
+                "preferred_value"
+              ]
+            }
+          }
+        },
+        "required": [
+          "schedule"
+        ]
       }
     }
   }
