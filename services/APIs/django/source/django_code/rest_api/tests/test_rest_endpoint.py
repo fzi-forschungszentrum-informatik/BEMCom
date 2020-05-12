@@ -19,6 +19,7 @@ if __name__ == "__main__":
     setup()
 
 from rest_framework.test import APIClient
+from django.contrib.auth.models import User
 
 from main.utils import datetime_from_timestamp
 from main.connector_mqtt_integration import ConnectorMQTTIntegration
@@ -56,6 +57,8 @@ def rest_endpoint_setup(request, django_db_setup, django_db_blocker):
 
     test_connector = connector_factory("test_connector6")
     client = APIClient()
+    user = User.objects.create_user(username='testuser', password='12345')
+    client.force_authenticate(user=user)
 
     # Inject objects into test class.
     request.cls.test_connector = test_connector
@@ -65,6 +68,7 @@ def rest_endpoint_setup(request, django_db_setup, django_db_blocker):
 
     # Remove DB entries, as the restore command below does not seem to work.
     test_connector.delete()
+    user.delete()
 
     # Close connections and objects.
     mqtt_client.disconnect()
