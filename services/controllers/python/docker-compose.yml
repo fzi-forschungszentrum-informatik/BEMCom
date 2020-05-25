@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+    python-controller:
+        container_name: python-controller
+        build:
+            context: ./source
+        restart: always  
+        user: 1000:1000
+        environment:
+            - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}
+            - MQTT_BROKER_PORT=${MQTT_BROKER_PORT}
+            - MQTT_TOPIC_CONTROLLED_DATAPOINTS=${MQTT_TOPIC_CONTROLLED_DATAPOINTS}
