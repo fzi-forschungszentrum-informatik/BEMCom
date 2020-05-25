@@ -22,9 +22,9 @@
     * [x] REST API pull
     * [ ] REST API push incl. Docs
     * [ ] Token authentication and access control
-    * [ ] Prod Settings (Daphne, Debug, PG Database, HTTPs, self signed certs?)
+    * [x] Prod Settings (Daphne, Debug, PG Database, HTTPs, self signed certs?)
     * [ ] Service Documentation.
-    * [ ] OpenAPI specification of REST API.
+    * [x] OpenAPI specification of REST API.
   * [ ] Connectors
     * [ ] Aquametro
       * [ ] Service Documentation
@@ -50,4 +50,5 @@
       * [ ] Move to devl branch
     * [ ] Node Red
       * [ ] Update documentation (How to)
+      * [ ] Update docker-compose order of fields.
 
