@@ -3,6 +3,7 @@
 This is the controller. See the Readme.md files for details.
 """
 import os
+import json
 import logging
 
 from dotenv import load_dotenv, find_dotenv
@@ -28,7 +29,7 @@ class Controller():
         userdata = {
             "connect_kwargs": connect_kwargs,
             "config_topic": mqtt_config_topic,
-            "datapoint_topics": {}
+            "topic_index": {},
         }
         self.userdata = userdata
 
@@ -68,7 +69,42 @@ class Controller():
 
     @staticmethod
     def on_message(client, userdata, msg):
-        pass
+        if msg.topic == userdata["config_topic"]:
+            payload = json.loads(msg.payload)
+
+            # Build up a topic index, linking from the topic to the topic of
+            # the corresponding sensor value, the later is thereby used as
+            # an id under which the last messages are stored.
+            topic_index_new = {}
+            for control_group in payload:
+                sensor_value_topic = control_group["sensor"]["value"]
+                actuator_setpoint_topic = control_group["actuator"]["setpoint"]
+                actuator_schedule_topic = control_group["actuator"]["schedule"]
+
+                topic_index_new[sensor_value_topic] = {
+                    "id": sensor_value_topic,
+                    "type": "sensor_value",
+                }
+                topic_index_new[actuator_setpoint_topic] = {
+                    "id": sensor_value_topic,
+                    "type": "actuator_setpoint",
+                }
+                topic_index_new[actuator_schedule_topic] = {
+                    "id": sensor_value_topic,
+                    "type": "actuator_schedule",
+                }
+
+            # Now use the index and the previous versionf of it to subscribe
+            # to all topics for that are new in the last message and
+            # unsubscribe from all topics that are no longer in the config.
+            topic_index_old = userdata["topic_index"]
+            new_topics = topic_index_new.keys() - topic_index_old.keys()
+            deprecated_topics = topic_index_old.keys() - topic_index_new.keys()
+            userdata["topic_index"] = topic_index_new
+            for topic in new_topics:
+                client.subscribe(topic, 0)
+            for topic in deprecated_topics:
+                client.unsubscribe(topic)
 
     def disconnect(self):
         """
@@ -78,6 +114,7 @@ class Controller():
         self.client.loop_stop()
         # Remove the client, so init can establish a new connection.
         del self.client
+
 
 if __name__ == "__main__":
     # This is used in container mode to load the configuraiton from env

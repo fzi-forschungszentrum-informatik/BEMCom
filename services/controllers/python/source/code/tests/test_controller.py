@@ -1,4 +1,5 @@
 import os
+import json
 
 import pytest
 
@@ -56,3 +57,103 @@ class TestController():
         subscribed_topics = self.mqtt_client.fake_broker.subscribed_topics
         assert self.mqtt_config_topic in subscribed_topics
         assert len(subscribed_topics[self.mqtt_config_topic]) != 0
+
+    def test_config_msg_processed(self):
+        """
+        Verify that the config message is processed correctly.
+
+        Here we expect that the controller would connect to the value topic
+        for the sensor and setpoint and schedule topic of the actuator after
+        receiving the config message.
+        """
+        config_msg = [
+            {
+                "sensor": {
+                    "value": "test_connector/messages/1/value",
+                },
+                "actuator": {
+                    "value": "test_connector/messages/2/value",
+                    "setpoint": "test_connector/messages/2/setpoint",
+                    "schedule": "test_connector/messages/2/schedule",
+                }
+            },
+        ]
+
+        # Send the config msg.
+        self.mqtt_client.publish(
+            self.mqtt_config_topic,
+            json.dumps(config_msg),
+        )
+
+        # Finally verify that the controller has subscribed to all topics
+        # for which we expect it and not more.
+        subscribed_topics = self.mqtt_client.fake_broker.subscribed_topics
+        expected_subscribed = []
+        expected_subscribed.append(config_msg[0]["sensor"]["value"])
+        expected_subscribed.append(config_msg[0]["actuator"]["setpoint"])
+        expected_subscribed.append(config_msg[0]["actuator"]["schedule"])
+        for expected_topic in expected_subscribed:
+            assert expected_topic in subscribed_topics
+            assert len(subscribed_topics[expected_topic]) != 0
+
+    def test_config_msg_updates(self):
+        """
+        Verify that the config message cauese updates correctly.
+
+        I.e. that the conroller is not subscribed to topics that are not
+        part of the config anymore.
+        """
+        config_msg = [
+            {
+                "sensor": {
+                    "value": "test_connector/messages/1/value",
+                },
+                "actuator": {
+                    "value": "test_connector/messages/2/value",
+                    "setpoint": "test_connector/messages/2/setpoint",
+                    "schedule": "test_connector/messages/2/schedule",
+                }
+            },
+        ]
+
+        # Send the config msg.
+        self.mqtt_client.publish(
+            self.mqtt_config_topic,
+            json.dumps(config_msg),
+        )
+
+        config_msg_2 = [
+            {
+                "sensor": {
+                    "value": "test_connector/messages/3/value",
+                },
+                "actuator": {
+                    "value": "test_connector/messages/4/value",
+                    "setpoint": "test_connector/messages/4/setpoint",
+                    "schedule": "test_connector/messages/4/schedule",
+                }
+            },
+        ]
+
+        # Send the config msg.
+        self.mqtt_client.publish(
+            self.mqtt_config_topic,
+            json.dumps(config_msg_2),
+        )
+
+        # Finally verify that the controller has subscribed to all topics
+        # for which we expect it and not more.
+        subscribed_topics = self.mqtt_client.fake_broker.subscribed_topics
+        expected_subscribed = []
+        expected_subscribed.append(config_msg_2[0]["sensor"]["value"])
+        expected_subscribed.append(config_msg_2[0]["actuator"]["setpoint"])
+        expected_subscribed.append(config_msg_2[0]["actuator"]["schedule"])
+        for expected_topic in expected_subscribed:
+            assert expected_topic in subscribed_topics
+            assert len(subscribed_topics[expected_topic]) != 0
+        unexpected_subscribed = []
+        unexpected_subscribed.append(config_msg[0]["sensor"]["value"])
+        unexpected_subscribed.append(config_msg[0]["actuator"]["setpoint"])
+        unexpected_subscribed.append(config_msg[0]["actuator"]["schedule"])
+        for unexpected_topic in unexpected_subscribed:
+            assert unexpected_topic not in subscribed_topics
