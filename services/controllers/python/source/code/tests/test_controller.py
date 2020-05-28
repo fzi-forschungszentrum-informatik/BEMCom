@@ -157,3 +157,19 @@ class TestController():
         unexpected_subscribed.append(config_msg[0]["actuator"]["schedule"])
         for unexpected_topic in unexpected_subscribed:
             assert unexpected_topic not in subscribed_topics
+
+def test_sort_schedule_setpoint_items():
+    l = [
+        {"from_timestamp": 12344, "to_timestamp": None},
+        {"from_timestamp": None, "to_timestamp": None},
+        {"from_timestamp": None, "to_timestamp": 12334},
+        {"from_timestamp": 123445, "to_timestamp": None}
+    ]
+    l_expected_sorted = [
+        {'from_timestamp': None, 'to_timestamp': 12334},
+        {'from_timestamp': None, 'to_timestamp': None},
+        {'from_timestamp': 12344, 'to_timestamp': None},
+        {'from_timestamp': 123445, 'to_timestamp': None}
+    ]
+    l_sorted = controller_package.sort_schedule_setpoint_items(l)
+    assert l_sorted == l_expected_sorted

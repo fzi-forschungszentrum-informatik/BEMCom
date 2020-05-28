@@ -5,6 +5,9 @@ This is the controller. See the Readme.md files for details.
 import os
 import json
 import logging
+from threading import Timer
+from datetime import datetime
+
 
 from dotenv import load_dotenv, find_dotenv
 from paho.mqtt.client import Client
@@ -12,10 +15,63 @@ from paho.mqtt.client import Client
 logger = logging.getLogger(__name__)
 
 
+def timestamp_now():
+    """
+    Computes the current timestamp in ms since epoch (UTC).
+    """
+    dt_utcnow = datetime.utcnow()
+    ts_seconds = datetime.timestamp(dt_utcnow)
+    return round(ts_seconds * 1000)
+
+
+def sort_schedule_setpoint_items(items):
+    """
+    This can be used to sort the items of schedule/setpoint.
+
+    The ordering is especially relevant if items overlap, which should not
+    exist though. But if it does, the following ensures that in case of
+    overlap we start with the first item and switch to the second once the
+    time of the second has come. If items have from_timestamp = None, then
+    they will be executed at the very beginning, as everything with a specified
+    from_timestamp is certainly thought to start later. If multiple items exist
+    for which from_timestamp is None we take care that an item that has also
+    to_timestamp = None is the last of the ones with from_timestamp = None, as
+    we exepct that this item is then ment to be executed.
+    """
+    def sort_key(item):
+        """
+        Inspred by:
+        https://stackoverflow.com/questions/18411560/python-sort-list-with-none-at-the-end
+        """
+        return (
+            item["from_timestamp"] is not None,
+            item["to_timestamp"] is None,
+            item["from_timestamp"]
+        )
+    return sorted(items, key=sort_key)
+
+
 class Controller():
 
     def __init__(self, mqtt_broker_host, mqtt_broker_port, mqtt_config_topic,
-                 mqtt_client=Client):
+                 mqtt_client=Client, timestamp_now=timestamp_now):
+        """
+        Arguments:
+        ----------
+        mqtt_broker_host: str
+            The URL of the MQTT Broker. See Readme.md for details.
+        mqtt_broker_port: str
+            The port of the MQTT Broker. See Readme.md for details.
+        mqtt_config_topic: str
+            The topic on which the controller listens for the config object.
+            See Readme.md for details.
+        mqtt_client: object
+            The client object of the MQTT lib. Allows using fake mqtt client
+            while running tests.
+        timestamp_now: function
+            The function used to compute the current timestamp. Should only be
+            overloaded for tests.
+        """
         # Below the normal startup and configration of this class.
         logger.info("Starting up Controller.")
 
@@ -25,11 +81,18 @@ class Controller():
             "port": mqtt_broker_port,
         }
 
+        self.config_topic = mqtt_config_topic
+        self.timestamp_now = timestamp_now
+
+        self.topic_index = {}
+        self.actuator_value_index = {}
+        self.timers_per_topic = {}
+        self.current_values = {}
+
         # The private userdata, used by the callbacks.
         userdata = {
             "connect_kwargs": connect_kwargs,
-            "config_topic": mqtt_config_topic,
-            "topic_index": {},
+            "self": self,
         }
         self.userdata = userdata
 
@@ -69,42 +132,181 @@ class Controller():
 
     @staticmethod
     def on_message(client, userdata, msg):
-        if msg.topic == userdata["config_topic"]:
-            payload = json.loads(msg.payload)
+        """
+        Handle incomming messages.
 
-            # Build up a topic index, linking from the topic to the topic of
-            # the corresponding sensor value, the later is thereby used as
-            # an id under which the last messages are stored.
-            topic_index_new = {}
-            for control_group in payload:
-                sensor_value_topic = control_group["sensor"]["value"]
-                actuator_setpoint_topic = control_group["actuator"]["setpoint"]
-                actuator_schedule_topic = control_group["actuator"]["schedule"]
+        For config messages:
+            Updates to topics that the controller is subscribed to.
 
-                topic_index_new[sensor_value_topic] = {
-                    "id": sensor_value_topic,
-                    "type": "sensor_value",
-                }
-                topic_index_new[actuator_setpoint_topic] = {
-                    "id": sensor_value_topic,
-                    "type": "actuator_setpoint",
-                }
-                topic_index_new[actuator_schedule_topic] = {
-                    "id": sensor_value_topic,
-                    "type": "actuator_schedule",
-                }
+        For value messages:
+            Just stores the message, as values are valid immideatly.
 
-            # Now use the index and the previous versionf of it to subscribe
-            # to all topics for that are new in the last message and
-            # unsubscribe from all topics that are no longer in the config.
-            topic_index_old = userdata["topic_index"]
-            new_topics = topic_index_new.keys() - topic_index_old.keys()
-            deprecated_topics = topic_index_old.keys() - topic_index_new.keys()
-            userdata["topic_index"] = topic_index_new
-            for topic in new_topics:
-                client.subscribe(topic, 0)
-            for topic in deprecated_topics:
-                client.unsubscribe(topic)
+        For setpoint/schedule messages:
+            Parses the schedule/setpoint items and adds a timer that will
+            push the content of the item to the currently active block once the
+            timer is over.
+        """
+        # This try/except is necessary as Paho MQTT silently drops all
+        # exceptions, so we at least write them into the logs.
+        try:
+            self = userdata["self"]
+            if msg.topic == self.config_topic:
+                payload = json.loads(msg.payload)
+
+                # Build up a topic index, linking from the topic to the topic
+                # of the corresponding sensor value, the later is thereby used
+                # as an id under which the last messages are stored.
+                topic_index_new = {}
+                for control_group in payload:
+
+                    sensor_value_topic = control_group["sensor"]["value"]
+                    actu_setpoint_topic = control_group["actuator"]["setpoint"]
+                    actu_schedule_topic = control_group["actuator"]["schedule"]
+
+                    topic_index_new[sensor_value_topic] = {
+                        "id": sensor_value_topic,
+                        "type": "sensor_value",
+                    }
+                    topic_index_new[actu_setpoint_topic] = {
+                        "id": sensor_value_topic,
+                        "type": "actuator_setpoint",
+                    }
+                    topic_index_new[actu_schedule_topic] = {
+                        "id": sensor_value_topic,
+                        "type": "actuator_schedule",
+                    }
+
+                # Now use the index and the previous versionf of it to
+                # subscribe to all topics for that are new in the last message
+                # and unsubscribe from all topics that are no longer in the
+                # config.
+                topic_index_old = self.topic_index
+                new_topics = topic_index_new.keys() - topic_index_old.keys()
+                rm_topics = topic_index_old.keys() - topic_index_new.keys()
+                self.topic_index = topic_index_new
+                for topic in new_topics:
+                    client.subscribe(topic, 0)
+                for topic in rm_topics:
+                    client.unsubscribe(topic)
+                return
+
+            # Now the handling for the normal messages.
+            topic_index = self.topic_index
+
+            # First check if any timers exist that have been created from the
+            # previous data. If so deactivate all of those.
+            if msg.topic in self.timers_per_topic:
+                timers = self.timers_per_topic[msg.topic]
+                for timer in timers:
+                    timer.cancel()
+
+            # Now start handling the new data.
+            _id = topic_index[msg.topic]["id"]
+            _type = topic_index[msg.topic]["type"]
+
+            # Sensor values are applied immediately.
+            if _type == "senor_value":
+                self.update_current_value(
+                    _id=_id,
+                    _type=_type,
+                    payload=json.loads(msg.payload)
+                )
+                return
+            # For setpoints and schedules the items are paresed and new timers
+            # are created that store the corresponding values to current values
+            # once their time has come.
+            if _type == "actuator_setpoint":
+                items = json.loads(msg.payload)["setpoint"]
+            if _type == "actuator_schedule":
+                items = json.loads(msg.payload)["schedule"]
+
+            # The order of items matters, at least for overlapping items.
+            # Hence sort the items, see the docstring of the sort function for
+            # details
+            items = sort_schedule_setpoint_items(items)
+
+            for item in items:
+                # fix the current timestamp to prevent any issues where e.g.
+                # from_timestamp would have been in the future while checking
+                # for the first time, but not on the second time.
+                timestamp_now = self.timestamp_now()
+
+
+                from_timestamp = item["from_timestamp"]
+                to_timestamp = item["to_timestamp"]
+                # Ignore items that are passed already.
+                if to_timestamp <= timestamp_now:
+                    continue
+                # if from_timestamp now is None (convention for execute ASAP)
+                # or in the past, exectue immediately
+                if (from_timestamp <= timestamp_now or
+                        from_timestamp is None):
+                    self.update_current_value(
+                        _id=_id,
+                        _type=_type,
+                        payload=item
+                    )
+                # from_timestamp is in the future
+                else:
+                    delay_ms = (from_timestamp - timestamp_now)
+                    delay_s = delay_ms / 1000.
+                    timer = Timer(
+                        interval=delay_s,
+                        function=self.update_current_value,
+                        kwargs=item
+                    )
+                # to_timstamp = None means by convention execute forever, thus
+                # no timer necessary in this case.
+                if to_timestamp is None:
+                    continue
+
+                # If another item starts directly after this one or would start
+                # before the current item is finsihed we can ignore
+                # the to_timestamp time. Consider here that items are sorted.
+                i = items.index(item)
+                ignore_to_timesamp = False
+                for following_item in items[i:]:
+                    if (following_item["from_timestamp"] is None or
+                            following_item["from_timestamp"] <= to_timestamp):
+                        ignore_to_timesamp = True
+                        break
+                if ignore_to_timesamp:
+                    continue
+
+                # For the remaining case, i.e. no overlapping item and not
+                # directly aligned item, we implement the default strategy to
+                # preserve energy. That is we define the setpoint such that
+                # preferred_value is None (i.e. devie off), and remove any
+                # contraints for the optimizer. If no schedule is defined, we
+                # implement similary that the device should be turned off
+                # if the setpoint allows it.
+                if _type == "actuator_setpoint":
+                    kwargs = {
+                        "preferred_value": None,
+                        "acceptable_values": None,
+                        "min_value": None,
+                        "max_value": None,
+                    }
+                elif _type == "actuator_schedule":
+                    kwargs = {
+                        "value": None
+                    }
+                delay_ms = (to_timestamp - timestamp_now)
+                delay_s = delay_ms / 1000.
+                timer = Timer(
+                    interval=delay_s,
+                    function=self.update_current_value,
+                    kwargs=kwargs
+                )
+
+        except Exception:
+            logger.exception(
+                "Expection while processing MQTT message.\n"
+                "Topic: %s\n"
+                "Message:\n%s",
+                *(msg.topic, msg.payload)
+            )
+            raise
 
     def disconnect(self):
         """
@@ -114,6 +316,37 @@ class Controller():
         self.client.loop_stop()
         # Remove the client, so init can establish a new connection.
         del self.client
+
+    def update_current_value(self, _id, _type, payload):
+        """
+        Stores the value message or schedule/setpoint item that is currently
+        active. Also call the update_actuator_value method, as this function
+        is often called from a timer.
+
+        Arguments:
+        ----------
+        _id: string
+            The id (i.e. mqtt topic for the sensor values
+        _type: string
+            The type of the incomming message, one of: sensor_value,
+            actuator_setpoint and actuator_schedule.
+        payload: dict
+            all the content of msg.payload
+        """
+        if _id not in self.current_values:
+            self.current_values[_id] = {}
+        self.current_values[_id][_type] = payload
+        self.update_actuator_value(_id)
+
+    def update_actuator_value(self, _id):
+        """
+        Computes and sends a value msg to an actuator datapoint.
+
+        This function is called every time something changes, e.g. a new sensor
+        value has arrived, or the current setpoint or schedule values have
+        changed.
+        TODO
+        """
 
 
 if __name__ == "__main__":
