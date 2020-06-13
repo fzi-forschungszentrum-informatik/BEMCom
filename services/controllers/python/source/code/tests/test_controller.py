@@ -1,5 +1,6 @@
 import os
 import json
+import time
 
 import pytest
 
@@ -17,23 +18,38 @@ def controller_setup(request):
     fake_client_1 = FakeMQTTClient(fake_broker=fake_broker)
     fake_client_2 = FakeMQTTClient(fake_broker=fake_broker)
 
-    # Setup Broker and controller.
-    mqtt_client = fake_client_1()
+    # Setup Broker and controller, store each received message in an extra
+    # object to make it available to the tests.
+    last_msgs = {"test": 1}
+    userdata = {"last_msgs": last_msgs}
+
+    def on_message(client, userdata, msg):
+        last_msgs = userdata["last_msgs"]
+        last_msgs[msg.topic] = json.loads(msg.payload)
+
+    mqtt_client = fake_client_1(userdata=userdata)
+    mqtt_client.on_message = on_message
     mqtt_client.connect('localhost', 1883)
     mqtt_client.loop_start()
 
     mqtt_config_topic = "python_controller/controlled_datapoints"
+    # A fake timstamp assumed as now, to simplify tests.
+    # This is roughly January, 26th 2020.
+    timestamp_now = 1580000000000
     controller = controller_package.Controller(
         mqtt_broker_host="locahost",
         mqtt_broker_port=1883,
         mqtt_config_topic=mqtt_config_topic,
-        mqtt_client=fake_client_2
+        mqtt_client=fake_client_2,
+        timestamp_now=lambda: timestamp_now
     )
 
     # Inject objects into test class.
     request.cls.mqtt_client = mqtt_client
     request.cls.controller = controller
     request.cls.mqtt_config_topic = mqtt_config_topic
+    request.cls.timestamp_now = timestamp_now
+    request.cls.last_msgs = last_msgs
     yield
 
 
@@ -157,6 +173,339 @@ class TestController():
         unexpected_subscribed.append(config_msg[0]["actuator"]["schedule"])
         for unexpected_topic in unexpected_subscribed:
             assert unexpected_topic not in subscribed_topics
+
+    def test_actuator_value_correct_only_setpoint(self):
+        """
+        Verify that the preferred values of setpoints are sent to the actuator
+        if no schedule message is present.
+        """
+        sensor_value_topic = "test_connector/messages/5/value"
+        actuator_value_topic = "test_connector/messages/6/value"
+        actuator_setpoint_topic = "test_connector/messages/6/setpoint"
+        actuator_schedule_topic = "test_connector/messages/6/schedule"
+
+        # Configure the controller to listen to the topics above.
+        config_msg = [
+            {
+                "sensor": {
+                    "value": sensor_value_topic,
+                },
+                "actuator": {
+                    "value": actuator_value_topic,
+                    "setpoint": actuator_setpoint_topic,
+                    "schedule": actuator_schedule_topic,
+                }
+            },
+        ]
+        self.mqtt_client.publish(
+            self.mqtt_config_topic,
+            json.dumps(config_msg),
+        )
+
+        # Check that if from_timestamp is None the message is sent asap to the
+        # actuator
+        expected_value = 21
+        expected_delay = 0.00
+        test_msg = {
+            "timestamp": self.timestamp_now,
+            "setpoint": [
+                    {
+                        "from_timestamp": None,
+                        "to_timestamp": None,
+                        "preferred_value": expected_value
+                    }
+                ]
+        }
+        self.mqtt_client.subscribe(actuator_value_topic)
+        self.mqtt_client.publish(actuator_setpoint_topic, json.dumps(test_msg))
+        time.sleep(expected_delay)
+        assert actuator_value_topic in self.last_msgs
+        assert self.last_msgs[actuator_value_topic]["value"] == expected_value
+
+        # Check that if from_timestamp is past the message is sent asap to the
+        # actuator
+        expected_value = 22
+        expected_delay = 0.00
+        test_msg = {
+            "timestamp": self.timestamp_now,
+            "setpoint": [
+                    {
+                        "from_timestamp": self.timestamp_now - 1,
+                        "to_timestamp": None,
+                        "preferred_value": expected_value
+                    }
+                ]
+        }
+        self.mqtt_client.subscribe(actuator_value_topic)
+        self.mqtt_client.publish(actuator_setpoint_topic, json.dumps(test_msg))
+        time.sleep(expected_delay)
+        assert actuator_value_topic in self.last_msgs
+        assert self.last_msgs[actuator_value_topic]["value"] == expected_value
+
+        # Check that if to_timestamp is past the message is not sent.
+        expected_value = 22
+        expected_delay = 0.00
+        test_msg = {
+            "timestamp": self.timestamp_now,
+            "setpoint": [
+                    {
+                        "from_timestamp": self.timestamp_now - 3,
+                        "to_timestamp": self.timestamp_now - 2,
+                        "preferred_value": 23
+                    }
+                ]
+        }
+        self.mqtt_client.subscribe(actuator_value_topic)
+        self.mqtt_client.publish(actuator_setpoint_topic, json.dumps(test_msg))
+        time.sleep(expected_delay)
+        assert actuator_value_topic in self.last_msgs
+        assert self.last_msgs[actuator_value_topic]["value"] == expected_value
+
+        # Check multi setpoints with two in the future.
+        ev_instant = 24
+        ev_future = 25
+        ev_far_future = 26
+        expected_delay = 0.2
+        test_msg = {
+            "timestamp": self.timestamp_now,
+            "setpoint": [
+                    {
+                        "from_timestamp": None,
+                        "to_timestamp": self.timestamp_now + 200,
+                        "preferred_value": 24
+                    },
+                    {
+                        "from_timestamp": self.timestamp_now + 200,
+                        "to_timestamp": self.timestamp_now + 400,
+                        "preferred_value": 25
+                    },
+                    {
+                        "from_timestamp": self.timestamp_now + 400,
+                        "to_timestamp": None,
+                        "preferred_value": 26
+                    },
+                ]
+        }
+        self.mqtt_client.subscribe(actuator_value_topic)
+        self.mqtt_client.publish(actuator_setpoint_topic, json.dumps(test_msg))
+        assert actuator_value_topic in self.last_msgs
+        assert self.last_msgs[actuator_value_topic]["value"] == ev_instant
+        time.sleep(expected_delay)
+        assert actuator_value_topic in self.last_msgs
+        assert self.last_msgs[actuator_value_topic]["value"] == ev_future
+        time.sleep(expected_delay)
+        assert actuator_value_topic in self.last_msgs
+        assert self.last_msgs[actuator_value_topic]["value"] == ev_far_future
+
+        # Check that an empty setpoint clears an older one, i.e. deactivates
+        # all the timers.
+        ev_instant = 27
+        ev_future = 28
+        ev_far_future = 29
+        expected_delay = 0.2
+        test_msg = {
+            "timestamp": self.timestamp_now,
+            "setpoint": [
+                    {
+                        "from_timestamp": None,
+                        "to_timestamp": self.timestamp_now + 200,
+                        "preferred_value": 27
+                    },
+                    {
+                        "from_timestamp": self.timestamp_now + 200,
+                        "to_timestamp": self.timestamp_now + 400,
+                        "preferred_value": 28
+                    },
+                    {
+                        "from_timestamp": self.timestamp_now + 400,
+                        "to_timestamp": None,
+                        "preferred_value": 29
+                    },
+                ]
+        }
+        self.mqtt_client.subscribe(actuator_value_topic)
+        self.mqtt_client.publish(actuator_setpoint_topic, json.dumps(test_msg))
+        assert actuator_value_topic in self.last_msgs
+        assert self.last_msgs[actuator_value_topic]["value"] == ev_instant
+
+        test_msg = {
+            "timestamp": self.timestamp_now,
+            "setpoint": [],
+        }
+        self.mqtt_client.publish(actuator_setpoint_topic, json.dumps(test_msg))
+        time.sleep(expected_delay)
+        assert actuator_value_topic in self.last_msgs
+        assert self.last_msgs[actuator_value_topic]["value"] == ev_instant
+        time.sleep(expected_delay)
+        assert actuator_value_topic in self.last_msgs
+        assert self.last_msgs[actuator_value_topic]["value"] == ev_instant
+
+    def test_actuator_value_correct_only_schedule(self):
+        """
+        Verify that the values of schedules are sent to the actuator
+        if no setpoint message is present.
+        """
+        sensor_value_topic = "test_connector/messages/7/value"
+        actuator_value_topic = "test_connector/messages/8/value"
+        actuator_setpoint_topic = "test_connector/messages/8/setpoint"
+        actuator_schedule_topic = "test_connector/messages/8/schedule"
+
+        # Configure the controller to listen to the topics above.
+        config_msg = [
+            {
+                "sensor": {
+                    "value": sensor_value_topic,
+                },
+                "actuator": {
+                    "value": actuator_value_topic,
+                    "setpoint": actuator_setpoint_topic,
+                    "schedule": actuator_schedule_topic,
+                }
+            },
+        ]
+        self.mqtt_client.publish(
+            self.mqtt_config_topic,
+            json.dumps(config_msg),
+        )
+
+        # Check that if from_timestamp is None the message is sent asap to the
+        # actuator
+        expected_value = 21
+        expected_delay = 0.00
+        test_msg = {
+            "timestamp": self.timestamp_now,
+            "schedule": [
+                    {
+                        "from_timestamp": None,
+                        "to_timestamp": None,
+                        "value": expected_value
+                    }
+                ]
+        }
+        self.mqtt_client.subscribe(actuator_value_topic)
+        self.mqtt_client.publish(actuator_schedule_topic, json.dumps(test_msg))
+        time.sleep(expected_delay)
+        assert actuator_value_topic in self.last_msgs
+        assert self.last_msgs[actuator_value_topic]["value"] == expected_value
+
+        # Check that if from_timestamp is past the message is sent asap to the
+        # actuator
+        expected_value = 22
+        expected_delay = 0.00
+        test_msg = {
+            "timestamp": self.timestamp_now,
+            "schedule": [
+                    {
+                        "from_timestamp": self.timestamp_now - 1,
+                        "to_timestamp": None,
+                        "value": expected_value
+                    }
+                ]
+        }
+        self.mqtt_client.subscribe(actuator_value_topic)
+        self.mqtt_client.publish(actuator_schedule_topic, json.dumps(test_msg))
+        time.sleep(expected_delay)
+        assert actuator_value_topic in self.last_msgs
+        assert self.last_msgs[actuator_value_topic]["value"] == expected_value
+
+        # Check that if to_timestamp is past the message is not sent.
+        expected_value = 22
+        expected_delay = 0.00
+        test_msg = {
+            "timestamp": self.timestamp_now,
+            "schedule": [
+                    {
+                        "from_timestamp": self.timestamp_now - 3,
+                        "to_timestamp": self.timestamp_now - 2,
+                        "value": 23
+                    }
+                ]
+        }
+        self.mqtt_client.subscribe(actuator_value_topic)
+        self.mqtt_client.publish(actuator_schedule_topic, json.dumps(test_msg))
+        time.sleep(expected_delay)
+        assert actuator_value_topic in self.last_msgs
+        assert self.last_msgs[actuator_value_topic]["value"] == expected_value
+
+        # Check multi schedules with two in the future.
+        ev_instant = 24
+        ev_future = 25
+        ev_far_future = 26
+        expected_delay = 0.2
+        test_msg = {
+            "timestamp": self.timestamp_now,
+            "schedule": [
+                    {
+                        "from_timestamp": None,
+                        "to_timestamp": self.timestamp_now + 200,
+                        "value": 24
+                    },
+                    {
+                        "from_timestamp": self.timestamp_now + 200,
+                        "to_timestamp": self.timestamp_now + 400,
+                        "value": 25
+                    },
+                    {
+                        "from_timestamp": self.timestamp_now + 400,
+                        "to_timestamp": None,
+                        "value": 26
+                    },
+                ]
+        }
+        self.mqtt_client.subscribe(actuator_value_topic)
+        self.mqtt_client.publish(actuator_schedule_topic, json.dumps(test_msg))
+        assert actuator_value_topic in self.last_msgs
+        assert self.last_msgs[actuator_value_topic]["value"] == ev_instant
+        time.sleep(expected_delay)
+        assert actuator_value_topic in self.last_msgs
+        assert self.last_msgs[actuator_value_topic]["value"] == ev_future
+        time.sleep(expected_delay)
+        assert actuator_value_topic in self.last_msgs
+        assert self.last_msgs[actuator_value_topic]["value"] == ev_far_future
+
+        # Check that an empty schedule clears an older one, i.e. deactivates
+        # all the timers.
+        ev_instant = 27
+        ev_future = 28
+        ev_far_future = 29
+        expected_delay = 0.2
+        test_msg = {
+            "timestamp": self.timestamp_now,
+            "schedule": [
+                    {
+                        "from_timestamp": None,
+                        "to_timestamp": self.timestamp_now + 200,
+                        "value": 27
+                    },
+                    {
+                        "from_timestamp": self.timestamp_now + 200,
+                        "to_timestamp": self.timestamp_now + 400,
+                        "value": 28
+                    },
+                    {
+                        "from_timestamp": self.timestamp_now + 400,
+                        "to_timestamp": None,
+                        "value": 29
+                    },
+                ]
+        }
+        self.mqtt_client.subscribe(actuator_value_topic)
+        self.mqtt_client.publish(actuator_schedule_topic, json.dumps(test_msg))
+        assert actuator_value_topic in self.last_msgs
+        assert self.last_msgs[actuator_value_topic]["value"] == ev_instant
+
+        test_msg = {
+            "timestamp": self.timestamp_now,
+            "schedule": [],
+        }
+        self.mqtt_client.publish(actuator_schedule_topic, json.dumps(test_msg))
+        time.sleep(expected_delay)
+        assert actuator_value_topic in self.last_msgs
+        assert self.last_msgs[actuator_value_topic]["value"] == ev_instant
+        time.sleep(expected_delay)
+        assert actuator_value_topic in self.last_msgs
+        assert self.last_msgs[actuator_value_topic]["value"] == ev_instant
+
 
 def test_sort_schedule_setpoint_items():
     l = [

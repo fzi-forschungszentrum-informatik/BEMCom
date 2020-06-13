@@ -85,7 +85,7 @@ class Controller():
         self.timestamp_now = timestamp_now
 
         self.topic_index = {}
-        self.actuator_value_index = {}
+        self.topics_per_id = {}
         self.timers_per_topic = {}
         self.current_values = {}
 
@@ -188,6 +188,20 @@ class Controller():
                     client.subscribe(topic, 0)
                 for topic in rm_topics:
                     client.unsubscribe(topic)
+
+                    # Also delete all timers for the topics, as we expect that
+                    # it is not controlled anymore.
+                    self.cancel_timers(topic)
+
+                # Finally also add the topics to a dict that allows looking
+                # up the topics given the sensor_value_id. Don't delete old
+                # topics here as we should not receive any schedules/setpoints
+                # for them in future, but some timers might still be running.
+                # TODO: Delete these timers?
+                for control_group in payload:
+                    sensor_value_topic = control_group["sensor"]["value"]
+                    self.topics_per_id[sensor_value_topic] = control_group
+
                 return
 
             # Now the handling for the normal messages.
@@ -195,10 +209,7 @@ class Controller():
 
             # First check if any timers exist that have been created from the
             # previous data. If so deactivate all of those.
-            if msg.topic in self.timers_per_topic:
-                timers = self.timers_per_topic[msg.topic]
-                for timer in timers:
-                    timer.cancel()
+            self.cancel_timers(msg.topic)
 
             # Now start handling the new data.
             _id = topic_index[msg.topic]["id"]
@@ -231,16 +242,14 @@ class Controller():
                 # for the first time, but not on the second time.
                 timestamp_now = self.timestamp_now()
 
-
                 from_timestamp = item["from_timestamp"]
                 to_timestamp = item["to_timestamp"]
                 # Ignore items that are passed already.
-                if to_timestamp <= timestamp_now:
+                if to_timestamp is not None and to_timestamp <= timestamp_now:
                     continue
                 # if from_timestamp now is None (convention for execute ASAP)
                 # or in the past, exectue immediately
-                if (from_timestamp <= timestamp_now or
-                        from_timestamp is None):
+                if (from_timestamp is None or from_timestamp <= timestamp_now):
                     self.update_current_value(
                         _id=_id,
                         _type=_type,
@@ -248,13 +257,24 @@ class Controller():
                     )
                 # from_timestamp is in the future
                 else:
+                    # Start up a timer instance that delays the call to
+                    # update_current_value until the time has come.
+                    # Also store the timer object so we can cancel it if new
+                    # data arrives.
                     delay_ms = (from_timestamp - timestamp_now)
                     delay_s = delay_ms / 1000.
+                    timer_kwargs = {
+                        "_id": _id,
+                        "_type": _type,
+                        "payload": item,
+                    }
                     timer = Timer(
                         interval=delay_s,
                         function=self.update_current_value,
-                        kwargs=item
+                        kwargs=timer_kwargs
                     )
+                    timer.start()
+                    self.add_timer(msg.topic, timer)
                 # to_timstamp = None means by convention execute forever, thus
                 # no timer necessary in this case.
                 if to_timestamp is None:
@@ -347,6 +367,64 @@ class Controller():
         changed.
         TODO
         """
+        actuator_value_topic = self.topics_per_id[_id]["actuator"]["value"]
+        current_setpoint = None
+        current_schedule = None
+        if "actuator_setpoint" in self.current_values[_id]:
+            current_setpoint = self.current_values[_id]["actuator_setpoint"]
+            setpoint_preferred_value = current_setpoint["preferred_value"]
+        if "actuator_schedule" in self.current_values[_id]:
+            current_schedule = self.current_values[_id]["actuator_schedule"]
+            schedule_value = current_schedule["value"]
+
+        # Directly use preferred value of setpoint if no schedule is present.
+        if current_schedule is None:
+            actuator_value = setpoint_preferred_value
+
+        # Directly use schedule value if no setpoint is given.
+        if current_setpoint is None:
+            actuator_value = schedule_value
+
+        actuator_value_msg = {
+            "value": actuator_value,
+            "timestamp": self.timestamp_now()
+        }
+        self.client.publish(
+            actuator_value_topic,
+            json.dumps(actuator_value_msg)
+        )
+
+    def add_timer(self, topic, timer):
+        """
+        Add a timer the collecting object.
+
+        Arguements:
+        -----------
+        topic: str
+            The topic on which the schedule/sepoint has been received that
+            led to the creation of these timers.
+        timer: Threading.Timer object
+            The timer object after it has been started.
+        """
+        if topic not in self.timers_per_topic:
+            self.timers_per_topic[topic] = []
+        self.timers_per_topic[topic].append(timer)
+
+    def cancel_timers(self, topic):
+        """
+        Cancel all timers that are stored under the topic
+
+        Arguements:
+        -----------
+        topic: str
+            The topic on which the schedule/sepoint has been received that
+            led to the creation of these timers.
+        """
+        if topic in self.timers_per_topic:
+            timers = self.timers_per_topic.pop(topic)
+            for timer in timers:
+                logger.warning("Cancel timer")
+                timer.cancel()
 
 
 if __name__ == "__main__":
