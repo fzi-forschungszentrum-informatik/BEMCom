@@ -506,6 +506,290 @@ class TestController():
         assert actuator_value_topic in self.last_msgs
         assert self.last_msgs[actuator_value_topic]["value"] == ev_instant
 
+    def test_actuator_value_correct_no_flexibilty(self):
+        """
+        Verify that the values of schedules are ignored if a setpoint is
+        present that has no flexibility.
+        """
+        sensor_value_topic = "test_connector/messages/9/value"
+        actuator_value_topic = "test_connector/messages/10/value"
+        actuator_setpoint_topic = "test_connector/messages/10/setpoint"
+        actuator_schedule_topic = "test_connector/messages/10/schedule"
+
+        # Configure the controller to listen to the topics above.
+        config_msg = [
+            {
+                "sensor": {
+                    "value": sensor_value_topic,
+                },
+                "actuator": {
+                    "value": actuator_value_topic,
+                    "setpoint": actuator_setpoint_topic,
+                    "schedule": actuator_schedule_topic,
+                }
+            },
+        ]
+        self.mqtt_client.publish(
+            self.mqtt_config_topic,
+            json.dumps(config_msg),
+        )
+
+        value_setpoint = 21.0
+        value_schedule = 22.0
+        expected_value = value_setpoint
+        expected_delay = 0.2
+        # Setpoint message is valid immediatly
+        test_msg_setpoint = {
+            "timestamp": self.timestamp_now,
+            "setpoint": [
+                    {
+                        "from_timestamp": None,
+                        "to_timestamp": None,
+                        "preferred_value": value_setpoint
+                    }
+                ]
+        }
+        # Schedule is valid bit in future, to ensure that the setpoint is
+        # already set once the schedule arrives.
+        test_msg_schedule = {
+            "timestamp": self.timestamp_now,
+            "schedule": [
+                    {
+                        "from_timestamp": self.timestamp_now + 200,
+                        "to_timestamp": None,
+                        "value": value_schedule
+                    }
+                ]
+        }
+        self.mqtt_client.subscribe(actuator_value_topic)
+        self.mqtt_client.publish(
+            actuator_setpoint_topic,
+            json.dumps(test_msg_setpoint)
+        )
+        self.mqtt_client.publish(
+            actuator_schedule_topic,
+            json.dumps(test_msg_schedule)
+        )
+        time.sleep(expected_delay)
+        assert actuator_value_topic in self.last_msgs
+        assert self.last_msgs[actuator_value_topic]["value"] == expected_value
+
+    def test_actuator_value_discrete_flexibilty(self):
+        """
+        Verify that the preferred_value of setpoint is overwritten by schedule
+        value if the datapoint is discrete and has flexbility.
+        """
+        sensor_value_topic = "test_connector/messages/11/value"
+        actuator_value_topic = "test_connector/messages/12/value"
+        actuator_setpoint_topic = "test_connector/messages/12/setpoint"
+        actuator_schedule_topic = "test_connector/messages/12/schedule"
+
+        # Configure the controller to listen to the topics above.
+        config_msg = [
+            {
+                "sensor": {
+                    "value": sensor_value_topic,
+                },
+                "actuator": {
+                    "value": actuator_value_topic,
+                    "setpoint": actuator_setpoint_topic,
+                    "schedule": actuator_schedule_topic,
+                }
+            },
+        ]
+        self.mqtt_client.publish(
+            self.mqtt_config_topic,
+            json.dumps(config_msg),
+        )
+
+        # acceptable_values will only allow schedule value to be sent if the
+        # corresponding sensor value lays within it. If no sensor message  is
+        # available yet the schedule value should be sent.
+        value_setpoint = 21.0
+        value_schedule = 22.0
+        expected_value = value_schedule
+        expected_delay = 0.25
+        test_msg_setpoint = {
+            "timestamp": self.timestamp_now,
+            "setpoint": [
+                    {
+                        "from_timestamp": None,
+                        "to_timestamp": None,
+                        "preferred_value": value_setpoint,
+                        "acceptable_values": [21.0, 22.0]
+                    }
+                ]
+        }
+        test_msg_schedule = {
+            "timestamp": self.timestamp_now,
+            "schedule": [
+                    {
+                        "from_timestamp": self.timestamp_now + 200,
+                        "to_timestamp": None,
+                        "value": value_schedule
+                    }
+                ]
+        }
+        self.mqtt_client.subscribe(actuator_value_topic)
+        self.mqtt_client.publish(
+            actuator_setpoint_topic,
+            json.dumps(test_msg_setpoint)
+        )
+        self.mqtt_client.publish(
+            actuator_schedule_topic,
+            json.dumps(test_msg_schedule)
+        )
+        time.sleep(expected_delay)
+        assert actuator_value_topic in self.last_msgs
+        assert self.last_msgs[actuator_value_topic]["value"] == expected_value
+
+        # acceptable_values will only allow schedule value to be sent if the
+        # corresponding sensor value lays within it. the sensor value here is
+        # within acceptable_values, the schedule value should be sent.
+        value_setpoint = 23.0
+        value_schedule = 24.0
+        expected_value = value_schedule
+        expected_delay = 0.25
+        test_msg_sensor = {
+            "timestamp": self.timestamp_now,
+            "value": 23.0
+        }
+        test_msg_setpoint = {
+            "timestamp": self.timestamp_now,
+            "setpoint": [
+                    {
+                        "from_timestamp": None,
+                        "to_timestamp": None,
+                        "preferred_value": value_setpoint,
+                        "acceptable_values": [23.0, 24.0]
+                    }
+                ]
+        }
+        test_msg_schedule = {
+            "timestamp": self.timestamp_now,
+            "schedule": [
+                    {
+                        "from_timestamp": self.timestamp_now + 200,
+                        "to_timestamp": None,
+                        "value": value_schedule
+                    }
+                ]
+        }
+        self.mqtt_client.subscribe(actuator_value_topic)
+        self.mqtt_client.publish(
+            actuator_setpoint_topic,
+            json.dumps(test_msg_setpoint)
+        )
+        self.mqtt_client.publish(
+            sensor_value_topic,
+            json.dumps(test_msg_sensor)
+        )
+        self.mqtt_client.publish(
+            actuator_schedule_topic,
+            json.dumps(test_msg_schedule)
+        )
+        time.sleep(expected_delay)
+        assert actuator_value_topic in self.last_msgs
+        assert self.last_msgs[actuator_value_topic]["value"] == expected_value
+
+        # acceptable_values will only allow schedule value to be sent if the
+        # corresponding sensor value lays within it. the sensor value here is
+        # not in acceptable_values, the schedule value should not be sent.
+        value_setpoint = 25.0
+        value_schedule = 26.0
+        expected_value = value_setpoint
+        expected_delay = 0.25
+        test_msg_sensor = {
+            "timestamp": self.timestamp_now,
+            "value": 23.0
+        }
+        test_msg_setpoint = {
+            "timestamp": self.timestamp_now,
+            "setpoint": [
+                    {
+                        "from_timestamp": None,
+                        "to_timestamp": None,
+                        "preferred_value": value_setpoint,
+                        "acceptable_values": [25.0, 26.0]
+                    }
+                ]
+        }
+        test_msg_schedule = {
+            "timestamp": self.timestamp_now,
+            "schedule": [
+                    {
+                        "from_timestamp": self.timestamp_now + 200,
+                        "to_timestamp": None,
+                        "value": value_schedule
+                    }
+                ]
+        }
+        self.mqtt_client.subscribe(actuator_value_topic)
+        self.mqtt_client.publish(
+            actuator_setpoint_topic,
+            json.dumps(test_msg_setpoint)
+        )
+        self.mqtt_client.publish(
+            sensor_value_topic,
+            json.dumps(test_msg_sensor)
+        )
+        self.mqtt_client.publish(
+            actuator_schedule_topic,
+            json.dumps(test_msg_schedule)
+        )
+        time.sleep(expected_delay)
+        assert actuator_value_topic in self.last_msgs
+        assert self.last_msgs[actuator_value_topic]["value"] == expected_value
+
+        # acceptable_values will only allow schedule value to be sent if the
+        # corresponding sensor value lays within it. However, acceptable_values
+        # is here None, means every sensor value is ok. The schedule value
+        # should be sent.
+        value_setpoint = 27.0
+        value_schedule = 28.0
+        expected_value = value_schedule
+        expected_delay = 0.25
+        test_msg_sensor = {
+            "timestamp": self.timestamp_now,
+            "value": 23.0
+        }
+        test_msg_setpoint = {
+            "timestamp": self.timestamp_now,
+            "setpoint": [
+                    {
+                        "from_timestamp": None,
+                        "to_timestamp": None,
+                        "preferred_value": value_setpoint,
+                        "acceptable_values": None
+                    }
+                ]
+        }
+        test_msg_schedule = {
+            "timestamp": self.timestamp_now,
+            "schedule": [
+                    {
+                        "from_timestamp": self.timestamp_now + 200,
+                        "to_timestamp": None,
+                        "value": value_schedule
+                    }
+                ]
+        }
+        self.mqtt_client.subscribe(actuator_value_topic)
+        self.mqtt_client.publish(
+            actuator_setpoint_topic,
+            json.dumps(test_msg_setpoint)
+        )
+        self.mqtt_client.publish(
+            sensor_value_topic,
+            json.dumps(test_msg_sensor)
+        )
+        self.mqtt_client.publish(
+            actuator_schedule_topic,
+            json.dumps(test_msg_schedule)
+        )
+        time.sleep(expected_delay)
+        assert actuator_value_topic in self.last_msgs
+        assert self.last_msgs[actuator_value_topic]["value"] == expected_value
 
 def test_sort_schedule_setpoint_items():
     l = [

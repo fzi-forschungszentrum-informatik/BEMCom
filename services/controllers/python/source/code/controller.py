@@ -150,6 +150,8 @@ class Controller():
         # exceptions, so we at least write them into the logs.
         try:
             self = userdata["self"]
+            # XXX remove before flight
+            logger.warning(msg.payload)
             if msg.topic == self.config_topic:
                 payload = json.loads(msg.payload)
 
@@ -201,7 +203,6 @@ class Controller():
                 for control_group in payload:
                     sensor_value_topic = control_group["sensor"]["value"]
                     self.topics_per_id[sensor_value_topic] = control_group
-
                 return
 
             # Now the handling for the normal messages.
@@ -216,7 +217,7 @@ class Controller():
             _type = topic_index[msg.topic]["type"]
 
             # Sensor values are applied immediately.
-            if _type == "senor_value":
+            if _type == "sensor_value":
                 self.update_current_value(
                     _id=_id,
                     _type=_type,
@@ -352,6 +353,9 @@ class Controller():
             actuator_setpoint and actuator_schedule.
         payload: dict
             all the content of msg.payload
+
+        TODO: Maybe ensure that the current values are not overwritten by
+              older messages, e.g. replays.
         """
         if _id not in self.current_values:
             self.current_values[_id] = {}
@@ -368,14 +372,31 @@ class Controller():
         TODO
         """
         actuator_value_topic = self.topics_per_id[_id]["actuator"]["value"]
-        current_setpoint = None
+        current_sensor_value = None
         current_schedule = None
-        if "actuator_setpoint" in self.current_values[_id]:
-            current_setpoint = self.current_values[_id]["actuator_setpoint"]
-            setpoint_preferred_value = current_setpoint["preferred_value"]
+        current_setpoint = None
+        # acceptable_values may be set to None, which indicates any value for
+        # the sensor datapoint is acceptable. The bool variable is thus
+        # required to distinguish the case when acceptable_values is not given
+        # in message, vs. when it's explicitly set to None.
+        discrete_flexibility = False
+        current_acceptable_values = None
+        # Similar to acceptable values but for the continuous case.
+        continuous_flexibilty = False
+        current_min_value = None
+        current_max_value = None
+
+        if "senor_value" in self.current_values[_id]:
+            current_sensor_value = self.current_values[_id]["sensor_value"]
         if "actuator_schedule" in self.current_values[_id]:
             current_schedule = self.current_values[_id]["actuator_schedule"]
             schedule_value = current_schedule["value"]
+        if "actuator_setpoint" in self.current_values[_id]:
+            current_setpoint = self.current_values[_id]["actuator_setpoint"]
+            setpoint_preferred_value = current_setpoint["preferred_value"]
+            if "acceptable_values" in current_setpoint:
+                current_acceptable_values = current_setpoint["acceptable_values"]
+                discrete_flexibility = True
 
         # Directly use preferred value of setpoint if no schedule is present.
         if current_schedule is None:
@@ -385,6 +406,35 @@ class Controller():
         if current_setpoint is None:
             actuator_value = schedule_value
 
+        if current_schedule and current_setpoint:
+            # for discrete datapoints.
+            if discrete_flexibility:
+                # XXX remove before flight
+                logger.warning("current_acceptable_values: %s" % current_acceptable_values)
+                logger.warning("current_sensor_value: %s" % current_sensor_value)
+
+                # No restrictions from acceptable values.
+                if current_acceptable_values is None:
+                    actuator_value = schedule_value
+                # No sensor message received yet to verify we are in the
+                # accepted range.
+                elif current_sensor_value is None:
+                    actuator_value = schedule_value
+                # Last sensor value lays in allowed values, keep the schedule
+                elif current_sensor_value in current_acceptable_values:
+                    actuator_value = schedule_value
+                # Anything else, especially the last sensor value is not
+                # acceptable, fall back to preferred value.
+                else:
+                    actuator_value = setpoint_preferred_value
+
+            # for continuous datapoints.
+            elif continuous_flexibilty:
+                pass
+            # Ignore setpoint if no flexibiltiy is defined.
+            else:
+                actuator_value = setpoint_preferred_value
+
         actuator_value_msg = {
             "value": actuator_value,
             "timestamp": self.timestamp_now()
@@ -393,6 +443,9 @@ class Controller():
             actuator_value_topic,
             json.dumps(actuator_value_msg)
         )
+        # XXX remove before flight
+        logger.warning(actuator_value_msg)
+
 
     def add_timer(self, topic, timer):
         """
