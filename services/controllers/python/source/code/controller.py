@@ -150,8 +150,6 @@ class Controller():
         # exceptions, so we at least write them into the logs.
         try:
             self = userdata["self"]
-            # XXX remove before flight
-            logger.warning(msg.payload)
             if msg.topic == self.config_topic:
                 payload = json.loads(msg.payload)
 
@@ -199,7 +197,6 @@ class Controller():
                 # up the topics given the sensor_value_id. Don't delete old
                 # topics here as we should not receive any schedules/setpoints
                 # for them in future, but some timers might still be running.
-                # TODO: Delete these timers?
                 for control_group in payload:
                     sensor_value_topic = control_group["sensor"]["value"]
                     self.topics_per_id[sensor_value_topic] = control_group
@@ -368,8 +365,13 @@ class Controller():
 
         This function is called every time something changes, e.g. a new sensor
         value has arrived, or the current setpoint or schedule values have
-        changed.
-        TODO
+        changed. It computes the corresponding actuator value and sends it
+        if it has changed.
+
+        Arguments:
+        ----------
+        _id: string
+            The id (i.e. mqtt topic for the sensor values
         """
         actuator_value_topic = self.topics_per_id[_id]["actuator"]["value"]
         current_sensor_value = None
@@ -394,9 +396,15 @@ class Controller():
         if "actuator_setpoint" in self.current_values[_id]:
             current_setpoint = self.current_values[_id]["actuator_setpoint"]
             setpoint_preferred_value = current_setpoint["preferred_value"]
-            if "acceptable_values" in current_setpoint:
-                current_acceptable_values = current_setpoint["acceptable_values"]
+
+            csp = current_setpoint
+            if "acceptable_values" in csp:
+                current_acceptable_values = csp["acceptable_values"]
                 discrete_flexibility = True
+            if ("min_value" in csp and "max_value" in csp):
+                current_min_value = csp["min_value"]
+                current_max_value = csp["max_value"]
+                continuous_flexibilty = True
 
         # Directly use preferred value of setpoint if no schedule is present.
         if current_schedule is None:
@@ -409,9 +417,6 @@ class Controller():
         if current_schedule and current_setpoint:
             # for discrete datapoints.
             if discrete_flexibility:
-                # XXX remove before flight
-                logger.warning("current_values: %s" % self.current_values)
-
                 # No restrictions from acceptable values.
                 if current_acceptable_values is None:
                     actuator_value = schedule_value
@@ -429,22 +434,54 @@ class Controller():
 
             # for continuous datapoints.
             elif continuous_flexibilty:
-                pass
+                # No sensor message received yet to verify we are in the
+                # accepted range.
+                #
+                # Make the if cascades shorter and prevent line breaks.
+                # Used only in this block
+                c_s_v = current_sensor_value
+                c_min_v = current_min_value
+                c_max_v = current_max_value
+                if c_s_v is None:
+                    actuator_value = schedule_value
+                # No restrictions, always check for None first to prevent
+                # Type error when comparing int/floats with None
+                elif c_min_v is None and c_max_v is None:
+                    actuator_value = schedule_value
+                elif c_min_v is None:
+                    if c_s_v <= c_max_v:
+                        actuator_value = schedule_value
+                    else:
+                        actuator_value = setpoint_preferred_value
+                elif c_max_v is None:
+                    if c_s_v >= c_min_v:
+                        actuator_value = schedule_value
+                    else:
+                        actuator_value = setpoint_preferred_value
+                elif c_s_v >= c_min_v and c_s_v <= c_max_v:
+                    actuator_value = schedule_value
+                # Anything else, especially the last sensor value out of the
+                # accepted range, fall back to preferred value.
+                else:
+                    actuator_value = setpoint_preferred_value
+
             # Ignore setpoint if no flexibiltiy is defined.
             else:
                 actuator_value = setpoint_preferred_value
 
-        actuator_value_msg = {
-            "value": actuator_value,
-            "timestamp": self.timestamp_now()
-        }
-        self.client.publish(
-            actuator_value_topic,
-            json.dumps(actuator_value_msg)
-        )
-        # XXX remove before flight
-        logger.warning(actuator_value_msg)
-
+        # Compare actuator value with last value sent, and send an update
+        # if the value has changed.
+        if ("actuator_value" not in self.current_values[_id] or
+                actuator_value != self.current_values[_id]["actuator_value"]):
+            actuator_value_msg = {
+                "value": actuator_value,
+                "timestamp": self.timestamp_now()
+            }
+            self.client.publish(
+                actuator_value_topic,
+                json.dumps(actuator_value_msg)
+            )
+            self.current_values[_id]["actuator_value"] = actuator_value
 
     def add_timer(self, topic, timer):
         """
@@ -475,7 +512,6 @@ class Controller():
         if topic in self.timers_per_topic:
             timers = self.timers_per_topic.pop(topic)
             for timer in timers:
-                logger.warning("Cancel timer")
                 timer.cancel()
 
 
