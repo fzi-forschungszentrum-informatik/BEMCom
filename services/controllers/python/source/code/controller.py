@@ -221,7 +221,7 @@ class Controller():
                 self.update_current_value(
                     _id=_id,
                     _type=_type,
-                    payload=json.loads(msg.payload)
+                    payload=json.loads(msg.payload)["value"]
                 )
                 return
             # For setpoints and schedules the items are paresed and new timers
@@ -386,7 +386,7 @@ class Controller():
         current_min_value = None
         current_max_value = None
 
-        if "senor_value" in self.current_values[_id]:
+        if "sensor_value" in self.current_values[_id]:
             current_sensor_value = self.current_values[_id]["sensor_value"]
         if "actuator_schedule" in self.current_values[_id]:
             current_schedule = self.current_values[_id]["actuator_schedule"]
@@ -410,8 +410,7 @@ class Controller():
             # for discrete datapoints.
             if discrete_flexibility:
                 # XXX remove before flight
-                logger.warning("current_acceptable_values: %s" % current_acceptable_values)
-                logger.warning("current_sensor_value: %s" % current_sensor_value)
+                logger.warning("current_values: %s" % self.current_values)
 
                 # No restrictions from acceptable values.
                 if current_acceptable_values is None:
