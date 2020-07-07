@@ -8,7 +8,7 @@ set -e
 # up by settings.py.
 if [ -z "$DJANGO_SECRET_KEY" ]
 then
-    echo "DJANGO_SECRET_KEY=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c64)" > /bemcom/code/.env
+    echo "DJANGO_SECRET_KEY=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c64)" > /bemcom/.env
 fi
 
 # Check that the Hostname is not empty in production. It's absolutely required.
@@ -20,7 +20,7 @@ then
 fi
 
 # Add Hostname to Allowed hosts to make the server accesible.
-echo ALLOWED_HOSTS="['$HOSTNAME']" >> /bemcom/code/.env
+echo ALLOWED_HOSTS="['$HOSTNAME']" >> /bemcom/.env
 
 # Ensure the DB layout matches the current state of the application
 python3 /bemcom/code/manage.py makemigrations
