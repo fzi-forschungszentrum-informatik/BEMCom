@@ -25,7 +25,7 @@
     * [x] Prod Settings (Daphne, Debug, PG Database, HTTPs, self signed certs?)
     * [ ] Service Documentation.
     * [x] OpenAPI specification of REST API.
-    * [ ] Define control groups in admin.
+    * [x] Define control groups in admin.
   * [ ] Connectors
     * [ ] Aquametro
       * [ ] Service Documentation
@@ -35,9 +35,9 @@
       * [ ] Implement in Node Red
       * [ ] Two datapoints, one that yields current time as str, one that ping/pongs with delay.
       * [ ] Service Documentation
-  * [ ] Controller
+  * [x] Controller
     * [x] Service Documentation
-    * [ ] Implementation
+    * [x] Implementation
   * [x] Raw Message DB
     * [x] Implement with Mongo + Python script to connect to MQTT.
     * [x] Service Documentation
