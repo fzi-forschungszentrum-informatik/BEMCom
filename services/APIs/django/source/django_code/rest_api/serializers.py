@@ -362,6 +362,7 @@ class DatapointSerializer(serializers.Serializer):
         fields_values["value_url"] = fields_values["url"] + "value/"
 
         # Only actuators have schedules and setpoints.
+        # TODO: Only add setpoint_url and schedule_url for actuators that are in controll groups.
         if instance.type == "actuator":
             fields_values["schedule_url"] = fields_values["url"] + "schedule/"
             fields_values["setpoint_url"] = fields_values["url"] + "setpoint/"

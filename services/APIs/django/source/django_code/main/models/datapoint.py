@@ -236,7 +236,7 @@ class Datapoint(models.Model):
         ]
 
     def __str__(self):
-        return slugify(self.key_in_connector)
+        return (self.connector.name + "/" + self.key_in_connector)
 
     def get_mqtt_topics(self):
         """
