@@ -3,6 +3,7 @@ from django.dispatch import receiver
 
 from .models.connector import Connector
 from .models.datapoint import Datapoint
+from .models.controller import Controller, ControlledDatapoint
 from .connector_mqtt_integration import ConnectorMQTTIntegration
 
 
@@ -85,3 +86,25 @@ def trigger_datapoint_map_update(sender, instance, **kwargs):
         # If Datapoint is deleted.
         else:
             cmi.create_and_send_datapoint_map(connector=connector)
+
+
+@receiver(signals.post_save, sender=ControlledDatapoint)
+@receiver(signals.post_delete, sender=ControlledDatapoint)
+@receiver(signals.post_save, sender=Controller)
+def trigger_controlled_datapoints_update(sender, instance, **kwargs):
+    """
+    Compute an update of configuration data for the controllers.
+
+    This is ether necessary if the MQTT topic of the controller has changed
+    or if a ControlledDatapoint object has been changed.
+
+    TODO: This needs a test.
+    """
+    cmi = ConnectorMQTTIntegration.get_instance()
+    if sender == Controller:
+        cmi.create_and_send_controlled_datapoints(controller=instance)
+
+    if sender == ControlledDatapoint:
+        cmi.create_and_send_controlled_datapoints(
+            controller=instance.controller
+        )

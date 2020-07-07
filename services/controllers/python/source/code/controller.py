@@ -3,6 +3,7 @@
 This is the controller. See the Readme.md files for details.
 """
 import os
+import sys
 import json
 import logging
 from threading import Timer
@@ -13,7 +14,8 @@ from dotenv import load_dotenv, find_dotenv
 from paho.mqtt.client import Client
 
 logger = logging.getLogger(__name__)
-
+log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format=log_format)
 
 def timestamp_now():
     """
@@ -78,7 +80,7 @@ class Controller():
         # The configuration for connecting to the broker.
         connect_kwargs = {
             "host": mqtt_broker_host,
-            "port": mqtt_broker_port,
+            "port": int(mqtt_broker_port),
         }
 
         self.config_topic = mqtt_config_topic
@@ -104,10 +106,11 @@ class Controller():
         # Initial connection to broker.
         self.client.connect(**connect_kwargs)
 
-        # Start loop in background process.
-        self.client.loop_start()
-
         self.client.subscribe(mqtt_config_topic)
+        logger.info("Using topic for configuration: %s", mqtt_config_topic)
+
+        # Start loop in background process.
+        self.client.loop_forever()
 
     @staticmethod
     def on_connect(client, userdata, flags, rc):
@@ -151,6 +154,7 @@ class Controller():
         try:
             self = userdata["self"]
             if msg.topic == self.config_topic:
+                logger.info("Received new configuration message")
                 payload = json.loads(msg.payload)
 
                 # Build up a topic index, linking from the topic to the topic
@@ -186,8 +190,10 @@ class Controller():
                 self.topic_index = topic_index_new
                 for topic in new_topics:
                     client.subscribe(topic, 0)
+                    logger.info("Subscribed to topic: %s", topic)
                 for topic in rm_topics:
                     client.unsubscribe(topic)
+                    logger.info("Unsubscribed from topic: %s", topic)
 
                     # Also delete all timers for the topics, as we expect that
                     # it is not controlled anymore.

@@ -7,6 +7,7 @@ from django.conf import settings
 from .utils import datetime_from_timestamp
 from .models.datapoint import Datapoint
 from .models.connector import Connector, ConnectorHeartbeat, ConnectorLogEntry
+from .models.controller import Controller, ControlledDatapoint
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +85,12 @@ class ConnectorMQTTIntegration():
 
         # Subscripe to all computed topics.
         self.update_subscriptions()
+
+        # Republish the last known state of datapoint_maps and
+        # controlled datapoints, in case they haven't been retained by the
+        # broker, e.g. after a CD run with an existing database.
+        self.create_and_send_datapoint_map()
+        self.create_and_send_controlled_datapoints()
 
     @classmethod
     def get_instance(cls):
@@ -232,6 +239,51 @@ class ConnectorMQTTIntegration():
                 topic=topic,
                 payload=payload,
                 qos=2,
+                retain=True
+            )
+
+    def create_and_send_controlled_datapoints(self, controller=None):
+        """
+        Computes and sends a list of controlled datapoints to a connector.
+        """
+        if controller is None:
+            controllers = Controller.objects.all()
+        else:
+            controllers = [controller]
+
+        for controller in controllers:
+            controlled_datapoints = ControlledDatapoint.objects.filter(
+                controller=controller
+            )
+            controlled_datapoint_msgs = []
+            for cd in controlled_datapoints:
+                # Get the topics of the datapoints.
+                sensor_topics = cd.sensor_datapoint.get_mqtt_topics()
+                sensor_value_topic = sensor_topics["value"]
+                actuator_topics = cd.actuator_datapoint.get_mqtt_topics()
+                actuator_value_topic = actuator_topics["value"]
+                actuator_setpoint_topic = actuator_topics["setpoint"]
+                actuator_schedule_topic = actuator_topics["schedule"]
+
+                # Build the message for this controlled datapoint object.
+                controlled_datapoints_msg = {
+                    "sensor": {
+                        "value": sensor_value_topic,
+                    },
+                    "actuator": {
+                        "value": actuator_value_topic,
+                        "setpoint": actuator_setpoint_topic,
+                        "schedule": actuator_schedule_topic,
+                    }
+                }
+                controlled_datapoint_msgs.append(controlled_datapoints_msg)
+
+            # Publish the msg to the controller.
+            self.client.publish(
+                topic=controller.mqtt_topic_controlled_datapoints,
+                payload=json.dumps(controlled_datapoint_msgs),
+                qos=2,
+                retain=True
             )
 
     @staticmethod

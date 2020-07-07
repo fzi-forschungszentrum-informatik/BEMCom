@@ -14,7 +14,6 @@ This is a connector to integrate [eQ-3 Homematic](https://www.eq-3.com/products/
 ### TODO
 
 * [ ] E-Mail Backend?
-* [ ] Emit all datapoint maps and control group configs on startup.
 
 ### Supported Gateways
 
