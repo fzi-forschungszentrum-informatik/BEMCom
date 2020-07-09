@@ -1,18 +1,14 @@
 version: '3'
 
 services:
-
     keba-p30-connector:
-
+        container_name: keba-p30-connector
+        build:
+            context: ./source
+        restart: always
         ports:
             - 8207:1880
             - 7090:7090
-
-        build:
-            context: ./source
-
-        restart: always
-
         environment:
             - CONNECTOR_NAME=keba-p30-connector
             - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}

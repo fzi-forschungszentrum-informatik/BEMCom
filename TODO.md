@@ -27,10 +27,10 @@
     * [x] OpenAPI specification of REST API.
     * [x] Define control groups in admin.
   * [ ] Connectors
-    * [ ] Aquametro
-      * [ ] Service Documentation
-    * [ ] Keba
-      * [ ] Service Documentation
+    * [x] Aquametro
+      * [x] Service Documentation
+    * [x] Keba
+      * [x] Service Documentation
     * [ ] Demo
       * [ ] Implement in Node Red
       * [ ] Two datapoints, one that yields current time as str, one that ping/pongs with delay.
