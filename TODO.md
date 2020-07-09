@@ -45,11 +45,11 @@
   * [ ] Message Broker Monitor
     * [ ] Service Documentation
     * [ ] Rename to something with Node-RED
-* [ ] Service Templates
-  * [ ] Connectors
-    * [ ] Python
-      * [ ] Move to devl branch
-    * [ ] Node Red
-      * [ ] Update documentation (How to)
-      * [ ] Update docker-compose order of fields.
+* [x] Service Templates
+  * [x] Connectors
+    * [x] Python
+      * [x] Move to devl branch
+    * [x] Node Red
+      * [x] Update documentation (How to)
+      * [x] Update docker-compose order of fields.
 

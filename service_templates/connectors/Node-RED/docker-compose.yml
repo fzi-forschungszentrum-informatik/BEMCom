@@ -1,20 +1,16 @@
 version: '3'
 
 services:
-
     node-red-connector-template:
-
-        ports:
-            - 8200:1880
-
+        container_name: node-red-connector-template
         build:
             context: ./source
-
-        user: 1000:1000
-
+        restart: always        
+        ports:
+            - 8200:1880
         volumes: 
             - ./source/Node-RED_data:/data        
-
+        user: 1000:1000
         environment:
             - CONNECTOR_NAME=node-red-connector-template
             - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}

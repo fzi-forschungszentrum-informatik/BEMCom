@@ -1,17 +1,13 @@
 version: '3'
 
 services:
-
     brand-new-connector:
-
-        ports:
-            - 8200:1880
-
+        container_name: brand-new-connector
         build:
             context: ./source
-
         restart: always
-
+        ports:
+            - 8200:1880
         environment:
             - CONNECTOR_NAME=brand-new-connector
             - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}
