@@ -1,22 +1,16 @@
 version: '3'
 
 services:
-
-    message-broker-monitor:
-
-        ports:
-            - 8199:1880
-
+    mqtt-message-monitor:
+        container_name: mqtt-message-monitor
         build:
             context: ./source
-
-        user: 1000:1000
-
         restart: always
-
+        ports:
+            - 8199:1880
+        user: 1000:1000
         volumes: 
             - ./source/Node-RED_data:/data        
-
         environment:
             - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}
             - MQTT_BROKER_PORT=${MQTT_BROKER_PORT}

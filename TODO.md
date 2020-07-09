@@ -42,9 +42,9 @@
     * [x] Implement with Mongo + Python script to connect to MQTT.
     * [x] Service Documentation
     * [x] Fix auth bug
-  * [ ] Message Broker Monitor
-    * [ ] Service Documentation
-    * [ ] Rename to something with Node-RED
+  * [x] Message Broker Monitor
+    * [x] Service Documentation
+    * [x] Rename to mqtt-message-montior
 * [x] Service Templates
   * [x] Connectors
     * [x] Python
