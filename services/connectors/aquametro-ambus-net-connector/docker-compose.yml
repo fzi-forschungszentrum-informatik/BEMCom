@@ -2,15 +2,12 @@ version: '3'
 
 services:
     aquametro-ambus-net-connector:
-
-        ports:
-            - 8206:1880
-
+        container_name: aquametro-ambus-net-connector
         build:
             context: ./source
-
         restart: always
-
+        ports:
+            - 8206:1880
         environment:
             - CONNECTOR_NAME=aquametro-ambus-net-connector
             - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}

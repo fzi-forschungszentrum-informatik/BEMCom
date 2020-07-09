@@ -1,19 +1,19 @@
 version: '3'
 
 services:
-
     homematic-connector:
-
+        container_name: homematic-connector
+        ports:
+            - 8208:1880
+            - "${CALLBACK_BINRPC_PORT_IIK}:${CALLBACK_BINRPC_PORT_IIK}"
+            - "${CALLBACK_XMLRPC_PORT_IIK}:${CALLBACK_XMLRPC_PORT_IIK}"
+        build:
+            context: ./source
+        restart: always
         ports:
             - 8205:1880
             - "${CALLBACK_BINRPC_PORT}:${CALLBACK_BINRPC_PORT}"
             - "${CALLBACK_XMLRPC_PORT}:${CALLBACK_XMLRPC_PORT}"
-
-        build:
-            context: ./source
-
-        restart: always
-
         environment:
             - CONNECTOR_NAME=homematic-connector
             - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}
