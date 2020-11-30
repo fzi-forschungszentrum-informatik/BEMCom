@@ -10,9 +10,6 @@ from .base import TestClassWithFixtures
 from pyconnector_template.pyconector_template import SensorFlow, Connector
 
 
-class FakeDatetime():
-    pass
-
 class TestSensorFlowRun(TestClassWithFixtures):
 
     fixture_names = []
@@ -262,6 +259,9 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
         # This is the name of the logger used in pyconnector_template.py
         self.logger_name = "pyconnector template"
 
+        # Overload some attributes for testing.
+        self.cn.mqtt_client = MagicMock()
+
 
     def test_valid_datapoint_map_is_stored(self):
         """
@@ -380,3 +380,77 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
         assert len(records) == 1
         assert records[0].levelname == 'ERROR'
         assert "Actuator entry in datapoint_map" in records[0].message
+
+    def test_new_actuator_entry_triggers_subscribe(self):
+        """
+        A new entry in actuator part of the datapoint_map should trigger
+        a subscribe action as the connector should subscribe to the topic
+        of the newly selected datapoint.
+        """
+        # Assume this map has been set up before.
+        datapoint_map_old ={
+            "sensor": {},
+            "actuator": {
+                "example-connector/msgs/0003": "Channel__P__setpoint__0",
+            }
+        }
+        self.cn.datapoint_map = datapoint_map_old
+
+        datapoint_map_update = {
+            "sensor": {},
+            "actuator": {
+                "example-connector/msgs/0003": "Channel__P__setpoint__0",
+                "example-connector/msgs/0004": "Channel__T__setpoint__0",
+            }
+        }
+        self.cn.validate_and_update_datapoint_map(
+            datapoint_map_json=json.dumps(datapoint_map_update)
+        )
+
+        expceted_call_count = 1
+        actual_call_count = self.cn.mqtt_client.subscribe.call_count
+        assert actual_call_count == expceted_call_count
+
+        expected_topic = "example-connector/msgs/0004"
+        actual_topic = self.cn.mqtt_client.subscribe.call_args.kwargs["topic"]
+        assert actual_topic == expected_topic
+
+        # Also check that the subscribe is requested with maximum QOS request
+        # to prevent message losses for actuator setpoints.
+        expected_qos = 2
+        actual_qos = self.cn.mqtt_client.subscribe.call_args.kwargs["qos"]
+        assert actual_qos == expected_qos
+
+    def test_removed_actuator_entry_triggers_unsubscribe(self):
+        """
+        A removed entry in actuator part of the datapoint_map should trigger
+        an unsubscribe action as the connector should no longer receive
+        messages for that actuator.
+        """
+        # Assume this map has been set up before.
+        datapoint_map_old ={
+            "sensor": {},
+            "actuator": {
+                "example-connector/msgs/0003": "Channel__P__setpoint__0",
+                "example-connector/msgs/0004": "Channel__T__setpoint__0",
+            }
+        }
+        self.cn.datapoint_map = datapoint_map_old
+
+        datapoint_map_update = {
+            "sensor": {},
+            "actuator": {
+                "example-connector/msgs/0004": "Channel__T__setpoint__0",
+            }
+        }
+        self.cn.validate_and_update_datapoint_map(
+            datapoint_map_json=json.dumps(datapoint_map_update)
+        )
+
+        expceted_call_count = 1
+        actual_call_count = self.cn.mqtt_client.unsubscribe.call_count
+        assert actual_call_count == expceted_call_count
+
+        expected_topic = "example-connector/msgs/0003"
+        actual_topic = self.cn.mqtt_client.unsubscribe.call_args.kwargs["topic"]
+        assert actual_topic == expected_topic
