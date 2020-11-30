@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import json
+import logging
 from datetime import datetime
 
 from unittest.mock import MagicMock
 
 from .base import TestClassWithFixtures
-from pyconnector_template.pyconector_template import SensorFlow
+from pyconnector_template.pyconector_template import SensorFlow, Connector
 
 
 class FakeDatetime():
@@ -14,7 +15,7 @@ class FakeDatetime():
 
 class TestSensorFlowRun(TestClassWithFixtures):
 
-    fixture_names = ('caplog', )
+    fixture_names = []
 
     def setup_method(self, method):
 
@@ -171,3 +172,211 @@ class TestSensorFlowRun(TestClassWithFixtures):
         """
         self.sf.run_sensor_flow()
         self.sf.filter_and_publish_datapoint_values.assert_called()
+
+class TestSensorFlowFlattenParsedMsg(TestClassWithFixtures):
+
+    fixture_names = []
+
+    def setup_method(self, method):
+
+        self.sf = SensorFlow()
+
+        self.parsed_msg = {
+            "payload": {
+                "parsed_message": {
+                    "device_1": {
+                        "sensor_1": "2.12",
+                        "sensor_2": "3.12"
+                    }
+                },
+                "timestamp": 1573680749000
+            }
+        }
+
+        self.parsed_msg_deeper = {
+            "payload": {
+                "parsed_message": {
+                    "device_1": {
+                        "sensor_1": "2.12",
+                        "sensor_2": "3.12"
+                    },
+                    "device_2": {
+                        "0": {
+                            "sensor_1": "ok"
+                        }
+                    }
+                },
+                "timestamp": 1573680749000
+            }
+        }
+
+    def test_output_format_correct(self):
+        """
+        Verify that the output of the function is flattened as expected.
+        """
+        expected_msg = {
+            "payload": {
+                "flattened_message": {
+                    "device_1__sensor_1": "2.12",
+                    "device_1__sensor_2": "3.12"
+                },
+                "timestamp": self.parsed_msg["payload"]["timestamp"]
+            }
+        }
+
+        actual_msg = self.sf.flatten_parsed_msg(parsed_msg=self.parsed_msg)
+
+        assert actual_msg == expected_msg
+
+    def test_output_format_deeper_correct(self):
+        """
+        Verify that the output of the function is flattened as expected, also
+        for an input with varying depth and more then 2 layers.
+        """
+        expected_msg = {
+            "payload": {
+                "flattened_message": {
+                    "device_1__sensor_1": "2.12",
+                    "device_1__sensor_2": "3.12",
+                    "device_2__0__sensor_1": "ok",
+                },
+                "timestamp": self.parsed_msg["payload"]["timestamp"]
+            }
+        }
+
+        actual_msg = self.sf.flatten_parsed_msg(
+            parsed_msg=self.parsed_msg_deeper
+        )
+
+        assert actual_msg == expected_msg
+
+
+class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
+
+    fixture_names = ('caplog', )
+
+    def setup_method(self, method):
+
+        self.cn = Connector()
+
+        # This is the name of the logger used in pyconnector_template.py
+        self.logger_name = "pyconnector template"
+
+
+    def test_valid_datapoint_map_is_stored(self):
+        """
+        Verify that valid datapoint_map objects are stored as expected.
+        """
+        datapoint_map = {
+            "sensor": {
+                "Channel__P__value__0": "example-connector/msgs/0001",
+                "Channel__P__unit__0": "example-connector/msgs/0002",
+            },
+            "actuator": {
+                "example-connector/msgs/0003": "Channel__P__setpoint__0",
+            }
+        }
+
+        self.cn.validate_and_update_datapoint_map(
+            datapoint_map_json=json.dumps(datapoint_map)
+        )
+
+        assert self.cn.datapoint_map == datapoint_map
+
+    def test_datapoint_map_with_missing_sensor_key_fails(self):
+        """
+        A datapoint_object must have a "sensor" entry by convention.
+        """
+        # Set up a new and empty logger for the test
+        self.caplog.set_level(logging.DEBUG, logger=self.logger_name)
+        self.caplog.clear()
+
+        datapoint_map = {
+            "actuator": {
+                "example-connector/msgs/0003": "Channel__P__setpoint__0",
+            }
+        }
+
+        self.cn.validate_and_update_datapoint_map(
+            datapoint_map_json=json.dumps(datapoint_map)
+        )
+
+        records = self.caplog.records
+        assert len(records) == 1
+        assert records[0].levelname == 'ERROR'
+        assert "No sensor key" in records[0].message
+
+    def test_datapoint_map_with_missing_actuator_key_fails(self):
+        """
+        A datapoint_object must have a "actuator" entry by convention.
+        """
+        # Set up a new and empty logger for the test
+        self.caplog.set_level(logging.DEBUG, logger=self.logger_name)
+        self.caplog.clear()
+
+        datapoint_map = {
+            "sensor": {
+                "Channel__P__value__0": "example-connector/msgs/0001",
+                "Channel__P__unit__0": "example-connector/msgs/0002",
+            },
+        }
+
+        self.cn.validate_and_update_datapoint_map(
+            datapoint_map_json=json.dumps(datapoint_map)
+        )
+
+        records = self.caplog.records
+        assert len(records) == 1
+        assert records[0].levelname == 'ERROR'
+        assert "No actuator key" in records[0].message
+
+    def test_datapoint_map_with_missing_sensor_dict_fails(self):
+        """
+        A datapoint_object must have a dict value under sensor entry by
+        convention.
+        """
+        # Set up a new and empty logger for the test
+        self.caplog.set_level(logging.DEBUG, logger=self.logger_name)
+        self.caplog.clear()
+
+        datapoint_map = {
+            "sensor": None,
+            "actuator": {
+                "example-connector/msgs/0003": "Channel__P__setpoint__0",
+            }
+        }
+
+        self.cn.validate_and_update_datapoint_map(
+            datapoint_map_json=json.dumps(datapoint_map)
+        )
+
+        records = self.caplog.records
+        assert len(records) == 1
+        assert records[0].levelname == 'ERROR'
+        assert "Sensor entry in datapoint_map" in records[0].message
+
+    def test_datapoint_map_with_missing_actuator_dict_fails(self):
+        """
+        A datapoint_object must have a dict value under actuator entry by
+        convention.
+        """
+        # Set up a new and empty logger for the test
+        self.caplog.set_level(logging.DEBUG, logger=self.logger_name)
+        self.caplog.clear()
+
+        datapoint_map = {
+            "sensor": {
+                "Channel__P__value__0": "example-connector/msgs/0001",
+                "Channel__P__unit__0": "example-connector/msgs/0002",
+            },
+            "actuator": None,
+        }
+
+        self.cn.validate_and_update_datapoint_map(
+            datapoint_map_json=json.dumps(datapoint_map)
+        )
+
+        records = self.caplog.records
+        assert len(records) == 1
+        assert records[0].levelname == 'ERROR'
+        assert "Actuator entry in datapoint_map" in records[0].message
