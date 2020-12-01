@@ -425,3 +425,27 @@ class Connector():
 
         TODO
         """
+        available_datapoints_old = self.available_datapoints
+
+        # Check if the update to available_datapoints introduces new keys
+        new_keys_found = False
+        for dpt in ["sensor", "actuator"]:
+            existing_keys = set(available_datapoints_old[dpt].keys())
+            updated_keys = set(available_datapoints[dpt].keys())
+            if updated_keys.difference(existing_keys):
+                new_keys_found = True
+                break
+
+        # Update the example values
+        for dpt in ["sensor", "actuator"]:
+            available_datapoints_old[dpt].update(available_datapoints[dpt])
+
+        # Store the updated map
+        self.available_datapoints = available_datapoints_old
+
+        # Publish if new keys found.
+        if new_keys_found:
+            self.mqtt_client.publish(
+                payload=json.dumps(self.available_datapoints),
+                topic=self.MQTT_TOPIC_AVAILABLE_DATAPOINTS,
+            )

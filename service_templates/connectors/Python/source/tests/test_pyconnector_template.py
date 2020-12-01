@@ -454,3 +454,138 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
         expected_topic = "example-connector/msgs/0003"
         actual_topic = self.cn.mqtt_client.unsubscribe.call_args.kwargs["topic"]
         assert actual_topic == expected_topic
+
+class TestConnectorUpdateAvailableDatapoints(TestClassWithFixtures):
+
+    fixture_names = []
+
+    def setup_method(self, method):
+
+        self.cn = Connector()
+
+        # Overload some attributes for testing.
+        self.cn.mqtt_client = MagicMock()
+        self.cn.MQTT_TOPIC_AVAILABLE_DATAPOINTS = "tpyco/available_datapoints"
+
+
+    def test_update_without_new_keys_publishes_not(self):
+        """
+        Updateing available_datapoints without new datapoint keys should
+        not trigger sending an update via MQTT.
+        """
+        self.cn.available_datapoints = {
+            "sensor": {
+                "Channel__P__value__0": 0.122,
+                "Channel__P__unit__0": "kW",
+            },
+            "actuator": {
+                "Channel__P__setpoint__0": 0.4,
+            }
+        }
+
+        available_datapoints_update = {
+            "sensor": {
+                "Channel__P__value__0": 9.222,
+                "Channel__P__unit__0": "kW",
+            },
+            "actuator": {
+                "Channel__P__setpoint__0": 6.4,
+            }
+        }
+        self.cn.update_available_datapoints(
+            available_datapoints=available_datapoints_update
+        )
+
+        expected_call_count = 0
+        actual_call_count = self.cn.mqtt_client.publish.call_count
+        assert actual_call_count == expected_call_count
+
+    def test_update_without_new_keys_updates_example_values(self):
+        """
+        Updateing available_datapoints without new datapoint keys should
+        update the example values so more recent values are published with
+        the next new datapoint.
+        """
+        self.cn.available_datapoints = {
+            "sensor": {
+                "Channel__P__value__0": 0.122,
+                "Channel__P__unit__0": "kW",
+            },
+            "actuator": {
+                "Channel__P__setpoint__0": 0.4,
+            }
+        }
+
+        available_datapoints_update = {
+            "sensor": {
+                "Channel__P__value__0": 9.222,
+            },
+            "actuator": {
+                "Channel__P__setpoint__0": 6.4,
+            }
+        }
+        self.cn.update_available_datapoints(
+            available_datapoints=available_datapoints_update
+        )
+
+        expected_available_datapoints = {
+                "sensor": {
+                    "Channel__P__value__0": 9.222,
+                    "Channel__P__unit__0": "kW",
+                },
+                "actuator": {
+                    "Channel__P__setpoint__0": 6.4,
+                }
+            }
+        actual_available_datapoints = self.cn.available_datapoints
+        assert actual_available_datapoints == expected_available_datapoints
+
+    def test_update_with_new_key_triggers_publish(self):
+        """
+        A new key should trigger publishing the latest available_datapoints
+        dict.
+        """
+        for dp_type in ["sensor", "actuator"]:
+
+            self.cn.available_datapoints = {
+                "sensor": {
+                    "Channel__P__value__0": 0.122,
+                    "Channel__P__unit__0": "kW",
+                },
+                "actuator": {
+                    "Channel__P__setpoint__0": 0.4,
+                }
+            }
+
+            available_datapoints_update = {
+                "sensor": {},
+                "actuator": {}
+            }
+            available_datapoints_update[dp_type]["Channel__Q__sp__0"] = 6.4
+            self.cn.update_available_datapoints(
+                available_datapoints=available_datapoints_update
+            )
+
+            # Verify that the updated dict is stored.
+            expected_available_datapoints = {
+                "sensor": {
+                    "Channel__P__value__0": 0.122,
+                    "Channel__P__unit__0": "kW",
+                },
+                "actuator": {
+                    "Channel__P__setpoint__0": 0.4,
+                }
+            }
+            expected_available_datapoints[dp_type]["Channel__Q__sp__0"] = 6.4
+            actual_available_datapoints = self.cn.available_datapoints
+            assert actual_available_datapoints == expected_available_datapoints
+
+            # Check that it is also published on the correct topic.
+            mqtt_client = self.cn.mqtt_client
+            expected_payload = json.dumps(expected_available_datapoints)
+            actual_payload = mqtt_client.publish.call_args.kwargs["payload"]
+            assert actual_payload == expected_payload
+
+            expected_topic = self.cn.MQTT_TOPIC_AVAILABLE_DATAPOINTS
+            actual_topic = mqtt_client.publish.call_args.kwargs["topic"]
+            assert actual_topic == expected_topic
