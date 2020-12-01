@@ -113,7 +113,13 @@ class SensorFlow():
 
         # Check if we found new datapoints in this message and need to
         # send an update to the AdminUI.
-        self.update_available_datapoints(flattened_msg=msg)
+        available_datapoints_update = {
+            "actuator": {},
+            "sensor": msg["payload"]["flattened_message"]
+        }
+        self.update_available_datapoints(
+            available_datapoints=available_datapoints_update
+        )
 
         # Publish values of datapoints that have been selected for such
         # within the AdminUI.
@@ -268,6 +274,42 @@ class SensorFlow():
 
         return msg
 
+    def filter_and_publish_datapoint_values(self, flattened_msg):
+        """
+        Generate and send value messages for selected datapoints.
+
+        datapoints are selected via the datapoint_map attribute.
+
+        Parameters
+        ----------
+        flattened_msg : dict
+            The message object containing the flattened data.
+            Should be formated like this:
+                msg = {
+                    "payload": {
+                        "flattened_message": <the flattend object>,
+                        "timestamp": <milliseconds since epoch>
+                    }
+                }
+        """
+        flattened_message = flattened_msg["payload"]["flattened_message"]
+        for topic, value in flattened_message.items():
+            # Skip all not selected datapoints
+            if topic not in self.datapoint_map["sensor"]:
+                continue
+
+            # By definition (message convention) the value should always be
+            # a string, and the upstream functions should have formated value
+            # as a string already, but better save then sorry here.
+            value_msg = {
+                "value": str(value),
+                "timestamp": flattened_msg["payload"]["timestamp"],
+            }
+
+            self.mqtt_client.publish(
+                topic=topic,
+                payload=json.dumps(value_msg)
+            )
 
 class Connector():
     """
@@ -422,8 +464,6 @@ class Connector():
             Connector internal keys and example values for available_datapoints
             to store and optionally publish. Format is specified in the class
             attriubte docstring above.
-
-        TODO
         """
         available_datapoints_old = self.available_datapoints
 

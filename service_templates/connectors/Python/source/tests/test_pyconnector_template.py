@@ -163,6 +163,37 @@ class TestSensorFlowRun(TestClassWithFixtures):
         self.sf.run_sensor_flow()
         self.sf.update_available_datapoints.assert_called()
 
+    def test_update_available_datapoints_called_with_correct_arg(self):
+        """
+        Verify that the argument to update_available_datapoint has the
+        expected format.
+        """
+        flattened_msg = {
+            "payload": {
+                "flattened_message": {
+                    "device_1__sensor_1": "2.12",
+                    "device_1__sensor_2": "3.12"
+                },
+                "timestamp": 1573680749000
+            }
+        }
+        self.sf.flatten_parsed_msg = MagicMock(
+            return_value=flattened_msg
+        )
+
+        self.sf.run_sensor_flow()
+
+        expected_available_datapoints = {
+                "sensor": {
+                    "device_1__sensor_1": "2.12",
+                    "device_1__sensor_2": "3.12"
+                },
+                "actuator": {}
+            }
+        uad_kwargs = self.sf.update_available_datapoints.call_args.kwargs
+        actual_available_datapoints = uad_kwargs["available_datapoints"]
+        assert expected_available_datapoints == actual_available_datapoints
+
     def test_filter_and_publish_datapoint_values_called(self):
         """
         This function is an essential part of the run logic.
@@ -246,6 +277,71 @@ class TestSensorFlowFlattenParsedMsg(TestClassWithFixtures):
         )
 
         assert actual_msg == expected_msg
+
+
+class TestSensorFlowFilterAndPublish(TestClassWithFixtures):
+
+    fixture_names = []
+
+    def setup_method(self, method):
+
+        self.sf = SensorFlow()
+        self.sf.mqtt_client = MagicMock()
+
+        self.flattened_msg = {
+            "payload": {
+                "flattened_message": {
+                    "device_1__sensor_1": "1.12",
+                    "device_1__sensor_2": "2.12",
+                    "device_1__sensor_3": "3.12"
+                },
+                "timestamp": 1573680749000
+            }
+        }
+
+        self.sf.datapoint_map = {
+            "sensor": {
+                "device_1__sensor_1": "example-connector/msgs/0001",
+                "device_1__sensor_2": "example-connector/msgs/0002",
+            },
+            "actuator": {}
+        }
+
+    def test_value_msgs_published_for_selected_datapoints(self):
+        """
+        Validate that value messages have been sent out for datapoints
+        selected with datapoint_map and not sent for those not selected.
+        """
+        self.sf.filter_and_publish_datapoint_values(
+            flattened_msg=self.flattened_msg
+        )
+
+        # Compute the messages that would have been sent by the call above.
+        calls = self.sf.mqtt_client.publish.call_args_list
+        actual_value_msgs = [json.loads(c.kwargs["payload"]) for c in calls]
+        actual_topics = [c.kwargs["topic"] for c in calls]
+
+        flattened_message = self.flattened_msg["payload"]["flattened_message"]
+        for expected_topic, value in flattened_message.items():
+            expected_value_msg = {
+                "value": value,
+                "timestamp": self.flattened_msg["payload"]["timestamp"]
+            }
+
+            # Verify that not selected datapoints have not been sent.
+            if expected_topic not in self.sf.datapoint_map["sensor"]:
+                assert expected_topic not in actual_topics
+                assert expected_value_msg not in actual_value_msgs
+                continue
+
+            # Verify that all selected datapoints have been sent.
+            assert expected_topic in actual_topics
+            assert expected_value_msg in actual_value_msgs
+
+            # Also verify that the topics and message matches.
+            index_topic = actual_topics.index(expected_topic)
+            index_value_msg = actual_value_msgs.index(expected_value_msg)
+            assert index_topic == index_value_msg
 
 
 class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
