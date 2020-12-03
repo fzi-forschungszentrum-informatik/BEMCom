@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 """
+import time
 import ctypes
 import inspect
 import threading
@@ -55,7 +56,7 @@ class DispatchOnce(threading.Thread):
         cleanup_kwargs : dict, optional
             Keywordarguments provided to cleanup_func. Defaults to {}.
         """
-        # These are always daemonin, as we expect them to exit with the
+        # Dispatchers are always daemonic, as we expect them to exit with the
         # main program. No zombies today.
         super().__init__(daemon=True)
 
@@ -138,3 +139,93 @@ class DispatchOnce(threading.Thread):
         self.termination_event.set()
 
 
+class DispatchInInterval(DispatchOnce):
+    """
+    Similar to DispatchOnce (see docstring there) apart from that the
+    target function is called in regular intervals.
+    """
+
+    def __init__(
+            self,
+            target_func=None,
+            target_args=None,
+            target_kwargs=None,
+            cleanup_func=None,
+            cleanup_args=None,
+            cleanup_kwargs=None,
+            call_interval=0,
+        ):
+        """
+        Parameters
+        ----------
+        target_func : callable, optional
+            The target that is called in the Thread. Defaults to None.
+        target_args : tuple/list, optional
+            Arguments provided to target_func. Defaults to ().
+        target_kwargs : dict, optional
+            Keywordarguments provided to target_func. Defaults to {}.
+        cleanup_func : TYPE, optional
+            A callable that is executed after the target has finished.
+            Regardeless if it exited normally or with exception.
+            Defaults to None.
+        cleanup_args : tuple/list, optional
+            Arguments provided to cleanup_func. Defaults to ().
+        cleanup_kwargs : dict, optional
+            Keywordarguments provided to cleanup_func. Defaults to {}.
+        call_interval: int/float
+            The desired interval between to executions of target_func.
+            The practical minimum is the execution time of target_func,
+            as this dispatcher will wait until target_func is finished
+            before calling it again. This allows us to prevents
+            uncontrollable rise in resource consumption if the
+            call_interval would be shorter then the execution time.
+            Defaults to 0, i.e. call as often as possible.
+        """
+        super().__init__(
+            target_func=target_func,
+            target_args=target_args,
+            target_kwargs=target_kwargs,
+            cleanup_func=cleanup_func,
+            cleanup_args=cleanup_args,
+            cleanup_kwargs=cleanup_kwargs,
+        )
+
+        self.call_interval = call_interval
+
+    def run(self):
+        """
+        Execute the target function repeatedly in thread.
+
+        This executes target_func repeatedly until the terminate method has
+        been called. The cleanup_func is called afterwards, after which the
+        thread exits.
+
+        TODO: Verify this is correct.
+        """
+        try:
+            if self.target_func:
+                while True:
+                    if self.termination_event.is_set():
+                        break
+                    start_time = time.monotonic()
+                    self.target_func(*self.target_args, **self.target_kwargs)
+                    runtime = time.monotonic() - start_time
+
+                    if runtime < self.call_interval:
+                        continue
+                    else:
+                        wait_seconds = self.call_interval - runtime
+                    self.termination_event.wait(wait_seconds)
+
+        except SystemExit:
+            pass
+        finally:
+            if self.cleanup_func:
+                self.cleanup_func(*self.cleanup_args, **self.cleanup_kwargs)
+            # This is taken from the Python default implementation at:
+            # https://github.com/python/cpython/blob/master/Lib/threading.py
+            #
+            # Avoid a refcycle if the thread is running a function with
+            # an argument that has a member that points to the thread.
+            del self.target_func, self.target_func, self.target_kwargs
+            del self.cleanup_func, self.cleanup_func, self.cleanup_kwargs

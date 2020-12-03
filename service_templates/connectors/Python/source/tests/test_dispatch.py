@@ -6,12 +6,18 @@ from unittest.mock import MagicMock
 
 
 from .base import TestClassWithFixtures
-from pyconnector_template.dispatch import DispatchOnce
+from pyconnector_template.dispatch import DispatchOnce, DispatchInInterval
 
 
 class TestDispatchOnce__init__(TestClassWithFixtures):
 
     fixture_names = ()
+
+    def setup_class(self):
+        """
+        Allow overloading the dispatcher, so we can reuse the test later.
+        """
+        self.dispatcher = DispatchOnce
 
     def test_required_attributes_created(self):
         """
@@ -24,7 +30,7 @@ class TestDispatchOnce__init__(TestClassWithFixtures):
         cleanup_args = MagicMock()
         cleanup_kwargs = MagicMock()
 
-        do = DispatchOnce(
+        do = self.dispatcher(
             target_func=target_func,
             target_args=target_args,
             target_kwargs=target_kwargs,
@@ -45,7 +51,7 @@ class TestDispatchOnce__init__(TestClassWithFixtures):
         """
         Check that defaults for args and kwargs are created.
         """
-        do = DispatchOnce()
+        do = self.dispatcher()
 
         assert do.target_args == ()
         assert do.target_kwargs == {}
@@ -60,7 +66,7 @@ class TestDispatchOnce__init__(TestClassWithFixtures):
         def target_func(termination_event):
             pass
 
-        do = DispatchOnce(target_func=target_func)
+        do = self.dispatcher(target_func=target_func)
 
         assert "termination_event" in do.target_kwargs
         assert do.target_kwargs["termination_event"] == do.termination_event
@@ -73,7 +79,7 @@ class TestDispatchOnce__init__(TestClassWithFixtures):
         def target_func():
             pass
 
-        do = DispatchOnce(target_func=target_func)
+        do = self.dispatcher(target_func=target_func)
         #do.start()
         assert "termination_event" not in do.target_kwargs
 
@@ -90,23 +96,35 @@ class TestDispatchOnceTerminate(TestClassWithFixtures):
 
     fixture_names = ()
 
+    def setup_class(self):
+        """
+        Allow overloading the dispatcher, so we can reuse the test later.
+        """
+        self.dispatcher = DispatchOnce
+
     def test_termination_event_set(self):
         """
         Verify that the termination event is fired.
         """
-        do = DispatchOnce()
+        do = self.dispatcher()
         do.start()
         do.terminate()
 
         assert do.termination_event.is_set()
 
 
-class TestDispatchOnceIntregration(TestClassWithFixtures):
+class TestDispatchOnceIntegration(TestClassWithFixtures):
     """
     Integration tests to verify functionality.
     """
 
     fixture_names = ()
+
+    def setup_class(self):
+        """
+        Allow overloading the dispatcher, so we can reuse the test later.
+        """
+        self.dispatcher = DispatchOnce
 
     def test_terminate_quits_thread_immediatly(self):
         """
@@ -121,7 +139,7 @@ class TestDispatchOnceIntregration(TestClassWithFixtures):
             # Don't use sleep here, it will not be affected by SystemExit.
             termination_event.wait(1)
 
-        thread = DispatchOnce(
+        thread = self.dispatcher(
             target_func=target_func,
         )
 
@@ -147,7 +165,6 @@ class TestDispatchOnceIntregration(TestClassWithFixtures):
         Verify that the cleanup function is called even if we exit
         with SystemExit.
         """
-
         def target_func(termination_event):
             """
             This would sleep one second if the test fails and return faster
@@ -161,7 +178,7 @@ class TestDispatchOnceIntregration(TestClassWithFixtures):
 
         got_system_exit = {"state": False}
 
-        thread = DispatchOnce(
+        thread = self.dispatcher(
             target_func=target_func,
             cleanup_func=cleanup_func,
             cleanup_kwargs={"got_system_exit": got_system_exit}
@@ -201,7 +218,7 @@ class TestDispatchOnceIntregration(TestClassWithFixtures):
 
         got_system_exit = {"state": False}
 
-        thread = DispatchOnce(
+        thread = self.dispatcher(
             target_func=target_func,
             cleanup_func=cleanup_func,
             cleanup_kwargs={"got_system_exit": got_system_exit}
@@ -213,3 +230,57 @@ class TestDispatchOnceIntregration(TestClassWithFixtures):
 
         # Verify that the cleanup function has been executed.
         assert got_system_exit["state"]
+
+
+class TestDispatchInInterval__init__(TestDispatchOnce__init__):
+    """
+    Reuse the tests for DispatchOnce above and only check new functionality.
+    """
+
+    def setup_class(self):
+        """
+        Allow overloading the dispatcher, so we can reuse the test later.
+        """
+        self.dispatcher = DispatchInInterval
+
+    def test_required_attributes_created_extended(self):
+        """
+        Verify that all required attributes are created by __init__
+        """
+        call_interval = MagicMock()
+
+        do = self.dispatcher(call_interval=call_interval)
+
+        assert do.call_interval == call_interval
+
+
+class TestDispatchInIntervalRun(TestDispatchOnceRun):
+    """
+    Nothing to do here, run should work fine if the integration tests below
+    run through.
+    """
+    fixture_names = ()
+
+
+class TestDispatchInIntervalTerminate(TestDispatchOnceTerminate):
+    """
+    Reuse the tests for DispatchOnce above and only check new functionality.
+    """
+
+    def setup_class(self):
+        """
+        Allow overloading the dispatcher, so we can reuse the test later.
+        """
+        self.dispatcher = DispatchInInterval
+
+# TODO Add integration tests here.
+# class TestDispatchInIntervalIntegration(TestDispatchOnceIntegration):
+#     """
+#     Reuse the tests for DispatchOnce above and only check new functionality.
+#     """
+
+#     def setup_class(self):
+#         """
+#         Allow overloading the dispatcher, so we can reuse the test later.
+#         """
+#         self.dispatcher = DispatchInInterval
