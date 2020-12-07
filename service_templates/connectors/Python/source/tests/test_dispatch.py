@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from time import time
+import time
 from threading import Event
 from unittest.mock import MagicMock
 
+import pytest
 
 from .base import TestClassWithFixtures
 from pyconnector_template.dispatch import DispatchOnce, DispatchInInterval
@@ -144,7 +145,7 @@ class TestDispatchOnceIntegration(TestClassWithFixtures):
         )
 
         thread.start()
-        start_time = time()
+        start_time = time.monotonic()
 
         # Ensure the thread was started correctly.
         assert thread.is_alive()
@@ -152,7 +153,7 @@ class TestDispatchOnceIntegration(TestClassWithFixtures):
         # Ask the thread to exit and measure how long it takes.
         thread.terminate()
         thread.join()
-        runtime = time() - start_time
+        runtime = time.monotonic() - start_time
 
         # Check thread has exited as expected.
         assert not thread.is_alive()
@@ -160,7 +161,7 @@ class TestDispatchOnceIntegration(TestClassWithFixtures):
         # Check that the try loop has been left immediatly.
         assert runtime < 0.1
 
-    def test_cleanup_func_called_after_terminate_called(self):
+    def best_cleanup_func_called_after_terminate_called(self):
         """
         Verify that the cleanup function is called even if we exit
         with SystemExit.
@@ -185,7 +186,7 @@ class TestDispatchOnceIntegration(TestClassWithFixtures):
         )
 
         thread.start()
-        start_time = time()
+        start_time = time.monotonic()
 
         # Ensure the thread was started correctly.
         assert thread.is_alive()
@@ -193,7 +194,7 @@ class TestDispatchOnceIntegration(TestClassWithFixtures):
         # Ask the thread to exit and measure how long it takes.
         thread.terminate()
         thread.join()
-        runtime = time() - start_time
+        runtime = time.monotonic() - start_time
 
         # Check thread has exited as expected.
         assert not thread.is_alive()
@@ -273,14 +274,171 @@ class TestDispatchInIntervalTerminate(TestDispatchOnceTerminate):
         """
         self.dispatcher = DispatchInInterval
 
-# TODO Add integration tests here.
-# class TestDispatchInIntervalIntegration(TestDispatchOnceIntegration):
-#     """
-#     Reuse the tests for DispatchOnce above and only check new functionality.
-#     """
 
-#     def setup_class(self):
-#         """
-#         Allow overloading the dispatcher, so we can reuse the test later.
-#         """
-#         self.dispatcher = DispatchInInterval
+class TestDispatchInIntervalIntegration(TestClassWithFixtures):
+    """
+    Integration tests to verify functionality.
+
+    Don't inherit from TestDispatchInIntervalIntegration here, as it would
+    only affect one of the test methods but add unintended side effects for
+    tests that expect that the run is finished after one exection of the
+    target function.
+    """
+
+    fixture_names = ()
+
+    def setup_class(self):
+        """
+        Allow overloading the dispatcher, so we can reuse the test later.
+        """
+        self.dispatcher = DispatchInInterval
+
+    def test_terminate_quits_thread_immediatly(self):
+        """
+        Verify that a thread is started, and stopped immediatly after
+        terminate is called.
+        """
+        def target_func(termination_event):
+            pass
+
+        thread = self.dispatcher(
+            target_func=target_func,
+            call_interval=1,
+        )
+
+        thread.start()
+        start_time = time.monotonic()
+
+        # Ensure the thread was started correctly.
+        assert thread.is_alive()
+
+        # Ask the thread to exit and measure how long it takes.
+        thread.terminate()
+        thread.join()
+        runtime = time.monotonic() - start_time
+
+        # Check thread has exited as expected.
+        assert not thread.is_alive()
+
+        # Check that the try loop has been left immediatly.
+        assert runtime < 0.1
+
+    def test_cleanup_func_called_after_terminate_called(self):
+        """
+        Verify that the cleanup function is called even if we exit
+        with SystemExit.
+        """
+        def target_func(termination_event):
+            pass
+
+        def cleanup_func(got_system_exit):
+            got_system_exit["state"] = True
+
+        got_system_exit = {"state": False}
+
+        thread = self.dispatcher(
+            target_func=target_func,
+            cleanup_func=cleanup_func,
+            cleanup_kwargs={"got_system_exit": got_system_exit},
+            call_interval=1,
+        )
+
+        thread.start()
+        start_time = time.monotonic()
+
+        # Ensure the thread was started correctly.
+        assert thread.is_alive()
+
+        # Ask the thread to exit and measure how long it takes.
+        thread.terminate()
+        thread.join()
+        runtime = time.monotonic() - start_time
+
+        # Check thread has exited as expected.
+        assert not thread.is_alive()
+
+        # Verify that the cleanup function has been executed.
+        assert got_system_exit["state"]
+
+        # Check that the try loop has been left immediatly.
+        assert runtime < 0.1
+
+    def test_target_func_called_at_specified_interval(self):
+        """
+        Verify that the target function is triggered in call_interval
+        seconds, up to some tollerance.
+        """
+        execution_times = []
+
+        def target_func(termination_event, execution_times):
+            execution_times.append(time.monotonic())
+
+        thread = self.dispatcher(
+            target_func=target_func,
+            target_kwargs={"execution_times": execution_times},
+            call_interval=0.1,
+        )
+
+        thread.start()
+        # Ensure the thread was started correctly.
+        assert thread.is_alive()
+
+        # wait until the target_function should have been called three times.
+        time.sleep(0.25)
+
+        # Ask the thread to exit.
+        thread.terminate()
+        thread.join()
+
+        # Check thread has exited as expected.
+        assert not thread.is_alive()
+
+        # We expect that target_func has been executed three times with less
+        # then a percent deviation from the requested call interval.
+        assert len(execution_times) == 3
+        actual_execution_time_0 = execution_times[1] - execution_times[0]
+        actual_execution_time_1 = execution_times[2] - execution_times[1]
+        expected_execution_time = pytest.approx(0.1, 0.01)
+        assert actual_execution_time_0 == expected_execution_time
+        assert actual_execution_time_1 == expected_execution_time
+
+    def test_call_interval_extended_for_longer_target_func_runs(self):
+        """
+        We expect the dispatcher to immediatly start the next run of the
+        target function if the runtime of it was longer then the
+        call_intervall.
+        """
+        execution_times = []
+
+        def target_func(termination_event, execution_times):
+            execution_times.append(time.monotonic())
+            time.sleep(0.2)
+
+        thread = self.dispatcher(
+            target_func=target_func,
+            target_kwargs={"execution_times": execution_times},
+            call_interval=0.1,
+        )
+
+        thread.start()
+        # Ensure the thread was started correctly.
+        assert thread.is_alive()
+
+        # wait until the target_function should have been called three times.
+        time.sleep(0.42)
+
+        # Ask the thread to exit.
+        thread.terminate()
+        thread.join()
+
+        # Check thread has exited as expected.
+        assert not thread.is_alive()
+
+        # We expect that target_func has been executed three times with less
+        # then a percent deviation from the run time of the target function.
+        assert len(execution_times) == 3
+        actual_execution_time_0 = execution_times[1] - execution_times[0]
+        actual_execution_time_1 = execution_times[2] - execution_times[1]
+        expected_execution_time = pytest.approx(0.2, 0.01)
+        assert actual_execution_time_0 == expected_execution_time
+        assert actual_execution_time_1 == expected_execution_time

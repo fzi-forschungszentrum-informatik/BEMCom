@@ -211,10 +211,13 @@ class DispatchInInterval(DispatchOnce):
                     self.target_func(*self.target_args, **self.target_kwargs)
                     runtime = time.monotonic() - start_time
 
+                    # It takes roughly to 0.0005 seconds on a normal laptop
+                    # to compute the statement below, this the error of
+                    # the actual call_interval
                     if runtime < self.call_interval:
-                        continue
-                    else:
                         wait_seconds = self.call_interval - runtime
+                    else:
+                        continue
                     self.termination_event.wait(wait_seconds)
 
         except SystemExit:
