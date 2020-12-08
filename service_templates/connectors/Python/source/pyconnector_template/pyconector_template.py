@@ -7,12 +7,13 @@ The control flow and concepts are very similar to the Node-RED connector
 template. You might want to instpect the Main flow of the Node-RED connector
 template first to familiarize yourself with these.
 """
+import os
 import json
 import logging
 from datetime import datetime
 
 from paho.mqtt.client import Client
-
+from dotenv import load_dotenv, find_dotenv
 
 logger = logging.getLogger("pyconnector template")
 
@@ -93,8 +94,9 @@ class SensorFlow():
 
     mqtt_client : class
         Mqtt client library with signature of paho mqtt.
-    SEND_RAW_MESSAGE_TO_DB : bool
-        Indicates whether the raw message will be sent to designated DB or not.
+    SEND_RAW_MESSAGE_TO_DB : string
+        if SEND_RAW_MESSAGE_TO_DB == "TRUE" will send raw message
+        to designated DB via MQTT.
     MQTT_TOPIC_RAW_MESSAGE_TO_DB : string
         The topic which on which the raw messages will be published.
     datapoint_map : dict of dict.
@@ -132,7 +134,7 @@ class SensorFlow():
 
         # Send raw msg to raw message DB if activated in settings.
         # Handle bytes, as these are not JSON serializable.
-        if self.SEND_RAW_MESSAGE_TO_DB:
+        if self.SEND_RAW_MESSAGE_TO_DB == "TRUE":
             payload = msg["payload"]
             if isinstance(payload["raw_message"], (bytes, bytearray)):
                 payload["raw_message"] = {
@@ -431,7 +433,8 @@ class Connector():
     """
     The generic logic of the connector.
 
-    Handles connections, threads, triggers pulls, ...
+    It should not be necessary to overload any of these methods nor
+    to call any of those apart from __init__() and run().
 
     Configuration Attributes
     ------------------------
@@ -446,10 +449,14 @@ class Connector():
         The topic on which the available datapoints will be published.
     MQTT_TOPIC_DATAPOINT_MAP : string
         The topic the connector will listen on for datapoint maps
-    SEND_RAW_MESSAGE_TO_DB : bool
-        Indicates whether the raw message will be sent to designated DB or not.
+    SEND_RAW_MESSAGE_TO_DB : string
+        if SEND_RAW_MESSAGE_TO_DB == "TRUE" will send raw message
+        to designated DB via MQTT. This is a string and not a bool as
+        environment variables are always strings.
     MQTT_TOPIC_RAW_MESSAGE_TO_DB : string
         The topic which on which the raw messages will be published.
+    DEBUG : string
+        if DEBUG == "TRUE" will log debug message to, elso loglevel is info.
 
     Computed Attributes
     -------------------
@@ -499,21 +506,51 @@ class Connector():
             The initial available_datapoints object before updating per MQTT.
             Format is specified in the class attriubte docstring above.
         """
+        # Set the loglevel to DEBUG so we can log to stdout at least, before
+        # we compute the correct loglevel below.
+        logger.setLevel(logging.DEBUG)
+        logger.info("Initating Connector")
 
+        # Updateing either of the two is not possible at this point as
+        # the MQTT connection is not available yet.
+        self._initial_datapoint_map = datapoint_map
+        self._initial_available_datapoints = available_datapoints
+
+        logger.info("Loading settings from environment variables.")
+        self.CONNECTOR_NAME = os.getenv("CONNECTOR_NAME")
+        self.SEND_RAW_MESSAGE_TO_DB = os.getenv("SEND_RAW_MESSAGE_TO_DB")
+        self.DEBUG = os.getenv("DEBUG")
+        self.MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST")
+        self.MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT"))
+
+        cn = self.CONNECTOR_NAME
+        self.MQTT_TOPIC_LOGS = "%s/logs" % cn
+        self.MQTT_TOPIC_HEARTBEAT = "%s/heartbeat" % cn
+        self.MQTT_TOPIC_AVAILABLE_DATAPOINTS = "%s/available_datapoints" % cn
+        self.MQTT_TOPIC_DATAPOINT_MAP = "%s/datapoint_map" % cn
+        self.MQTT_TOPIC_RAW_MESSAGE_TO_DB = "%s/raw_message_to_db" % cn
+
+    def run(self):
+        """
+        Run the connector until SystemExit or Keyboard interupt is received.
+
+        (Or of course an exception occured in the connector.)
+        """
+        logger.info("Initiating datapoint_map")
         self.datapoint_map = {"sensor": {}, "actuator": {}}
-        if datapoint_map is not None:
-            self.validate_and_update_datapoint_map(
-                datapoint_map_json=json.dumps(datapoint_map)
+        if self._initial_datapoint_map is not None:
+            self._validate_and_update_datapoint_map(
+                datapoint_map_json=json.dumps(self._initial_datapoint_map)
             )
 
+        logger.info("Initiating available_datapoints")
         self.available_datapoints = {"sensor": {}, "actuator": {}}
-        if available_datapoints is not None:
-            self.update_available_datapoints(
-                available_datapoints=available_datapoints
+        if self._initial_available_datapoints is not None:
+            self._update_available_datapoints(
+                available_datapoints=self._initial_available_datapoints
             )
 
-
-    def validate_and_update_datapoint_map(self, datapoint_map_json):
+    def _validate_and_update_datapoint_map(self, datapoint_map_json):
         """
         Inspects a newly received datapoint_map and stores it if it is valid.
 
@@ -567,7 +604,7 @@ class Connector():
 
         self.datapoint_map = datapoint_map
 
-    def update_available_datapoints(self, available_datapoints):
+    def _update_available_datapoints(self, available_datapoints):
         """
         Updates the available_datapoint dict.
 
@@ -605,3 +642,40 @@ class Connector():
                 payload=json.dumps(self.available_datapoints),
                 topic=self.MQTT_TOPIC_AVAILABLE_DATAPOINTS,
             )
+
+    @staticmethod
+    def setup_mqtt_connection(
+            mqtt_broker_host, mqtt_broker_port, userdata, on_message, mqtt_client_wrapper
+        ):
+        """
+        Initiate connection, and configure callbacks
+        """
+        client = None
+        try:
+            client.loop_forever()
+        except:
+            client.disconnect()
+            raise
+
+    @staticmethod
+    def handle_incoming_mqtt_msg(client, userdata, msg):
+        """
+        Handle incoming mqtt message by calling the appropriate methods.
+
+        Essentially we need to distinguish between messages that contain
+        a new datapoint_map and messages that carry values for actuator
+        datapoints.
+
+        This is the callback provided to the mqtt clients on_message
+        method.
+
+        Parameters
+        ----------
+        client : client : class.
+            Initialized Mqtt client library with signature of paho mqtt.
+        userdata : dict.
+            Must contain {"self": <connector class>}.
+        msg : paho mqtt message class.
+            The message to handle.
+        """
+        pass

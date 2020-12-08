@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import os
 import json
 import logging
 from datetime import datetime
@@ -117,7 +118,7 @@ class TestSensorFlowRun(TestClassWithFixtures):
 
         # Overload configuration that would be provided by the Connector.
         self.sf.mqtt_client = MagicMock()
-        self.sf.SEND_RAW_MESSAGE_TO_DB = False
+        self.sf.SEND_RAW_MESSAGE_TO_DB = "FALSE"
         self.sf.MQTT_TOPIC_RAW_MESSAGE_TO_DB = "tpyco/raw_message_to_db"
 
     def test_receive_raw_msg_is_called(self):
@@ -161,7 +162,7 @@ class TestSensorFlowRun(TestClassWithFixtures):
         Validate that no raw message is sent to the raw message DB if this
         option is deactivated via setting flag.
         """
-        self.sf.SEND_RAW_MESSAGE_TO_DB = False
+        self.sf.SEND_RAW_MESSAGE_TO_DB = "FALSE"
 
         self.sf.run_sensor_flow()
 
@@ -174,7 +175,7 @@ class TestSensorFlowRun(TestClassWithFixtures):
         Check that the raw message is sent to raw message db if this option
         is set.
         """
-        self.sf.SEND_RAW_MESSAGE_TO_DB = True
+        self.sf.SEND_RAW_MESSAGE_TO_DB = "TRUE"
 
         self.sf.run_sensor_flow()
 
@@ -199,7 +200,7 @@ class TestSensorFlowRun(TestClassWithFixtures):
         is set. Here check special handling if raw message is in bytes,
         as bytes cannot be serialized to JSON.
         """
-        self.sf.SEND_RAW_MESSAGE_TO_DB = True
+        self.sf.SEND_RAW_MESSAGE_TO_DB = "TRUE"
         raw_msg_bytes_return = {
             "payload": {
                 "raw_message": b'some bytes and stuff'
@@ -478,6 +479,200 @@ class TestActuatorFlowRun(TestClassWithFixtures):
         assert actual_datapoint_value == expected_datapoint_value
 
 
+class TestConnector__Init__(TestClassWithFixtures):
+
+    fixture_names = ()
+
+    def setup_class(self):
+        self.test_CONNECTOR_NAME = "tpyco"
+        self.test_SEND_RAW_MESSAGE_TO_DB = "FALSE"
+        self.test_DEBUG = "FALSE"
+        self.test_MQTT_BROKER_HOST = "localhost"
+        self.test_MQTT_BROKER_PORT = "1883"
+
+        # Expose the config as environment variables as would be done
+        # by a docker entrypoint script.
+        os.environ["CONNECTOR_NAME"] = self.test_CONNECTOR_NAME
+        os.environ["SEND_RAW_MESSAGE_TO_DB"] = self.test_SEND_RAW_MESSAGE_TO_DB
+        os.environ["DEBUG"] = self.test_DEBUG
+        os.environ["MQTT_BROKER_HOST"] = self.test_MQTT_BROKER_HOST
+        os.environ["MQTT_BROKER_PORT"] = self.test_MQTT_BROKER_PORT
+
+    def test_environment_variables_loaded(self):
+        """
+        Verify that all environment variables are loaded and configuration
+        attributes are populated as expected.
+        """
+        self.cn = Connector()
+
+        # These should be loaded as they are defined externally.
+        assert self.cn.CONNECTOR_NAME == self.test_CONNECTOR_NAME
+        assert (
+            self.cn.SEND_RAW_MESSAGE_TO_DB ==
+            self.test_SEND_RAW_MESSAGE_TO_DB
+        )
+        assert self.cn.DEBUG == self.test_DEBUG
+        assert self.cn.MQTT_BROKER_HOST == self.test_MQTT_BROKER_HOST
+        # Paho MQTT expects ports as int, it needs to be parsed thus.
+        assert self.cn.MQTT_BROKER_PORT == int(self.test_MQTT_BROKER_PORT)
+
+        # These are computed based on CONNECTOR_NAME
+        expected_MQTT_TOPIC_LOGS = self.test_CONNECTOR_NAME + "/logs"
+        assert self.cn.MQTT_TOPIC_LOGS == expected_MQTT_TOPIC_LOGS
+
+        expected_MQTT_TOPIC_HEARTBEAT = (
+            self.test_CONNECTOR_NAME + "/heartbeat"
+        )
+        assert self.cn.MQTT_TOPIC_HEARTBEAT == expected_MQTT_TOPIC_HEARTBEAT
+
+        expected_MQTT_TOPIC_AVAILABLE_DATAPOINTS = (
+            self.test_CONNECTOR_NAME + "/available_datapoints"
+        )
+        assert (
+            self.cn.MQTT_TOPIC_AVAILABLE_DATAPOINTS ==
+            expected_MQTT_TOPIC_AVAILABLE_DATAPOINTS
+        )
+
+        expected_MQTT_TOPIC_DATAPOINT_MAP = (
+            self.test_CONNECTOR_NAME + "/datapoint_map"
+        )
+        assert (
+            self.cn.MQTT_TOPIC_DATAPOINT_MAP ==
+            expected_MQTT_TOPIC_DATAPOINT_MAP
+        )
+
+        expected_MQTT_TOPIC_RAW_MESSAGE_TO_DB = (
+            self.test_CONNECTOR_NAME + "/raw_message_to_db"
+        )
+        assert (
+            self.cn.MQTT_TOPIC_RAW_MESSAGE_TO_DB ==
+            expected_MQTT_TOPIC_RAW_MESSAGE_TO_DB
+        )
+
+    def test_initial_datapoint_map_is_stored(self):
+        """
+        This object is later used in run.
+        """
+        datapoint_map = MagicMock()
+        self.cn = Connector(datapoint_map=datapoint_map)
+
+        expected_datapoint_map = datapoint_map
+        actual_datapoint_map = self.cn._initial_datapoint_map
+        assert actual_datapoint_map == expected_datapoint_map
+
+    def test_initial_available_datapoints_is_stored(self):
+        """
+        This object is later used in run.
+        """
+        available_datapoints = MagicMock()
+        self.cn = Connector(available_datapoints=available_datapoints)
+
+        expected_available_datapoints = available_datapoints
+        actual_available_datapoints = self.cn._initial_available_datapoints
+        assert actual_available_datapoints == expected_available_datapoints
+
+
+class TestConnectorRun(TestClassWithFixtures):
+
+    fixture_names = ()
+
+    def setup_class(self):
+        self.test_CONNECTOR_NAME = "tpyco"
+        self.test_SEND_RAW_MESSAGE_TO_DB = "FALSE"
+        self.test_DEBUG = "FALSE"
+        self.test_MQTT_BROKER_HOST = "localhost"
+        self.test_MQTT_BROKER_PORT = "1883"
+
+        # Expose the config as environment variables as would be done
+        # by a docker entrypoint script.
+        os.environ["CONNECTOR_NAME"] = self.test_CONNECTOR_NAME
+        os.environ["SEND_RAW_MESSAGE_TO_DB"] = self.test_SEND_RAW_MESSAGE_TO_DB
+        os.environ["DEBUG"] = self.test_DEBUG
+        os.environ["MQTT_BROKER_HOST"] = self.test_MQTT_BROKER_HOST
+        os.environ["MQTT_BROKER_PORT"] = self.test_MQTT_BROKER_PORT
+
+    def test_validate_and_update_datapoint_map_is_called(self):
+        """
+        This function must be called with the correct arguments.
+
+        This test will also fail if validate_and_update_datapoint_map
+        is not implemented correctly.
+        """
+        datapoint_map = {
+            "sensor": {},
+            "actuator": {
+                "example-connector/msgs/0001": "device_1__sensor_1",
+            }
+        }
+        self.cn = Connector()
+        self.cn.mqtt_client = MagicMock()
+        self.cn._initial_datapoint_map = datapoint_map
+        self.cn.run()
+
+        expected_datapoint_map = datapoint_map
+        actual_datapoint_map = self.cn.datapoint_map
+        assert actual_datapoint_map == expected_datapoint_map
+
+    def test_empty_datapoint_map_is_created_default(self):
+        """
+        Verify that the connector starts with an empty datapoint_map
+        by default if no datapoint_map is specified.
+
+        This test will also fail if validate_and_update_datapoint_map
+        is not implemented correctly.
+        """
+        self.cn = Connector()
+        self.cn.mqtt_client = MagicMock()
+        self.cn._initial_datapoint_map = None
+        self.cn.run()
+
+        expected_datapoint_map = {"sensor": {}, "actuator": {}}
+        actual_datapoint_map = self.cn.datapoint_map
+        assert actual_datapoint_map == expected_datapoint_map
+
+    def test_update_available_datapoints_map_is_called(self):
+        """
+        This function must be called with the correct arguments.
+
+        This test will also fail if update_available_datapoints
+        is not implemented correctly.
+        """
+        available_datapoints = {
+            "sensor": {
+                "Channel__P__value__0": 0.122,
+                "Channel__P__unit__0": "kW",
+            },
+            "actuator": {
+                "Channel__P__setpoint__0": 0.4,
+            }
+        }
+        self.cn = Connector()
+        self.cn.mqtt_client = MagicMock()
+        self.cn._initial_available_datapoints = available_datapoints
+        self.cn.run()
+
+        expected_available_datapoints = available_datapoints
+        actual_available_datapoints = self.cn.available_datapoints
+        assert actual_available_datapoints == expected_available_datapoints
+
+    def test_empty_available_datapoints_is_created_default(self):
+        """
+        Verify that the connector starts with an empty available_datapoints
+        object by default if no available_datapoints is specified.
+
+        This test will also fail if update_available_datapoints
+        is not implemented correctly.
+        """
+        self.cn = Connector()
+        self.cn.mqtt_client = MagicMock()
+        self.cn._initial_available_datapoints = None
+        self.cn.run()
+
+        expected_available_datapoints = {"sensor": {}, "actuator": {}}
+        actual_available_datapoints = self.cn.available_datapoints
+        assert actual_available_datapoints == expected_available_datapoints
+
+
 class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
 
     fixture_names = ('caplog', )
@@ -485,7 +680,7 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
     def setup_method(self, method):
 
         self.cn = Connector()
-
+        self.cn.datapoint_map = {"sensor": {}, "actuator": {}}
         # This is the name of the logger used in pyconnector_template.py
         self.logger_name = "pyconnector template"
 
@@ -507,7 +702,7 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
             }
         }
 
-        self.cn.validate_and_update_datapoint_map(
+        self.cn._validate_and_update_datapoint_map(
             datapoint_map_json=json.dumps(datapoint_map)
         )
 
@@ -527,7 +722,7 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
             }
         }
 
-        self.cn.validate_and_update_datapoint_map(
+        self.cn._validate_and_update_datapoint_map(
             datapoint_map_json=json.dumps(datapoint_map)
         )
 
@@ -551,7 +746,7 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
             },
         }
 
-        self.cn.validate_and_update_datapoint_map(
+        self.cn._validate_and_update_datapoint_map(
             datapoint_map_json=json.dumps(datapoint_map)
         )
 
@@ -576,7 +771,7 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
             }
         }
 
-        self.cn.validate_and_update_datapoint_map(
+        self.cn._validate_and_update_datapoint_map(
             datapoint_map_json=json.dumps(datapoint_map)
         )
 
@@ -602,7 +797,7 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
             "actuator": None,
         }
 
-        self.cn.validate_and_update_datapoint_map(
+        self.cn._validate_and_update_datapoint_map(
             datapoint_map_json=json.dumps(datapoint_map)
         )
 
@@ -633,7 +828,7 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
                 "example-connector/msgs/0004": "Channel__T__setpoint__0",
             }
         }
-        self.cn.validate_and_update_datapoint_map(
+        self.cn._validate_and_update_datapoint_map(
             datapoint_map_json=json.dumps(datapoint_map_update)
         )
 
@@ -673,7 +868,7 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
                 "example-connector/msgs/0004": "Channel__T__setpoint__0",
             }
         }
-        self.cn.validate_and_update_datapoint_map(
+        self.cn._validate_and_update_datapoint_map(
             datapoint_map_json=json.dumps(datapoint_map_update)
         )
 
@@ -722,7 +917,7 @@ class TestConnectorUpdateAvailableDatapoints(TestClassWithFixtures):
                 "Channel__P__setpoint__0": 6.4,
             }
         }
-        self.cn.update_available_datapoints(
+        self.cn._update_available_datapoints(
             available_datapoints=available_datapoints_update
         )
 
@@ -754,7 +949,7 @@ class TestConnectorUpdateAvailableDatapoints(TestClassWithFixtures):
                 "Channel__P__setpoint__0": 6.4,
             }
         }
-        self.cn.update_available_datapoints(
+        self.cn._update_available_datapoints(
             available_datapoints=available_datapoints_update
         )
 
@@ -792,7 +987,7 @@ class TestConnectorUpdateAvailableDatapoints(TestClassWithFixtures):
                 "actuator": {}
             }
             available_datapoints_update[dp_type]["Channel__Q__sp__0"] = 6.4
-            self.cn.update_available_datapoints(
+            self.cn._update_available_datapoints(
                 available_datapoints=available_datapoints_update
             )
 
