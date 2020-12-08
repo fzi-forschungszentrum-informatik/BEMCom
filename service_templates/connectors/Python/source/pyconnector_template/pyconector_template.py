@@ -389,37 +389,40 @@ class ActuatorFlow():
         present, even if the child dicts are empty.
     """
 
-    def run_actuator_flow(self, value_msg_json):
+    def run_actuator_flow(self, topic, value_msg_json):
         """
-        Processes an actuator value message and sends it to the actuator
-        datapoint.
+        Processes an actuator value message and triggers sending it to
+        the actuator datapoint.
 
         Parameters
         ----------
+        topic: string.
+            The topic on which the msg has been received.
         value_msg_json : string.
             The value message that should be sent to the actuator encoded
             in JSON.
-        TODO This is unfinished.
         """
         value_msg = json.loads(value_msg_json)
 
+        # Extract the value and load the connector internal key for this msg.
+        datapoint_value = value_msg["value"]
+        datapoint_key = self.datapoint_map["actuator"][topic]
 
-    def send_command(key, value):
+        self.send_command(
+            datapoint_key=datapoint_key, datapoint_value=datapoint_value
+        )
+
+    def send_command(self, datapoint_key, datapoint_value):
         """
-        Send message to target device/gateway.
-
+        Send message to target device, via gateway if applicable.
 
         Parameters
         ----------
-        key : TYPE
-            DESCRIPTION.
-        value : TYPE
-            DESCRIPTION.
-
-        Returns
-        -------
-        None.
-
+        datapoint_key : string.
+            The internal key that is used by device/gateway to identify
+            the datapoint.
+        value : string.
+            The value that should be sent to the datapoint.
         """
         raise NotImplementedError("send_command has not been implemented.")
 

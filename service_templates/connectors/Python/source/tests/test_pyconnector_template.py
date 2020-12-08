@@ -9,6 +9,7 @@ from unittest.mock import MagicMock
 from .base import TestClassWithFixtures
 from pyconnector_template.pyconector_template import MQTTHandler
 from pyconnector_template.pyconector_template import SensorFlow, Connector
+from pyconnector_template.pyconector_template import ActuatorFlow
 
 
 class TestMQTTHandler__Init__(TestClassWithFixtures):
@@ -420,6 +421,61 @@ class TestSensorFlowFilterAndPublish(TestClassWithFixtures):
             index_topic = actual_topics.index(expected_topic)
             index_value_msg = actual_value_msgs.index(expected_value_msg)
             assert index_topic == index_value_msg
+
+
+class TestActuatorFlowRun(TestClassWithFixtures):
+
+    fixture_names = ()
+
+    def setup_method(self, method):
+
+        self.af = ActuatorFlow()
+
+        # Prepare the tests by defining the datapoint_map and a matching
+        # message with topic and stuff.
+        self.test_datapoint_value = "2.1"  # Always a string (message format)
+        self.test_datapoint_key = "device_1__sensor_2"
+        self.test_topic = "example-connector/msgs/0002"
+        self.test_value_msg_json = json.dumps({
+            "value": self.test_datapoint_value,
+            "timestamp": 1573680749000,
+        })
+        self.af.datapoint_map = {
+            "sensor": {},
+            "actuator": {
+                "example-connector/msgs/0001": "device_1__sensor_1",
+                self.test_topic: self.test_datapoint_key,
+            }
+        }
+
+    def test_send_command_is_called(self):
+        """
+        This function is an essential part of the run logic.
+        """
+        self.af.send_command = MagicMock()
+        self.af.run_actuator_flow(
+            topic=self.test_topic, value_msg_json=self.test_value_msg_json
+        )
+        self.af.send_command.assert_called()
+
+    def test_send_command_arg_format_correct(self):
+        """
+        Verify that run_actuator_flow processes the msg correctly to the
+        format expected by send_command.
+        """
+        self.af.send_command = MagicMock()
+        self.af.run_actuator_flow(
+            topic=self.test_topic, value_msg_json=self.test_value_msg_json
+        )
+        call_args = self.af.send_command.call_args
+
+        expected_datapoint_key = self.test_datapoint_key
+        actual_datapoint_key = call_args.kwargs["datapoint_key"]
+        assert actual_datapoint_key == expected_datapoint_key
+
+        expected_datapoint_value = self.test_datapoint_value
+        actual_datapoint_value = call_args.kwargs["datapoint_value"]
+        assert actual_datapoint_value == expected_datapoint_value
 
 
 class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
