@@ -105,8 +105,8 @@ class DispatchOnce(threading.Thread):
             #
             # Avoid a refcycle if the thread is running a function with
             # an argument that has a member that points to the thread.
-            del self.target_func, self.target_func, self.target_kwargs
-            del self.cleanup_func, self.cleanup_func, self.cleanup_kwargs
+            del self.target_func, self.target_args, self.target_kwargs
+            del self.cleanup_func, self.cleanup_args, self.cleanup_kwargs
 
     def terminate(self):
         """
@@ -230,5 +230,5 @@ class DispatchInInterval(DispatchOnce):
             #
             # Avoid a refcycle if the thread is running a function with
             # an argument that has a member that points to the thread.
-            del self.target_func, self.target_func, self.target_kwargs
-            del self.cleanup_func, self.cleanup_func, self.cleanup_kwargs
+            del self.target_func, self.target_args, self.target_kwargs
+            del self.cleanup_func, self.cleanup_args, self.cleanup_kwargs
