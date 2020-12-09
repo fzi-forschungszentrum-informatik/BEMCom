@@ -15,6 +15,8 @@ from datetime import datetime
 from paho.mqtt.client import Client
 from dotenv import load_dotenv, find_dotenv
 
+from .dispatch import DispatchOnce
+
 logger = logging.getLogger("pyconnector template")
 
 
@@ -34,7 +36,7 @@ class MQTTHandler(logging.StreamHandler):
 
         Parameters
         ----------
-        mqtt_client : class
+        mqtt_client : class instance.
             Initialized Mqtt client library with signature of paho mqtt.
         log_topic : string
             The topic on which this handler publishes the log messages.
@@ -92,8 +94,8 @@ class SensorFlow():
     The following attributes must be set up by the connector to
     allow these methods to run correctly:
 
-    mqtt_client : class
-        Mqtt client library with signature of paho mqtt.
+    mqtt_client : class instance.
+        Initialized Mqtt client library with signature of paho mqtt.
     SEND_RAW_MESSAGE_TO_DB : string
         if SEND_RAW_MESSAGE_TO_DB == "TRUE" will send raw message
         to designated DB via MQTT.
@@ -462,8 +464,8 @@ class Connector():
     -------------------
     These attriubutes are created by init and are then dynamically used
     by the Connector.
-    mqtt_client : class
-        Mqtt client library with signature of paho mqtt.
+    mqtt_client : class instance.
+        Initialized Mqtt client library with signature of paho mqtt.
     available_datapoints : dict of dict.
         Lists all datapoints known to the connector and is sent to the
         AdminUI. Actuator datapoints must be specified manually. Sensor
@@ -495,7 +497,14 @@ class Connector():
         present, even if the child dicts are empty.
     """
 
-    def __init__(self, datapoint_map=None, available_datapoints=None):
+    def __init__(
+            self,
+            datapoint_map=None,
+            available_datapoints=None,
+            DeviceDispatcher=None,
+            device_dispatcher_kwargs=None,
+            MqttClient=Client
+        ):
         """
         Parameters
         ----------
@@ -505,18 +514,44 @@ class Connector():
         available_datapoints : dict of dicts, optional.
             The initial available_datapoints object before updating per MQTT.
             Format is specified in the class attriubte docstring above.
+        DeviceDispatcher : Dispatcher class.
+            A class with similar signature to the dispatchers located in
+            pyconnector.dispatch. The device dispatcher is responsible
+            for repeatedly polling the device/gateway for data or (or
+            handling incoming data on push style connections).
+            Defaults to None, and if None will not poll/receive any
+            data from the device/gateway.
+        device_dispatcher_kwargs : dict.
+            Keyword arguments that will be provided to DeviceDispatcher
+            on calling __init__. Defaults to {}.
+        MqttClient : class.
+            Uninitialized MQTT client library with signature of paho mqtt.
+            Defaults to paho.mqtt.client.Client. Providing other clients
+            is mostly useful for testing.
         """
         # Set the loglevel to DEBUG so we can log to stdout at least, before
-        # we compute the correct loglevel below.
+        # we compute the correct loglevel in run..
         logger.setLevel(logging.DEBUG)
         logger.info("Initating Connector")
+
+        # Store the class arguements that are used for run later.
+        self._DeviceDispatcher = DeviceDispatcher
+        if device_dispatcher_kwargs is None:
+            device_dispatcher_kwargs = {}  # Apply default value.
+        self._device_dispatcher_kwargs = device_dispatcher_kwargs
+        self._MqttClient = MqttClient
 
         # Updateing either of the two is not possible at this point as
         # the MQTT connection is not available yet.
         self._initial_datapoint_map = datapoint_map
         self._initial_available_datapoints = available_datapoints
 
-        logger.info("Loading settings from environment variables.")
+        logger.debug("Loading settings from environment variables.")
+        # dotenv allows us to load env variables from .env files which is
+        # convient for developing. If you set override to False tests
+        # may fail as the tests assume that the existing environ variables
+        # have higher priority over ones defined in the .env file.
+        load_dotenv(find_dotenv(), verbose=True, override=False)
         self.CONNECTOR_NAME = os.getenv("CONNECTOR_NAME")
         self.SEND_RAW_MESSAGE_TO_DB = os.getenv("SEND_RAW_MESSAGE_TO_DB")
         self.DEBUG = os.getenv("DEBUG")
@@ -533,22 +568,96 @@ class Connector():
     def run(self):
         """
         Run the connector until SystemExit or Keyboard interupt is received.
-
         (Or of course an exception occured in the connector.)
+
+
         """
-        logger.info("Initiating datapoint_map")
+        # Setup and configure connection with MQTT message broker.
+        self.mqtt_client = self._MqttClient()
+        self.mqtt_client.on_message = self.handle_incoming_mqtt_msg
+        self.mqtt_client.connect(
+            host=self.MQTT_BROKER_HOST, port=self.MQTT_BROKER_PORT
+        )
+
+        # Execute the MQTT main loop in a dedicated thread. This is
+        # similar to use loop_start of paho mqtt but allows us to use a
+        # unfied concept to check whether all background processes are
+        # still alive.
+        def mqtt_worker(mqtt_client):
+            try:
+                mqtt_client.loop_forever()
+            finally:
+                # Gracefully terminate connection once the main program exits.
+                mqtt_client.disconnect()
+
+        broker_dispatcher = DispatchOnce(
+            target_func=mqtt_worker,
+            target_kwargs={"mqtt_client": self.mqtt_client}
+        )
+        broker_dispatcher.run()
+
+        # TODO Init MQTT Log Handler
+        mqtt_log_handler = MQTTHandler(
+            mqtt_client=self.mqtt_client,
+            log_topic=self.MQTT_TOPIC_LOGS,
+        )
+        logger.addHandler(mqtt_log_handler)
+
+        # Now that the connection to the message broker exists, we can
+        # initializete our datapoint registers.
+        logger.debug("Initiating datapoint_map")
         self.datapoint_map = {"sensor": {}, "actuator": {}}
         if self._initial_datapoint_map is not None:
             self._validate_and_update_datapoint_map(
                 datapoint_map_json=json.dumps(self._initial_datapoint_map)
             )
 
-        logger.info("Initiating available_datapoints")
+        logger.debug("Initiating available_datapoints")
         self.available_datapoints = {"sensor": {}, "actuator": {}}
         if self._initial_available_datapoints is not None:
             self._update_available_datapoints(
                 available_datapoints=self._initial_available_datapoints
             )
+
+        # TODO Init device_dispatcher
+
+        # TODO: while True: loop, check thread activity and send heartbeat.
+
+    @staticmethod
+    def setup_mqtt_connection(
+            mqtt_broker_host, mqtt_broker_port, userdata, on_message, mqtt_client_wrapper, MqttClient=Client,
+        ):
+        """
+        Initiate connection, and configure callbacks
+        """
+        client = None
+        try:
+            client.loop_forever()
+        finally:
+            client.disconnect()
+
+    @staticmethod
+    def handle_incoming_mqtt_msg(client, userdata, msg):
+        """
+        Handle incoming mqtt message by calling the appropriate methods.
+
+        Essentially we need to distinguish between messages that contain
+        a new datapoint_map and messages that carry values for actuator
+        datapoints.
+
+        This is the callback provided to the mqtt clients on_message
+        method.
+
+        Parameters
+        ----------
+        client : client : class.
+            Initialized Mqtt client library with signature of paho mqtt.
+        userdata : dict.
+            Must contain {"self": <connector class>}.
+        msg : paho mqtt message class.
+            The message to handle.
+        """
+        pass
 
     def _validate_and_update_datapoint_map(self, datapoint_map_json):
         """
@@ -642,40 +751,3 @@ class Connector():
                 payload=json.dumps(self.available_datapoints),
                 topic=self.MQTT_TOPIC_AVAILABLE_DATAPOINTS,
             )
-
-    @staticmethod
-    def setup_mqtt_connection(
-            mqtt_broker_host, mqtt_broker_port, userdata, on_message, mqtt_client_wrapper
-        ):
-        """
-        Initiate connection, and configure callbacks
-        """
-        client = None
-        try:
-            client.loop_forever()
-        except:
-            client.disconnect()
-            raise
-
-    @staticmethod
-    def handle_incoming_mqtt_msg(client, userdata, msg):
-        """
-        Handle incoming mqtt message by calling the appropriate methods.
-
-        Essentially we need to distinguish between messages that contain
-        a new datapoint_map and messages that carry values for actuator
-        datapoints.
-
-        This is the callback provided to the mqtt clients on_message
-        method.
-
-        Parameters
-        ----------
-        client : client : class.
-            Initialized Mqtt client library with signature of paho mqtt.
-        userdata : dict.
-            Must contain {"self": <connector class>}.
-        msg : paho mqtt message class.
-            The message to handle.
-        """
-        pass

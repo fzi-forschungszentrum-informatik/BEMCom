@@ -6,6 +6,7 @@ import logging
 from datetime import datetime
 
 from unittest.mock import MagicMock
+from paho.mqtt.client import Client
 
 from .base import TestClassWithFixtures
 from pyconnector_template.pyconector_template import MQTTHandler
@@ -549,27 +550,43 @@ class TestConnector__Init__(TestClassWithFixtures):
             expected_MQTT_TOPIC_RAW_MESSAGE_TO_DB
         )
 
-    def test_initial_datapoint_map_is_stored(self):
+    def test_args_are_stored(self):
         """
-        This object is later used in run.
+        These need to be stored ad the appropriate places for the run method
+        to use.
         """
         datapoint_map = MagicMock()
-        self.cn = Connector(datapoint_map=datapoint_map)
-
-        expected_datapoint_map = datapoint_map
-        actual_datapoint_map = self.cn._initial_datapoint_map
-        assert actual_datapoint_map == expected_datapoint_map
-
-    def test_initial_available_datapoints_is_stored(self):
-        """
-        This object is later used in run.
-        """
         available_datapoints = MagicMock()
-        self.cn = Connector(available_datapoints=available_datapoints)
+        DeviceDispatcher = MagicMock()
+        device_dispatcher_kwargs = {}
+        MqttClient = MagicMock()
 
-        expected_available_datapoints = available_datapoints
-        actual_available_datapoints = self.cn._initial_available_datapoints
-        assert actual_available_datapoints == expected_available_datapoints
+        self.cn = Connector(
+            datapoint_map=datapoint_map,
+            available_datapoints=available_datapoints,
+            DeviceDispatcher=DeviceDispatcher,
+            device_dispatcher_kwargs=device_dispatcher_kwargs,
+            MqttClient=MqttClient,
+        )
+
+        assert self.cn._initial_datapoint_map == datapoint_map
+        assert self.cn._initial_available_datapoints == available_datapoints
+        assert self.cn._DeviceDispatcher == DeviceDispatcher
+        assert self.cn._device_dispatcher_kwargs == device_dispatcher_kwargs
+        assert self.cn._MqttClient == MqttClient
+
+    def test_default_args_are_correct(self):
+        """
+        Verify that default args are interpreted correctly. These are the
+        default values that are expected by Connector.run()
+        """
+        self.cn = Connector()
+
+        assert self.cn._initial_datapoint_map == None
+        assert self.cn._initial_available_datapoints == None
+        assert self.cn._DeviceDispatcher == None
+        assert self.cn._device_dispatcher_kwargs == {}  # See class docstring.
+        assert self.cn._MqttClient == Client
 
 
 class TestConnectorRun(TestClassWithFixtures):
@@ -604,8 +621,7 @@ class TestConnectorRun(TestClassWithFixtures):
                 "example-connector/msgs/0001": "device_1__sensor_1",
             }
         }
-        self.cn = Connector()
-        self.cn.mqtt_client = MagicMock()
+        self.cn = Connector(MqttClient=MagicMock)
         self.cn._initial_datapoint_map = datapoint_map
         self.cn.run()
 
@@ -621,8 +637,7 @@ class TestConnectorRun(TestClassWithFixtures):
         This test will also fail if validate_and_update_datapoint_map
         is not implemented correctly.
         """
-        self.cn = Connector()
-        self.cn.mqtt_client = MagicMock()
+        self.cn = Connector(MqttClient=MagicMock)
         self.cn._initial_datapoint_map = None
         self.cn.run()
 
@@ -646,8 +661,7 @@ class TestConnectorRun(TestClassWithFixtures):
                 "Channel__P__setpoint__0": 0.4,
             }
         }
-        self.cn = Connector()
-        self.cn.mqtt_client = MagicMock()
+        self.cn = Connector(MqttClient=MagicMock)
         self.cn._initial_available_datapoints = available_datapoints
         self.cn.run()
 
@@ -663,8 +677,7 @@ class TestConnectorRun(TestClassWithFixtures):
         This test will also fail if update_available_datapoints
         is not implemented correctly.
         """
-        self.cn = Connector()
-        self.cn.mqtt_client = MagicMock()
+        self.cn = Connector(MqttClient=MagicMock)
         self.cn._initial_available_datapoints = None
         self.cn.run()
 
@@ -672,6 +685,62 @@ class TestConnectorRun(TestClassWithFixtures):
         actual_available_datapoints = self.cn.available_datapoints
         assert actual_available_datapoints == expected_available_datapoints
 
+    def test_mqtt_initiated_correctly(self):
+        """
+        Check that the MQTT client has been setup correctly, i.e. that
+        all relevant functions have been called and stuff, see below.
+        """
+        self.cn = Connector()
+        self.cn._MqttClient = MagicMock
+        self.cn.run()
+
+        # TODO, we should test here the init of MQTT client has been called
+        # with appropriate arguments, but this really hard to do with mock.
+        # Left for the future thus.
+
+        # Verify that the on_message callback has been set.
+        assert (
+            self.cn.mqtt_client.on_message == self.cn.handle_incoming_mqtt_msg
+        )
+
+        # Check connect has been called with correct args, as we will have no
+        # connection to the broker if not. These tests may also fail if
+        # there are issues in __init__.
+        self.cn.mqtt_client.connect.assert_called()
+
+        expected_arg_host = self.test_MQTT_BROKER_HOST
+        actual_arg_host = self.cn.mqtt_client.connect.call_args.kwargs["host"]
+        assert actual_arg_host == expected_arg_host
+
+        expected_arg_port = int(self.test_MQTT_BROKER_PORT)
+        actual_arg_port = self.cn.mqtt_client.connect.call_args.kwargs["port"]
+        assert actual_arg_port == expected_arg_port
+
+        # After connect we expect loop_forever to be called in seperate thread.
+        self.cn.mqtt_client.loop_forever.assert_called()
+
+        # Finally, also disconnect should have been called after loop has
+        # been interrupted.
+        self.cn.mqtt_client.disconnect.assert_called()
+
+class TestConnectorSetupMqttConnection(TestClassWithFixtures):
+
+    fixture_names = ()
+
+    def setup_class(self):
+        self.test_CONNECTOR_NAME = "tpyco"
+        self.test_SEND_RAW_MESSAGE_TO_DB = "FALSE"
+        self.test_DEBUG = "FALSE"
+        self.test_MQTT_BROKER_HOST = "localhost"
+        self.test_MQTT_BROKER_PORT = "1883"
+
+        # Expose the config as environment variables as would be done
+        # by a docker entrypoint script.
+        os.environ["CONNECTOR_NAME"] = self.test_CONNECTOR_NAME
+        os.environ["SEND_RAW_MESSAGE_TO_DB"] = self.test_SEND_RAW_MESSAGE_TO_DB
+        os.environ["DEBUG"] = self.test_DEBUG
+        os.environ["MQTT_BROKER_HOST"] = self.test_MQTT_BROKER_HOST
+        os.environ["MQTT_BROKER_PORT"] = self.test_MQTT_BROKER_PORT
 
 class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
 
