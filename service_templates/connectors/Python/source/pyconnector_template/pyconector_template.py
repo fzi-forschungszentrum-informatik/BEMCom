@@ -9,6 +9,7 @@ template first to familiarize yourself with these.
 """
 import os
 import json
+import time
 import logging
 from datetime import datetime
 
@@ -17,7 +18,10 @@ from dotenv import load_dotenv, find_dotenv
 
 from .dispatch import DispatchOnce
 
-logger = logging.getLogger("pyconnector template")
+# Log everything to stdout by default, i.e. to docker container logs.
+LOGFORMAT = '%(asctime)s-%(funcName)s-%(levelname)s: %(message)s'
+logging.basicConfig(format=LOGFORMAT, level=logging.DEBUG)
+logger = logging.getLogger("pyconnector")
 
 
 class MQTTHandler(logging.StreamHandler):
@@ -503,7 +507,8 @@ class Connector():
             available_datapoints=None,
             DeviceDispatcher=None,
             device_dispatcher_kwargs=None,
-            MqttClient=Client
+            MqttClient=Client,
+            heartbeat_interval=30,
         ):
         """
         Parameters
@@ -528,18 +533,20 @@ class Connector():
             Uninitialized MQTT client library with signature of paho mqtt.
             Defaults to paho.mqtt.client.Client. Providing other clients
             is mostly useful for testing.
+        heartbeat_interval : int/float.
+            The time in seconds we wait between checking the dispatchers
+            and sending a heartbeat signal. Defaults to 30 seconds.
         """
-        # Set the loglevel to DEBUG so we can log to stdout at least, before
-        # we compute the correct loglevel in run..
-        logger.setLevel(logging.DEBUG)
         logger.info("Initating Connector")
 
         # Store the class arguements that are used for run later.
+        logger.debug("Processing enviornment variables.")
         self._DeviceDispatcher = DeviceDispatcher
         if device_dispatcher_kwargs is None:
             device_dispatcher_kwargs = {}  # Apply default value.
         self._device_dispatcher_kwargs = device_dispatcher_kwargs
         self._MqttClient = MqttClient
+        self._heartbeat_interval = heartbeat_interval
 
         # Updateing either of the two is not possible at this point as
         # the MQTT connection is not available yet.
@@ -565,6 +572,13 @@ class Connector():
         self.MQTT_TOPIC_DATAPOINT_MAP = "%s/datapoint_map" % cn
         self.MQTT_TOPIC_RAW_MESSAGE_TO_DB = "%s/raw_message_to_db" % cn
 
+        # Set the log level according to the DEBUG flag.
+        if self.DEBUG != "TRUE":
+            logger.debug("Changing log level to INFO")
+            logger.setLevel(logging.INFO)
+
+        logger.debug("Finished Connector init.")
+
     def run(self):
         """
         Run the connector until SystemExit or Keyboard interupt is received.
@@ -572,9 +586,12 @@ class Connector():
 
 
         """
+        logger.debug("Entering Connector run method")
+
         # Setup and configure connection with MQTT message broker.
+        logger.debug("Configuring MQTT connection")
         self.mqtt_client = self._MqttClient()
-        self.mqtt_client.on_message = self.handle_incoming_mqtt_msg
+        self.mqtt_client.on_message = self._handle_incoming_mqtt_msg
         self.mqtt_client.connect(
             host=self.MQTT_BROKER_HOST, port=self.MQTT_BROKER_PORT
         )
@@ -590,18 +607,24 @@ class Connector():
                 # Gracefully terminate connection once the main program exits.
                 mqtt_client.disconnect()
 
+        logger.debug("Starting broker dispatcher with MQTT client loop.")
         broker_dispatcher = DispatchOnce(
             target_func=mqtt_worker,
             target_kwargs={"mqtt_client": self.mqtt_client}
         )
-        broker_dispatcher.run()
+        broker_dispatcher.start()
 
-        # TODO Init MQTT Log Handler
-        mqtt_log_handler = MQTTHandler(
-            mqtt_client=self.mqtt_client,
-            log_topic=self.MQTT_TOPIC_LOGS,
-        )
-        logger.addHandler(mqtt_log_handler)
+        # This collects all running dispatchers. These are checked for health
+        # in the main loop below.
+        dispatchers = [broker_dispatcher]
+
+        # Add MQTT Log handler if it isn't in there yet.
+        if not any([isinstance(h, MQTTHandler) for h in logger.handlers]):
+            mqtt_log_handler = MQTTHandler(
+                mqtt_client=self.mqtt_client,
+                log_topic=self.MQTT_TOPIC_LOGS,
+            )
+            logger.addHandler(mqtt_log_handler)
 
         # Now that the connection to the message broker exists, we can
         # initializete our datapoint registers.
@@ -619,25 +642,74 @@ class Connector():
                 available_datapoints=self._initial_available_datapoints
             )
 
-        # TODO Init device_dispatcher
+        # Start up the device dispatcher if specified to poll/receive
+        # data from the device or gateway.
+        if self._DeviceDispatcher is None:
+            logger.warning(
+                "DeviceDispatcher is not set. Will not receive sensor "
+                "datapoint values from device/gateway."
+            )
+        else:
+            logger.debug("Starting device dispatcher")
+            device_dispatcher_kwargs = self._device_dispatcher_kwargs
+            device_dispatcher_kwargs["target_func"] = self.run_sensor_flow
+            device_dispatcher = self._DeviceDispatcher(
+                **device_dispatcher_kwargs
+            )
+            device_dispatcher.start()
+            dispatchers.append(device_dispatcher)
 
-        # TODO: while True: loop, check thread activity and send heartbeat.
-
-    @staticmethod
-    def setup_mqtt_connection(
-            mqtt_broker_host, mqtt_broker_port, userdata, on_message, mqtt_client_wrapper, MqttClient=Client,
-        ):
-        """
-        Initiate connection, and configure callbacks
-        """
-        client = None
+        # Start the main loop which we spend all the operation time in.
+        logger.info("Connector online. Entering main loop.")
         try:
-            client.loop_forever()
+            while True:
+                # Check that all dispatchers are alive, and if this is the
+                # case assume that the connector operations as expected.
+                if not all([d.is_alive() for d in dispatchers]):
+                    # If one is not alive, see if we encountered an exception
+                    # and raise it, as exceptions in threads are not
+                    # automatically forwareded to the main program.
+                    for d in dispatchers:
+                        if d.exception is not None:
+                            raise d.exception
+                    # If no exception is found raise a custom on.
+                    raise RuntimeError(
+                        "At least one dispatcher thread is not alive, but no "
+                        "exception was caught."
+                    )
+
+                    break
+                self._send_heartbeat()
+                time.sleep(self._heartbeat_interval)
+
+        except (KeyboardInterrupt, SystemExit):
+            # This is the normal way to exit the Connector. No need to log the
+            # exception.
+            logger.info(
+                "Connector received KeyboardInterrupt or SystemExit"
+                ", shuting down."
+            )
+        except:
+            # This is execution when something goes really wrong.
+            logger.exception(
+                "Connector main loop has caused an unexpected exception. "
+                "Shuting down."
+            )
         finally:
-            client.disconnect()
+            for dispatcher in dispatchers:
+                # Ask the dispatcher (i.e. thread) to quit and give it
+                # one second to execute any cleanup. Anything that takes
+                # longer will be killed hard once the main program exits
+                # as the dispatcher thread is expected to be a daemonic
+                # thread.
+                logger.debug("Terminating dispatcher %s", dispatcher)
+                if dispatcher.is_alive():
+                    dispatcher.terminate()
+                dispatcher.join(1)
+            logger.info("Connector shut down completed. Good bye.")
 
     @staticmethod
-    def handle_incoming_mqtt_msg(client, userdata, msg):
+    def _handle_incoming_mqtt_msg(client, userdata, msg):
         """
         Handle incoming mqtt message by calling the appropriate methods.
 
@@ -647,6 +719,8 @@ class Connector():
 
         This is the callback provided to the mqtt clients on_message
         method.
+
+        TODO
 
         Parameters
         ----------
@@ -751,3 +825,9 @@ class Connector():
                 payload=json.dumps(self.available_datapoints),
                 topic=self.MQTT_TOPIC_AVAILABLE_DATAPOINTS,
             )
+
+    def _send_heartbeat(self):
+        """
+        TODO
+        """
+        raise NotImplementedError()

@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import os
 import json
+import time
 import logging
 from datetime import datetime
 
@@ -13,6 +14,17 @@ from pyconnector_template.pyconector_template import MQTTHandler
 from pyconnector_template.pyconector_template import SensorFlow, Connector
 from pyconnector_template.pyconector_template import ActuatorFlow
 
+
+class RecursiveMagicMock(MagicMock):
+    """
+    Once initialized this mock just returns itself instead of new mock
+    object. This allows you to test wether the init calls where correct.
+    """
+
+    def __call__(self, *args, **kwargs):
+        # This is required that all mock calls are stored.
+        _ = super().__call__(*args, **kwargs)
+        return self
 
 class TestMQTTHandler__Init__(TestClassWithFixtures):
 
@@ -33,7 +45,7 @@ class TestMQTTHandler__Init__(TestClassWithFixtures):
 
 class TestMQTTHandlerEmit(TestClassWithFixtures):
 
-    fixture_names = ("caplog", )
+    fixture_names = ()
 
     def setup_class(self):
 
@@ -560,6 +572,7 @@ class TestConnector__Init__(TestClassWithFixtures):
         DeviceDispatcher = MagicMock()
         device_dispatcher_kwargs = {}
         MqttClient = MagicMock()
+        heartbeat_interval = MagicMock()
 
         self.cn = Connector(
             datapoint_map=datapoint_map,
@@ -567,6 +580,7 @@ class TestConnector__Init__(TestClassWithFixtures):
             DeviceDispatcher=DeviceDispatcher,
             device_dispatcher_kwargs=device_dispatcher_kwargs,
             MqttClient=MqttClient,
+            heartbeat_interval=heartbeat_interval,
         )
 
         assert self.cn._initial_datapoint_map == datapoint_map
@@ -574,6 +588,7 @@ class TestConnector__Init__(TestClassWithFixtures):
         assert self.cn._DeviceDispatcher == DeviceDispatcher
         assert self.cn._device_dispatcher_kwargs == device_dispatcher_kwargs
         assert self.cn._MqttClient == MqttClient
+        assert self.cn._heartbeat_interval == heartbeat_interval
 
     def test_default_args_are_correct(self):
         """
@@ -591,7 +606,7 @@ class TestConnector__Init__(TestClassWithFixtures):
 
 class TestConnectorRun(TestClassWithFixtures):
 
-    fixture_names = ()
+    fixture_names = ("caplog", )
 
     def setup_class(self):
         self.test_CONNECTOR_NAME = "tpyco"
@@ -607,6 +622,8 @@ class TestConnectorRun(TestClassWithFixtures):
         os.environ["DEBUG"] = self.test_DEBUG
         os.environ["MQTT_BROKER_HOST"] = self.test_MQTT_BROKER_HOST
         os.environ["MQTT_BROKER_PORT"] = self.test_MQTT_BROKER_PORT
+
+        self.logger_name = "pyconnector"
 
     def test_validate_and_update_datapoint_map_is_called(self):
         """
@@ -690,38 +707,244 @@ class TestConnectorRun(TestClassWithFixtures):
         Check that the MQTT client has been setup correctly, i.e. that
         all relevant functions have been called and stuff, see below.
         """
-        self.cn = Connector()
-        self.cn._MqttClient = MagicMock
+        self.cn = Connector(MqttClient=MagicMock)
+        self.cn._MqttClient = RecursiveMagicMock()
         self.cn.run()
 
         # TODO, we should test here the init of MQTT client has been called
-        # with appropriate arguments, but this really hard to do with mock.
-        # Left for the future thus.
+        # with appropriate arguments.
+        self.cn._MqttClient.assert_called()
 
         # Verify that the on_message callback has been set.
         assert (
-            self.cn.mqtt_client.on_message == self.cn.handle_incoming_mqtt_msg
+            self.cn._MqttClient.on_message == self.cn._handle_incoming_mqtt_msg
         )
 
         # Check connect has been called with correct args, as we will have no
         # connection to the broker if not. These tests may also fail if
         # there are issues in __init__.
-        self.cn.mqtt_client.connect.assert_called()
+        self.cn._MqttClient.connect.assert_called()
 
         expected_arg_host = self.test_MQTT_BROKER_HOST
-        actual_arg_host = self.cn.mqtt_client.connect.call_args.kwargs["host"]
+        actual_arg_host = self.cn._MqttClient.connect.call_args.kwargs["host"]
         assert actual_arg_host == expected_arg_host
 
         expected_arg_port = int(self.test_MQTT_BROKER_PORT)
-        actual_arg_port = self.cn.mqtt_client.connect.call_args.kwargs["port"]
+        actual_arg_port = self.cn._MqttClient.connect.call_args.kwargs["port"]
         assert actual_arg_port == expected_arg_port
 
         # After connect we expect loop_forever to be called in seperate thread.
-        self.cn.mqtt_client.loop_forever.assert_called()
+        self.cn._MqttClient.loop_forever.assert_called()
 
         # Finally, also disconnect should have been called after loop has
         # been interrupted.
-        self.cn.mqtt_client.disconnect.assert_called()
+        self.cn._MqttClient.disconnect.assert_called()
+
+    def test_mqtt_log_handler_added(self):
+        """
+        We expect to find the log handler exactly once in loggers, although
+        run has been called very often during the tests.
+        """
+        self.cn = Connector(MqttClient=MagicMock)
+        self.cn.run()
+
+        logger = logging.getLogger("pyconnector")
+        assert sum([isinstance(h, MQTTHandler) for h in logger.handlers]) == 1
+
+    def test_warn_if_device_dispatcher_is_none(self):
+        """
+        For most cases it will not make sense to run the connector without
+        the device_dispatcher, as no data can be received from device or
+        gateway. Verify that a warning is issued in such cases.
+        """
+        self.caplog.set_level(logging.WARNING, logger=self.logger_name)
+        self.caplog.clear()
+
+        self.cn = Connector(MqttClient=MagicMock)
+        self.cn._DeviceDispatcher = None
+        self.cn.run()
+
+        records = self.caplog.records
+        assert records[0].levelname == "WARNING"
+        assert "DeviceDispatcher is not set." in records[0].message
+
+    def test_device_dispatcher_is_initiated_correctly(self):
+        """
+        Verify, that the device dispatcher receives the designated kwargs,
+        run_sensor_flow as target function and is executed with start(),
+        as these are the neceassry steps for correct opreation.
+        """
+        device_dispatcher_mock = RecursiveMagicMock()
+        device_dispatcher_mock.is_alive = MagicMock(return_value=True)
+        device_dispatcher_kwargs = {"call_interval": 5}
+        run_sensor_flow = MagicMock()
+
+        self.cn = Connector(MqttClient=MagicMock)
+        self.cn.run_sensor_flow = run_sensor_flow
+        self.cn._MqttClient = MagicMock()
+        self.cn._DeviceDispatcher = device_dispatcher_mock
+        self.cn._device_dispatcher_kwargs = device_dispatcher_kwargs
+        self.cn.run()
+
+        # Check that the device dispatcher has been initiated correctly.
+        assert device_dispatcher_mock.called
+
+        # Don't reuse the dict from above, it has been changed by the
+        # connector class.
+        expected_dd_kwargs = {
+            "call_interval": 5, "target_func": run_sensor_flow
+        }
+        actual_dd_kwargs = device_dispatcher_mock.call_args.kwargs
+        assert actual_dd_kwargs == expected_dd_kwargs
+
+        # Finally verify the dispatcher has been started as it won't run else.
+        assert device_dispatcher_mock.start.called
+
+    def test_send_heartbeat_is_called(self):
+        """
+        Once run has initiated everything and if both dispatchers are alive,
+        we expect that a heartbeat would be send. The fake mqtt client will
+        wait for 0.25 seconds, after which it terminates and thread is not
+        alive anymore. That gives time for three heartbeat messages with an
+        interval of 0.1 seconds between two heartbeat messages.
+        """
+        # Creat a mock for the mqtt client that keeps the broker side
+        # thread active for a bit, so it appears that the process is healthy.
+        def fake_loop_forever():
+            time.sleep(0.25)
+
+        _MqttClient_mock = RecursiveMagicMock()
+        _MqttClient_mock.loop_forever = fake_loop_forever
+
+        # This is mock for device dispatcher that always seems to be alive.
+        _DeviceDispatcher_mock = RecursiveMagicMock()
+        _DeviceDispatcher_mock.is_alive = MagicMock(return_value=True)
+        _DeviceDispatcher_mock.exception = None
+
+        _send_heartbeat_mock = MagicMock()
+
+        self.cn = Connector(MqttClient=MagicMock, heartbeat_interval=0.1)
+        self.cn._DeviceDispatcher = _DeviceDispatcher_mock
+        self.cn._MqttClient = _MqttClient_mock
+        self.cn._send_heartbeat = _send_heartbeat_mock
+        self.cn.run_sensor_flow = MagicMock()
+        self.cn.run()
+
+        assert _send_heartbeat_mock.called
+        assert _send_heartbeat_mock.call_count == 3
+
+    def test_main_loop_broker_dispatcher_handling(self):
+        """
+        Simulate the the broker_dispatcher terminated, which should not happen
+        during normal operation. Check that the connector emits a warning
+        (alhough this warning may never be sent to the broker) and shuts down.
+        """
+        self.caplog.set_level(logging.ERROR, logger=self.logger_name)
+        self.caplog.clear()
+
+        # Creat a mock for the mqtt client that keeps the broker side
+        # thread active for a bit, so it appears that the process is healthy.
+        def fake_loop_forever():
+            time.sleep(0.05)
+
+        _MqttClient_mock = RecursiveMagicMock()
+        _MqttClient_mock.loop_forever = fake_loop_forever
+
+        # This is mock for device dispatcher that always seems to be alive.
+        _DeviceDispatcher_mock = RecursiveMagicMock()
+        _DeviceDispatcher_mock.is_alive = MagicMock(return_value=True)
+        _DeviceDispatcher_mock.exception = None
+
+        _send_heartbeat_mock = MagicMock()
+
+        self.cn = Connector(MqttClient=MagicMock, heartbeat_interval=0.05)
+        self.cn._DeviceDispatcher = _DeviceDispatcher_mock
+        self.cn._MqttClient = _MqttClient_mock
+        self.cn._send_heartbeat = _send_heartbeat_mock
+        self.cn.run_sensor_flow = MagicMock()
+        self.cn.run()
+
+        records = self.caplog.records
+        assert len(records) == 1
+        assert records[0].levelname == 'ERROR'
+        assert "unexpected exception" in records[0].message
+        assert "Shuting down." in records[0].message
+
+    def test_main_loop_device_dispatcher_handling(self):
+        """
+        Simulate that the device dispatcher is not alive. We expect an
+        error message and a shutdown of the connector.
+        """
+        self.caplog.set_level(logging.ERROR, logger=self.logger_name)
+        self.caplog.clear()
+
+        # Creat a mock for the mqtt client that keeps the broker side
+        # thread active for a bit, so it appears that the process is healthy.
+        def fake_loop_forever():
+            time.sleep(0.05)
+
+        _MqttClient_mock = RecursiveMagicMock()
+        _MqttClient_mock.loop_forever = fake_loop_forever
+
+        # This is mock for device dispatcher that always seems to be alive.
+        _DeviceDispatcher_mock = RecursiveMagicMock()
+        _DeviceDispatcher_mock.is_alive = MagicMock(return_value=False)
+        _DeviceDispatcher_mock.exception = None
+
+        _send_heartbeat_mock = MagicMock()
+
+        self.cn = Connector(MqttClient=MagicMock, heartbeat_interval=0.05)
+        self.cn._DeviceDispatcher = _DeviceDispatcher_mock
+        self.cn._MqttClient = _MqttClient_mock
+        self.cn._send_heartbeat = _send_heartbeat_mock
+        self.cn.run_sensor_flow = MagicMock()
+        self.cn.run()
+
+        records = self.caplog.records
+        assert len(records) == 1
+        assert records[0].levelname == 'ERROR'
+        assert "unexpected exception" in records[0].message
+        assert "Shuting down." in records[0].message
+
+        # Also verify that the dispatcher has been check if it is alive.
+        assert _DeviceDispatcher_mock.is_alive.called
+
+    def test_main_loop_normal_exit_no_error(self):
+        """
+        Simulate that the device dispatcher is not alive. We expect an
+        error message and a shutdown of the connector.
+
+        TODO This SystemExit is not recognized as such by the test,
+        instead the test thinks that just the dispatcher died.
+        """
+        self.caplog.set_level(logging.WARNING, logger=self.logger_name)
+        self.caplog.clear()
+
+        # Creat a mock for the mqtt client that keeps the broker side
+        # thread active for a bit, so it appears that the process is healthy.
+        def fake_loop_forever():
+            time.sleep(0.04)
+            raise SystemExit()
+
+        _MqttClient_mock = RecursiveMagicMock()
+        _MqttClient_mock.loop_forever = fake_loop_forever
+
+        # This is mock for device dispatcher that always seems to be alive.
+        _DeviceDispatcher_mock = RecursiveMagicMock()
+        _DeviceDispatcher_mock.is_alive = MagicMock(return_value=True)
+        _DeviceDispatcher_mock.exception = None
+
+        _send_heartbeat_mock = MagicMock()
+
+        self.cn = Connector(MqttClient=MagicMock, heartbeat_interval=0.1)
+        self.cn._DeviceDispatcher = _DeviceDispatcher_mock
+        self.cn._MqttClient = _MqttClient_mock
+        self.cn._send_heartbeat = _send_heartbeat_mock
+        self.cn.run_sensor_flow = MagicMock()
+        self.cn.run()
+
+        records = self.caplog.records
+        assert len(records) == 0
 
 class TestConnectorSetupMqttConnection(TestClassWithFixtures):
 
@@ -751,7 +974,7 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
         self.cn = Connector()
         self.cn.datapoint_map = {"sensor": {}, "actuator": {}}
         # This is the name of the logger used in pyconnector_template.py
-        self.logger_name = "pyconnector template"
+        self.logger_name = "pyconnector"
 
         # Overload some attributes for testing.
         self.cn.mqtt_client = MagicMock()
