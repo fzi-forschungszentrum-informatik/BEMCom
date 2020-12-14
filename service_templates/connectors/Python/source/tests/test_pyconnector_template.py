@@ -125,9 +125,9 @@ class TestSensorFlowRun(TestClassWithFixtures):
         # would depend on the content of the message. Just use these
         # to check if the mehtods are called.
         self.sf.parse_raw_msg = MagicMock()
-        self.sf.flatten_parsed_msg = MagicMock()
-        self.sf.update_available_datapoints = MagicMock()
-        self.sf.filter_and_publish_datapoint_values = MagicMock()
+        self.sf._flatten_parsed_msg = MagicMock()
+        self.sf._update_available_datapoints = MagicMock()
+        self.sf._filter_and_publish_datapoint_values = MagicMock()
 
         # Overload configuration that would be provided by the Connector.
         self.sf.mqtt_client = MagicMock()
@@ -247,14 +247,14 @@ class TestSensorFlowRun(TestClassWithFixtures):
         This function is an essential part of the run logic.
         """
         self.sf.run_sensor_flow()
-        self.sf.flatten_parsed_msg.assert_called()
+        self.sf._flatten_parsed_msg.assert_called()
 
     def test_update_available_datapoints_called(self):
         """
         This function is an essential part of the run logic.
         """
         self.sf.run_sensor_flow()
-        self.sf.update_available_datapoints.assert_called()
+        self.sf._update_available_datapoints.assert_called()
 
     def test_update_available_datapoints_called_with_correct_arg(self):
         """
@@ -270,7 +270,7 @@ class TestSensorFlowRun(TestClassWithFixtures):
                 "timestamp": 1573680749000
             }
         }
-        self.sf.flatten_parsed_msg = MagicMock(
+        self.sf._flatten_parsed_msg = MagicMock(
             return_value=flattened_msg
         )
 
@@ -283,7 +283,7 @@ class TestSensorFlowRun(TestClassWithFixtures):
                 },
                 "actuator": {}
             }
-        uad_kwargs = self.sf.update_available_datapoints.call_args.kwargs
+        uad_kwargs = self.sf._update_available_datapoints.call_args.kwargs
         actual_available_datapoints = uad_kwargs["available_datapoints"]
         assert expected_available_datapoints == actual_available_datapoints
 
@@ -292,7 +292,7 @@ class TestSensorFlowRun(TestClassWithFixtures):
         This function is an essential part of the run logic.
         """
         self.sf.run_sensor_flow()
-        self.sf.filter_and_publish_datapoint_values.assert_called()
+        self.sf._filter_and_publish_datapoint_values.assert_called()
 
 class TestSensorFlowFlattenParsedMsg(TestClassWithFixtures):
 
@@ -345,7 +345,7 @@ class TestSensorFlowFlattenParsedMsg(TestClassWithFixtures):
             }
         }
 
-        actual_msg = self.sf.flatten_parsed_msg(parsed_msg=self.parsed_msg)
+        actual_msg = self.sf._flatten_parsed_msg(parsed_msg=self.parsed_msg)
 
         assert actual_msg == expected_msg
 
@@ -365,7 +365,7 @@ class TestSensorFlowFlattenParsedMsg(TestClassWithFixtures):
             }
         }
 
-        actual_msg = self.sf.flatten_parsed_msg(
+        actual_msg = self.sf._flatten_parsed_msg(
             parsed_msg=self.parsed_msg_deeper
         )
 
@@ -405,7 +405,7 @@ class TestSensorFlowFilterAndPublish(TestClassWithFixtures):
         Validate that value messages have been sent out for datapoints
         selected with datapoint_map and not sent for those not selected.
         """
-        self.sf.filter_and_publish_datapoint_values(
+        self.sf._filter_and_publish_datapoint_values(
             flattened_msg=self.flattened_msg
         )
 
@@ -625,6 +625,13 @@ class TestConnectorRun(TestClassWithFixtures):
 
         self.logger_name = "pyconnector"
 
+        # Some generally useful kwargs for Connector to ensure that
+        # run doesn't fail or blocks for ages.
+        self.connector_default_kwargs = {
+            "MqttClient": MagicMock,
+            "heartbeat_interval": 0.05,
+        }
+
     def test_validate_and_update_datapoint_map_is_called(self):
         """
         This function must be called with the correct arguments.
@@ -638,7 +645,7 @@ class TestConnectorRun(TestClassWithFixtures):
                 "example-connector/msgs/0001": "device_1__sensor_1",
             }
         }
-        self.cn = Connector(MqttClient=MagicMock)
+        self.cn = Connector(**self.connector_default_kwargs)
         self.cn._initial_datapoint_map = datapoint_map
         self.cn.run()
 
@@ -654,7 +661,7 @@ class TestConnectorRun(TestClassWithFixtures):
         This test will also fail if validate_and_update_datapoint_map
         is not implemented correctly.
         """
-        self.cn = Connector(MqttClient=MagicMock)
+        self.cn = Connector(**self.connector_default_kwargs)
         self.cn._initial_datapoint_map = None
         self.cn.run()
 
@@ -678,7 +685,7 @@ class TestConnectorRun(TestClassWithFixtures):
                 "Channel__P__setpoint__0": 0.4,
             }
         }
-        self.cn = Connector(MqttClient=MagicMock)
+        self.cn = Connector(**self.connector_default_kwargs)
         self.cn._initial_available_datapoints = available_datapoints
         self.cn.run()
 
@@ -694,7 +701,7 @@ class TestConnectorRun(TestClassWithFixtures):
         This test will also fail if update_available_datapoints
         is not implemented correctly.
         """
-        self.cn = Connector(MqttClient=MagicMock)
+        self.cn = Connector(**self.connector_default_kwargs)
         self.cn._initial_available_datapoints = None
         self.cn.run()
 
@@ -707,7 +714,7 @@ class TestConnectorRun(TestClassWithFixtures):
         Check that the MQTT client has been setup correctly, i.e. that
         all relevant functions have been called and stuff, see below.
         """
-        self.cn = Connector(MqttClient=MagicMock)
+        self.cn = Connector(**self.connector_default_kwargs)
         self.cn._MqttClient = RecursiveMagicMock()
         self.cn.run()
 
@@ -748,7 +755,7 @@ class TestConnectorRun(TestClassWithFixtures):
         We expect to find the log handler exactly once in loggers, although
         run has been called very often during the tests.
         """
-        self.cn = Connector(MqttClient=MagicMock)
+        self.cn = Connector(**self.connector_default_kwargs)
         self.cn.run()
 
         logger = logging.getLogger("pyconnector")
@@ -763,7 +770,7 @@ class TestConnectorRun(TestClassWithFixtures):
         self.caplog.set_level(logging.WARNING, logger=self.logger_name)
         self.caplog.clear()
 
-        self.cn = Connector(MqttClient=MagicMock)
+        self.cn = Connector(**self.connector_default_kwargs)
         self.cn._DeviceDispatcher = None
         self.cn.run()
 
@@ -782,7 +789,7 @@ class TestConnectorRun(TestClassWithFixtures):
         device_dispatcher_kwargs = {"call_interval": 5}
         run_sensor_flow = MagicMock()
 
-        self.cn = Connector(MqttClient=MagicMock)
+        self.cn = Connector(**self.connector_default_kwargs)
         self.cn.run_sensor_flow = run_sensor_flow
         self.cn._MqttClient = MagicMock()
         self.cn._DeviceDispatcher = device_dispatcher_mock

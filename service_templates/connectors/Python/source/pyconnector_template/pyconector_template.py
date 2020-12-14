@@ -91,7 +91,7 @@ class SensorFlow():
     -----------------
     The connector must provide the following methods to allow correct
     operation of the methods in this class:
-     - update_available_datapoints
+     - _update_available_datapoints
 
     Connector Attributes
     --------------------
@@ -131,6 +131,7 @@ class SensorFlow():
             Raw data of device/gateway if the device pushes and is not
             pulled for data. The default is None.
         """
+        logger.debug("Calling receive_raw_msg with raw_data: %s", raw_data)
         msg = self.receive_raw_msg(raw_data=raw_data)
 
         # Add receival timestamp in milliseconds since epoch.
@@ -155,10 +156,12 @@ class SensorFlow():
             )
 
         # Parse raw content to dict of dict.
-        msg = self.parse_raw_msg(self, raw_msg=msg)
+        logger.debug("Calling parse_raw_msg with raw_msg: %s", msg)
+        msg = self.parse_raw_msg(raw_msg=msg)
 
         # Flatten the parsed message to a single level dict.
-        msg = self.flatten_parsed_msg(self, parsed_msg=msg)
+        logger.debug("Calling _flatten_parsed_msg with parsed_msg: %s", msg)
+        msg = self._flatten_parsed_msg(parsed_msg=msg)
 
         # Check if we found new datapoints in this message and need to
         # send an update to the AdminUI.
@@ -166,14 +169,17 @@ class SensorFlow():
             "actuator": {},
             "sensor": msg["payload"]["flattened_message"]
         }
-        self.update_available_datapoints(
+        self._update_available_datapoints(
             available_datapoints=available_datapoints_update
         )
 
         # Publish values of datapoints that have been selected for such
         # within the AdminUI.
-        self.filter_and_publish_datapoint_values(flattened_msg=msg)
-
+        logger.debug(
+            "Calling _filter_and_publish_datapoint_values with "
+            "flattened_msg: %s", msg
+        )
+        self._filter_and_publish_datapoint_values(flattened_msg=msg)
 
     def receive_raw_msg(self, raw_data=None):
         """
@@ -259,7 +265,7 @@ class SensorFlow():
         """
         raise NotImplementedError("parse_raw_msg has not been implemented.")
 
-    def flatten_parsed_msg(self, parsed_msg):
+    def _flatten_parsed_msg(self, parsed_msg):
         """
         Flattens parsed object, i.e. transforms to single layer dict.
 
@@ -323,7 +329,7 @@ class SensorFlow():
 
         return msg
 
-    def filter_and_publish_datapoint_values(self, flattened_msg):
+    def _filter_and_publish_datapoint_values(self, flattened_msg):
         """
         Generate and send value messages for selected datapoints.
 
