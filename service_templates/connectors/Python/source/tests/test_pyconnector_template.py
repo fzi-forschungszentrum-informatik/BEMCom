@@ -415,19 +415,19 @@ class TestSensorFlowFilterAndPublish(TestClassWithFixtures):
         actual_topics = [c.kwargs["topic"] for c in calls]
 
         flattened_message = self.flattened_msg["payload"]["flattened_message"]
-        for expected_topic, value in flattened_message.items():
+        for dp_key, dp_value in flattened_message.items():
             expected_value_msg = {
-                "value": value,
+                "value": dp_value,
                 "timestamp": self.flattened_msg["payload"]["timestamp"]
             }
 
             # Verify that not selected datapoints have not been sent.
-            if expected_topic not in self.sf.datapoint_map["sensor"]:
-                assert expected_topic not in actual_topics
+            if dp_key not in self.sf.datapoint_map["sensor"]:
                 assert expected_value_msg not in actual_value_msgs
                 continue
 
             # Verify that all selected datapoints have been sent.
+            expected_topic = self.sf.datapoint_map["sensor"][dp_key]
             assert expected_topic in actual_topics
             assert expected_value_msg in actual_value_msgs
 

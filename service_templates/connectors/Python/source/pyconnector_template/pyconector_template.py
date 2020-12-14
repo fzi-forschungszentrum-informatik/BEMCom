@@ -356,21 +356,21 @@ class SensorFlow():
                 }
         """
         flattened_message = flattened_msg["payload"]["flattened_message"]
-        for topic, value in flattened_message.items():
+        for datapoint_key, datapoint_value in flattened_message.items():
             # Skip all not selected datapoints
-            if topic not in self.datapoint_map["sensor"]:
+            if datapoint_key not in self.datapoint_map["sensor"]:
                 continue
 
             # By definition (message convention) the value should always be
             # a string, and the upstream functions should have formated value
             # as a string already, but better save then sorry here.
             value_msg = {
-                "value": str(value),
+                "value": str(datapoint_value),
                 "timestamp": flattened_msg["payload"]["timestamp"],
             }
 
             self.mqtt_client.publish(
-                topic=topic,
+                topic=self.datapoint_map["sensor"][datapoint_key],
                 payload=json.dumps(value_msg)
             )
 
