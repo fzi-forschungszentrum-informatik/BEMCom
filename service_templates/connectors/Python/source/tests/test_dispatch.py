@@ -47,6 +47,7 @@ class TestDispatchOnce__init__(TestClassWithFixtures):
         assert do.cleanup_args == cleanup_args
         assert do.cleanup_kwargs == cleanup_kwargs
         assert isinstance(do.termination_event, Event)
+        assert do.exception is None
 
     def test_default_parameters(self):
         """
@@ -132,7 +133,7 @@ class TestDispatchOnceIntegration(TestClassWithFixtures):
         Verify that a thread is started, and stopped immediatly after
         terminate is called.
         """
-        def target_func(termination_event, got_system_exit):
+        def target_func(termination_event):
             """
             This would sleep one second if the test fails and return faster
             if the SystemExit is received as expected.
@@ -161,7 +162,7 @@ class TestDispatchOnceIntegration(TestClassWithFixtures):
         # Check that the try loop has been left immediatly.
         assert runtime < 0.1
 
-    def best_cleanup_func_called_after_terminate_called(self):
+    def test_cleanup_func_called_after_terminate_called(self):
         """
         Verify that the cleanup function is called even if we exit
         with SystemExit.
@@ -231,6 +232,23 @@ class TestDispatchOnceIntegration(TestClassWithFixtures):
 
         # Verify that the cleanup function has been executed.
         assert got_system_exit["state"]
+
+    def test_exception_in_target_function_is_caught(self):
+        """
+        Exceptions in threads won't be raised in the main thread. Hence,
+        if an exception occures, we store it away so it can be reraised in
+        the main thread.
+        """
+        def target_func():
+            raise RuntimeError("test")
+
+        thread = self.dispatcher(
+            target_func=target_func,
+        )
+
+        thread.start()
+        thread.join()
+        assert isinstance(thread.exception, RuntimeError)
 
 
 class TestDispatchInInterval__init__(TestDispatchOnce__init__):
@@ -442,3 +460,28 @@ class TestDispatchInIntervalIntegration(TestClassWithFixtures):
         expected_execution_time = pytest.approx(0.2, 0.01)
         assert actual_execution_time_0 == expected_execution_time
         assert actual_execution_time_1 == expected_execution_time
+
+    def test_exception_in_target_function_is_caught(self):
+        """
+        Exceptions in threads won't be raised in the main thread. Hence,
+        if an exception occures, we store it away so it can be reraised in
+        the main thread.
+        """
+        def target_func():
+            raise RuntimeError("test")
+
+        thread = self.dispatcher(
+            target_func=target_func,
+            call_interval=1,
+        )
+
+        thread.start()
+        start_time = time.monotonic()
+
+        thread.join()
+        runtime = time.monotonic() - start_time
+
+        assert isinstance(thread.exception, RuntimeError)
+
+        # Check that the try loop has been left immediatly.
+        assert runtime < 0.1

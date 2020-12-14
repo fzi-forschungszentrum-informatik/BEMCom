@@ -84,6 +84,10 @@ class DispatchOnce(threading.Thread):
             if "termination_event" in target_params:
                 self.target_kwargs["termination_event"] = self.termination_event
 
+        # Init an place to store exceptions if any occure. Init to None, so
+        # process can verify that no exception has been catched yet.
+        self.exception = None
+
     def run(self):
         """
         Execute the target function once in thread. Call cleanup afterwards.
@@ -95,8 +99,10 @@ class DispatchOnce(threading.Thread):
         try:
             if self.target_func:
                 self.target_func(*self.target_args, **self.target_kwargs)
-        except SystemExit:
-            pass
+        except Exception as e:
+            # This execption will not raise in the main thread. Thus we store
+            # it away so the main thread can reraise it at will.
+            self.exception = e
         finally:
             if self.cleanup_func:
                 self.cleanup_func(*self.cleanup_args, **self.cleanup_kwargs)
@@ -199,8 +205,6 @@ class DispatchInInterval(DispatchOnce):
         This executes target_func repeatedly until the terminate method has
         been called. The cleanup_func is called afterwards, after which the
         thread exits.
-
-        TODO: Verify this is correct.
         """
         try:
             if self.target_func:
@@ -220,8 +224,10 @@ class DispatchInInterval(DispatchOnce):
                         continue
                     self.termination_event.wait(wait_seconds)
 
-        except SystemExit:
-            pass
+        except Exception as e:
+            # This execption will not raise in the main thread. Thus we store
+            # it away so the main thread can reraise it at will.
+            self.exception = e
         finally:
             if self.cleanup_func:
                 self.cleanup_func(*self.cleanup_args, **self.cleanup_kwargs)
