@@ -99,9 +99,12 @@ class DispatchOnce(threading.Thread):
         try:
             if self.target_func:
                 self.target_func(*self.target_args, **self.target_kwargs)
-        except Exception as e:
+        except (Exception, SystemExit, KeyboardInterrupt) as e:
             # This execption will not raise in the main thread. Thus we store
             # it away so the main thread can reraise it at will.
+            # SystemExit and KeyboardInterupt are not caught by Exception but
+            # are stored nevertheless ase these carry the information that
+            # thread exit was expected.
             self.exception = e
         finally:
             if self.cleanup_func:
@@ -224,9 +227,12 @@ class DispatchInInterval(DispatchOnce):
                         continue
                     self.termination_event.wait(wait_seconds)
 
-        except Exception as e:
+        except (Exception, SystemExit, KeyboardInterrupt) as e:
             # This execption will not raise in the main thread. Thus we store
             # it away so the main thread can reraise it at will.
+            # SystemExit and KeyboardInterupt are not caught by Exception but
+            # are stored nevertheless ase these carry the information that
+            # thread exit was expected.
             self.exception = e
         finally:
             if self.cleanup_func:

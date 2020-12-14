@@ -238,17 +238,24 @@ class TestDispatchOnceIntegration(TestClassWithFixtures):
         Exceptions in threads won't be raised in the main thread. Hence,
         if an exception occures, we store it away so it can be reraised in
         the main thread.
+
+        Test this for a "normal" exception but also for SystemExit and
+        KeyboardInterrupt as these are not caought by "except Exception"
+        and the information that the thread was killed by a normal
+        SystemExit or KeyboardInterupt is important for error handling in
+        the main thread.
         """
-        def target_func():
-            raise RuntimeError("test")
+        for e in (RuntimeError, SystemExit, KeyboardInterrupt):
+            def target_func():
+                raise e("test")
 
-        thread = self.dispatcher(
-            target_func=target_func,
-        )
+            thread = self.dispatcher(
+                target_func=target_func,
+            )
 
-        thread.start()
-        thread.join()
-        assert isinstance(thread.exception, RuntimeError)
+            thread.start()
+            thread.join()
+            assert isinstance(thread.exception, e)
 
 
 class TestDispatchInInterval__init__(TestDispatchOnce__init__):
@@ -466,22 +473,29 @@ class TestDispatchInIntervalIntegration(TestClassWithFixtures):
         Exceptions in threads won't be raised in the main thread. Hence,
         if an exception occures, we store it away so it can be reraised in
         the main thread.
+
+        Test this for a "normal" exception but also for SystemExit and
+        KeyboardInterrupt as these are not caought by "except Exception"
+        and the information that the thread was killed by a normal
+        SystemExit or KeyboardInterupt is important for error handling in
+        the main thread.
         """
-        def target_func():
-            raise RuntimeError("test")
+        for e in (RuntimeError, SystemExit, KeyboardInterrupt):
+            def target_func():
+                raise e("test")
 
-        thread = self.dispatcher(
-            target_func=target_func,
-            call_interval=1,
-        )
+            thread = self.dispatcher(
+                target_func=target_func,
+                call_interval=1,
+            )
 
-        thread.start()
-        start_time = time.monotonic()
+            thread.start()
+            start_time = time.monotonic()
 
-        thread.join()
-        runtime = time.monotonic() - start_time
+            thread.join()
+            runtime = time.monotonic() - start_time
 
-        assert isinstance(thread.exception, RuntimeError)
+            assert isinstance(thread.exception, e)
 
-        # Check that the try loop has been left immediatly.
-        assert runtime < 0.1
+            # Check that the try loop has been left immediatly.
+            assert runtime < 0.1
