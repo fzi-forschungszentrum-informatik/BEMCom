@@ -167,8 +167,7 @@ class ConnectorAdmin(admin.ModelAdmin):
             next_hb = datetime_iso_format(next_hb, hide_microsec=True)
         return next_hb
 
-    @staticmethod
-    def alive(obj):
+    def alive(self, obj):
         """
         Connector is alive if the current time has not yet passed the timestamp
         of the next expected heartbeat
