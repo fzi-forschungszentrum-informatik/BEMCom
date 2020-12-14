@@ -103,6 +103,39 @@ class TestMQTTHandlerEmit(TestClassWithFixtures):
         assert actual_timestamp >= expected_timestamp
         assert actual_timestamp < expected_timestamp + 10000
 
+    def test_payload_correct_with_objects_to_format(self):
+        """
+        Verify that the emitted payload matches the BEMCom message convention,
+        also when the logger is given additional objects to format the msg.
+        """
+        # - 1 in case it rounds up.
+        log_ts = round(datetime.now(tz=timezone.utc).timestamp() * 1000) - 1
+        self.logger.info("A test: %s", [1, 2])
+
+
+        # Check that the message is as expected, but not for the timestamp,
+        # as we don't know exactly what timestamp has been used.
+        expected_payload = {
+            "timestamp": log_ts,
+            "msg": "A test: [1, 2]",
+            "emitter": "test_payload_correct_with_objects_to_format",
+            "level": logging.INFO,
+        }
+        expected_timestamp = expected_payload.pop("timestamp")
+        actual_payload = json.loads(
+            self.mh.mqtt_client.publish.call_args.kwargs["payload"]
+        )
+        actual_timestamp = actual_payload.pop("timestamp")
+
+        assert actual_payload == expected_payload
+
+        # Check that the actual timestamp is between the time this function
+        # has started and 10 seconds later, which should be ok even on very
+        # slow machines.
+        assert actual_timestamp >= expected_timestamp
+        assert actual_timestamp < expected_timestamp + 10000
+
+
 class TestSensorFlowRun(TestClassWithFixtures):
 
     fixture_names = []

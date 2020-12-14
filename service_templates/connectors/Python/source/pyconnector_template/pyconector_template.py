@@ -68,7 +68,7 @@ class MQTTHandler(logging.StreamHandler):
         """
         log_msg = {
             "timestamp": timestamp_utc_now(),
-            "msg": record.msg,
+            "msg": record.msg % record.args,
             "emitter": record.funcName,
             "level": record.levelno,
         }
