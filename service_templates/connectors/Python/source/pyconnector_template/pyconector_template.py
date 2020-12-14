@@ -11,7 +11,7 @@ import os
 import json
 import time
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from paho.mqtt.client import Client
 from dotenv import load_dotenv, find_dotenv
@@ -22,6 +22,14 @@ from .dispatch import DispatchOnce
 LOGFORMAT = '%(asctime)s-%(funcName)s-%(levelname)s: %(message)s'
 logging.basicConfig(format=LOGFORMAT, level=logging.DEBUG)
 logger = logging.getLogger("pyconnector")
+
+
+def timestamp_utc_now():
+    """
+    Returns the timestamp of the current UTC time in milliseconds.
+    Rounded to full microseconds.
+    """
+    return round(datetime.now(tz=timezone.utc).timestamp() * 1000)
 
 
 class MQTTHandler(logging.StreamHandler):
@@ -59,7 +67,7 @@ class MQTTHandler(logging.StreamHandler):
             The record to publish.
         """
         log_msg = {
-            "timestamp": datetime.timestamp(datetime.utcnow()) * 1000,
+            "timestamp": timestamp_utc_now(),
             "msg": record.msg,
             "emitter": record.funcName,
             "level": record.levelno,
@@ -136,7 +144,7 @@ class SensorFlow():
 
         # Add receival timestamp in milliseconds since epoch.
         # (Following the message format.)
-        ts_utc_now = round(datetime.timestamp(datetime.utcnow()) * 1000)
+        ts_utc_now = timestamp_utc_now()
         msg["payload"]["timestamp"] = ts_utc_now
 
         # Send raw msg to raw message DB if activated in settings.
@@ -650,6 +658,12 @@ class Connector():
                 available_datapoints=self._initial_available_datapoints
             )
 
+        # We want to receive the latest datapoint_maps and it wont't hurt
+        # us too bad if we receive them multiple times. This can only be
+        # executed after the datapoint_map is intialized, as any retained
+        # datapoint map is else overwritten.
+        self.mqtt_client.subscribe(topic=self.MQTT_TOPIC_DATAPOINT_MAP, qos=1)
+
         # Start up the device dispatcher if specified to poll/receive
         # data from the device or gateway.
         if self._DeviceDispatcher is None:
@@ -738,6 +752,7 @@ class Connector():
             The message to handle.
         """
         self = userdata["self"]
+        logger.debug("Handling incoming MQTT message on topic: %s", msg.topic)
         if msg.topic == self.MQTT_TOPIC_DATAPOINT_MAP:
             self._validate_and_update_datapoint_map(
                 datapoint_map_json=msg.payload
@@ -768,6 +783,7 @@ class Connector():
             datapoint_map to validate and store in JSON format.
             Format is specified in the class attriubte docstring above.
         """
+        logger.debug("Started _validate_and_update_datapoint_map")
         datapoint_map = json.loads(datapoint_map_json)
         if not "sensor" in datapoint_map:
             logger.error("No sensor key in datapoint_map. Cancel update.")
@@ -800,6 +816,9 @@ class Connector():
             self.mqtt_client.subscribe(topic=topic, qos=2)
 
         self.datapoint_map = datapoint_map
+
+        if new_topics or removed_topics:
+            logger.debug("Installed new datapoint_map %s", datapoint_map)
 
     def _update_available_datapoints(self, available_datapoints):
         """
@@ -844,7 +863,7 @@ class Connector():
         """
         Send a heartbeat message to the MQTT broker.
         """
-        ts_now = round(datetime.timestamp(datetime.utcnow()) * 1000)
+        ts_now = timestamp_utc_now()
         ts_next = round(ts_now + self._heartbeat_interval * 1000)
         heartbeat_msg = {
             "this_heartbeats_timestamp": ts_now,

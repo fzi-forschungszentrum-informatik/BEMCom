@@ -4,7 +4,7 @@ import os
 import json
 import time
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from unittest.mock import MagicMock
 from paho.mqtt.client import Client
@@ -77,7 +77,7 @@ class TestMQTTHandlerEmit(TestClassWithFixtures):
         Verify that the emitted payload matches the BEMCom message convention.
         """
         # - 1 in case it rounds up.
-        log_ts = round(datetime.timestamp(datetime.utcnow()) * 1000) - 1
+        log_ts = round(datetime.now(tz=timezone.utc).timestamp() * 1000) - 1
         self.logger.info("A test")
 
 
@@ -160,7 +160,7 @@ class TestSensorFlowRun(TestClassWithFixtures):
         and 10 seconds later, which should be realistic even on VERY slow
         machines.
         """
-        expected_ts = round(datetime.timestamp(datetime.utcnow()) * 1000)
+        expected_ts = round(datetime.now(tz=timezone.utc).timestamp() * 1000)
 
         self.sf.run_sensor_flow()
 
@@ -743,6 +743,18 @@ class TestConnectorRun(TestClassWithFixtures):
         actual_arg_port = self.cn._MqttClient.connect.call_args.kwargs["port"]
         assert actual_arg_port == expected_arg_port
 
+        # The client must also subscribe the datapoint_map topic, in order
+        # to receive the latest datapoint_maps from the API.
+        #
+        # TODO: It is important that this subscribe, which will also trigger
+        # a processing of any retained datapointmap, is executed only after
+        # the default values for datapoint_map are processed to prevent that
+        # the API version will be overwritten. You may to test that too.
+        assert self.cn._MqttClient.subscribe.called
+        expected_topic = self.cn.MQTT_TOPIC_DATAPOINT_MAP
+        actual_topic = self.cn._MqttClient.subscribe.call_args.kwargs["topic"]
+        assert actual_topic == expected_topic
+
         # After connect we expect loop_forever to be called in seperate thread.
         self.cn._MqttClient.loop_forever.assert_called()
 
@@ -1091,7 +1103,7 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
         A datapoint_object must have a "sensor" entry by convention.
         """
         # Set up a new and empty logger for the test
-        self.caplog.set_level(logging.DEBUG, logger=self.logger_name)
+        self.caplog.set_level(logging.INFO, logger=self.logger_name)
         self.caplog.clear()
 
         datapoint_map = {
@@ -1114,7 +1126,7 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
         A datapoint_object must have a "actuator" entry by convention.
         """
         # Set up a new and empty logger for the test
-        self.caplog.set_level(logging.DEBUG, logger=self.logger_name)
+        self.caplog.set_level(logging.INFO, logger=self.logger_name)
         self.caplog.clear()
 
         datapoint_map = {
@@ -1139,7 +1151,7 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
         convention.
         """
         # Set up a new and empty logger for the test
-        self.caplog.set_level(logging.DEBUG, logger=self.logger_name)
+        self.caplog.set_level(logging.INFO, logger=self.logger_name)
         self.caplog.clear()
 
         datapoint_map = {
@@ -1164,7 +1176,7 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
         convention.
         """
         # Set up a new and empty logger for the test
-        self.caplog.set_level(logging.DEBUG, logger=self.logger_name)
+        self.caplog.set_level(logging.INFO, logger=self.logger_name)
         self.caplog.clear()
 
         datapoint_map = {
@@ -1466,7 +1478,7 @@ class TestConnectorSendHeartbeat(TestClassWithFixtures):
         is set to the time the method is called.
         """
 
-        start_ts = round(datetime.timestamp(datetime.utcnow()) * 1000)
+        start_ts = round(datetime.now(tz=timezone.utc).timestamp() * 1000)
 
         self.cn._send_heartbeat()
         actual_hb_msg = json.loads(
@@ -1489,7 +1501,7 @@ class TestConnectorSendHeartbeat(TestClassWithFixtures):
         is set to the time the method is called + heartbeat_interval.
         """
 
-        start_ts = round(datetime.timestamp(datetime.utcnow()) * 1000)
+        start_ts = round(datetime.now(tz=timezone.utc).timestamp() * 1000)
 
         self.cn._send_heartbeat()
         actual_hb_msg = json.loads(
