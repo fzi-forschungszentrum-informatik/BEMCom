@@ -711,9 +711,12 @@ class TestConnectorRun(TestClassWithFixtures):
         self.cn._MqttClient = RecursiveMagicMock()
         self.cn.run()
 
-        # TODO, we should test here the init of MQTT client has been called
-        # with appropriate arguments.
+        # Test that MQTT client has been called, and received the expected
+        # configuration.
         self.cn._MqttClient.assert_called()
+        expected_MqttClient_kwargs = {"userdata": {"self": self.cn}}
+        actual_MqttClient_kwargs = self.cn._MqttClient.call_args.kwargs
+        assert actual_MqttClient_kwargs == expected_MqttClient_kwargs
 
         # Verify that the on_message callback has been set.
         assert (
@@ -913,9 +916,6 @@ class TestConnectorRun(TestClassWithFixtures):
         """
         Simulate that the device dispatcher is not alive. We expect an
         error message and a shutdown of the connector.
-
-        TODO This SystemExit is not recognized as such by the test,
-        instead the test thinks that just the dispatcher died.
         """
         self.caplog.set_level(logging.WARNING, logger=self.logger_name)
         self.caplog.clear()
@@ -946,11 +946,12 @@ class TestConnectorRun(TestClassWithFixtures):
         records = self.caplog.records
         assert len(records) == 0
 
-class TestConnectorSetupMqttConnection(TestClassWithFixtures):
+class TestConnectorHandleIncomingMqttMsg(TestClassWithFixtures):
 
     fixture_names = ()
 
-    def setup_class(self):
+    def setup_method(self, method):
+
         self.test_CONNECTOR_NAME = "tpyco"
         self.test_SEND_RAW_MESSAGE_TO_DB = "FALSE"
         self.test_DEBUG = "FALSE"
@@ -965,11 +966,89 @@ class TestConnectorSetupMqttConnection(TestClassWithFixtures):
         os.environ["MQTT_BROKER_HOST"] = self.test_MQTT_BROKER_HOST
         os.environ["MQTT_BROKER_PORT"] = self.test_MQTT_BROKER_PORT
 
+        self.cn = Connector()
+
+        # Overload some attributes/methods for testing.
+        self.cn.MQTT_TOPIC_DATAPOINT_MAP = "tpyco/datapoint_map"
+        self.vaudm_mock = MagicMock()
+        self.cn._validate_and_update_datapoint_map = self.vaudm_mock
+        self.raf_mock = MagicMock()
+        self.cn.run_actuator_flow = self.raf_mock
+
+        # Wire through the connector object as Connector.run would do.
+        self.test_userdata = {"self": self.cn}
+
+    def test_datapoint_msg_triggers_update(self):
+        """
+        Verify that a message with a datapoint_map triggers the respective
+        update method.
+        """
+        test_payload = MagicMock()
+        test_topic = self.cn.MQTT_TOPIC_DATAPOINT_MAP
+
+        test_msg = MagicMock()
+        test_msg.topic = test_topic
+        test_msg.payload = test_payload
+
+        self.cn._handle_incoming_mqtt_msg(
+            client=MagicMock(),
+            userdata=self.test_userdata,
+            msg=test_msg,
+        )
+
+        assert self.vaudm_mock.called
+        expected_vaudm_kwargs = {"datapoint_map_json": test_payload}
+        actual_vaudm_kwargs = self.vaudm_mock.call_args.kwargs
+        assert actual_vaudm_kwargs == expected_vaudm_kwargs
+
+    def test_actuator_msg_triggers_run_actuator_flow(self):
+        """
+        Verify that a message that could be directed to an actuator
+        datapoint triggers the run_actuator_flow method in order to
+        send this message to the device.
+        """
+        test_payload = MagicMock()
+        # Arbitrary topic, that doesn't collide with MQTT_TOPIC_DATAPOINT_MAP
+        test_topic = "tpyco/msgs/msg_001"
+
+        test_msg = MagicMock()
+        test_msg.topic = test_topic
+        test_msg.payload = test_payload
+
+        self.cn._handle_incoming_mqtt_msg(
+            client=MagicMock(),
+            userdata=self.test_userdata,
+            msg=test_msg,
+        )
+
+        assert self.raf_mock.called
+        expected_raf_kwargs = {
+            "topic": test_topic,
+            "value_msg_json": test_payload
+        }
+        actual_raf_kwargs = self.raf_mock.call_args.kwargs
+        assert actual_raf_kwargs == expected_raf_kwargs
+
+
 class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
 
     fixture_names = ('caplog', )
 
     def setup_method(self, method):
+
+        self.test_CONNECTOR_NAME = "tpyco"
+        self.test_SEND_RAW_MESSAGE_TO_DB = "FALSE"
+        self.test_DEBUG = "FALSE"
+        self.test_MQTT_BROKER_HOST = "localhost"
+        self.test_MQTT_BROKER_PORT = "1883"
+
+        # Expose the config as environment variables as would be done
+        # by a docker entrypoint script.
+        os.environ["CONNECTOR_NAME"] = self.test_CONNECTOR_NAME
+        os.environ["SEND_RAW_MESSAGE_TO_DB"] = self.test_SEND_RAW_MESSAGE_TO_DB
+        os.environ["DEBUG"] = self.test_DEBUG
+        os.environ["MQTT_BROKER_HOST"] = self.test_MQTT_BROKER_HOST
+        os.environ["MQTT_BROKER_PORT"] = self.test_MQTT_BROKER_PORT
 
         self.cn = Connector()
         self.cn.datapoint_map = {"sensor": {}, "actuator": {}}
@@ -1178,6 +1257,20 @@ class TestConnectorUpdateAvailableDatapoints(TestClassWithFixtures):
 
     def setup_method(self, method):
 
+        self.test_CONNECTOR_NAME = "tpyco"
+        self.test_SEND_RAW_MESSAGE_TO_DB = "FALSE"
+        self.test_DEBUG = "FALSE"
+        self.test_MQTT_BROKER_HOST = "localhost"
+        self.test_MQTT_BROKER_PORT = "1883"
+
+        # Expose the config as environment variables as would be done
+        # by a docker entrypoint script.
+        os.environ["CONNECTOR_NAME"] = self.test_CONNECTOR_NAME
+        os.environ["SEND_RAW_MESSAGE_TO_DB"] = self.test_SEND_RAW_MESSAGE_TO_DB
+        os.environ["DEBUG"] = self.test_DEBUG
+        os.environ["MQTT_BROKER_HOST"] = self.test_MQTT_BROKER_HOST
+        os.environ["MQTT_BROKER_PORT"] = self.test_MQTT_BROKER_PORT
+
         self.cn = Connector()
 
         # Overload some attributes for testing.
@@ -1306,3 +1399,121 @@ class TestConnectorUpdateAvailableDatapoints(TestClassWithFixtures):
             expected_topic = self.cn.MQTT_TOPIC_AVAILABLE_DATAPOINTS
             actual_topic = mqtt_client.publish.call_args.kwargs["topic"]
             assert actual_topic == expected_topic
+
+class TestConnectorSendHeartbeat(TestClassWithFixtures):
+
+    fixture_names = ()
+
+    def setup_method(self, method):
+
+        self.test_CONNECTOR_NAME = "tpyco"
+        self.test_SEND_RAW_MESSAGE_TO_DB = "FALSE"
+        self.test_DEBUG = "FALSE"
+        self.test_MQTT_BROKER_HOST = "localhost"
+        self.test_MQTT_BROKER_PORT = "1883"
+
+        # Expose the config as environment variables as would be done
+        # by a docker entrypoint script.
+        os.environ["CONNECTOR_NAME"] = self.test_CONNECTOR_NAME
+        os.environ["SEND_RAW_MESSAGE_TO_DB"] = self.test_SEND_RAW_MESSAGE_TO_DB
+        os.environ["DEBUG"] = self.test_DEBUG
+        os.environ["MQTT_BROKER_HOST"] = self.test_MQTT_BROKER_HOST
+        os.environ["MQTT_BROKER_PORT"] = self.test_MQTT_BROKER_PORT
+
+        self.cn = Connector()
+        self.cn._heartbeat_interval = 22.1
+        self.cn.mqtt_client = MagicMock()
+
+    def test_heartbeat_msg_format_correct(self):
+        """
+        Check that the message format of the heartbeat message is generally
+        correct.
+        """
+        self.cn._send_heartbeat()
+
+        actual_hb_msg = json.loads(
+            self.cn.mqtt_client.publish.call_args.kwargs["payload"]
+        )
+
+        assert "this_heartbeats_timestamp" in actual_hb_msg
+        assert "next_heartbeats_timestamp" in actual_hb_msg
+        assert isinstance(actual_hb_msg["this_heartbeats_timestamp"], int)
+        assert isinstance(actual_hb_msg["next_heartbeats_timestamp"], int)
+
+    def test_heartbeat_msg_topic_correct(self):
+        """
+        Verify that the heartbeat message is published on the correct topic.
+        """
+        self.cn._send_heartbeat()
+
+        actual_hb_topic = (
+            self.cn.mqtt_client.publish.call_args.kwargs["topic"]
+        )
+        expected_hb_topic = self.cn.MQTT_TOPIC_HEARTBEAT
+        assert actual_hb_topic == expected_hb_topic
+
+    def test_this_heartbeat_timestamp_correct(self):
+        """
+        The heartbeat message contains two timestamps, one for now and one
+        for the next expected heartbeat. Check that this_heartbeats_timestamp
+        is set to the time the method is called.
+        """
+
+        start_ts = round(datetime.timestamp(datetime.utcnow()) * 1000)
+
+        self.cn._send_heartbeat()
+        actual_hb_msg = json.loads(
+            self.cn.mqtt_client.publish.call_args.kwargs["payload"]
+        )
+        actual_this_hb_ts = actual_hb_msg["this_heartbeats_timestamp"]
+
+        # Check that the actual timestamp is between the time this function
+        # has started and 1 seconds later, which should be ok even on very
+        # slow machines. -1 on min, in case the round above has rounded up.
+        expected_this_hb_ts_min = start_ts - 1
+        expected_this_hb_ts_max = start_ts + 1000
+        assert actual_this_hb_ts >= expected_this_hb_ts_min
+        assert actual_this_hb_ts < expected_this_hb_ts_max
+
+    def test_next_heartbeat_timestamp_correct(self):
+        """
+        The heartbeat message contains two timestamps, one for now and one
+        for the next expected heartbeat. Check that next_heartbeats_timestamp
+        is set to the time the method is called + heartbeat_interval.
+        """
+
+        start_ts = round(datetime.timestamp(datetime.utcnow()) * 1000)
+
+        self.cn._send_heartbeat()
+        actual_hb_msg = json.loads(
+            self.cn.mqtt_client.publish.call_args.kwargs["payload"]
+        )
+        actual_next_hb_ts = actual_hb_msg["next_heartbeats_timestamp"]
+
+        # Check that the actual timestamp is between the time this function
+        # has started and 1 seconds later plus the heartbeat intverval, which
+        # should be ok even on very slow machines. -1 on min, in case
+        # the round above has rounded up.
+        expected_next_hb_ts_min = (
+            start_ts - 1 + self.cn._heartbeat_interval * 1000
+        )
+        expected_next_hb_ts_max = expected_next_hb_ts_min + 1001
+        assert actual_next_hb_ts >= expected_next_hb_ts_min
+        assert actual_next_hb_ts < expected_next_hb_ts_max
+
+    def test_heartbeat_msg_interval_correct(self):
+        """
+        The heartbeat message contains two timestamps, one for now and one
+        for the next expected heartbeat. Check here that the interval between
+        the two matches the _heartbeat_interval of the connector.
+        """
+        self.cn._send_heartbeat()
+        actual_hb_msg = json.loads(
+            self.cn.mqtt_client.publish.call_args.kwargs["payload"]
+        )
+        actual_this_hb_ts = actual_hb_msg["this_heartbeats_timestamp"]
+        actual_next_hb_ts = actual_hb_msg["next_heartbeats_timestamp"]
+
+        actual_ts_difference = actual_next_hb_ts - actual_this_hb_ts
+        expected_ts_difference = self.cn._heartbeat_interval * 1000
+        assert actual_ts_difference == expected_ts_difference

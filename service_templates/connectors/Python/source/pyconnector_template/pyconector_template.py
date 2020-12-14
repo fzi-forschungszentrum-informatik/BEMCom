@@ -589,8 +589,10 @@ class Connector():
         logger.debug("Entering Connector run method")
 
         # Setup and configure connection with MQTT message broker.
+        # Also wire through a reference to the Connector instance (self)
+        # as this allows _handle_incoming_mqtt_msg to call Connector methods.
         logger.debug("Configuring MQTT connection")
-        self.mqtt_client = self._MqttClient()
+        self.mqtt_client = self._MqttClient(userdata={"self": self})
         self.mqtt_client.on_message = self._handle_incoming_mqtt_msg
         self.mqtt_client.connect(
             host=self.MQTT_BROKER_HOST, port=self.MQTT_BROKER_PORT
@@ -720,8 +722,6 @@ class Connector():
         This is the callback provided to the mqtt clients on_message
         method.
 
-        TODO
-
         Parameters
         ----------
         client : client : class.
@@ -731,7 +731,15 @@ class Connector():
         msg : paho mqtt message class.
             The message to handle.
         """
-        pass
+        self = userdata["self"]
+        if msg.topic == self.MQTT_TOPIC_DATAPOINT_MAP:
+            self._validate_and_update_datapoint_map(
+                datapoint_map_json=msg.payload
+            )
+        else:
+            self.run_actuator_flow(
+                topic=msg.topic, value_msg_json=msg.payload
+            )
 
     def _validate_and_update_datapoint_map(self, datapoint_map_json):
         """
@@ -828,6 +836,15 @@ class Connector():
 
     def _send_heartbeat(self):
         """
-        TODO
+        Send a heartbeat message to the MQTT broker.
         """
-        raise NotImplementedError()
+        ts_now = round(datetime.timestamp(datetime.utcnow()) * 1000)
+        ts_next = round(ts_now + self._heartbeat_interval * 1000)
+        heartbeat_msg = {
+            "this_heartbeats_timestamp": ts_now,
+            "next_heartbeats_timestamp": ts_next,
+        }
+        self.mqtt_client.publish(
+            topic=self.MQTT_TOPIC_HEARTBEAT,
+            payload=json.dumps(heartbeat_msg)
+        )
