@@ -1,3 +1,4 @@
+import pytz
 from datetime import datetime, timezone
 
 
@@ -19,7 +20,10 @@ def datetime_from_timestamp(timestamp, tz_aware=True):
     """
     dt = datetime.fromtimestamp(timestamp / 1000.)
     if tz_aware:
-        dt = dt.astimezone(timezone.utc)
+        # Don't use astimezone here, as this will try add the hour delta 
+        # between the local timezone and UTC, while the timestamp is
+        # alrady in UTC.
+        dt = dt.replace(tzinfo=timezone.utc)
     return dt
 
 
