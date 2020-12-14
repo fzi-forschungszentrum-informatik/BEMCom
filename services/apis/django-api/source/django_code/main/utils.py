@@ -44,5 +44,4 @@ def timestamp_utc_now():
     Returns the timestamp of the current UTC time in milliseconds.
     Rounded to full microseconds.
     """
-    timestamp_utc_now = datetime.timestamp(datetime.utcnow()) * 1000
-    return round(timestamp_utc_now)
+    return round(datetime.now(tz=timezone.utc).timestamp() * 1000)
