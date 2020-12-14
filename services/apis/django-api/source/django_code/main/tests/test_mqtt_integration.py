@@ -905,7 +905,7 @@ class TestUpdateSubscription():
                 test_datapoint_1.key_in_connector: dp1_topic
             },
             "actuator": {
-                test_datapoint_2.key_in_connector: dp2_topic
+                dp2_topic: test_datapoint_2.key_in_connector 
             },
         }
 

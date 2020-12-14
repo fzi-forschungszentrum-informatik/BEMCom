@@ -226,10 +226,10 @@ class ConnectorMQTTIntegration():
                 _type = active_datapoint.type
                 key_in_connector = active_datapoint.key_in_connector
                 mqtt_topic = active_datapoint.get_mqtt_topics()["value"]
-
-                if active_datapoint.type not in datapoint_map:
-                    datapoint_map[active_datapoint.type] = {}
-                datapoint_map[_type][key_in_connector] = mqtt_topic
+                if _type == "sensor":
+                    datapoint_map[_type][key_in_connector] = mqtt_topic
+                elif _type == "actuator":
+                    datapoint_map[_type][mqtt_topic] = key_in_connector
 
             # Send the final datapoint_map to the connector.
             # Use qos=2 to ensure the message is received by the connector.
