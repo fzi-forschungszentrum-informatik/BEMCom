@@ -68,6 +68,6 @@ You can...
 
 ### Changelog
 
-| Tag   | Changes          |
-| ----- | ---------------- |
-| 0.1.0 | Initial version. |
+| Tag   | Changes         |
+| ----- | --------------- |
+| 0.1.0 | Initial version |

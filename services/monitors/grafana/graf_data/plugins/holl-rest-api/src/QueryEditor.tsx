@@ -33,9 +33,7 @@ export class QueryEditor extends PureComponent<Props> {
   };
 
   async componentDidMount() {
-    console.log('COmponent - mounted!');
     // query backend meta to get options.
-    console.log('requesting meta url: ', this.props.datasource.url + '/datapoint');
     try {
       const result = await getBackendSrv().datasourceRequest({
         method: 'GET',
@@ -59,9 +57,6 @@ export class QueryEditor extends PureComponent<Props> {
   }
 
   onMetaChange = (event: ChangeEvent<HTMLInputElement>, child: boolean) => {
-    console.log('changed select: event:', event);
-    console.log('changed select: child:', child);
-
     const { onChange, query, onRunQuery } = this.props;
     let s = { ...this.state };
     s.showMeta = child;

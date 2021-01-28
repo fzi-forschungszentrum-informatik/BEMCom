@@ -24,7 +24,8 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   }
 
   async doRequest(query: MyQuery) {
-    console.log('inside doRequests. Query is:', query);
+    // console.log('inside doRequests. Query is:', query);
+    // build url
     let url = '';
     if (query.getMeta) {
       // get meta data ignore other query parameters
@@ -38,17 +39,20 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         : 'value';
       url = this.url + '/datapoint/' + deviceId + '/' + type + '/';
     }
-    console.log('requesting url: ' + url);
+
+    // build query parameters
+    const params = {
+      timestamp__gte: query.from,
+      timestamp__lte: query.to,
+    };
 
     try {
       const result = await getBackendSrv().datasourceRequest({
         method: 'GET',
         url: url, // '/api/datasources/proxy/1/datapoint/', //http://localhost:3000/api/datasources/proxy/1/datapoint/
-        // params: query,
+        params: params,
         // headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
       });
-
-      console.log('result', result.status);
 
       return result;
     } catch (error) {
@@ -58,15 +62,17 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   }
 
   async query(options: DataQueryRequest<MyQuery>): Promise<DataQueryResponse> {
-    console.log('Querying - ');
-
-    // const { range } = options;
-    // const from = range!.from.valueOf();
-    // const to = range!.to.valueOf();
+    // console.log('Inside query - ');
+    const { range } = options;
+    const from = range!.from.valueOf();
+    const to = range!.to.valueOf();
+    options.targets.forEach(target => {
+      target.from = from;
+      target.to = to;
+    });
 
     const promises = options.targets.map(target =>
       this.doRequest(target).then(response => {
-        console.log('response: ', response);
         if (!response || response.data == undefined || response.data.length == 0) {
           return [];
         }
@@ -164,9 +170,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   }
 
   async testDatasource() {
-    // Implement a health check for your data source.
-    console.log('testing data source with url');
-    console.log(this.url + '/');
+    // TODO Implement a proper health check for the api root
 
     const result = await getBackendSrv().datasourceRequest({
       method: 'GET',

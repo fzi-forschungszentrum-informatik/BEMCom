@@ -4,9 +4,11 @@ export interface MyQuery extends DataQuery {
   getMeta: boolean;
   datapoint?: MyDatapoint;
   datatype?: MyDatatype;
+  from?: number;
+  to?: number;
 
   // queryText?: string;
-  constant: number;
+  // constant: number;
 }
 
 export const defaultQuery: Partial<MyQuery> = {
@@ -14,7 +16,7 @@ export const defaultQuery: Partial<MyQuery> = {
   datapoint: { label: 'helloWorld', value: 0, description: '' },
   datatype: { label: 'value', value: 0, description: '' },
 
-  constant: 6.5,
+  // constant: 6.5,
 };
 
 /**
