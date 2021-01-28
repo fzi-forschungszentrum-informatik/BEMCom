@@ -29,8 +29,9 @@ A query can either display meta data on the API or timeseries data.
 **Meta data** is toggled by a switch. The received table-like data gives information on all available datapoints.
 
 **Timeseries data** can be of the above described data types. Simply choose the datapoint by its short name and the datatype.
+The dropdown also features a autoselection when typing.
 
-TODO: implement autocompletion instead of dropdown for datapoint selection. <br>
+TODO?: implement autocompletion instead of dropdown for datapoint selection. <br>
 TODO: implement auto detection of available data types for the selected datapoint.
 
 #### Development
