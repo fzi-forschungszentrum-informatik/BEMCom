@@ -33,6 +33,18 @@ A query can either display meta data on the API or timeseries data.
 TODO: implement autocompletion instead of dropdown for datapoint selection. <br>
 TODO: implement auto detection of available data types for the selected datapoint.
 
+#### Development
+
+The plugin is written in typescript and based on the [grafana plugin creator and tutorial](https://grafana.com/tutorials/build-a-data-source-plugin/).
+
+You can...
+
+- Install all needed modules for development from within the holl-rest-api folder with <br>
+  `npm install`
+- Make your changes to the source files under `./graf_data/plugins/holl-rest-api/src`
+- Hot build the plugin to see changes in the browser on reload with `yarn dev --watch`
+- Build the plugin for production with `yarn build`
+
 ### Configuration
 
 ##### Ports
