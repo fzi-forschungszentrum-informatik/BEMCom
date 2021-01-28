@@ -1,0 +1,31 @@
+{
+  "name": "fzi-holl-rest-api",
+  "version": "1.0.0",
+  "description": "a custom ds plugin for a json rest api",
+  "scripts": {
+    "build": "grafana-toolkit plugin:build",
+    "test": "grafana-toolkit plugin:test",
+    "dev": "grafana-toolkit plugin:dev",
+    "watch": "grafana-toolkit plugin:dev --watch"
+  },
+  "author": "key",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@grafana/data": "^7.0.0",
+    "@grafana/toolkit": "^7.0.0",
+    "@grafana/ui": "^7.3.7",
+    "@testing-library/jest-dom": "5.4.0",
+    "@testing-library/react": "^10.0.2",
+    "@types/lodash": "latest"
+  },
+  "engines": {
+    "node": ">=12 <13"
+  },
+  "resolutions": {
+    "rxjs": "6.6.3"
+  },
+  "dependencies": {
+    "@grafana/runtime": "^7.3.7",
+    "@material-ui/core": "^4.11.2"
+  }
+}
