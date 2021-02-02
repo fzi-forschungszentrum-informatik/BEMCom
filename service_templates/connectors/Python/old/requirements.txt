@@ -1,4 +1,0 @@
-paho-mqtt==1.5.*
-
-# For running the tests.
-pytest
