@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     'channels',
     'rest_framework',
     'rest_framework.authtoken',
+    'drf_spectacular',
     'api_main.apps.ApiMainConfig',
     'api_admin_ui.apps.ApiAdminUiConfig',
     'api_rest_interface.apps.ApiRestInterfaceConfig',
@@ -203,15 +204,25 @@ if MODE != "DEVL":
     X_FRAME_OPTIONS = "DENY"
 
 # ------------------------------------------------------------------------------
-# Special settings for Django REST framework
+# Special settings for REST API
 # ------------------------------------------------------------------------------
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+        'api_rest_interface.authentication.TokenAuthenticationBearer',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
             'rest_framework.permissions.IsAuthenticated',
-        ]
+        ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': "BEMCom API",
+    'DESCRIPTION': "Allows to send/receive data from/to diverse devices.",
+    'LICENSE': {
+        'name': 'Licensed under MIT',
+    },
+    'VERSION': '0.1.0',
 }

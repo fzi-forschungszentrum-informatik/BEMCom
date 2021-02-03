@@ -3,6 +3,9 @@ from datetime import datetime
 
 from rest_framework import serializers
 
+from ems_utils.message_format.models import DatapointValueTemplate
+from ems_utils.message_format.models import DatapointSetpointTemplate
+from ems_utils.message_format.models import DatapointScheduleTemplate
 from ems_utils.timestamp import datetime_from_timestamp, timestamp_utc_now
 
 class GenericValidators():
@@ -345,18 +348,24 @@ class DatapointSerializer(serializers.HyperlinkedModelSerializer):
 
 class DatapointValueSerializer(serializers.Serializer):
     """
-    Value message for a datapoint.
+    Serializer for a value message.
 
-    The value measured by sensor datapoint, or the set value send to an
-    actuator.
+    See the docstring of the DatapointValueTemplate model for details.
 
-    TODO: Add help_text.
+    Explicitly reusue the help text defined in the models to expose it
+    in the API schema.
     """
+    # Deactive docstring being pushed to schema, it's not relevant for
+    # an API user.
+    __doc__ = None
+    #
     value = serializers.CharField(
-        allow_null=True
+        allow_null=True,
+        help_text=DatapointValueTemplate.value.field.help_text,
     )
     timestamp = serializers.IntegerField(
-        allow_null=False
+        allow_null=False,
+        help_text=DatapointValueTemplate.timestamp.field.help_text,
     )
 
     def to_representation(self, instance):
@@ -385,39 +394,63 @@ class DatapointValueSerializer(serializers.Serializer):
 class DatapointScheduleItemSerializer(serializers.Serializer):
     """
     Represents the optimized actuator value for one interval in time.
-
-    TODO: Add help_text.
     """
     from_timestamp = serializers.IntegerField(
         allow_null=True,
         help_text=(
             "The time in milliseconds since 1970-01-01 UTC that the value "
             "should be applied. Can be `null` in which case the value should "
-            "be applied immediately after the schedule is received."
-        )
+            "be applied immediately after the schedule is received by "
+            "the controller."
+        ),
     )
     to_timestamp = serializers.IntegerField(
-        allow_null=True
+        allow_null=True,
+        help_text=(
+            "The time in milliseconds since 1970-01-01 UTC that the value "
+            "should no longer be applied. Can be `null` in which case the "
+            "value should be applied forever, or more realistically, until "
+            "a new schedule is received."
+        ),
     )
     value = serializers.CharField(
-        allow_null=True
+        allow_null=True,
+        help_text=(
+            "The value that should be sent to the actuator datapoint.\n"
+            "The value must be larger or equal min_value (as listed in the "
+            "datapoint metadata) if the datapoints data format is "
+            "continuous_numeric.\n"
+            "The value must be smaller or equal max_value (as listed in the "
+            "datapoint metadata) if the datapoints data format is "
+            "continuous_numeric.\n"
+            "The value must be in the list of acceptable_values (as listed "
+            "in the datapoint metadata) if the datapoints data format is "
+            "discrete."
+        )
     )
 
 class DatapointScheduleSerializer(serializers.Serializer):
     """
-    The schedule is list of actuator values computed by an optimization
-    algorithm that should be executed on the specified actuator datapoint
-    if the setpoint is not violated.
+    Serializer for a schedule message.
 
-    TODO: Add help_text.
+    See the docstring of the DatapointScheduleTemplate model for details.
+
+    Explicitly reusue the help text defined in the models to expose it
+    in the API schema.
     """
+    # Deactive docstring being pushed to schema, it's not relevant for
+    # an API user.
+    __doc__ = None
+    #
     schedule = DatapointScheduleItemSerializer(
         many=True,
         read_only=False,
-        allow_null=True,
+        allow_null=False,
+        help_text=DatapointScheduleTemplate.schedule.field.help_text,
     )
     timestamp = serializers.IntegerField(
-        allow_null=False
+        allow_null=False,
+        help_text=DatapointScheduleTemplate.timestamp.field.help_text,
     )
 
     def to_representation(self, instance):

@@ -1,6 +1,9 @@
 """
 Quickly create the necessary viewsets for the REST API, by adapting the
-generic versions from ems_utils.model_format
+generic versions from ems_utils.model_format.
+
+The __doc__ objects are overloaded to extract the right docs from
+the generic implementation in ems_utils to display in the API schema.
 """
 
 from django.shortcuts import render
@@ -13,10 +16,12 @@ from ems_utils.message_format.views import DatapointViewSetTemplate
 from ems_utils.message_format.views import DatapointValueViewSetTemplate
 from ems_utils.message_format.views import DatapointScheduleViewSetTemplate
 from ems_utils.message_format.views import DatapointSetpointViewSetTemplate
-
+from .serializers import DatapointSerializer
 
 class DatapointViewSet(DatapointViewSetTemplate):
+    __doc__ = Datapoint.__doc__
     datapoint_model = Datapoint
+    serializer_class = DatapointSerializer
 
     def create(self, request):
         raise NotImplementedError(
@@ -26,15 +31,20 @@ class DatapointViewSet(DatapointViewSetTemplate):
 
 
 class DatapointValueViewSet(DatapointValueViewSetTemplate):
+    __doc__ = DatapointValue.__doc__.strip()
     model = DatapointValue
     datapoint_model = Datapoint
 
 
 class DatapointScheduleViewSet(DatapointScheduleViewSetTemplate):
+    __doc__ = DatapointSchedule.__doc__.strip()
     model = DatapointSchedule
     datapoint_model = Datapoint
+    create_for_actuators_only = True
 
 
 class DatapointSetpointViewSet(DatapointSetpointViewSetTemplate):
+    __doc__ = DatapointSetpoint.__doc__.strip()
     model = DatapointSetpoint
     datapoint_model = Datapoint
+    create_for_actuators_only = True

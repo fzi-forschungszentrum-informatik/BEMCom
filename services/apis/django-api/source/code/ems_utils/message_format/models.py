@@ -3,13 +3,16 @@ from django.db import models
 
 class DatapointTemplate(models.Model):
     """
-    Model for a datapoint.
+    Devices are abstracted as a set of datapoint.
 
     A datapoint represents one source of information. Devices will typically
     emit information on more then one datapoints. E.g. climate sensor in a
     room might publish temperature and humidity measurements. Both will be
     treated as individual datapoints as this allows us to abstract away the
     complexity of the devices.
+
+    Each datapoint object contains the metadata to necessary to interpret
+    the datapoint.
     """
 
     class Meta:
@@ -231,7 +234,15 @@ class DatapointTemplate(models.Model):
 
 class DatapointValueTemplate(models.Model):
     """
-    Model to store value messages.
+    Represents a value of a Datapoint.
+
+    For a sensor datapoint: Represents a measurement emitted by a device.
+    Message is published by the corresponding connector service.
+
+    For an actuator datapoint: Represents a set value that should be
+    "written" to an device actuator. Message is created by an external
+    entity, send to the API service which publishes the message on the
+    broker.
     """
 
     class Meta:
@@ -249,15 +260,22 @@ class DatapointValueTemplate(models.Model):
         blank=True,
         default=None,
         help_text=(
-            "The value field in datapoint value msg."
+            "The last value of the datapoint. Will be a string "
+            "or null. Values of numeric datapoints are sent "
+            "as strings too, as this drastically reduces effort "
+            "for implementing the REST interfaces."
         )
     )
     timestamp = models.DateTimeField(
-        null=True,
-        blank=True,
+        null=False,
+        blank=False,
         default=None,
         help_text=(
-            "The field that stores the timestamp of value msg as datetime."
+            "For sensor datapoints: The time the value was "
+            "received by the connector.\n"
+            "For actuator datapoints: The time the message was "
+            "created by the external entity.\n"
+            "Both in milliseconds since 1970-01-01 UTC."
         )
     )
 
@@ -283,7 +301,10 @@ class DatapointValueTemplate(models.Model):
 
 class DatapointScheduleTemplate(models.Model):
     """
-    Model to store schedule messages.
+    The schedule is a list of actuator values computed by an optimization
+    algorithm that should be executed on the specified actuator datapoint
+    as long as the setpoint constraints is not violated. Executing
+    setpoints requires a controller service in BEMCom.
     """
 
     class Meta:
@@ -297,19 +318,20 @@ class DatapointScheduleTemplate(models.Model):
         )
     )
     schedule = models.JSONField(
-        null=True,
+        null=False,
         blank=True,
-        default=None,
+        default=list,
         help_text=(
-            "The schedule field in datapoint schedule msg."
+            "A JSON array holding zero or more DatapointScheduleItems."
         )
     )
     timestamp = models.DateTimeField(
-        null=True,
-        blank=True,
+        null=False,
+        blank=False,
         default=None,
         help_text=(
-            "The field that stores the timestamp of schedule msg as datetime."
+            "The time the message was created by the external entity in "
+            "milliseconds since 1970-01-01 UTC."
         )
     )
 

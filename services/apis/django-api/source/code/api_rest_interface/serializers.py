@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from api_main.models.datapoint import Datapoint
+
 
 class DatapointSerializer(serializers.HyperlinkedModelSerializer):
     """
@@ -7,6 +9,7 @@ class DatapointSerializer(serializers.HyperlinkedModelSerializer):
     """
 
     class Meta:
+        model = Datapoint
         fields = [
             "id",
             "type",

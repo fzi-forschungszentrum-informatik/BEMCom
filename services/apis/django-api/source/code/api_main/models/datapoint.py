@@ -13,14 +13,14 @@ from ems_utils.message_format.models import DatapointSetpointTemplate
 from ems_utils.message_format.models import DatapointScheduleTemplate
 
 class Datapoint(DatapointTemplate):
-    # Don't add a docstring here, the inherited version is fine for documenting
-    # the Model.
-    #
-    ##########################################################################
-    #
-    # Add special fields that are only required for the API service
-    #
-    ##########################################################################
+    """
+    Similar to the generic Datapoint model (see docstring in DatapointTemplate for
+    more information) but with fields adapted to the needs of API service.
+    """
+    # Overload the docstring with the one of DatapointTemplate for the
+    # automatic generation of documentation in schema, as the original
+    # docstring contains more general descriptions.
+    __doc__ = DatapointTemplate.__doc__.strip()
     #
     connector = models.ForeignKey(
         Connector,
@@ -93,10 +93,16 @@ class Datapoint(DatapointTemplate):
 
 
 class DatapointValue(DatapointValueTemplate):
-    # Don't add a docstring here, the inherited version is fine for documenting
-    # the Model.
+    """
+    Similar to the generic DatapointValue model (see docstring in
+    DatapointValueTemplate for more information) but with the correct
+    Datapoint model linked to it.
+    """
+    # Overload the docstring with the one of DatapointValueTemplate for
+    # the automatic generation of documentation in schema, as the original
+    # docstring contains more general descriptions.
+    __doc__ = DatapointValueTemplate.__doc__.strip()
     #
-    # Overload the datapoint to the datapoint defined above.
     datapoint = models.ForeignKey(
         Datapoint,
         on_delete=models.CASCADE,
@@ -107,10 +113,16 @@ class DatapointValue(DatapointValueTemplate):
 
 
 class DatapointSchedule(DatapointScheduleTemplate):
-    # Don't add a docstring here, the inherited version is fine for documenting
-    # the Model.
+    """
+    Similar to the generic DatapointSchedule model (see docstring in
+    DatapointScheduleTemplate for more information) but with the correct
+    Datapoint model linked to it.
+    """
+    # Overload the docstring with the one of DatapointScheduleTemplate for
+    # the automatic generation of documentation in schema, as the original
+    # docstring contains more general descriptions.
+    __doc__ = DatapointScheduleTemplate.__doc__.strip()
     #
-    # Overload the datapoint to the datapoint defined above.
     datapoint = models.ForeignKey(
         Datapoint,
         on_delete=models.CASCADE,
@@ -121,10 +133,16 @@ class DatapointSchedule(DatapointScheduleTemplate):
 
 
 class DatapointSetpoint(DatapointSetpointTemplate):
-    # Don't add a docstring here, the inherited version is fine for documenting
-    # the Model.
+    """
+    Similar to the generic DatapointSetpoint model (see docstring in
+    DatapointSetpointTemplate for more information) but with the correct
+    Datapoint model linked to it.
+    """
+    # Overload the docstring with the one of DatapointSetpointTemplate for
+    # the automatic generation of documentation in schema, as the original
+    # docstring contains more general descriptions.
+    __doc__ = DatapointSetpointTemplate.__doc__.strip()
     #
-    # Overload the datapoint to the datapoint defined above.
     datapoint = models.ForeignKey(
         Datapoint,
         on_delete=models.CASCADE,
