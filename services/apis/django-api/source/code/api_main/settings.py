@@ -213,14 +213,34 @@ REST_FRAMEWORK = {
         'api_rest_interface.authentication.TokenAuthenticationBearer',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-            'rest_framework.permissions.IsAuthenticated',
+            'api_rest_interface.permissions.DjangoModelPermissionWithViewRestricted',
         ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 SPECTACULAR_SETTINGS = {
     'TITLE': "BEMCom API",
-    'DESCRIPTION': "Allows to send/receive data from/to diverse devices.",
+    'DESCRIPTION': (
+        "Allows to send/receive data from/to diverse devices. "
+        "Endpoints are provided for <msg_type> in [value, setpoint schedule]. "
+        "For each of these types the followng endpoints are provided: \n"
+        " * **GET /datapoint/{dp_id}/<msg_type>/**: Allows retrieving a list of"
+        " messages from BEMComs message DB.\n"
+        " * **POST /datapoint/{dp_id}/<msg_type>/**: Will send the message to "
+        "the BEMCom message broker, from where the message is forwarded to "
+        "the respective services. Once the message has returned from the "
+        "message broker it is also written to the database.\n"
+        " * **GET /datapoint/{dp_id}/<msg_type>/{timestamp}/**: Allows "
+        "retrieving a single msg object from the database.\n"
+        " * **PUT /datapoint/{dp_id}/<msg_type>/{timestamp}/**: Allows changing"
+        "a single message object in the database. This operation does **not** "
+        "affect the other services of BEMCom in any way, i.e. the updated "
+        "message is **not** published on the message broker.\n"
+        " * **DELETE /datapoint/{dp_id}/<msg_type>/{timestamp}/**: Allows "
+        "deleting a single message object in the database. This operation does "
+        "**not** affect the other services of BEMCom in any way, i.e. the "
+        "message is **not** deleted on the message broker."
+    ),
     'LICENSE': {
         'name': 'Licensed under MIT',
     },

@@ -22,6 +22,7 @@ class DatapointViewSet(DatapointViewSetTemplate):
     __doc__ = Datapoint.__doc__
     datapoint_model = Datapoint
     serializer_class = DatapointSerializer
+    queryset = Datapoint.objects.none() # Required for DjangoModelPermissions
 
     def create(self, request):
         raise NotImplementedError(
@@ -34,6 +35,9 @@ class DatapointValueViewSet(DatapointValueViewSetTemplate):
     __doc__ = DatapointValue.__doc__.strip()
     model = DatapointValue
     datapoint_model = Datapoint
+    create_for_actuators_only = True
+    # Required for DjangoModelPermissions
+    queryset = DatapointValue.objects.none()
 
 
 class DatapointScheduleViewSet(DatapointScheduleViewSetTemplate):
@@ -41,6 +45,8 @@ class DatapointScheduleViewSet(DatapointScheduleViewSetTemplate):
     model = DatapointSchedule
     datapoint_model = Datapoint
     create_for_actuators_only = True
+    # Required for DjangoModelPermissions
+    queryset = DatapointSchedule.objects.none()
 
 
 class DatapointSetpointViewSet(DatapointSetpointViewSetTemplate):
@@ -48,3 +54,5 @@ class DatapointSetpointViewSet(DatapointSetpointViewSetTemplate):
     model = DatapointSetpoint
     datapoint_model = Datapoint
     create_for_actuators_only = True
+    # Required for DjangoModelPermissions
+    queryset = DatapointSetpoint.objects.none()

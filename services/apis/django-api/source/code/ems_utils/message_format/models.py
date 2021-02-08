@@ -358,7 +358,12 @@ class DatapointScheduleTemplate(models.Model):
 
 class DatapointSetpointTemplate(models.Model):
     """
-    Model to store setpoint messages.
+    The setpoint specifies the demand of the users of the system. The setpoint
+    must hold a preferred_value which is the value the user would appreciate
+    most, and can additially define flexibility of values the user would also
+    accept. The setpoint message is used by optimiazation algorithms as
+    constraints while computing schedules, as well as by controller services
+    to ensure that the demand of the user is always met.
     """
 
     class Meta:
@@ -376,7 +381,7 @@ class DatapointSetpointTemplate(models.Model):
         blank=True,
         default=None,
         help_text=(
-            "The setpoint field in datapoint setpoint msg."
+            "A JSON array holding zero or more DatapointSetpointItems."
         )
     )
     timestamp = models.DateTimeField(
@@ -384,7 +389,8 @@ class DatapointSetpointTemplate(models.Model):
         blank=True,
         default=None,
         help_text=(
-            "The field that stores the timestamp of setpoint msg as datetime."
+            "The time the message was created by the external entity in "
+            "milliseconds since 1970-01-01 UTC."
         )
     )
 

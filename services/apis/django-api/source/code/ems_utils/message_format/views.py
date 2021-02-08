@@ -106,7 +106,7 @@ class ViewSetWithDatapointFK(ViewSet):
         return Response(serializer.data)
 
     def retrieve(self, request, dp_id, timestamp=None):
-        datapoint = get_object_or_404(Datapoint, id=dp_id)
+        datapoint = get_object_or_404(self.datapoint_model, id=dp_id)
         dt = datetime_from_timestamp(timestamp)
         object = get_object_or_404(
             self.model.objects, datapoint=datapoint, timestamp=dt
