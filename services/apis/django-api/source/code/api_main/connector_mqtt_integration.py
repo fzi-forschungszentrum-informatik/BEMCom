@@ -106,7 +106,7 @@ class ConnectorMQTTIntegration():
         if hasattr(cls, "_instance"):
             instance = cls._instance
         else:
-            instance = None
+            instance = ConnectorMQTTIntegration()
         return instance
 
     def disconnect(self):

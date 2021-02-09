@@ -98,7 +98,8 @@ class DatapointScheduleViewSet(DatapointScheduleViewSetTemplate):
         cmi = ConnectorMQTTIntegration.get_instance()
         cmi.client.publish(
             topic=mqtt_topic,
-            payload=json.dumps(validated_data)
+            payload=json.dumps(validated_data),
+            retain=True,
         )
         return Response(validated_data, status=status.HTTP_201_CREATED)
 
@@ -131,6 +132,7 @@ class DatapointSetpointViewSet(DatapointSetpointViewSetTemplate):
         cmi = ConnectorMQTTIntegration.get_instance()
         cmi.client.publish(
             topic=mqtt_topic,
-            payload=json.dumps(validated_data)
+            payload=json.dumps(validated_data),
+            retain=True,
         )
         return Response(validated_data, status=status.HTTP_201_CREATED)
