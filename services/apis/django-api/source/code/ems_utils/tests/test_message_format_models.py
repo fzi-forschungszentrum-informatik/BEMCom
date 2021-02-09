@@ -332,7 +332,10 @@ class TestDatapointValue(TransactionTestCase):
         cls.datapoint.save()
 
         # Here are the default field values:
-        cls.default_field_values = {"datapoint": cls.datapoint}
+        cls.default_field_values = {
+            "datapoint": cls.datapoint,
+            "timestamp": datetime_from_timestamp(1612860152000)
+        }
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -479,7 +482,11 @@ class TestDatapointSchedule(TransactionTestCase):
         cls.datapoint.save()
 
         # Here are the default field values:
-        cls.default_field_values = {"datapoint": cls.datapoint}
+        cls.default_field_values = {
+            "datapoint": cls.datapoint,
+            "timestamp": datetime_from_timestamp(1612860152000),
+            "schedule": [],
+        }
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -614,7 +621,7 @@ class TestDatapointSchedule(TransactionTestCase):
         self.datapoint.last_schedule_timestamp = expected_timestamp
         self.datapoint.save()
 
-        older_schedule = None
+        older_schedule = []
         ts = 1200000000000
         older_timestamp = datetime_from_timestamp(ts, tz_aware=True)
         field_values.update(
@@ -660,7 +667,11 @@ class TestDatapointSetpoint(TransactionTestCase):
         cls.datapoint.save()
 
         # Here are the default field values:
-        cls.default_field_values = {"datapoint": cls.datapoint}
+        cls.default_field_values = {
+            "datapoint": cls.datapoint,
+            "timestamp": datetime_from_timestamp(1612860152000),
+            "setpoint": [],
+        }
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -795,7 +806,7 @@ class TestDatapointSetpoint(TransactionTestCase):
         self.datapoint.last_setpoint_timestamp = expected_timestamp
         self.datapoint.save()
 
-        older_setpoint = None
+        older_setpoint = []
         ts = 1200000000000
         older_timestamp = datetime_from_timestamp(ts, tz_aware=True)
         field_values.update(

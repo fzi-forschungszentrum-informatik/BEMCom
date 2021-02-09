@@ -190,8 +190,9 @@ class TestRESTEndpoint(TestCase):
         dp = datapoint_factory(self.test_connector, type="actuator")
         dp.save()
 
-        p = Permission.objects.get(codename="add_datapointvalue")
-        self.user.user_permissions.add(p)
+        p1 = Permission.objects.get(codename="add_datapointvalue")
+        p2 = Permission.objects.get(codename="view_datapointvalue")
+        self.user.user_permissions.set([p1, p2])
 
         # Subscribe to the MQTT topic of the datapoint so we can check if the
         # expected message was sent.
@@ -242,7 +243,7 @@ class TestRESTEndpoint(TestCase):
         waited_seconds = 0
         while True:
             dp.refresh_from_db()
-            if dp.last_value == update_msg["value"]:
+            if dp.last_value == expected_msg["value"]:
                 break
 
             time.sleep(0.005)
@@ -252,7 +253,9 @@ class TestRESTEndpoint(TestCase):
                     "Expected datapoint value message has not reached the DB."
                 )
 
-        request = self.client.get("/datapoint/%s/value/" % dp.id)
+        request = self.client.get(
+            "/datapoint/%s/value/%s/" % (dp.id, expected_msg["timestamp"])
+        )
         assert request.data == expected_msg
 
     def test_put_datapoint_schedule_detail_rejected_for_sensor(self):
@@ -271,7 +274,7 @@ class TestRESTEndpoint(TestCase):
                     {
                         'from_timestamp': None,
                         'to_timestamp': 1564489613491,
-                        'value': 21
+                        'value': "21"
                     },
                     {
                         'from_timestamp': 1564489613491,
@@ -297,7 +300,7 @@ class TestRESTEndpoint(TestCase):
                 {
                     'from_timestamp': None,
                     'to_timestamp': 1564489613491,
-                    'value': 21
+                    'value': "21"
                 },
                 {
                     'from_timestamp': 1564489613491,
@@ -338,8 +341,9 @@ class TestRESTEndpoint(TestCase):
         dp = datapoint_factory(self.test_connector, type="actuator")
         dp.save()
 
-        p = Permission.objects.get(codename="add_datapointschedule")
-        self.user.user_permissions.add(p)
+        p1 = Permission.objects.get(codename="add_datapointschedule")
+        p2 = Permission.objects.get(codename="view_datapointschedule")
+        self.user.user_permissions.set([p1, p2])
 
         # Subscribe to the MQTT topic of the datapoint so we can check if the
         # expected message was sent.
@@ -361,7 +365,7 @@ class TestRESTEndpoint(TestCase):
                     {
                         'from_timestamp': None,
                         'to_timestamp': 1564489613491,
-                        'value': 21
+                        'value': "21"
                     },
                     {
                         'from_timestamp': 1564489613491,
@@ -414,7 +418,9 @@ class TestRESTEndpoint(TestCase):
                     "DB."
                 )
 
-        request = self.client.get("/datapoint/%s/schedule/" % dp.id)
+        request = self.client.get(
+            "/datapoint/%s/schedule/%s/" % (dp.id, expected_msg["timestamp"])
+        )
         assert request.data == expected_msg
 
     def test_put_datapoint_setpoint_detail_rejected_for_sensor(self):
@@ -433,7 +439,7 @@ class TestRESTEndpoint(TestCase):
                     {
                         'from_timestamp': None,
                         'to_timestamp': 1564489613491,
-                        'preferred_value': 21,
+                        'preferred_value': "21",
                     },
                 ]
         }
@@ -454,7 +460,7 @@ class TestRESTEndpoint(TestCase):
                 {
                     'from_timestamp': None,
                     'to_timestamp': 1564489613491,
-                    'preferred_value': 21,
+                    'preferred_value': "21",
                 },
                 {
                     'from_timestamp': 1564489613491,
@@ -495,8 +501,9 @@ class TestRESTEndpoint(TestCase):
         dp = datapoint_factory(self.test_connector, type="actuator")
         dp.save()
 
-        p = Permission.objects.get(codename="add_datapointsetpoint")
-        self.user.user_permissions.add(p)
+        p1 = Permission.objects.get(codename="add_datapointsetpoint")
+        p2 = Permission.objects.get(codename="view_datapointsetpoint")
+        self.user.user_permissions.set([p1, p2])
 
         # Subscribe to the MQTT topic of the datapoint so we can check if the
         # expected message was sent.
@@ -518,7 +525,7 @@ class TestRESTEndpoint(TestCase):
                     {
                         'from_timestamp': None,
                         'to_timestamp': 1564489613491,
-                        'preferred_value': 21,
+                        'preferred_value': "21",
                     },
                 ],
             "timestamp": 1585092224000,
@@ -565,8 +572,9 @@ class TestRESTEndpoint(TestCase):
                     "Expected datapoint setpoint message has not reached the "
                     "DB."
                 )
-
-        request = self.client.get("/datapoint/%s/setpoint/" % dp.id)
+        request = self.client.get(
+            "/datapoint/%s/setpoint/%s/" % (dp.id, expected_msg["timestamp"])
+        )
         assert request.data == expected_msg
 
     def test_retrieve_datapoint_forbidden_without_permissions(self):

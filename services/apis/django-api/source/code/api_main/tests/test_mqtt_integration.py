@@ -338,7 +338,7 @@ class TestConnectorIntegration():
         expected_ts_as_dt = datetime_from_timestamp(update_msg["timestamp"])
         assert dp.last_value_timestamp == expected_ts_as_dt
 
-    def test_datpoint_schedule_received(self):
+    def test_datapoint_schedule_received(self):
         """
         Check that a datapoint schedule message is received from CMI and stored
         in DB as expected.
@@ -354,12 +354,12 @@ class TestConnectorIntegration():
             {
                 'from_timestamp': None,
                 'to_timestamp': 1564489613495,
-                'value': 23
+                'value': "23"
             },
             {
                 'from_timestamp': 1564489613495,
                 'to_timestamp': None,
-                'value': 22
+                'value': "22"
             }
         ]
         update_msg = {
@@ -384,10 +384,59 @@ class TestConnectorIntegration():
                     "Expected datapoint schedule has not reached the DB."
                 )
 
-        assert dp.last_schedule == json.dumps(update_schedule)
+        assert dp.last_schedule == update_schedule
         expected_ts_as_dt = datetime_from_timestamp(update_msg["timestamp"])
         assert dp.last_schedule_timestamp == expected_ts_as_dt
 
+    def test_datapoint_setpoint_received(self):
+        """
+        Check that a datapoint schedule message is received from CMI and stored
+        in DB as expected.
+        """
+        dp = datapoint_factory(self.test_connector, type="actuator")
+        dp.description = "A actuator datapoint for schedule testing."
+        dp.last_schedule = None
+        dp.last_schedule_timestamp = None
+        dp.save()
+
+        # Define test data and send to mqtt integration.
+        update_setpoint = [
+            {
+                'from_timestamp': None,
+                'to_timestamp': 1564489613495,
+                'preferred_value': "23"
+            },
+            {
+                'from_timestamp': 1564489613495,
+                'to_timestamp': None,
+                'preferred_value': "22"
+            }
+        ]
+        update_msg = {
+            "timestamp": 1564489613491,
+            "setpoint": update_setpoint,
+        }
+        payload = json.dumps(update_msg)
+        topic = dp.get_mqtt_topics()["setpoint"]
+        self.mqtt_client.publish(topic, payload, qos=2)
+
+        # Give the message some time to arrive, as MQTT could be async.
+        waited_seconds = 0
+        while True:
+            dp.refresh_from_db()
+            if dp.last_setpoint_timestamp is not None:
+                break
+
+            time.sleep(0.005)
+            waited_seconds += 0.005
+            if waited_seconds >= 3:
+                raise RuntimeError(
+                    "Expected datapoint setpoint has not reached the DB."
+                )
+
+        assert dp.last_setpoint == update_setpoint
+        expected_ts_as_dt = datetime_from_timestamp(update_msg["timestamp"])
+        assert dp.last_setpoint_timestamp == expected_ts_as_dt
 
 @pytest.fixture(scope='class')
 def allow_db_setup(request, django_db_setup, django_db_blocker):

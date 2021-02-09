@@ -296,7 +296,12 @@ class DatapointValueTemplate(models.Model):
         if existing_ts is None or existing_ts <= self.timestamp:
             self.datapoint.last_value = self.value
             self.datapoint.last_value_timestamp = self.timestamp
-            self.datapoint.save()
+            self.datapoint.save(
+                update_fields=[
+                    "last_value",
+                    "last_value_timestamp",
+                ]
+            )
 
 
 class DatapointScheduleTemplate(models.Model):
@@ -353,7 +358,12 @@ class DatapointScheduleTemplate(models.Model):
         if existing_ts is None or existing_ts <= self.timestamp:
             self.datapoint.last_schedule = self.schedule
             self.datapoint.last_schedule_timestamp = self.timestamp
-            self.datapoint.save()
+            self.datapoint.save(
+                update_fields=[
+                    "last_schedule",
+                    "last_schedule_timestamp",
+                ]
+            )
 
 
 class DatapointSetpointTemplate(models.Model):
@@ -377,7 +387,7 @@ class DatapointSetpointTemplate(models.Model):
         )
     )
     setpoint = models.JSONField(
-        null=True,
+        null=False,
         blank=True,
         default=None,
         help_text=(
@@ -412,4 +422,9 @@ class DatapointSetpointTemplate(models.Model):
         if existing_ts is None or existing_ts <= self.timestamp:
             self.datapoint.last_setpoint = self.setpoint
             self.datapoint.last_setpoint_timestamp = self.timestamp
-            self.datapoint.save()
+            self.datapoint.save(
+                update_fields=[
+                    "last_setpoint",
+                    "last_setpoint_timestamp",
+                ]
+            )

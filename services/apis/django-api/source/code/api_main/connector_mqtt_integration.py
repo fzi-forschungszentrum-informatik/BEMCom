@@ -4,7 +4,8 @@ import logging
 from paho.mqtt.client import Client
 from django.conf import settings
 
-from .models.datapoint import Datapoint
+from .models.datapoint import Datapoint, DatapointValue
+from .models.datapoint import DatapointSetpoint, DatapointSchedule
 from .models.connector import Connector, ConnectorHeartbeat, ConnectorLogEntry
 from .models.controller import Controller, ControlledDatapoint
 from ems_utils.timestamp import datetime_from_timestamp
@@ -311,19 +312,22 @@ class ConnectorMQTTIntegration():
                 # Check the datapoint definiton.
                 datapoint_id = msg.topic.split("/")[-2]
                 datapoint = Datapoint.objects.get(id=datapoint_id)
-                datapoint.last_value = payload["value"]
-                datapoint.last_value_timestamp = datetime_from_timestamp(
-                    payload["timestamp"]
+                timestamp = datetime_from_timestamp(payload["timestamp"])
+                dp_value, created = DatapointValue.objects.get_or_create(
+                    datapoint=datapoint,
+                    timestamp=timestamp,
                 )
-                datapoint.save(
-                    update_fields=[
-                        "last_value",
-                        "last_value_timestamp",
-                    ]
-                )
+                dp_value.value = payload["value"]
+                dp_value.save()
+                if created:
+                    logger.warning(
+                        "Overwrote existing datapoint value msg for datapoint "
+                        "with id %s and timestamp %s"
+                        % (datapoint.id, timestamp)
+                    )
             except Exception:
                 logger.exception(
-                    'Exception while updating datapoint with a value in DB.\n'
+                    'Exception while writing datapoint value to DB.\n'
                     'The topic was: %s' % msg.topic
                 )
                 # This raise will be caught by paho mqtt. It should not though.
@@ -334,19 +338,22 @@ class ConnectorMQTTIntegration():
             try:
                 datapoint_id = msg.topic.split("/")[-2]
                 datapoint = Datapoint.objects.get(id=datapoint_id)
-                datapoint.last_schedule = json.dumps(payload["schedule"])
-                datapoint.last_schedule_timestamp = datetime_from_timestamp(
-                    payload["timestamp"]
+                timestamp = datetime_from_timestamp(payload["timestamp"])
+                dp_schedule, created = DatapointSchedule.objects.get_or_create(
+                    datapoint=datapoint,
+                    timestamp=timestamp,
                 )
-                datapoint.save(
-                    update_fields=[
-                        "last_schedule",
-                        "last_schedule_timestamp",
-                    ]
-                )
+                dp_schedule.schedule = payload["schedule"]
+                dp_schedule.save()
+                if created:
+                    logger.warning(
+                        "Overwrote existing datapoint schedule msg for "
+                        "datapoint with id %s and timestamp %s"
+                        % (datapoint.id, timestamp)
+                    )
             except Exception:
                 logger.exception(
-                    'Exception while updating datapoint with a schedule in DB.\n'
+                    'Exception while writing datapoint schedule to DB.\n'
                     'The topic was: %s' % msg.topic
                 )
                 # This raise will be caught by paho mqtt. It should not though.
@@ -357,19 +364,22 @@ class ConnectorMQTTIntegration():
             try:
                 datapoint_id = msg.topic.split("/")[-2]
                 datapoint = Datapoint.objects.get(id=datapoint_id)
-                datapoint.last_setpoint = json.dumps(payload["setpoint"])
-                datapoint.last_setpoint_timestamp = datetime_from_timestamp(
-                    payload["timestamp"]
+                timestamp = datetime_from_timestamp(payload["timestamp"])
+                dp_setpoint, created = DatapointSetpoint.objects.get_or_create(
+                    datapoint=datapoint,
+                    timestamp=timestamp,
                 )
-                datapoint.save(
-                    update_fields=[
-                        "last_setpoint",
-                        "last_setpoint_timestamp",
-                    ]
-                )
+                dp_setpoint.setpoint = payload["setpoint"]
+                dp_setpoint.save()
+                if created:
+                    logger.warning(
+                        "Overwrote existing datapoint setpoint msg for "
+                        "datapoint with id %s and timestamp %s"
+                        % (datapoint.id, timestamp)
+                    )
             except Exception:
                 logger.exception(
-                    'Exception while updating datapoint with a setpoint in DB.\n'
+                    'Exception while writing datapoint setpoint to DB.\n'
                     'The topic was: %s' % msg.topic
                 )
                 # This raise will be caught by paho mqtt. It should not though.
