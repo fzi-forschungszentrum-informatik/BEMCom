@@ -371,7 +371,8 @@ class SensorFlow():
 
             self.mqtt_client.publish(
                 topic=self.datapoint_map["sensor"][datapoint_key],
-                payload=json.dumps(value_msg)
+                payload=json.dumps(value_msg),
+                retain=True,
             )
 
 
