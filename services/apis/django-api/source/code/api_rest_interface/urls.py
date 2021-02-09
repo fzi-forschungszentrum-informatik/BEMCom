@@ -9,6 +9,12 @@ urlpatterns = [
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
     path("", SpectacularSwaggerView.as_view(url_name="schema")),
     path(
+        "datapoint/",
+        DatapointViewSet.as_view({
+            "get": "list",
+        })
+    ),
+    path(
         "datapoint/<int:dp_id>/",
         DatapointViewSet.as_view({
             "get": "retrieve",

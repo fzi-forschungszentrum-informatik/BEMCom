@@ -7,6 +7,7 @@ class DatapointSerializer(serializers.HyperlinkedModelSerializer):
     """
     Serializer matching the fields of the Datapoint model of the API.
     """
+    __doc__ = None
 
     class Meta:
         model = Datapoint

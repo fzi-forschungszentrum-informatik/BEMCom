@@ -29,6 +29,22 @@ class DatapointViewSet(DatapointViewSetTemplate):
     serializer_class = DatapointSerializer
     queryset = Datapoint.objects.none() # Required for DjangoModelPermissions
 
+    def retrieve(self, request, dp_id):
+        datapoint = get_object_or_404(
+            self.datapoint_model, id=dp_id, is_active=True
+        )
+        serializer = self.serializer_class(datapoint)
+        return Response(serializer.data)
+
+    def list(self, request):
+        """
+        Similar to the version DatapointViewSetTemplate but only returns
+        active Datapoints.
+        """
+        datapoints = self.datapoint_model.objects.filter(is_active=True)
+        serializer = self.serializer_class(datapoints, many=True)
+        return Response(serializer.data)
+
     def create(self, request):
         raise NotImplementedError(
             "It is not possible to manually create datapoints. Only "
