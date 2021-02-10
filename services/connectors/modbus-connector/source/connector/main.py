@@ -5,13 +5,19 @@
 import os
 import json
 import struct
+import logging
+from time import sleep
 
 from pymodbus.client.sync import ModbusTcpClient
+from pymodbus.exceptions import ModbusIOException
 
 from pyconnector_template.pyconector_template import SensorFlow as SFTemplate
 from pyconnector_template.pyconector_template import ActuatorFlow as AFTemplate
 from pyconnector_template.pyconector_template import Connector as CTemplate
 from pyconnector_template.dispatch import DispatchInInterval
+
+
+logger = logging.getLogger("modbus-typ-connector")
 
 
 class SensorFlow(SFTemplate):
@@ -64,38 +70,16 @@ class SensorFlow(SFTemplate):
         present, even if the child dicts are empty.
     """
 
-    def __init__(self):
-        """
-        Parse Arguments
-        """
-        self.modbus_master_ip = os.getenv("MODBUS_MASTER_IP")
-        self.modbus_master_port = int(os.getenv("MODBUS_MASTER_PORT"))
-        # TODO: Parse this from env variable and add notes to Readme.
-        self.modbus_config = {
-            "read_registers": {
-                "JanitzaCommon": {
-                    "address": 19000,
-                    "count": 20,
-                    "unit": 1,
-                    "datatypes": ">ffffffffff"
-                }
-            }
-        }
-
     def receive_raw_msg(self, raw_data=None):
         """
-        Functionality to receive a raw message from device.
+        Receive raw data from Modbus maser device using. ModbusTCP.
 
-        Poll the device/gateway for data and transforms this raw data
-        into the format epxected by run_sensor_flow. If the device/gateway
-        uses some protocol that pushes data, the raw data should be passed
-        as the raw_data argument to the function.
+        Poll the Modbus master device for the data specified in MODBUS_CONFIG.
 
         Parameters
         ----------
         raw_data : TYPE, optional
-            Raw data of device/gateway if the device pushes and is not
-            pulled for data. The default is None.
+            Not used, here as we poll for data. Kept for consistency.
 
         Returns
         -------
@@ -122,24 +106,57 @@ class SensorFlow(SFTemplate):
             if not self.modbus_connection.connect():
                 raise RuntimeError("Could not connect to Modbus master.")
 
-        # Read all registers requested by configuration.
-        raw_message = {"read_registers": {}}
-        for name in self.modbus_config["read_registers"]:
-            config = self.modbus_config["read_registers"][name]
-            response = self.modbus_connection.read_input_registers(
-                address=config["address"],
-                count=config["count"],
-                unit=config["unit"],
-            )
-            raw_message["read_registers"][name] = response.registers
-
+        # Read all data requested in configuration.
+        raw_message = {k: {} for k in self.modbus_read_method_names}
+        for read_method_name in self.modbus_read_method_names:
+            read_method = getattr(self.modbus_connection, read_method_name)
+            requested_ranges = self.modbus_config[read_method_name]
+            # requested_range is an entry like:
+            # {
+            #     "address": 19000,
+            #     "count": 20,
+            #     "unit": 1,
+            #     "datatypes": ">ffffffffff",
+            # },
+            for i, requested_range in enumerate(requested_ranges):
+                retry = 0
+                while True:
+                    response = read_method(
+                        address=requested_range["address"],
+                        count=requested_range["count"],
+                        unit=requested_range["unit"],
+                    )
+                    if isinstance(response, ModbusIOException):
+                        # This track here is if the read failed. Then we wait
+                        # a bit and retry a few times before we finally fail.
+                        # If we retried to often we raise the execption and
+                        # exit.
+                        logger.info(
+                            "Reading from modbus device failed with function "
+                            " %s for address %s. Retrying in %s seconds.",
+                            *(
+                                read_method_name,
+                                requested_range["address"],
+                                self.retry_wait,
+                            )
+                        )
+                        retry += 1
+                        if retry >= self.max_retries:
+                            raise response
+                        sleep(self.retry_wait)
+                        continue
+                    # Pack the registers/coils into the raw message.
+                    elif "_registers" in read_method_name:
+                        raw_message[read_method_name][i] = response.registers
+                    else:
+                        raw_message[read_method_name][i] = response.bits
+                    break
         msg = {
             "payload": {
                 "raw_message": raw_message
             }
         }
         return msg
-
 
     def parse_raw_msg(self, raw_msg):
         """
@@ -191,29 +208,48 @@ class SensorFlow(SFTemplate):
         """
         raw_message = raw_msg["payload"]["raw_message"]
         parsed_message = {}
-        for modbus_call in raw_message:
-            parsed_message[modbus_call] = {}
-            for name in raw_message[modbus_call]:
+        for read_method_name in raw_message:
+            parsed_message[read_method_name] = {}
+            modbus_config_for_method = self.modbus_config[read_method_name]
+            mbas_for_method = self.modbus_register_addresses[read_method_name]
+            for i in raw_message[read_method_name]:
+                # TODO: Add for COILS too.
 
-                # Load the raw data received via modbus and the definiton
-                # how to parse it.
-                registers = raw_message[modbus_call][name]
-                datatypes = self.modbus_config[modbus_call][name]["datatypes"]
+                if "_registers" in read_method_name:
+                    registers = raw_message[read_method_name][i]
+                    datatypes = modbus_config_for_method[i]["datatypes"]
+                    mbas = mbas_for_method[i]
 
-                # Now we going to to encode the registers (which are currently
-                # represented as 16bit int values) to bytes so we can decode
-                # the data back with the correct datatype.
-                #
-                # TODO add exception handling here.
-                values_b = b''.join(struct.pack('!H', x) for x in registers)
-                values = struct.unpack(datatypes, values_b)
+                    # Now we going to to encode the registers (which are
+                    # currently represented as 16bit int values) to bytes so
+                    # we can decode the data back with the correct datatype.
+                    # This approach is taken from the pymodbus code, which
+                    # does the same but doesn't allow to decode all of the
+                    # values at once.
+                    #
+                    # TODO: Add exception handling here?
+                    values_b = b''.join(struct.pack('!H', x) for x in registers)
+                    values = struct.unpack(datatypes, values_b)
 
-                values_dict = {str(k): str(v) for k, v in enumerate(values)}
-                parsed_message[modbus_call][name] = values_dict
+                    # Store each value under it's Modbus address.
+                    # This may overwrite values if overlapping address
+                    # ranges have been specified by the user.
+                    for mba, value in zip(mbas, values):
+                        # mba must be string as the _flatten_parsed_msg
+                        # method expects this. The value is stored as string
+                        # by message format convention.
+                        parsed_message[read_method_name][str(mba)] = str(value)
+
+                else:
+                    # TODO: Implement similar for registers here.
+                    raise NotImplementedError(
+                        "No unpacking for coils implemented yet."
+                    )
 
         msg = {
             "payload": {
-                "parsed_message": parsed_message
+                "parsed_message": parsed_message,
+                "timestamp": raw_msg["payload"]["timestamp"],
             }
         }
         return msg
@@ -258,6 +294,12 @@ class ActuatorFlow(AFTemplate):
     def send_command(self, datapoint_key, datapoint_value):
         """
         Send message to target device, via gateway if applicable.
+
+        TODO: Extend for writing stuff.
+              FC5:  write_coil
+              FC6:  write register
+              FC15: write_coils
+              FC16: write_registers
 
         Parameters
         ----------
@@ -343,11 +385,132 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
 
     def __init__(self, *args, **kwargs):
         """
-        Call init of parent classes that have an init method and pass all
-        arguments to the Connector definition from pyconnector_template.
+        Init the inherited code from python_connector_template and add
+        function to parse the special environment variable args to configure
+        this connector.
         """
-        SensorFlow.__init__(self)
         CTemplate.__init__(self, *args, **kwargs)
+
+        self.modbus_master_ip = os.getenv("MODBUS_MASTER_IP")
+        self.modbus_master_port = int(os.getenv("MODBUS_MASTER_PORT"))
+        self.modbus_config = self.parse_modbus_config(
+            config_json_str=os.getenv("MODBUS_CONFIG")
+        )
+        self.modbus_register_addresses = self.compute_register_addresses(
+            modbus_config=self.modbus_config
+        )
+        self.modbus_read_method_names = [
+            k for k in self.modbus_config if "read_" in k
+        ]
+        self.max_retries = os.getenv("MODBUS_MAX_RETRIES") or 3
+        self.retry_wait = os.getenv("MODBUS_RETRY_WAIT_SECONDS") or 15
+
+    @staticmethod
+    def parse_modbus_config(config_json_str):
+        """
+        Parse and verify the configuration JSON string.
+
+        This also removes unexpected components of the config.
+
+        Arguements:
+        -----------
+        config_json_str : string
+            The MODBUS_CONFIG JSON string as defined in the Readme.
+
+        Returns:
+        --------
+        config : dict
+            The parsed version of the input.
+        """
+        logger.info("Parsing MODBUS_CONFIG.")
+
+        expected_config_keys = [
+            "read_coils",
+            "read_discrete_inputs",
+            "read_holding_registers",
+            "read_input_registers",
+        ]
+
+        config = json.loads(config_json_str)
+
+        for config_key in list(config.keys()):
+            if config_key not in expected_config_keys:
+                logger.warning(
+                    "Found unexpected key in MODBUS_CONFIG: %s"
+                    "The corresponding values are:\n%s",
+                    *(config_key, json.dumps(config[config_key], indent=2))
+                )
+                del config[config_key]
+        return config
+
+    @staticmethod
+    def compute_register_addresses(modbus_config):
+        """
+        Compute the corresponding register addresses to the address ranges
+        specified by the user in MODBUS_CONFIG.
+
+        Arguments:
+        ----------
+        modbus_config : dict
+            As returned by parse_modbus_config.
+        """
+        # These are the Modbus functions (supported by the connector)
+        # that interact with registers.
+        method_names = [
+            "read_holding_registers",
+            "read_input_registers"
+        ]
+
+        # These is the mapping from the struct keys to the Modbus
+        # register count, that is how many registers are filled with that
+        # variable. See also:
+        # https://docs.python.org/3/library/struct.html#format-characters
+        char_register_size = {
+            "c": 1,
+            "b": 1,
+            "B": 1,
+            "?": 1,
+            "h": 1,
+            "H": 1,
+            "i": 2,
+            "I": 2,
+            "l": 2,
+            "L": 2,
+            "q": 4,
+            "Q": 4,
+            "e": 1,
+            "f": 2,
+            "d": 4,
+        }
+
+        register_addresses = {}
+        for method_name in method_names:
+            if method_name not in modbus_config:
+                continue
+
+            register_addresses[method_name] = {}
+            requested_ranges = modbus_config[method_name]
+            for i, requested_range in enumerate(requested_ranges):
+                # The first value starts at the start of the
+                # address range.
+                range_addresses = []
+                current_address = requested_range["address"]
+                for datatype_char in requested_range["datatypes"]:
+                    if datatype_char not in char_register_size:
+                        # Ignore chars defining endianess or padding.
+                        continue
+
+                    # Append the address this value starts and add it's
+                    # length so we get the starting address of the next
+                    # value.
+                    range_addresses.append(current_address)
+                    current_address += char_register_size[datatype_char]
+
+                # Finally store the addresses of this range under the
+                # index the range has in the config.
+                register_addresses[method_name][i] = range_addresses
+
+        return register_addresses
 
 
 if __name__ == "__main__":
@@ -374,5 +537,4 @@ if __name__ == "__main__":
         DeviceDispatcher=DeviceDispatcher,
         device_dispatcher_kwargs=device_dispatcher_kwargs,
     )
-
     connector.run()

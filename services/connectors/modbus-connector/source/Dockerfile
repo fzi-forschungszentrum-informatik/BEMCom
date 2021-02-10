@@ -1,7 +1,8 @@
-FROM bemcom/python-connector-template:0.1.0
+FROM bemcom/python-connector-template:0.1.2
 
-# Place your dependencies here. E.g:
-RUN pip install pymodbus==2.4.*
+# Installs dependencies.
+COPY ./requirements.txt /soucrce/requirements.txt
+RUN pip install -r /soucrce/requirements.txt
 
 # Export your connector script. Ensure the main program of the
 # connector resides under ./source/connector/main.py

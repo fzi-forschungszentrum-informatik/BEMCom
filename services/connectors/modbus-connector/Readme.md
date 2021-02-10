@@ -2,7 +2,10 @@
 
 This is a connector to communicate with Devices over ModbusTCP
 
+##### Local Development:
 
+* Install pyconnector template package `pip install -e` .
+* Install requirements 
 
 ### Supported Gateways
 

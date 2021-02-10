@@ -17,3 +17,4 @@ services:
             - DEBUG=${DEBUG}
             - MODBUS_MASTER_IP=${MODBUS_MASTER_IP}
             - MODBUS_MASTER_PORT=${MODBUS_MASTER_PORT}
+            - MODBUS_CONFIG=${MODBUS_CONFIG}
