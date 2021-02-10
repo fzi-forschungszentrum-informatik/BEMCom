@@ -1,4 +1,4 @@
-FROM bemcom/python-connector-template:0.1.1
+FROM bemcom/python-connector-template:0.1.2
 
 # Place your dependencies here. E.g:
 RUN pip install pymodbus==2.4.*

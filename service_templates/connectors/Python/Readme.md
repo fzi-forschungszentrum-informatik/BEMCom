@@ -19,8 +19,9 @@ This template allows the the implementation of connectors in Python with maximum
 
 ### Changelog
 
-| Tag   | Changes                               |
-| ----- | ------------------------------------- |
-| 0.1.0 | First productive version.             |
-| 0.1.1 | Set retain for available_datapoints m |
+| Tag   | Changes                                      |
+| ----- | -------------------------------------------- |
+| 0.1.0 | First productive version.                    |
+| 0.1.1 | Set retain for available_datapoints          |
+| 0.1.2 | Set all loggers to INFO if DEBUG is not set. |
 

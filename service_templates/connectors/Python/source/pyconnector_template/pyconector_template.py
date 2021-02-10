@@ -590,7 +590,8 @@ class Connector():
         # Set the log level according to the DEBUG flag.
         if self.DEBUG != "TRUE":
             logger.debug("Changing log level to INFO")
-            logger.setLevel(logging.INFO)
+            for logger_name in logging.root.manager.loggerDict:
+                logging.getLogger(logger_name).setLevel(logging.INFO)
 
         logger.debug("Finished Connector init.")
 
@@ -858,6 +859,7 @@ class Connector():
             self.mqtt_client.publish(
                 payload=json.dumps(self.available_datapoints),
                 topic=self.MQTT_TOPIC_AVAILABLE_DATAPOINTS,
+                retain=True,
             )
 
     def _send_heartbeat(self):
