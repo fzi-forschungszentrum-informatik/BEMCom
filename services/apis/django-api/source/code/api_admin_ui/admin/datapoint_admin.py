@@ -24,19 +24,22 @@ class DatapointAdmin(admin.ModelAdmin):
         "connector",
         "key_in_connector",
         "type",
+        "is_active",
+        "data_format",
+        "short_name",
+        "description",
         "example_value",
         "last_value",
         "last_value_timestamp_pretty",
-        "is_active",
-        "data_format",
-        "description"
     )
     list_display_links = (
         "key_in_connector",
     )
     list_editable = (
-        "description",
+        "is_active",
         "data_format",
+        "short_name",
+        "description",
     )
     list_filter = (
         "type",
@@ -140,6 +143,7 @@ class DatapointAdmin(admin.ModelAdmin):
                 "example_value",
                 "is_active",
                 "data_format",
+                "short_name",
                 "description",
         ]
 

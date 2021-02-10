@@ -1,3 +1,5 @@
+import json
+
 from django.db.models import signals
 from django.dispatch import receiver
 
@@ -5,6 +7,25 @@ from .models.connector import Connector
 from .models.datapoint import Datapoint
 from .models.controller import Controller, ControlledDatapoint
 from .connector_mqtt_integration import ConnectorMQTTIntegration
+
+
+@receiver(signals.pre_delete, sender=Connector)
+def clear_datapoint_map(sender, instance, **kwargs):
+    """
+    If we just delete the Connector object the connector service will not
+    see any update to datapoint_map, and hence continue to push data
+    about the previously selected datapoints. Here we send an empty datapoint
+    map, before we delete to reset all selected datapoints for the connector.
+
+    TODO: This deserves a test
+    """
+    cmi = ConnectorMQTTIntegration.get_instance()
+    cmi.client.publish(
+        topic=instance.get_mqtt_topics()["mqtt_topic_datapoint_map"],
+        payload=json.dumps({"sensor": {}, "actuator": {}}),
+        qos=2,
+        retain=True
+    )
 
 
 @receiver(signals.post_save, sender=Datapoint)

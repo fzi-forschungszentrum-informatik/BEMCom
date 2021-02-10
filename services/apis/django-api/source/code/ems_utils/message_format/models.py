@@ -247,6 +247,13 @@ class DatapointValueTemplate(models.Model):
 
     class Meta:
         abstract = True
+        constraints = [
+            models.UniqueConstraint(
+                fields=['datapoint', 'timestamp'],
+                name='Value msg unique for timestamp',
+            ),
+        ]
+
 
     datapoint = models.ForeignKey(
         DatapointTemplate,
@@ -314,6 +321,12 @@ class DatapointScheduleTemplate(models.Model):
 
     class Meta:
         abstract = True
+        constraints = [
+            models.UniqueConstraint(
+                fields=['datapoint', 'timestamp'],
+                name='Schedule msg unique for timestamp',
+            ),
+        ]
 
     datapoint = models.ForeignKey(
         DatapointTemplate,
@@ -378,6 +391,12 @@ class DatapointSetpointTemplate(models.Model):
 
     class Meta:
         abstract = True
+        constraints = [
+            models.UniqueConstraint(
+                fields=['datapoint', 'timestamp'],
+                name='Setpoint msg unique for timestamp',
+            ),
+        ]
 
     datapoint = models.ForeignKey(
         DatapointTemplate,

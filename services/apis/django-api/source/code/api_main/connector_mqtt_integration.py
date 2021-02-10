@@ -74,6 +74,7 @@ class ConnectorMQTTIntegration():
         self.client.on_disconnect = self.on_disconnect
         self.client.on_message = self.on_message
         self.client.on_subscribe = self.on_subscribe
+        self.client.on_unsubscribe = self.on_unsubscribe
 
         # Fill the topics within userdata
         self.update_topics()
@@ -187,14 +188,22 @@ class ConnectorMQTTIntegration():
             if topic not in self.connected_topics:
                 # use QOS=2, expect messages once and only once.
                 # No duplicates in log files etc.
-                self.client.subscribe(topic=topic, qos=2)
+                result, mid = self.client.subscribe(topic=topic, qos=2)
+                logger.info(
+                    "Subscribing (%s) to topic %s with status: %s",
+                    *(mid, topic, result)
+                )
                 self.connected_topics.append(topic)
 
         # Unsubscribe from topics no longer relevant.
         connected_topics_update = []
         for topic in self.connected_topics:
             if topic not in topics:
-                self.client.unsubscribe(topic=topic)
+                result, mid = self.client.unsubscribe(topic=topic)
+                logger.info(
+                    "Unsubscribing (%s) from topic %s with status: %s",
+                    *(mid, topic, result)
+                )
             else:
                 connected_topics_update.append(topic)
         self.connected_topics = connected_topics_update
@@ -319,8 +328,8 @@ class ConnectorMQTTIntegration():
                 )
                 dp_value.value = payload["value"]
                 dp_value.save()
-                if created:
-                    logger.warning(
+                if not created:
+                    logger.info(
                         "Overwrote existing datapoint value msg for datapoint "
                         "with id %s and timestamp %s"
                         % (datapoint.id, timestamp)
@@ -345,8 +354,8 @@ class ConnectorMQTTIntegration():
                 )
                 dp_schedule.schedule = payload["schedule"]
                 dp_schedule.save()
-                if created:
-                    logger.warning(
+                if not created:
+                    logger.info(
                         "Overwrote existing datapoint schedule msg for "
                         "datapoint with id %s and timestamp %s"
                         % (datapoint.id, timestamp)
@@ -371,8 +380,8 @@ class ConnectorMQTTIntegration():
                 )
                 dp_setpoint.setpoint = payload["setpoint"]
                 dp_setpoint.save()
-                if created:
-                    logger.warning(
+                if not created:
+                    logger.info(
                         "Overwrote existing datapoint setpoint msg for "
                         "datapoint with id %s and timestamp %s"
                         % (datapoint.id, timestamp)
@@ -507,5 +516,9 @@ class ConnectorMQTTIntegration():
 
     @staticmethod
     def on_subscribe(client, userdata, mid, granted_qos):
-        logger.info('Subscribed: %s, %s', mid, granted_qos)
+        logger.debug('Subscribe successful: %s, %s', mid, granted_qos)
+
+    @staticmethod
+    def on_unsubscribe(client, userdata, mid):
+        logger.debug('Unsubscribe successful: %s', mid)
         # TODO: Set subscription status of av. datapoint here?
