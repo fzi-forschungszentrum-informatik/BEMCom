@@ -2,17 +2,17 @@
 
 This monitoring service provides a grafana instance with a self-written datasource plugin to visualize data from the BEMcom REST API.
 
-The REST API basically provides datapoints with three types of timeseries data:
+The REST API basically provides datapoints with three types of time series data:
 
 - values - measured values of the datapoint
 - set-points - a user input marking an interval of acceptable values as well as a preferred value for one or several time intervals
 - schedules - the road map to be executed. A schedule could be inferred by an optimzation service given a set-point as input
 
-Not all datapoints provide all types of data as a datapoint can be a sensor - thus having values but no schedules - as well as an actor - having schedules and set-points as well.
+Not all datapoints provide all types of data as a datapoint can be a sensor - thus having values but no schedules - as well as an actor - having also schedules and set-points.
 
 See the BEMcom documentation (TODO: insert link) for more details.
 
-Thus, the holl-rest-api datasource plugin for grafana can display these three types of data quickly.
+Thus, the holl-rest-api datasource plugin for grafana can display these three types of time series quickly.
 
 ### On the holl-rest-api plugin
 
@@ -29,9 +29,8 @@ A query can either display meta data on the API or timeseries data.
 **Meta data** is toggled by a switch. The received table-like data gives information on all available datapoints.
 
 **Timeseries data** can be of the above described data types. Simply choose the datapoint by its short name and the datatype.
-The dropdown also features a autoselection when typing.
+The dropdown also features an autoselection when typing.
 
-TODO?: implement autocompletion instead of dropdown for datapoint selection. <br>
 TODO: implement auto detection of available data types for the selected datapoint.
 
 #### Development
@@ -40,7 +39,7 @@ The plugin is written in typescript and based on the [grafana plugin creator and
 
 You can...
 
-- Install all needed modules for development from within the holl-rest-api folder with <br>
+- Install all needed modules for development from within the `holl-rest-api` folder with <br>
   `npm install`
 - Make your changes to the source files under `./graf_data/plugins/holl-rest-api/src`
 - Hot build the plugin to see changes in the browser on reload with `yarn dev --watch`
