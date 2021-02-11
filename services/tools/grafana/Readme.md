@@ -20,7 +20,7 @@ Thus, the holl-rest-api datasource plugin for grafana can display these three ty
 
 The datasource is simply configured by providing a url to the APIs root. For example `http://example.fzi.de:8017/api`.
 
-Authentication is not supported by the initial version 0.1.0.
+Authentication is not supported by the initial version 0.1.
 
 #### Query configuration
 
@@ -30,8 +30,6 @@ A query can either display meta data on the API or timeseries data.
 
 **Timeseries data** can be of the above described data types. Simply choose the datapoint by its short name and the datatype.
 The dropdown also features an autoselection when typing.
-
-TODO: implement auto detection of available data types for the selected datapoint.
 
 #### Development
 
@@ -68,6 +66,7 @@ You can...
 
 ### Changelog
 
-| Tag   | Changes         |
-| ----- | --------------- |
-| 0.1.0 | Initial version |
+| Tag   | Changes                    |
+| ----- | -------------------------- |
+| 0.1.0 | Initial version            |
+| 0.1.1 | simpler setpoint selection |
