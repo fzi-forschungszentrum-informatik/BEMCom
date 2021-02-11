@@ -170,11 +170,9 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   }
 
   async testDatasource() {
-    // TODO Implement a proper health check for the api root
-
     const result = await getBackendSrv().datasourceRequest({
       method: 'GET',
-      url: this.url + '/',
+      url: this.url + '/datapoint/',
     });
 
     if (result.status === 200) {
