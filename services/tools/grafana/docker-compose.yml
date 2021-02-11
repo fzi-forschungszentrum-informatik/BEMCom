@@ -2,7 +2,7 @@ version: "3"
 
 services:
   holl-bemcom-app-grafana-rest-api:
-    image: grafana/grafana:7.3
+    image: grafana/grafana:7.3.6
     container_name: holl-bemcom-app-grafana-rest-api
     restart: always
     expose:
