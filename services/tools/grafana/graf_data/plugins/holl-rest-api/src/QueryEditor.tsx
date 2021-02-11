@@ -27,8 +27,7 @@ export class QueryEditor extends PureComponent<Props> {
     datatype_options: [
       { label: 'value', value: 0, description: 'timeseries of values' },
       { label: 'schedule', value: 1, description: 'currently active schedule' },
-      { label: 'setpoint upper', value: 2, description: 'uppder bound of latest setpoint' },
-      { label: 'setpoint lower', value: 2, description: 'lower bound of latest setpoint' },
+      { label: 'setpoint', value: 2, description: 'latest setpoint' },
     ],
   };
 

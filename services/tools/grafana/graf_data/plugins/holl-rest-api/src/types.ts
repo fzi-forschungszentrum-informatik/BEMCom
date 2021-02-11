@@ -13,8 +13,8 @@ export interface MyQuery extends DataQuery {
 
 export const defaultQuery: Partial<MyQuery> = {
   getMeta: false,
-  datapoint: { label: 'helloWorld', value: 0, description: '' },
-  datatype: { label: 'value', value: 0, description: '' },
+  datapoint: { label: '', value: 0, description: '' },
+  datatype: { label: 'value', value: 0, description: 'timeseries of values' },
 
   // constant: 6.5,
 };
@@ -23,8 +23,8 @@ export const defaultQuery: Partial<MyQuery> = {
  * These are options configured for each DataSource instance
  */
 export interface MyDataSourceOptions extends DataSourceJsonData {
-  host?: string;
-  path?: string;
+  // host?: string;
+  // path?: string;
 }
 
 /**

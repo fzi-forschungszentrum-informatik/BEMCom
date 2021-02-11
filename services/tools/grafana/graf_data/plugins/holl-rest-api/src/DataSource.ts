@@ -56,7 +56,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
       return result;
     } catch (error) {
-      console.log('Error when requesting Datasource: ', error);
+      console.log('Error: ', error.status, ' ', error.statusText);
       return false;
     }
   }
@@ -81,27 +81,31 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
           return response.data;
         } else {
           // time series like data.
-          const frame = new MutableDataFrame({
+          var frame = new MutableDataFrame({
             refId: target.refId,
-            fields: [
-              { name: 'Time', type: FieldType.time },
-              { name: 'Value', type: FieldType.number },
-            ],
+            name: 'timeseries',
+            fields: [{ name: 'time', type: FieldType.time }],
           });
 
           switch (target.datatype?.label) {
             case 'value':
+              frame.name = 'value';
+              frame.addField({ name: 'value', type: FieldType.number });
               response.data.forEach((point: any) => {
                 frame.appendRow([point.timestamp, point.value]);
               });
               break;
             case 'schedule':
+              frame.name = 'schedule';
+              frame.addField({ name: 'schedule', type: FieldType.number });
+
               let latest_schedule = response.data[response.data.length - 1];
               response.data.forEach((schedule: any) => {
                 if (schedule.timestamp > latest_schedule.timestamp) {
                   latest_schedule = schedule;
                 }
               });
+
               latest_schedule.schedule.forEach((interval: any) => {
                 // set frame content
                 // check if from or to is null
@@ -116,7 +120,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
               });
 
               break;
-            case 'setpoint lower':
+            case 'setpoint':
               let latest_setpoint = response.data[response.data.length - 1];
               response.data.forEach((setpoint: any) => {
                 if (setpoint.timestamp > latest_setpoint.timestamp) {
@@ -124,44 +128,47 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
                 }
               });
 
-              latest_setpoint.setpoint.forEach((interval: any) => {
-                let number_interval = interval.acceptable_values.map((x: string) => Number(x));
-                // set frame content
-                // check if from or to is null
-                if (interval.from_timestamp == null) {
-                  frame.appendRow([interval.to_timestamp - 1, Math.min(...number_interval)]);
-                } else if (interval.to_timestamp == null) {
-                  frame.appendRow([interval.from_timestamp, Math.min(...number_interval)]);
-                } else {
-                  frame.appendRow([interval.from_timestamp, Math.min(...number_interval)]);
-                  frame.appendRow([interval.to_timestamp - 1, Math.min(...number_interval)]);
-                }
-              });
-              break;
-            case 'setpoint upper':
-              let latest_setpoint_up = response.data[response.data.length - 1];
-              response.data.forEach((setpoint: any) => {
-                if (setpoint.timestamp > latest_setpoint_up.timestamp) {
-                  latest_setpoint_up = setpoint;
-                }
-              });
+              frame.name = 'setpoint';
+              frame.addField({ name: 'lower bound', type: FieldType.number });
+              frame.addField({ name: 'upper bound', type: FieldType.number });
+              frame.addField({ name: 'preferred value', type: FieldType.number });
 
-              latest_setpoint_up.setpoint.forEach((interval: any) => {
-                let number_interval = interval.acceptable_values.map((x: string) => Number(x));
-                // set frame content
+              latest_setpoint.setpoint.forEach((interval: any) => {
+                let acceptable_values = interval.acceptable_values.map((x: string) => Number(x));
+                let preferred_value = Number(interval.preferred_value);
+
                 // check if from or to is null
                 if (interval.from_timestamp == null) {
-                  frame.appendRow([interval.to_timestamp - 1, Math.max(...number_interval)]);
+                  frame.appendRow([
+                    interval.to_timestamp - 1,
+                    Math.min(...acceptable_values),
+                    Math.max(...acceptable_values),
+                    preferred_value,
+                  ]);
                 } else if (interval.to_timestamp == null) {
-                  frame.appendRow([interval.from_timestamp, Math.max(...number_interval)]);
+                  frame.appendRow([
+                    interval.from_timestamp,
+                    Math.min(...acceptable_values),
+                    Math.max(...acceptable_values),
+                    preferred_value,
+                  ]);
                 } else {
-                  frame.appendRow([interval.from_timestamp, Math.max(...number_interval)]);
-                  frame.appendRow([interval.to_timestamp - 1, Math.max(...number_interval)]);
+                  frame.appendRow([
+                    interval.from_timestamp,
+                    Math.min(...acceptable_values),
+                    Math.max(...acceptable_values),
+                    preferred_value,
+                  ]);
+                  frame.appendRow([
+                    interval.to_timestamp - 1,
+                    Math.min(...acceptable_values),
+                    Math.max(...acceptable_values),
+                    preferred_value,
+                  ]);
                 }
               });
               break;
           }
-
           return frame;
         }
       })
