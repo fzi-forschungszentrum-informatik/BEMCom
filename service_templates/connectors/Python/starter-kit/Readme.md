@@ -52,13 +52,35 @@ None preferably. You should only add volumes, especially file mounts if it is re
 
 Follow the following steps while contributing to the connector:
 
-* Create a `.env` file with suitable configuration for your local setup.
-* Optional: Update the image of the python-connector-template by editing [source/Dockerfile](source/Dockerfile), e.g. to install dependencies.
-* Start the development instance with  `docker-compose up`
-* Place your code under [source/connector](./source/connector) but keep the [source/connector/main.py](./source/connector/main.py) as entrypoint. Ensure everything works as expected.
+* Update the `.env` file with suitable configuration for your local setup.
+
+* Specify all required dependencies in [source/requirements.txt](source/requirements.txt).
+
+* Optional: Install a local version of dependencies for local development:
+
+  * ```bash
+    # in service_templates/connectors/Python/
+    pip install -e ./source/
+    ```
+
+  * ```bash
+    # in the folder of your connector
+    pip install -r ./source/requirements.txt
+    ```
+
+* Place your code under [source/connector](./source/connector) but keep the [source/connector/main.py](./source/connector/main.py) as entrypoint. Place your tests in [source/connector/tests](./source/connector/tests).
+
+* Ensure all relevant tests exist and all of those are passed before preceding. 
+
 * Update the image name and tag in  [./build_docker_image.sh](./build_docker_image.sh) and execute the shell script to build an updated image. 
-* Run the new image and check once more everything works as expected.
+
+  ```bash
+  # This will fail if not all tests are passed.
+  bash build_docker_image.sh
+  ```
+
 * Document your changes and new tag by appending the list below.
+
 * git add, commit and push.
 
 

@@ -12,16 +12,35 @@ This template allows the the implementation of connectors in Python with maximum
 
 ###  Checklist for Updating the Template
 
-* [ ] Implement your changes.
-* [ ] Update the version number in [build_docker_image.sh](build_docker_image.sh) and in  [starter-kit/source/Dockerfile](starter-kit/source/Dockerfile).
+* [ ] Implement your changes including tests. The simplest way for developing locally is to install the pyonnector_template package locally with:
+
+  ```
+  pip install -e ./source/
+  ```
+
+  Ensure that all tests are passed before continuing, the docker image will not build if not.
+
+  ```
+  pytest ./source/
+  ```
+
+* [ ] Update the version number in [build_docker_image.sh](build_docker_image.sh),in [starter-kit/source/Dockerfile](starter-kit/source/Dockerfile) and [source/setup.py](source/setup.py) 
+
 * [ ] Check if your changes affect [starter-kit/docker-compose.yml](starter-kit/docker-compose.yml), [starter-kit/Readme.md](starter-kit/Readme.md) or [starter-kit/build_docker_image.sh](starter-kit/build_docker_image.sh).
-* [ ] Check if it is necessary to update existing connectors, by editing the respective Dockerfile in their source directory.  You may need to build the template first.
+
+* [ ] Build the template image with:
+
+  ```
+  bash build_docker_image.sh
+  ```
+
+* [ ] Check if it is necessary to update existing connectors, by editing the respective Dockerfile in their source directory.
 
 ### Changelog
 
-| Tag   | Changes                                      |
-| ----- | -------------------------------------------- |
-| 0.1.0 | First productive version.                    |
-| 0.1.1 | Set retain for available_datapoints          |
-| 0.1.2 | Set all loggers to INFO if DEBUG is not set. |
+| Tag   | Changes                                                      |
+| ----- | ------------------------------------------------------------ |
+| 0.1.0 | First productive version.                                    |
+| 0.1.1 | Set retain for available_datapoints                          |
+| 0.1.2 | Set all loggers to INFO if DEBUG is not set. Improve templates and documentation. |
 
