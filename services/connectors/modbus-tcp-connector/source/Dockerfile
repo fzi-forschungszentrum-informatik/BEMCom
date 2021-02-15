@@ -8,6 +8,9 @@ RUN pip install -r /soucrce/requirements.txt
 # connector resides under ./source/connector/main.py
 COPY ./connector/ /source/connector/
 
+# Run all tests to verify the connector is ok.
+RUN pytest /source/connector/
+
 
 
 

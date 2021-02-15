@@ -26,6 +26,8 @@ class TestParseRawMsg(unittest.TestCase):
         # Prepare everything so we can init the class.
         os.environ["MODBUS_MASTER_IP"] = "localhost"
         os.environ["MODBUS_MASTER_PORT"] = "502"
+        os.environ["MQTT_BROKER_HOST"] = "localhost"
+        os.environ["MQTT_BROKER_PORT"] = "1883" 
         os.environ["MODBUS_CONFIG"] = json.dumps(test_modbus_config)
         cls.connector = Connector()
 
