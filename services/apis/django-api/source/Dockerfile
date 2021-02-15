@@ -18,7 +18,7 @@ COPY ./requirements.txt /bemcom/
 RUN pip install -r requirements.txt
 
 # Install source code.
-COPY ./django_code/ /bemcom/code/
+COPY ./code/ /bemcom/code/
 
 # Add entrypoint script for container init.
 COPY ./entrypoint.sh /bemcom/

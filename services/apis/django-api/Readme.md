@@ -1,3 +1,7 @@
+# Django based API
+
+* Security issues are monitored and new versions of this API are provided asap if a security issue in one of the components becomes known.
+
 # Homematic Connector
 
 This is a connector to integrate [eQ-3 Homematic](https://www.eq-3.com/products/homematic.html) devices.

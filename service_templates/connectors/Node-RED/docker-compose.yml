@@ -10,7 +10,7 @@ services:
             - 8200:1880
         volumes: 
             - ./source/Node-RED_data:/data        
-        user: 1000:1000
+        user: ${USER_ID}:${GROUP_ID}
         environment:
             - CONNECTOR_NAME=node-red-connector-template
             - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}

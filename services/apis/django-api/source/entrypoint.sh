@@ -67,7 +67,8 @@ pytest /bemcom/code/
 # Both should bind to port 8000 within the container and start the server.
 if [ $MODE == "DEVL" ]
 then
-    python3 /bemcom/code/manage.py runserver 0.0.0.0:8000
+    # --noreload prevents duplicate entries in DB.
+    python3 /bemcom/code/manage.py runserver --noreload 0.0.0.0:8000
 else
     python3 /bemcom/code/manage.py collectstatic
     cd /bemcom/code && \
