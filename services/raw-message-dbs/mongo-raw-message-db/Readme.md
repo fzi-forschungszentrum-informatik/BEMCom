@@ -36,10 +36,31 @@ This is a MongoDB based Raw Message DB for BEMCom.
 * ### Inital Startup Checklist
 
   * Create an empty directory for the containers persistent files. Set USER_ID and GROUP_ID to the ids of the user who owns the directory. Set MONGODB_VOLUME to that directory.
+  
   * Spin up the container with blank value for MONGO_USERNAME.
-  * Create a user for the Python MQTT Integration script. See https://docs.mongodb.com/manual/tutorial/create-users/ for details. Give the user read and write permissions for the database `bemcom_db`.
+  
+  * Create a user for the Python MQTT Integration script. See https://docs.mongodb.com/manual/tutorial/create-users/ for details. Give the user read and write permissions for the database `bemcom_db`. E.g. with this 
+  
+    ```
+    docker exec -it  your-bemcom-app-mongo-raw-message-db mongo
+    use admin
+    db.createUser(
+    	{
+    		user: "bemcom",
+    		pwd: passwordPrompt(),
+    		roles: [
+    			{ role: "readWrite", db: "bemcom_db" }
+        	]
+    	}
+    )
+    ```
+  
+    
+  
   * Stop the container.
+  
   * Set the remaining environment variables (MONGO_USERNAME, MONGO_PASSWORD, MONGO_LOGIN_DB) according to the values you defined previously.
+  
   * Restart the container, inspect the logs to verify that everything works as expected.
 
 
