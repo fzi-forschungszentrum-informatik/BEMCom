@@ -9,6 +9,11 @@ do
     do
         # And executes the build scripts in the correct directory to make local paths work.
         script_dir=$(echo "$build_script" | rev | cut -d / -f2-1000 | rev)
+        # Skip the build scripts in the starter kits of the connector templates.
+        # These don't contain useful BEMCom images.
+        if [[ $script_dir == *"starter-kit"* ]]; then
+            continue
+        fi
         cd "$script_dir"
         printf "Running $build_script"
         # Preserve log output so we can only display output that failed.

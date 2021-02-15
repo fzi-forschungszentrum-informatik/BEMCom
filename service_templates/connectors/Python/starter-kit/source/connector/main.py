@@ -5,8 +5,6 @@
 import os
 import json
 
-from pymodbus.client.sync import ModbusTcpClient
-
 from pyconnector_template.pyconector_template import SensorFlow as SFTemplate
 from pyconnector_template.pyconector_template import ActuatorFlow as AFTemplate
 from pyconnector_template.pyconector_template import Connector as CTemplate
