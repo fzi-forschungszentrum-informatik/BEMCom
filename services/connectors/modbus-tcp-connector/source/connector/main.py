@@ -226,10 +226,20 @@ class SensorFlow(SFTemplate):
                     # This approach is taken from the pymodbus code, which
                     # does the same but doesn't allow to decode all of the
                     # values at once.
-                    #
-                    # TODO: Add exception handling here?
                     values_b = b''.join(struct.pack('!H', x) for x in registers)
-                    values = struct.unpack(datatypes, values_b)
+                    try:
+                        values = struct.unpack(datatypes, values_b)
+                    except struct.error:
+                        logger.error(
+                            "Unpacking binary data with struct failed. "
+                            "The Modbus request returned %s registers, aka "
+                            "%s bytes. However, you may have configured "
+                            "datatypes in MODBUS_CONFIG corresponding to "
+                            "a different number of bytes, see struct.error "
+                            "below.",
+                            *(len(registers), len(registers)*2)
+                        )
+                        raise
 
                     # Store each value under it's Modbus address.
                     # This may overwrite values if overlapping address
@@ -241,7 +251,7 @@ class SensorFlow(SFTemplate):
                         parsed_message[read_method_name][str(mba)] = str(value)
 
                 else:
-                    # TODO: Implement similar for registers here.
+                    # TODO: Implement similar for coils here.
                     raise NotImplementedError(
                         "No unpacking for coils implemented yet."
                     )
@@ -389,6 +399,22 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         function to parse the special environment variable args to configure
         this connector.
         """
+        # We need to specify a dispatcher that triggers the connection with
+        # the device or gateway. Here we want to poll the device with the
+        # interval set in the POLL_SECONDS environment variable.
+        kwargs["DeviceDispatcher"] = DispatchInInterval
+        kwargs["device_dispatcher_kwargs"] = {
+            "call_interval": float(os.getenv("POLL_SECONDS"))
+        }
+
+        # Sensor datapoints will be added to available_datapoints automatically
+        # once they are first appear in run_sensor_flow method. It is thus not
+        # necessary to specify them here, although it would be possible to
+        # compute all possible datapoints beforehand based on MODBUS_CONFIG
+        kwargs["available_datapoints"] = {
+            "sensor": {},
+            "actuator": {}
+        }
         CTemplate.__init__(self, *args, **kwargs)
 
         self.modbus_master_ip = os.getenv("MODBUS_MASTER_IP")
@@ -514,27 +540,5 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
 
 
 if __name__ == "__main__":
-    # Sensor datapoints will be added to available_datapoints automatically
-    # once they are first appear in run_sensor_flow method. It is thus not
-    # necessary to specify them here. Actuator datapoints must be
-    # specified explicitly, including a demo value.
-    available_datapoints = {
-        "sensor": {},
-        "actuator": {}
-    }
-    # We need to specify a dispatcher that triggers the connection with
-    # the device or gateway. Here we want to poll the device every 5 seconds
-    # and use the DispatchInInterval interval thus, with suitable
-    # configuration. The run method of the Connector will automatically
-    # wire up target function of the dispatcher (run_sensor_flow) with
-    # the dispatcher.
-    DeviceDispatcher = DispatchInInterval
-    device_dispatcher_kwargs = {"call_interval": 5}
-
-    # Init the connector with the configuration and arguments defined above.
-    connector = Connector(
-        available_datapoints=available_datapoints,
-        DeviceDispatcher=DeviceDispatcher,
-        device_dispatcher_kwargs=device_dispatcher_kwargs,
-    )
+    connector = Connector()
     connector.run()
