@@ -1,8 +1,8 @@
 FROM bemcom/python-connector-template:0.1.2
 
 # Installs dependencies.
-COPY ./requirements.txt /soucrce/requirements.txt
-RUN pip install -r /soucrce/requirements.txt
+COPY ./requirements.txt /source/requirements.txt
+RUN pip install -r /source/requirements.txt
 
 # Export your connector script. Ensure the main program of the
 # connector resides under ./source/connector/main.py
@@ -10,7 +10,3 @@ COPY ./connector/ /source/connector/
 
 # Run all tests to verify the connector is ok.
 RUN pytest /source/connector/
-
-
-
-
