@@ -9,17 +9,20 @@ ENV PYTHONUNBUFFERED 1
 # This must be a folder due to the journaling files created
 # by SQLite. This folder should be overloaded by a volume 
 # mount in production, but serves as fallback this is not configured.
-RUN mkdir -p /bemcom/code /bemcom/db /bemcom/static /bemcom/cert && \
-    chmod a+rw -R /bemcom
-WORKDIR /bemcom
+RUN mkdir -p /source/code /source/static /source/cert && \
+    chmod a+rw -R /source
+WORKDIR /source
 
 # Install dependencies
-COPY ./requirements.txt /bemcom/
+COPY ./requirements.txt /source/
 RUN pip install -r requirements.txt
 
 # Install source code.
-COPY ./code/ /bemcom/code/
+COPY ./code/ /source/code/
 
 # Add entrypoint script for container init.
-COPY ./entrypoint.sh /bemcom/
-CMD ["bash","/bemcom/entrypoint.sh"]
+COPY ./entrypoint.sh /source/
+CMD ["bash","/source/entrypoint.sh"]
+
+# Run all tests to verify the service is ok.
+RUN pytest /source/code/

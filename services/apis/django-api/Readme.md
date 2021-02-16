@@ -1,43 +1,13 @@
-# Django based API
+# Django API
 
-* Security issues are monitored and new versions of this API are provided asap if a security issue in one of the components becomes known.
-
-# Homematic Connector
-
-This is a connector to integrate [eQ-3 Homematic](https://www.eq-3.com/products/homematic.html) devices.
+This is the reference implementation for an BEMCom API service.
 
 ### To document:
 
-* [ ] Mounts for DB
-* [ ] SECRET_KEY
-* [ ] ALLOWED_HOSTS? -> Rather Host FQDN
-* [ ] ADMIN
+* Security issues are monitored and new versions of this API are provided asap if a security issue in one of the components becomes known.
+
 * [ ] `MODE=PROD SSL_KEY_PEM=$(cat key.pem) SSL_CERT_PEM=$(cat cert.pem) docker-compose up --build`
 * [ ] docker exec -it django-api /bemcom/code/manage.py createsuperuser
-
-### TODO
-
-* [ ] E-Mail Backend?
-
-### Supported Gateways
-
-| Manufacturer | Model                              | Tested?/Remarks?                      |
-| ------------ | ---------------------------------- | ------------------------------------- |
-| eQ-3         | Homematic CCU3 (HmIP-CCU3)         | Tested.                               |
-| eQ-3         | Homematic CCU2 (HM-Cen-O-TW-x-x-2) | Not tested, should nevertheless work. |
-
-
-
-### Supported Devices
-
-The connector should be able to process sensor datapoints of all existing Homematic devices. Currently only actuator datapoints of parameter type `SET_TEMPERATURE` are recognized automatically and exposed as available datapoints. The following devices have been tested 
-
-| Manufacturer | Model                              | Tested?/Remarks?                                             |
-| ------------ | ---------------------------------- | ------------------------------------------------------------ |
-| eQ-3         | Wall Thermostat (HM-TC-IT-WM-W-EU) | Tested, also writing the `SET_TEMPERATURE` datapoint. Pushing values other then allowed range (5-30.5°C) to `SET_TEMPERATURE` will result in an `off` setpoint. |
-| eQ-3         | Window Handle Sensor (HM-Sec-RHS)  | Tested.                                                      |
-| eQ-3         | Heating Actuator (HM-CC-RT-DN)     | Tested.                                                      |
-
 
 
 ### Configuration
@@ -46,41 +16,134 @@ The connector should be able to process sensor datapoints of all existing Homema
 
 | Port                    | Usage/Remarks                                                |
 | ----------------------- | ------------------------------------------------------------ |
-| 1880                    | Node-RED development user interface.                         |
-| ${CALLBACK_BINRPC_PORT} | The external port the CCU will try to connect to for the BINRPC protocol. Should be identical for the host as internal for the container. |
-| ${CALLBACK_XMLRPC_PORT} | The external port the CCU will try to connect to for the XMLRPC protocol. Should be identical for the host as internal for the container. |
+| 8000                    | REST interface and admin user interface.                     |
 
 ##### Environment Variables
 
-| Enironment Variable    | Example  Value      | Usage/Remarks                                                |
-| ---------------------- | ------------------- | ------------------------------------------------------------ |
-| CONNECTOR_NAME         | brand-new-connector | The name of the connector. Must be unique and is used to compute the MQTT topics. Use all lowercase chars and only dashes for separation to prevent clashes with Dockers internal name resolution system. |
-| MQTT_BROKER_HOST       | broker.domain.de    | The DNS name or IP address of the MQTT broker. `localhost` will not work, use the full DNS name of the host machine instead. |
-| MQTT_BROKER_HOST       | 1883                | The port of the MQTT broker.                                 |
-| SEND_RAW_MESSAGE_TO_DB | TRUE                | If set to `TRUE` (that is a string of capital letters) will publish all received raw messages on topic `${CONNECTOR_NAME}/raw_message_to_db` |
-| CCU_DNS_NAME           | ccu.domain.de       | The DNS name or IP address of the CCU to connect to.         |
-| CALLBACK_DNS_NAME      | hostname.domain.de  | The DNS name or IP of the machine the connector is run on. Is used by the CCU to connect and push updates. |
-| CALLBACK_BINRPC_PORT   | 2069                | See ports. Must be identical to the port exposed on the host to allow the Node-RED flow to send the correct port value to the CCU for callback. |
-| CALLBACK_XMLRPC_PORT   | 2070                | See ports. Must be identical to the port exposed on the host to allow the Node-RED flow to send the correct port value to the CCU for callback. |
+| Enironment Variable | Example  Value                                    | Usage/Remarks                                                |
+| ------------------- | ------------------------------------------------- | ------------------------------------------------------------ |
+| MQTT_BROKER_HOST    | broker.domain.de                                  | The DNS name or IP address of the MQTT broker. `localhost` will not work, use the full DNS name of the host machine instead. |
+| MQTT_BROKER_HOST    | 1883                                              | The port of the MQTT broker.                                 |
+| DJANGO_DEBUG        | FALSE                                             | If set to `TRUE` (the string) will activate the [debug mode of django](https://docs.djangoproject.com/en/3.1/ref/settings/#debug), which should only be used while developing not during production operation. Defaults to False |
+| DJANGO_ADMINS       | [["John", "john@example.com"]]                    | Must be a valid JSON. Is set to [ADMINS setting](https://docs.djangoproject.com/en/3.1/ref/settings/#admins) of Django. Defaults to an empty list. |
+| DJANGO_SECRET_KEY   | oTg2aWkM...                                       | Can be used to specify the [SECRET_KEY](https://docs.djangoproject.com/en/3.1/ref/settings/#std:setting-SECRET_KEY) setting of Django. Defaults to a random sequence of 64 chars generated on container startup. Note that changing the secret key will invalidate all cookies and thus force all user to login again. |
+| HOSTNAME            | bemcom.domain.com                                 | The hostname the API service should be hosted on. Is added to the ALLOWED_HOSTS setting of Django. Defaults to `localhost`, which means that API can only be accessed from the local machine. |
+| SSL_CERT_PEM        | -----BEGIN CERTIFICATE-----<br/>MIIFCTCCAvG...    | The certificate to use for HTTPS. Will generate a self signed certificate if SSL_CERT_PEM or SSL_KEY_PEM are empty. The self signed certificate will make HTTPS work, but browsers will issue a warning. |
+| SSL_KEY_PEM         | -----BEGIN PRIVATE KEY-----<br/>MIIJQgIBADANBg... | Similar to SSL_CERT_PEM but should hold the private key of the certificate. |
+| DATABASE_SETTING    | see [Database Setup](#database-setup).            | Defines the default database for Django, see [Database Setup](#database-setup) for details. Defaults to SQLite with data stored in file source/db.sqlite3 . |
+
 
 ##### Volumes
 
-None.
+None for most scenarios. Eventually a volume may be used to persist the SQLite database file. See below.
 
+### Database Setup
 
+You should be able to use any database [supported by Django](https://docs.djangoproject.com/en/3.1/ref/settings/#engine). Only PostgreSQL and SQLite have been tested so far.
+
+##### SQLite
+
+SQLite database are not recommended for production use. No setup is required for just testing the container. If the SQLite file should be persisted beyond the container life it is necessary to carry out the following steps:
+
+* ```bash
+  # Create an empty file so docker has something to mount
+  touch /source/db.sqlite3
+  ```
+
+* Add the following line to the docker-compose file:
+
+  ```
+          volumes:
+              - ./source/db.sqlite3:/source/db.sqlite3
+  ```
+
+##### Other Databases
+
+For any database [supported by Django](https://docs.djangoproject.com/en/3.1/ref/settings/#engine) you need to set up the database yourself and provide an appropriate setting as JSON string on the DATABASE_SETTING environment variable. For example a valid JSON string for PostgreSQL configuration could look like this:
+
+```json
+{
+    "ENGINE": "django.db.backends.postgresql",
+    "NAME": "mydatabase",
+    "USER": "mydatabaseuser",
+    "PASSWORD": "mypassword",
+    "HOST": "127.0.0.1",
+    "PORT": "5432"
+}
+```
+
+Note: that the API service uses only one database, and these settings are used as the default database. See [here](https://docs.djangoproject.com/en/3.1/ref/settings/#databases) for more details.
+
+### TODO
+
+* [ ] Alerting (E-Mail / Alertmanager) if operation goes wrong.
+* [ ] Document return objects and codes for errors of REST interface.
+* [ ] Query parameters to select only certain time ranges while retrieving values/setpoints/schedules from REST interface
+* [ ] Add functionality to align timestamps while retrieving data from REST interface.
+* [ ] Add functionality to disable controllers and the history DB to support new users.
 
 ### Development Checklist
 
 Follow the following steps while contributing to the connector:
 
+* If you have no Database set up yet, follow the steps of [Database Setup](#database-setup) above.
+
 * Create a `.env` file with suitable configuration for your local setup.
-* Optional: Update the image of the node-red-connector-template by editing [source/Dockerfile](source/Dockerfile) 
-* Start the development instance with  `docker-compose up -d`
-* Edit the flows, ensure everything works as expected.
-* Export the changed flows and update/create the files in [./source/flows/](./source/flows/). The filenames should be the flows ids.
-* Update the image tag in  [./build_docker_image.sh](./build_docker_image.sh) and execute the shell script to build an updated image. 
-* Run the new image and check once more everything works as expected.
+
+* For local development (the code is executed in a python environment on the machine):
+
+  * Install dependencies with:
+
+    ```bash
+    pip install -r ./source/requirements.txt
+    ```
+
+  * Start the development server if needed with: 
+    ```bash
+    source/api/manage.py runserver
+    ```
+    
+  * Implement your changes as well all tests to cover your changes.
+  
+  * To run the tests use (check the [pytest docs](https://docs.pytest.org/en/stable/contents.html) for more information):
+  
+    ```bash
+    pytest source/api/
+    ```
+  
+* For development in the container (use `MODE=DEVL` in `.env` file for debug log output and to enable [nice features of Django](https://docs.djangoproject.com/en/3.1/ref/settings/#debug)):
+
+  * Start the container with:
+
+    ```bash
+    docker-compose up
+    ```
+
+  * Implement your changes as well all tests to cover your changes.
+
+  * To run the tests use the following line in a second terminal (check the [pytest docs](https://docs.pytest.org/en/stable/contents.html) for more information):
+
+    ```bash
+    docker exec django-api pytest /source/api/
+    ```
+
+* After everything is ready check that service also works in production mode by executing:
+
+  ```bash
+  MODE=PROD docker-compose up
+  ```
+
+  
+
+* Update the image name and tag in  [./build_docker_image.sh](./build_docker_image.sh) and execute the shell script to build an updated image. 
+
+    ```bash
+    # This will fail if not all tests are passed.
+    bash build_docker_image.sh
+    ```
+
 * Document your changes and new tag by appending the list below.
+
 * git add, commit and push.
 
 
@@ -91,3 +154,7 @@ Follow the following steps while contributing to the connector:
 | ----- | ---------------------------- |
 | 0.1.0 | Initial version              |
 | 0.1.1 | Fix bug in send command flow |
+
+[#Database_Setup]: 
+[#DatabaseSetup]: 
+[#database-setup]: 

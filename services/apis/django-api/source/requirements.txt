@@ -9,6 +9,7 @@ drf-spectacular==0.11.*
 paho-mqtt==1.5.*
 
 # To allow running the tests.
+pytest
 pytest-django
 
 # To parse settings from .env files.
