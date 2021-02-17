@@ -16,16 +16,17 @@ services:
 
         volumes:
             - ./source/api:/source/api
-            - ./source/db.sqlite3:/source/db.sqlite3
 
         user: "${USER_ID}:${GROUP_ID}"
 
         environment:
             - "MQTT_BROKER_HOST=${MQTT_BROKER_HOST}"
             - "MQTT_BROKER_PORT=${MQTT_BROKER_PORT}"
-            - "MODE=${MODE}"
+            - "LOGLEVEL=${LOGLEVEL}"
+            - "DJANGO_DEBUG=${DJANGO_DEBUG}"
             - "DJANGO_ADMINS=${DJANGO_ADMINS}"
             - "DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}"
             - "HOSTNAME=${HOSTNAME}"
             - "SSL_CERT_PEM=${SSL_CERT_PEM}"
             - "SSL_KEY_PEM=${SSL_KEY_PEM}"
+            - "DATABASE_SETTING=${DATABASE_SETTING}"

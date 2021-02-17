@@ -10,25 +10,26 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.1/ref/settings/
 """
 import os
+import json
+import random
+import string
 from pathlib import Path
 
 from dotenv import load_dotenv, find_dotenv
 
-# This should read in variables stored in the env files of the parent directores.
-# This is used in container mode to load auto generated values like SECRET_KEY
-# and ALLOWED_HOSTS. While developing outside of the container you can place
-# development values for the variables in the .env file next to docker-compose.yml
-# it is also found here.
-load_dotenv(find_dotenv(), verbose=True, override=True)
+# This should read in variables stored in the env files of the parent
+# directores. While developing outside of the container you can place
+# development values for the variables in the .env file next to
+# docker-compose.yml which then will be used as environment variables here.
+load_dotenv(find_dotenv(), verbose=False, override=True)
 
 # ------------------------------------------------------------------------------
-# Custom settings for the API service.
+# Settings for connector_mqtt_integration.py
 # ------------------------------------------------------------------------------
 
 # Load custom configuration variables from environment variable
 MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST")
 MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT"))
-MODE = os.getenv("MODE")
 
 # Settings for connection to MQTT broker.
 MQTT_BROKER = {
@@ -44,21 +45,26 @@ MQTT_BROKER = {
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY=os.getenv("DJANGO_SECRET_KEY")
+# This generates a new random key every time we start the application or
+# run anything from manage.py. This also invalidates all cookies which
+# makes users login again. Thus, it is a good idea to fix the key in
+# production.
+if not os.getenv("DJANGO_SECRET_KEY"):
+    SECRET_KEY = ''.join(random.choice(string.ascii_letters) for i in range(64))
+else:
+    SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
-if MODE == "DEVL":
+if os.getenv("DJANGO_DEBUG") == "TRUE":
     DEBUG = True
 
-ALLOWED_HOSTS = eval(os.getenv("ALLOWED_HOSTS"))
-DJANGO_ADMINS = os.getenv("DJANGO_ADMINS")
-if DJANGO_ADMINS:
-    ADMINS = eval(DJANGO_ADMINS)
+ALLOWED_HOSTS = [os.getenv("HOSTNAME") or "localhost"]
+if os.getenv("DJANGO_ADMINS"):
+    ADMINS = json.loads(os.getenv("DJANGO_ADMINS"))
 
 
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -109,33 +115,22 @@ ASGI_APPLICATION = 'api_main.asgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/3.1/ref/settings/#databases
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR.parent / 'db' / 'db.sqlite3',
+if os.getenv("DATABASE_SETTING"):
+    DATABASES = {
+        'default': json.loads(os.getenv("DATABASE_SETTING"))
     }
-}
-
-# Logging inspired by suggestions in practical django book.
-# This configures one explicit logger per app, as this allows us
-# to identify the source of a log message easily.
-log_level = 'INFO'
-if DEBUG:
-    log_level = 'DEBUG'
-
-loggers = {}
-# Explicitly add all django apps you would like to see logs for.
-for app in ["api_main", "api_rest_interface", "admin_ui"]:
-    loggers[app] = {
-        'handlers': ['console'],
-        'level': log_level,
-        'propagate': True,
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR.parent / 'db.sqlite3',
+        }
     }
+
 
 LOGGING = {
     'version': 1,
-    'disable_existing_loggers': False,
+    'disable_existing_loggers': True,
     'formatters': {
         'simple': {
             'format': '%(asctime)s-%(name)s-%(levelname)s: %(message)s'
@@ -148,7 +143,10 @@ LOGGING = {
             'formatter': 'simple'
         },
     },
-    'loggers': loggers
+    'root': {
+        'handlers': ['console'],
+        'level': os.getenv("LOGLEVEL") or "INFO",
+    },
 }
 
 # Password validation
@@ -195,8 +193,8 @@ STATIC_ROOT = BASE_DIR.parent / "static"
 #
 # Don't activate SECURE_HSTS_SECONDS and SECURE_SSL_REDIRECT, they will break
 # the tests but don't provide anything useful as the API does not expose a non
-# SSL endpoint in PROD mode.
-if MODE != "DEVL":
+# SSL endpoint in production mode.
+if os.getenv("DJANGO_DEBUG") != "TRUE":
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
     SECURE_CONTENT_TYPE_NOSNIFF = True

@@ -1,43 +1,27 @@
-#!/bin/
+#!/bin/bash
 set -e
-# Create a fallback SECRET_KEY for django, that can be used if the user has 
-# not specified SECRET_KEY explicitly. Exporting the env variable here will
-# work for starting up the django app, but not for any other shell that requires
-# django settings to be set up correctly, like e.g. creating a super user from 
-# terminal. Hence we store the secret key in an env file where it is picked
-# up by settings.py.
-if [ -z "$DJANGO_SECRET_KEY" ]
-then
-    echo "DJANGO_SECRET_KEY=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c64)" > /bemcom/.env
-fi
 
-# Check that the Hostname is not empty in production. It's absolutely required.
-printf "Checking Hostname: $HOSTNAME\n\n"
-if [ $MODE != "DEVL" ] && [ -z "$HOSTNAME" ]
-then
-    echo "Error: Environment variable HOSTNAME is not set."
-    exit 1
-fi
-
-# Add Hostname to Allowed hosts to make the server accesible.
-echo ALLOWED_HOSTS="['$HOSTNAME']" >> /bemcom/.env
+echo "Entering entrypoint.sh"
 
 # Ensure the DB layout matches the current state of the application
-python3 /bemcom/code/manage.py makemigrations
-python3 /bemcom/code/manage.py migrate
+printf "\n\nCreating and applying migrations."
+python3 /source/api/manage.py makemigrations
+python3 /source/api/manage.py migrate
 
 # Run prod deploy checks if not in devl.
-if [ $MODE != "DEVL" ]
+if [ $DJANGO_DEBUG != "TRUE" ]
 then
-    printf "\n"
+    printf "\n\n"
     echo "Running Djangos production deploy checks"
-    python3 /bemcom/code/manage.py check --deploy
+    python3 /source/api/manage.py check --deploy
     printf "\nDjango production tests done\n\n"
 fi
 
 # Check if SSL certificates have been provided by the user. If yes use there.
 # If not create self signed certificates.
-# Use a directory in tmp as the user might have no write access for the /bemcom folder.
+# Use a directory in tmp as the user might have no write access for the
+# /source/ folder
+printf "\n\n"
 echo "Checking the certificate situation."
 mkdir -p /tmp/cert
 chmod 700 /tmp/cert
@@ -50,29 +34,39 @@ then
     echo "Generating self signed certificate."
     openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/CN=$HOSTNAME"
 else
-    # write the users cert and key to file if both have been provided. 
+    # write the users cert and key to file if both have been provided.
     echo "The user provided cert.pem and key.pem"
     printf "\ncert.pem:\n$SSL_CERT_PEM\n\n"
     echo "$SSL_CERT_PEM" > cert.pem
     echo "$SSL_KEY_PEM" > key.pem
 fi
 
-
-
-# Run tests for the log to see if we expect the API to work properly
-cd /bemcom
-pytest /bemcom/code/
-
-# Start up the server, use the internal devl server in devl mode.
+# Start up the server, use the internal devl server in debug mode.
 # Both should bind to port 8000 within the container and start the server.
-if [ $MODE == "DEVL" ]
+if [[ $DJANGO_DEBUG == "TRUE" ]]
 then
     # --noreload prevents duplicate entries in DB.
-    python3 /bemcom/code/manage.py runserver --noreload 0.0.0.0:8000
+    printf "\n\nStarting up Django development server.\n\n\n"
+    python3 /source/api/manage.py runserver --noreload 0.0.0.0:8000 &
 else
-    python3 /bemcom/code/manage.py collectstatic
-    cd /bemcom/code && \
+    # This also listens to port 8080 for normal HTTPS but you shouldn't use
+    # it and don't expose port 8080 as HTTPS is always prefered.
+    printf "\n\nCollecting static files."
+    python3 /source/api/manage.py collectstatic
+    cd /source/api && \
+    printf "\n\nStarting up Daphne production server.\n\n\n"
     daphne -e ssl:8000:privateKey=/tmp/cert/key.pem:certKey=/tmp/cert/cert.pem \
            -b 0.0.0.0 \
-           -p 8080 general_configuration.asgi:application
+           -p 8080 api_main.asgi:application &
 fi
+
+# Patches SIGTERM and SIGINT to stop the service. This is required
+# to trigger graceful shutdown if docker wants to stop the container.
+service_pid=$!
+trap "kill -TERM $service_pid" SIGTERM
+trap "kill -INT $service_pid" INT
+
+# Run until the container is stopped. Give the service maximal 2 seconds to
+# clean up and shut down, afterwards we pull the plug hard.
+wait
+sleep 2
