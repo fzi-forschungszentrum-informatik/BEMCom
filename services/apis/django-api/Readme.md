@@ -93,7 +93,7 @@ If you have added a clean new database you need to initialize the database.
   * While running in the container:
 
     ```bash
-    docker exec -it django-api /source/code/manage.py createsuperuser
+    docker exec -it django-api /source/api/manage.py createsuperuser
     ```
 
 
@@ -182,11 +182,6 @@ Follow the following steps while contributing to the connector:
 
 ### Changelog
 
-| Tag   | Changes                      |
-| ----- | ---------------------------- |
-| 0.1.0 | Initial version              |
-| 0.1.1 | Fix bug in send command flow |
-
-[#Database_Setup]: 
-[#DatabaseSetup]: 
-[#database-setup]: 
+| Tag   | Changes                    |
+| ----- | -------------------------- |
+| 0.1.0 | Initial functional version |
