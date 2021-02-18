@@ -169,6 +169,11 @@ class FakeMQTTClient():
         granted_qos = 0
         self.on_subscribe(client, userdata, mid, granted_qos)
 
+        # The real client returns a (result, mid), where result is a zero
+        # on succes and mid is intiger counting up. The values don't
+        # matter for our tests.
+        return 0, 1
+
     def unsubscribe(self, topic):
         """
         Unsubscribe from topic, can be called as the paho mqtt version.
@@ -189,6 +194,11 @@ class FakeMQTTClient():
         userdata = self.userdata
         mid = 0
         self.on_unsubscribe(client, userdata, mid)
+
+        # The real client returns a (result, mid), where result is a zero
+        # on succes and mid is intiger counting up. The values don't
+        # matter for our tests.
+        return 0, 1
 
     def publish(self, topic, payload=None, qos=0, retain=False):
         """

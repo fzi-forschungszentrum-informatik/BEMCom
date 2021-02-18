@@ -25,4 +25,4 @@ COPY ./entrypoint.sh /source/
 CMD ["bash","/source/entrypoint.sh"]
 
 # Run all tests to verify the service is ok.
-#RUN MQTT_BROKER_PORT=1883 MQTT_BROKER_HOST=localhost ALLOWED_HOSTS="['*']" DJANGO_SECRET_KEY=s pytest /source/api/
+RUN MQTT_BROKER_PORT=1883 MQTT_BROKER_HOST=localhost ALLOWED_HOSTS="['*']" DJANGO_SECRET_KEY=s pytest /source/api/

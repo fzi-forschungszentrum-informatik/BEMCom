@@ -408,7 +408,7 @@ class DatapointSetpointTemplate(models.Model):
     setpoint = models.JSONField(
         null=False,
         blank=True,
-        default=None,
+        default=list,
         help_text=(
             "A JSON array holding zero or more DatapointSetpointItems."
         )
