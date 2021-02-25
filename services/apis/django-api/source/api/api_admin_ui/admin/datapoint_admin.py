@@ -4,8 +4,11 @@ from django.contrib import admin
 from django.utils.safestring import mark_safe
 
 from api_main.models.datapoint import Datapoint
+from api_main.models.datapoint import DatapointValue
+from api_main.models.datapoint import DatapointSetpoint
+from api_main.models.datapoint import DatapointSchedule
 from ems_utils.timestamp import datetime_to_pretty_str
-
+from api_main.connector_mqtt_integration import ConnectorMQTTIntegration
 
 @admin.register(Datapoint)
 class DatapointAdmin(admin.ModelAdmin):
@@ -28,6 +31,7 @@ class DatapointAdmin(admin.ModelAdmin):
         "data_format",
         "short_name",
         "description",
+        "unit",
         "example_value",
         "last_value",
         "last_value_timestamp_pretty",
@@ -40,6 +44,7 @@ class DatapointAdmin(admin.ModelAdmin):
         "data_format",
         "short_name",
         "description",
+        "unit",
     )
     list_filter = (
         "type",
@@ -212,53 +217,83 @@ class DatapointAdmin(admin.ModelAdmin):
     )
 
     def mark_active(self, request, queryset):
-        for datapoint in queryset:
-            datapoint.is_active = True
-            datapoint.save()
+        """
+        Flag a list of datapoints as active.
+
+        The update method doesn't call the save method of each object, hence
+        we need to manually trigger the update operations of
+        ConnectorMQTTIntegration, i.e. that we subscribe to the topics of
+        the activated datapoints and send a corrected datatpoint map to the
+        connectors.
+
+        TODO: This currently creates an updated datapoint map for call
+              connectors, regardless if these are affected by the changes or
+              not. This could be made more efficient.
+
+        """
+        queryset.update(is_active=True)
+        cmi = ConnectorMQTTIntegration.get_instance()
+        cmi.update_topics()
+        cmi.update_subscriptions()
+        cmi.create_and_send_datapoint_map()
     mark_active.short_description = "Mark datapoints as active"
 
     def mark_not_active(self, request, queryset):
-        for datapoint in queryset:
-            datapoint.is_active = False
-            datapoint.save()
+        """
+        Similar to mark_active above, but deactivates these datapoints.
+        """
+        queryset.update(is_active=False)
+        cmi = ConnectorMQTTIntegration.get_instance()
+        cmi.update_topics()
+        cmi.update_subscriptions()
+        cmi.create_and_send_datapoint_map()
     mark_not_active.short_description = "Mark datapoints as not active"
 
     def mark_data_format_as_generic_text(self, request, queryset):
-        for datapoint in queryset:
-            datapoint.data_format = "generic_text"
-            datapoint.save()
+        """
+        Updates data_format for a list of datapoints at once.
+
+        This has no effect on the configuration of services, especially
+        Connectors. It is thus fine that the signals wont't fire and the
+        save hooks won't be executed.
+        """
+        queryset.update(data_format="generic_text")
     mark_data_format_as_generic_text.short_description = (
         "Mark data_format of datapoints as generic_text"
     )
 
     def mark_data_format_as_discrete_text(self, request, queryset):
-        for datapoint in queryset:
-            datapoint.data_format = "discrete_text"
-            datapoint.save()
+        """
+        Updates data_format. Similar to mark_data_format_as_generic_text
+        """
+        queryset.update(data_format="discrete_text")
     mark_data_format_as_discrete_text.short_description = (
         "Mark data_format of datapoints as discrete_text"
     )
 
     def mark_data_format_as_generic_numeric(self, request, queryset):
-        for datapoint in queryset:
-            datapoint.data_format = "generic_numeric"
-            datapoint.save()
+        """
+        Updates data_format. Similar to mark_data_format_as_generic_text
+        """
+        queryset.update(data_format="generic_numeric")
     mark_data_format_as_generic_numeric.short_description = (
         "Mark data_format of datapoints as generic_numeric"
     )
 
     def mark_data_format_as_discrete_numeric(self, request, queryset):
-        for datapoint in queryset:
-            datapoint.data_format = "discrete_numeric"
-            datapoint.save()
+        """
+        Updates data_format. Similar to mark_data_format_as_generic_text
+        """
+        queryset.update(data_format="discrete_numeric")
     mark_data_format_as_discrete_numeric.short_description = (
         "Mark data_format of datapoints as discrete_numeric"
     )
 
     def mark_data_format_as_continuous_numeric(self, request, queryset):
-        for datapoint in queryset:
-            datapoint.data_format = "continuous_numeric"
-            datapoint.save()
+        """
+        Updates data_format. Similar to mark_data_format_as_generic_text
+        """
+        queryset.update(data_format="continuous_numeric")
     mark_data_format_as_continuous_numeric.short_description = (
         "Mark data_format of datapoints as continuous_numeric"
     )
@@ -272,3 +307,86 @@ class DatapointAdmin(admin.ModelAdmin):
         Remove `add` and `save and add another` button.
         """
         return False
+
+
+@admin.register(DatapointValue)
+class DatapointValueAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "id",
+        "datapoint",
+        "timestamp_pretty",
+        "value",
+    )
+    list_filter = (
+        "datapoint",
+    )
+    readonly_fields = (
+        "id",
+    )
+
+    def timestamp_pretty(self, obj):
+        """
+        Displays a prettier timestamp format.
+        """
+        ts = obj.timestamp
+        if ts is None:
+            return "-"
+        return datetime_to_pretty_str(ts)
+    timestamp_pretty.admin_order_field = "timestamp"
+    timestamp_pretty.short_description = "Timestamp"
+
+
+@admin.register(DatapointSetpoint)
+class DatapointSetpointAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "id",
+        "datapoint",
+        "timestamp_pretty",
+        "setpoint",
+    )
+    list_filter = (
+        "datapoint",
+    )
+    readonly_fields = (
+        "id",
+    )
+
+    def timestamp_pretty(self, obj):
+        """
+        Displays a prettier timestamp format.
+        """
+        ts = obj.timestamp
+        if ts is None:
+            return "-"
+        return datetime_to_pretty_str(ts)
+    timestamp_pretty.admin_order_field = "timestamp"
+    timestamp_pretty.short_description = "Timestamp"
+
+@admin.register(DatapointSchedule)
+class DatapointScheduleAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "id",
+        "datapoint",
+        "timestamp_pretty",
+        "schedule",
+    )
+    list_filter = (
+        "datapoint",
+    )
+    readonly_fields = (
+        "id",
+    )
+
+    def timestamp_pretty(self, obj):
+        """
+        Displays a prettier timestamp format.
+        """
+        ts = obj.timestamp
+        if ts is None:
+            return "-"
+        return datetime_to_pretty_str(ts)
+    timestamp_pretty.admin_order_field = "timestamp"
+    timestamp_pretty.short_description = "Timestamp"
