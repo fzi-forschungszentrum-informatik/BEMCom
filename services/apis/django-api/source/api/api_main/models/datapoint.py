@@ -87,9 +87,17 @@ class Datapoint(DatapointTemplate):
         topic_base = prefix + str(self.id) + "/"
         mqtt_topics = {}
         mqtt_topics["value"] = topic_base + "value"
-        mqtt_topics["schedule"] = topic_base + "schedule"
-        mqtt_topics["setpoint"] = topic_base + "setpoint"
+        if self.type == "actuator":
+            mqtt_topics["schedule"] = topic_base + "schedule"
+            mqtt_topics["setpoint"] = topic_base + "setpoint"
         return mqtt_topics
+
+    def save(self, *args, **kwargs):
+        """
+        Disable the inherited save method from ems_utils.
+        This Datapoint definition has no origin_id.
+        """
+        models.Model.save(self, *args, **kwargs)
 
 
 class DatapointValue(DatapointValueTemplate):
@@ -111,6 +119,14 @@ class DatapointValue(DatapointValueTemplate):
         )
     )
 
+    def save(self, *args, **kwargs):
+        """
+        Disable the inherited save method from ems_utils.
+        We update the last_* fields of Datapoint directly in
+        ConnectorMQTTIntegration for better performance.
+        """
+        models.Model.save(self, *args, **kwargs)
+
 
 class DatapointSchedule(DatapointScheduleTemplate):
     """
@@ -131,6 +147,14 @@ class DatapointSchedule(DatapointScheduleTemplate):
         )
     )
 
+    def save(self, *args, **kwargs):
+        """
+        Disable the inherited save method from ems_utils.
+        We update the last_* fields of Datapoint directly in
+        ConnectorMQTTIntegration for better performance.
+        """
+        models.Model.save(self, *args, **kwargs)
+
 
 class DatapointSetpoint(DatapointSetpointTemplate):
     """
@@ -150,3 +174,11 @@ class DatapointSetpoint(DatapointSetpointTemplate):
             "The datapoint that the setpoint message belongs to."
         )
     )
+
+    def save(self, *args, **kwargs):
+        """
+        Disable the inherited save method from ems_utils.
+        We update the last_* fields of Datapoint directly in
+        ConnectorMQTTIntegration for better performance.
+        """
+        models.Model.save(self, *args, **kwargs)

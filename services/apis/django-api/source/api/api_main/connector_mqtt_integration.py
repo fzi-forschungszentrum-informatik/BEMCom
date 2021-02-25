@@ -1,8 +1,12 @@
 import json
 import logging
+from time import sleep
+from threading import Thread, Lock, Event
 
-from paho.mqtt.client import Client
 from django.conf import settings
+from django.db import IntegrityError
+from paho.mqtt.client import Client
+from cachetools.func import ttl_cache
 
 from .models.datapoint import Datapoint, DatapointValue
 from .models.datapoint import DatapointSetpoint, DatapointSchedule
@@ -66,10 +70,36 @@ class ConnectorMQTTIntegration():
             'port': settings.MQTT_BROKER['port'],
         }
 
+        # Get this from settings in future:
+        self.HISTORY_DB = True
+        self.N_CMI_WRITE_THREADS = 32 # This should be 1 for SQLite
+
+        # Locks and queue for the message_handle_worker threads.
+        self.message_queue = []
+        self.message_queue_lock = Lock()
+        self.get_datapoint_by_id_lock = Lock()
+        self.shutdown_event = Event()
+
+        # Start the threads that handle the incomming messages.
+        # Note that (at least for ./manage.py runserver) there exists
+        # no clean shutdown protocol. Triggering the keyboard interupt
+        # will just kill Django hard and the Django main thread is set
+        # up as a daemon to be killed by the OS as this seems to be faster.
+        # Hence we have no change in this program to rely on a graceful
+        # shutdown and start our threads as deamons too.
+        self.msg_handler_threads = []
+        for i in range(self.N_CMI_WRITE_THREADS):
+            message_handler_thread = Thread(
+                target=self.message_handle_worker, args=(), daemon=True,
+            )
+            message_handler_thread.start()
+            self.msg_handler_threads.append(message_handler_thread)
+
         # The private userdata, used by the callbacks.
         userdata = {
             'connect_kwargs': connect_kwargs,
-            'topics': {},
+            'message_queue': self.message_queue,
+            'message_queue_lock': self.message_queue_lock,
         }
         self.userdata = userdata
 
@@ -100,6 +130,7 @@ class ConnectorMQTTIntegration():
 
         logger.debug("Init of Connector MQTT Integration completed.")
 
+
     @classmethod
     def get_instance(cls):
         """
@@ -118,12 +149,19 @@ class ConnectorMQTTIntegration():
 
     def disconnect(self):
         """
-        Shutdown gracefully -> Disconnect from broker and stop background loop.
+        Shutdown gracefully.
+
+        Disconnect from broker, stop background loop and join threads.
         """
         self.client.disconnect()
         self.client.loop_stop()
         # Remove the client, so init can establish a new connection.
         del self.client
+
+        # Tell all worker threads to stop.
+        self.shutdown_event.set()
+        for thread in self.msg_handler_threads:
+            thread.join()
 
     def update_topics(self):
         """
@@ -173,10 +211,7 @@ class ConnectorMQTTIntegration():
                         "mqtt_topic_datapoint_%s_message" % datapoint_msg_type,
                     )
 
-        # Store the topics and update the client userdata, so the callbacks
-        # will have up to date data.
-        self.userdata['topics'] = topics
-        self.client.user_data_set(self.userdata)
+        self.topics = topics
 
         logger.debug("Leaving update_topics method")
 
@@ -189,7 +224,7 @@ class ConnectorMQTTIntegration():
         """
         logger.debug("Entering update_subscriptions method")
 
-        topics = self.userdata['topics']
+        topics = self.topics
 
         # Start with no subscription on first run.
         if not hasattr(self, "connected_topics"):
@@ -323,211 +358,332 @@ class ConnectorMQTTIntegration():
     @staticmethod
     def on_message(client, userdata, msg):
         """
-        Handle incomming mqtt messages by writing to appropriate DB tables.
+        Handles incoming messages by storing them into the queue.
 
-        Revise the message_format definition within the repo's documentation
-        folder for more information on the structure of the incoming messages.
+        This method must return fast as long waiting times will result in
+        dropped MQTT messages. Hence we just put into a queue here and return.
 
         Arguments:
         ----------
         See paho mqtt documentation.
         """
-        topics = userdata['topics']
+        logger.debug("on_message received msg with topic %s" % msg.topic)
+        if msg is None:
+            # Don't store message with no content to prevent slowing down
+            # the message_handle_worker
+            return
 
-        connector, message_type = topics[msg.topic]
-        payload = json.loads(msg.payload)
-        if message_type == "mqtt_topic_datapoint_value_message":
-            # If this message has reached that point, i.e. has had a
-            # topic entry it means that the Datapoint object must exist, as
-            # else the MQTT topic could not have been computed.
-            try:
-                # The datapoint id is encoded into the MQTT topic.
-                # Check the datapoint definiton.
-                datapoint_id = msg.topic.split("/")[-2]
-                datapoint = Datapoint.objects.get(id=datapoint_id)
-                timestamp = datetime_from_timestamp(payload["timestamp"])
-                dp_value, created = DatapointValue.objects.get_or_create(
-                    datapoint=datapoint,
-                    timestamp=timestamp,
+        # Save the message in the queue for the message_handle_worker threads.
+        # Check first that the threads have a chance of getting rid of the
+        # messages and drop the message if not to prevent unlimted growth of
+        # the queue. Testing with PostgreSQL DB on a small VM we were able
+        # to process 400 messages/s. Hence a limit of 10000 messages
+        # corresponds to a delay of roughly 25 seconds between the time
+        # the message way received from MQTT and the time it is written to
+        # DB.
+        with userdata["message_queue_lock"]:
+            if len(userdata["message_queue"]) < 10000:
+                userdata["message_queue"].append(msg)
+            else:
+                logger.warning(
+                    "Message Queue full! Droping message with topic: %s"
+                    % msg.topic
                 )
-                dp_value.value = payload["value"]
-                dp_value.save()
-                if not created:
-                    logger.info(
-                        "Overwrote existing datapoint value msg for datapoint "
-                        "with id %s and timestamp %s"
-                        % (datapoint.id, timestamp)
+
+    @ttl_cache(maxsize=None, ttl=15*60)
+    def get_datapoint_by_id(self, id):
+        """
+        This is a simple wrapper that acts as a cache.
+
+        The ttl ensures that we refreash every 15 Minutes from the DB.
+        """
+        return Datapoint.objects.get(id=id)
+
+    def message_handle_worker(self):
+        """
+        Handle queued mqtt messages by writing to appropriate DB tables.
+
+        Revise the message_format definition within the repo's documentation
+        folder for more information on the structure of the incoming messages.
+
+        TODO: Streamline performance for logs, heartbeats and
+              available_datapoint messages.
+        """
+        while True:
+            # Check if the the program is going to stop and terminate if yes.
+            if self.shutdown_event.isSet():
+                return
+
+            # Try to fetch a message from the queue.
+            with self.message_queue_lock:
+                if self.message_queue:
+                    msg = self.message_queue.pop(0)
+                    logger.debug(
+                        "Current message queue length is: %s"
+                        % len(self.message_queue)
                     )
-            except Exception:
-                logger.exception(
-                    'Exception while writing datapoint value to DB.\n'
-                    'The topic was: %s' % msg.topic
-                )
-                # This raise will be caught by paho mqtt. It should not though.
-                raise
-
-        elif message_type == "mqtt_topic_datapoint_schedule_message":
-            # see the handling of datapoint_value_message above for comments.
-            try:
-                datapoint_id = msg.topic.split("/")[-2]
-                datapoint = Datapoint.objects.get(id=datapoint_id)
-                timestamp = datetime_from_timestamp(payload["timestamp"])
-                dp_schedule, created = DatapointSchedule.objects.get_or_create(
-                    datapoint=datapoint,
-                    timestamp=timestamp,
-                )
-                dp_schedule.schedule = payload["schedule"]
-                dp_schedule.save()
-                if not created:
-                    logger.info(
-                        "Overwrote existing datapoint schedule msg for "
-                        "datapoint with id %s and timestamp %s"
-                        % (datapoint.id, timestamp)
-                    )
-            except Exception:
-                logger.exception(
-                    'Exception while writing datapoint schedule to DB.\n'
-                    'The topic was: %s' % msg.topic
-                )
-                # This raise will be caught by paho mqtt. It should not though.
-                raise
-
-        elif message_type == "mqtt_topic_datapoint_setpoint_message":
-            # see the handling of datapoint_value_message above for comments.
-            try:
-                datapoint_id = msg.topic.split("/")[-2]
-                datapoint = Datapoint.objects.get(id=datapoint_id)
-                timestamp = datetime_from_timestamp(payload["timestamp"])
-                dp_setpoint, created = DatapointSetpoint.objects.get_or_create(
-                    datapoint=datapoint,
-                    timestamp=timestamp,
-                )
-                dp_setpoint.setpoint = payload["setpoint"]
-                dp_setpoint.save()
-                if not created:
-                    logger.info(
-                        "Overwrote existing datapoint setpoint msg for "
-                        "datapoint with id %s and timestamp %s"
-                        % (datapoint.id, timestamp)
-                    )
-            except Exception:
-                logger.exception(
-                    'Exception while writing datapoint setpoint to DB.\n'
-                    'The topic was: %s' % msg.topic
-                )
-                # This raise will be caught by paho mqtt. It should not though.
-                raise
-
-        elif message_type == 'mqtt_topic_logs':
-            timestamp = datetime_from_timestamp(payload['timestamp'])
-            try:
-                _ = ConnectorLogEntry(
-                    connector=connector,
-                    timestamp=timestamp,
-                    msg=payload['msg'],
-                    emitter=payload['emitter'],
-                    level=payload['level'],
-                ).save()
-            except Exception:
-                logger.exception(
-                    'Exception while writing Log into DB.\n'
-                    'The topic was: %s' % msg.topic
-                )
-                # This raise will be caught by paho mqtt. It should not though.
-                raise
-
-        elif message_type == 'mqtt_topic_heartbeat':
-            try:
-                hb_model = ConnectorHeartbeat
-                # Create a new DB entry if this is the first time we see a
-                # heartbeat message for this connector. This code prevents
-                # creating an object with invalid values for the heartbeat
-                # entries (i.e. null or 1.1.1970, etc.) which should be
-                # beneficial for downstream code that relies on valid entries.
-                if not hb_model.objects.filter(connector=connector).exists():
-                    _ = hb_model(
-                        connector=connector,
-                        last_heartbeat=datetime_from_timestamp(
-                            payload['this_heartbeats_timestamp']
-                        ),
-                        next_heartbeat=datetime_from_timestamp(
-                            payload['next_heartbeats_timestamp']
-                        ),
-                    ).save()
-                # Else this is an update to an existing entry. There should
-                # be only one heartbeat entry per connector, enforced by the
-                # unique constraint of the connector field.
                 else:
-                    hb_object = hb_model.objects.get(connector=connector)
-                    hb_object.last_heartbeat = datetime_from_timestamp(
-                        payload['this_heartbeats_timestamp']
-                    )
-                    hb_object.next_heartbeat = datetime_from_timestamp(
-                        payload['next_heartbeats_timestamp']
-                    )
-                    hb_object.save()
-            except Exception:
-                logger.exception(
-                    'Exception while writing heartbeat into DB.\n'
-                    'The topic was: %s' % msg.topic
-                )
-                # This raise will be caught by paho mqtt. It should not though.
-                raise
+                    msg = None
 
-        elif message_type == 'mqtt_topic_available_datapoints':
-            for datapoint_type in payload:
-                for key, example in payload[datapoint_type].items():
+            # Wait a bit if the the queue was empty and retry.
+            if msg is None:
+                sleep(0.05)
+                continue
 
-                    if not Datapoint.objects.filter(
-                            # Handling if the Datapoint does not exist yet.
-                            connector=connector,
-                            key_in_connector=key,
-                            type=datapoint_type).exists():
+            logger.debug(
+                "message_handle_worker processing msg with topic %s"
+                % msg.topic
+            )
+            topics = self.topics
+
+            connector, message_type = topics[msg.topic]
+            payload = json.loads(msg.payload)
+            if message_type == "mqtt_topic_datapoint_value_message":
+                # If this message has reached that point, i.e. has had a
+                # topic entry it means that the Datapoint object must exist, as
+                # else the MQTT topic could not have been computed.
+                try:
+                    # The datapoint id is encoded into the MQTT topic.
+                    # Check the datapoint definiton.
+                    datapoint_id = msg.topic.split("/")[-2]
+                    # Cachetools are not thread safe and recommend using a lock
+                    with self.get_datapoint_by_id_lock:
+                        datapoint = self.get_datapoint_by_id(id=datapoint_id)
+                    timestamp = datetime_from_timestamp(payload["timestamp"])
+                    # Value/Setpoint/Schedule Messages will be new objects
+                    # in most cases. That a message with the same datapoint
+                    # and timestamp exists already in the DB is rather a
+                    # special case if we retained an old message from the
+                    # broker, or if developing with ./manage.py runserver
+                    # without the --noreload flag.
+                    # Hence, to increase performance, we just try to create
+                    # the new entry as this removes the burden to fetch the
+                    # object first. Only if this fails we perform an update.
+                    # Also only do this if the Admin requested that the
+                    # history is preserved.
+                    if self.HISTORY_DB:
                         try:
-                            _ = Datapoint(
-                                connector=connector,
-                                type=datapoint_type,
-                                key_in_connector=key,
-                                example_value=example,
+                            DatapointValue(
+                                datapoint=datapoint,
+                                timestamp=timestamp,
+                                value=payload["value"],
                             ).save()
-                        except Exception:
-                            logger.exception(
-                                'Exception while writing available datapoint '
-                                'into DB.\n'
-                                'The topic was: %s' % msg.topic
+                        except IntegrityError:
+                            dp_value = DatapointValue.objects.get(
+                                datapoint=datapoint,
+                                timestamp=timestamp,
                             )
-                            # This raise will be caught by paho mqtt.
-                            # It should not though.
-                            raise
+                            dp_value.value = payload["value"]
+                            dp_value.save()
+                            logger.info(
+                                "Overwrote existing datapoint value msg for "
+                                "datapoint with id %s and timestamp %s"
+                                % (datapoint.id, timestamp)
+                            )
+                    # Once we stored the value also check if this value
+                    # is the most recent one and if so update the
+                    # corresponding fields of Datapoint too.
+                    existing_ts = datapoint.last_value_timestamp
+                    if existing_ts is None or existing_ts <= timestamp:
+                        datapoint.last_value = payload["value"]
+                        datapoint.last_value_timestamp = timestamp
+                        datapoint.save(
+                            update_fields=[
+                                "last_value",
+                                "last_value_timestamp",
+                            ]
+                        )
+                except Exception:
+                    logger.exception(
+                        'Exception while writing datapoint value to DB.\n'
+                        'The topic was: %s' % msg.topic
+                    )
 
-                    else:
-                        # Update existing datapoint. If we reach this
-                        # point it means that nothing of the datapoint can
-                        # have changed from the example value. Thus we trigger
-                        # an update of the example value to present the
-                        # possible more recent information to the admin.
+            elif message_type == "mqtt_topic_datapoint_schedule_message":
+                # see comments of handling of datapoint_value_message above.
+                try:
+                    datapoint_id = msg.topic.split("/")[-2]
+                    with self.get_datapoint_by_id_lock:
+                        datapoint = self.get_datapoint_by_id(id=datapoint_id)
+                    timestamp = datetime_from_timestamp(payload["timestamp"])
+                    if self.HISTORY_DB:
                         try:
-                            datapoint = Datapoint.objects.get(
+                            DatapointSchedule(
+                                datapoint=datapoint,
+                                timestamp=timestamp,
+                                schedule=payload["schedule"],
+                            ).save()
+                        except IntegrityError:
+                            dp_schedule = DatapointSchedule.objects.get(
+                                datapoint=datapoint,
+                                timestamp=timestamp,
+                            )
+                            dp_schedule.schedule = payload["schedule"]
+                            dp_schedule.save()
+                            logger.info(
+                                "Overwrote existing datapoint schedule msg for "
+                                "datapoint with id %s and timestamp %s"
+                                % (datapoint.id, timestamp)
+                            )
+                    existing_ts = datapoint.last_schedule_timestamp
+                    if existing_ts is None or existing_ts <= timestamp:
+                        datapoint.last_schedule = payload["schedule"]
+                        datapoint.last_schedule_timestamp = timestamp
+                        datapoint.save(
+                            update_fields=[
+                                "last_schedule",
+                                "last_schedule_timestamp",
+                            ]
+                        )
+                except Exception:
+                    logger.exception(
+                        'Exception while writing datapoint schedule to DB.\n'
+                        'The topic was: %s' % msg.topic
+                    )
+
+            elif message_type == "mqtt_topic_datapoint_setpoint_message":
+                # see comments of handling of datapoint_value_message above.
+                try:
+                    datapoint_id = msg.topic.split("/")[-2]
+                    with self.get_datapoint_by_id_lock:
+                        datapoint = self.get_datapoint_by_id(id=datapoint_id)
+                    timestamp = datetime_from_timestamp(payload["timestamp"])
+                    if self.HISTORY_DB:
+                        try:
+                            DatapointSetpoint(
+                                datapoint=datapoint,
+                                timestamp=timestamp,
+                                setpoint=payload["setpoint"],
+                            ).save()
+                        except IntegrityError:
+                            dp_setpoint = DatapointSetpoint.objects.get(
+                                datapoint=datapoint,
+                                timestamp=timestamp,
+                            )
+                            dp_setpoint.setpoint = payload["setpoint"]
+                            dp_setpoint.save()
+                            logger.info(
+                                "Overwrote existing datapoint setpoint msg for "
+                                "datapoint with id %s and timestamp %s"
+                                % (datapoint.id, timestamp)
+                            )
+                    existing_ts = datapoint.last_setpoint_timestamp
+                    if existing_ts is None or existing_ts <= timestamp:
+                        datapoint.last_setpoint = payload["setpoint"]
+                        datapoint.last_setpoint_timestamp = timestamp
+                        datapoint.save(
+                            update_fields=[
+                                "last_setpoint",
+                                "last_setpoint_timestamp",
+                            ]
+                        )
+                except Exception:
+                    logger.exception(
+                        'Exception while writing datapoint setpoint to DB.\n'
+                        'The topic was: %s' % msg.topic
+                    )
+
+            elif message_type == 'mqtt_topic_logs':
+                timestamp = datetime_from_timestamp(payload['timestamp'])
+                try:
+                    _ = ConnectorLogEntry(
+                        connector=connector,
+                        timestamp=timestamp,
+                        msg=payload['msg'],
+                        emitter=payload['emitter'],
+                        level=payload['level'],
+                    ).save()
+                except Exception:
+                    logger.exception(
+                        'Exception while writing Log into DB.\n'
+                        'The topic was: %s' % msg.topic
+                    )
+
+            elif message_type == 'mqtt_topic_heartbeat':
+                try:
+                    hb_model = ConnectorHeartbeat
+                    # Create a new DB entry if this is the first time we see a
+                    # heartbeat message for this connector. This code prevents
+                    # creating an object with invalid values for the heartbeat
+                    # entries (i.e. null or 1.1.1970, etc.) which should be
+                    # beneficial for downstream code that relies on valid entries.
+                    if not hb_model.objects.filter(connector=connector).exists():
+                        _ = hb_model(
+                            connector=connector,
+                            last_heartbeat=datetime_from_timestamp(
+                                payload['this_heartbeats_timestamp']
+                            ),
+                            next_heartbeat=datetime_from_timestamp(
+                                payload['next_heartbeats_timestamp']
+                            ),
+                        ).save()
+                    # Else this is an update to an existing entry. There should
+                    # be only one heartbeat entry per connector, enforced by the
+                    # unique constraint of the connector field.
+                    else:
+                        hb_object = hb_model.objects.get(connector=connector)
+                        hb_object.last_heartbeat = datetime_from_timestamp(
+                            payload['this_heartbeats_timestamp']
+                        )
+                        hb_object.next_heartbeat = datetime_from_timestamp(
+                            payload['next_heartbeats_timestamp']
+                        )
+                        hb_object.save()
+                except Exception:
+                    logger.exception(
+                        'Exception while writing heartbeat into DB.\n'
+                        'The topic was: %s' % msg.topic
+                    )
+
+            elif message_type == 'mqtt_topic_available_datapoints':
+                for datapoint_type in payload:
+                    for key, example in payload[datapoint_type].items():
+
+                        if not Datapoint.objects.filter(
+                                # Handling if the Datapoint does not exist yet.
                                 connector=connector,
                                 key_in_connector=key,
-                                type=datapoint_type
-                            )
-                            if datapoint.example_value != example:
-                                datapoint.example_value = example
-                                datapoint.save(
-                                    # This prevents that the datapoint_map is
-                                    # updated.
-                                    update_fields=[
-                                        "example_value",
-                                    ]
+                                type=datapoint_type).exists():
+                            try:
+                                _ = Datapoint(
+                                    connector=connector,
+                                    type=datapoint_type,
+                                    key_in_connector=key,
+                                    example_value=example,
+                                ).save()
+                            except Exception:
+                                logger.exception(
+                                    'Exception while writing available '
+                                    'datapoint into DB.\n'
+                                    'The topic was: %s' % msg.topic
                                 )
-                        except Exception:
-                            logger.exception(
-                                'Exception while updating available datapoint.'
-                            )
-                            # This raise will be caught by paho mqtt.
-                            # It should not though.
-                            raise
+
+                        else:
+                            # Update existing datapoint. If we reach this
+                            # point it means that nothing of the datapoint can
+                            # have changed from the example value. Thus we trigger
+                            # an update of the example value to present the
+                            # possible more recent information to the admin.
+                            try:
+                                datapoint = Datapoint.objects.get(
+                                    connector=connector,
+                                    key_in_connector=key,
+                                    type=datapoint_type
+                                )
+                                if datapoint.example_value != example:
+                                    datapoint.example_value = example
+                                    datapoint.save(
+                                        # This prevents that the datapoint_map is
+                                        # updated.
+                                        update_fields=[
+                                            "example_value",
+                                        ]
+                                    )
+                            except Exception:
+                                logger.exception(
+                                    'Exception while updating available '
+                                    'datapoint.'
+                                )
 
     @staticmethod
     def on_connect(client, userdata, flags, rc):
