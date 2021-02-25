@@ -54,7 +54,11 @@ class ConnectorMQTTIntegration():
             return
 
         # Below the normal startup and configration of this class.
-        logger.info("Starting up Connector MQTT Integration.")
+        logger.info(
+            "Starting up Connector MQTT Integration. This includes connecting "
+            "to the required topics and processing the retained messages. "
+            "This might take a few minutes."
+        )
 
         # The configuration for connecting to the broker.
         connect_kwargs = {
@@ -93,6 +97,8 @@ class ConnectorMQTTIntegration():
         # broker, e.g. after a CD run with an existing database.
         self.create_and_send_datapoint_map()
         self.create_and_send_controlled_datapoints()
+
+        logger.debug("Init of Connector MQTT Integration completed.")
 
     @classmethod
     def get_instance(cls):
@@ -133,6 +139,8 @@ class ConnectorMQTTIntegration():
             - mqtt_topic_available_datapoints
             - mqtt_topic_datapoint_map
         """
+        logger.debug("Entering update_topics method")
+
         topics = {}
 
         # Don't subscribe to the datapoint_message_wildcard topic, we want to
@@ -170,6 +178,8 @@ class ConnectorMQTTIntegration():
         self.userdata['topics'] = topics
         self.client.user_data_set(self.userdata)
 
+        logger.debug("Leaving update_topics method")
+
     def update_subscriptions(self):
         """
         Updates subscriptions.
@@ -177,6 +187,8 @@ class ConnectorMQTTIntegration():
         Should be used if the topics object has changed, i.e. call directly
         after self.update_topics().
         """
+        logger.debug("Entering update_subscriptions method")
+
         topics = self.userdata['topics']
 
         # Start with no subscription on first run.
@@ -208,6 +220,8 @@ class ConnectorMQTTIntegration():
                 connected_topics_update.append(topic)
         self.connected_topics = connected_topics_update
 
+        logger.debug("Leaving update_subscriptions method")
+
     def create_and_send_datapoint_map(self, connector=None):
         """
         Creates and sends a datapoint_map.
@@ -218,6 +232,8 @@ class ConnectorMQTTIntegration():
             If not None compute only the datapoint_map for the specified
             connector. Else will process all connectors.
         """
+        logger.debug("Entering create_and_send_datapoint_map method")
+
         if connector is None:
             connectors = Connector.objects.all()
         else:
@@ -228,10 +244,10 @@ class ConnectorMQTTIntegration():
             # Connectors.
             datapoint_map = {"sensor": {}, "actuator": {}}
             datapoints = connector.datapoint_set
-            active_datapoint = datapoints.filter(is_active=True)
+            active_datapoints = datapoints.filter(is_active=True)
 
             # Create the map entry for every used datapoint
-            for active_datapoint in active_datapoint:
+            for active_datapoint in active_datapoints:
 
                 _type = active_datapoint.type
                 key_in_connector = active_datapoint.key_in_connector
@@ -252,10 +268,14 @@ class ConnectorMQTTIntegration():
                 retain=True
             )
 
+            logger.debug("Leaving create_and_send_datapoint_map method")
+
     def create_and_send_controlled_datapoints(self, controller=None):
         """
         Computes and sends a list of controlled datapoints to a connector.
         """
+        logger.debug("Entering create_and_send_controlled_datapoints method")
+
         if controller is None:
             controllers = Controller.objects.all()
         else:
@@ -294,6 +314,10 @@ class ConnectorMQTTIntegration():
                 payload=json.dumps(controlled_datapoint_msgs),
                 qos=2,
                 retain=True
+            )
+
+            logger.debug(
+                "Leaving create_and_send_controlled_datapoints method"
             )
 
     @staticmethod
@@ -457,7 +481,8 @@ class ConnectorMQTTIntegration():
                     if not Datapoint.objects.filter(
                             # Handling if the Datapoint does not exist yet.
                             connector=connector,
-                            key_in_connector=key).exists():
+                            key_in_connector=key,
+                            type=datapoint_type).exists():
                         try:
                             _ = Datapoint(
                                 connector=connector,
@@ -476,15 +501,26 @@ class ConnectorMQTTIntegration():
                             raise
 
                     else:
-                        # Update existing datapoint.
+                        # Update existing datapoint. If we reach this
+                        # point it means that nothing of the datapoint can
+                        # have changed from the example value. Thus we trigger
+                        # an update of the example value to present the
+                        # possible more recent information to the admin.
                         try:
                             datapoint = Datapoint.objects.get(
                                 connector=connector,
-                                key_in_connector=key
+                                key_in_connector=key,
+                                type=datapoint_type
                             )
-                            datapoint.type = datapoint_type
-                            datapoint.example_value = example
-                            datapoint.save()
+                            if datapoint.example_value != example:
+                                datapoint.example_value = example
+                                datapoint.save(
+                                    # This prevents that the datapoint_map is
+                                    # updated.
+                                    update_fields=[
+                                        "example_value",
+                                    ]
+                                )
                         except Exception:
                             logger.exception(
                                 'Exception while updating available datapoint.'
