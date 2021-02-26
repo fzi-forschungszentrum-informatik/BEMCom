@@ -21,7 +21,7 @@ This is the reference implementation for an BEMCom API service.
 | DJANGO_DEBUG        | FALSE                                             | If set to `TRUE` (the string) will activate the [debug mode of django](https://docs.djangoproject.com/en/3.1/ref/settings/#debug), which should only be used while developing not during production operation. Defaults to False |
 | DJANGO_ADMINS       | [["John", "john@example.com"]]                    | Must be a valid JSON. Is set to [ADMINS setting](https://docs.djangoproject.com/en/3.1/ref/settings/#admins) of Django. Defaults to an empty list. |
 | DJANGO_SECRET_KEY   | oTg2aWkM...                                       | Can be used to specify the [SECRET_KEY](https://docs.djangoproject.com/en/3.1/ref/settings/#std:setting-SECRET_KEY) setting of Django. Defaults to a random sequence of 64 chars generated on container startup. Note that changing the secret key will invalidate all cookies and thus force all user to login again. |
-| HOSTNAME            | bemcom.domain.com                                 | The hostname the API service should be hosted on. Is added to the [ALLOWED_HOSTS](https://docs.djangoproject.com/en/3.1/ref/settings/#allowed-hosts) setting of Django. Defaults to `localhost`, which means that API can only be accessed from the local machine. |
+| FQ_HOSTNAME         | bemcom.domain.com                                 | The fully qualified hostname the API service should be hosted on. Is added to the [ALLOWED_HOSTS](https://docs.djangoproject.com/en/3.1/ref/settings/#allowed-hosts) setting of Django. Defaults to `localhost`, which means that API can only be accessed from the local machine. |
 | SSL_CERT_PEM        | -----BEGIN CERTIFICATE-----<br/>MIIFCTCCAvG...    | The certificate to use for HTTPS. Will generate a self signed certificate if SSL_CERT_PEM or SSL_KEY_PEM are empty. The self signed certificate will make HTTPS work, but browsers will issue a warning. |
 | SSL_KEY_PEM         | -----BEGIN PRIVATE KEY-----<br/>MIIJQgIBADANBg... | Similar to SSL_CERT_PEM but should hold the private key of the certificate. |
 | DATABASE_SETTING    | see [Database Setup](#database-setup).            | Defines the default database for Django, see [Database Setup](#database-setup) for details. Defaults to SQLite with data stored in file source/db.sqlite3 . |
@@ -182,6 +182,7 @@ Follow the following steps while contributing to the connector:
 
 ### Changelog
 
-| Tag   | Changes                    |
-| ----- | -------------------------- |
-| 0.1.0 | Initial functional version |
+| Tag   | Changes                                                     |
+| ----- | ----------------------------------------------------------- |
+| 0.1.0 | Initial functional version                                  |
+| 0.1.1 | Massive performance improvement for handling MQTT messages. |

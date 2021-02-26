@@ -26,7 +26,7 @@ services:
             - "DJANGO_DEBUG=${DJANGO_DEBUG}"
             - "DJANGO_ADMINS=${DJANGO_ADMINS}"
             - "DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}"
-            - "HOSTNAME=${HOSTNAME}"
+            - "FQ_HOSTNAME=${FQ_HOSTNAME}"
             - "SSL_CERT_PEM=${SSL_CERT_PEM}"
             - "SSL_KEY_PEM=${SSL_KEY_PEM}"
             - "DATABASE_SETTING=${DATABASE_SETTING}"

@@ -59,7 +59,7 @@ DEBUG = False
 if os.getenv("DJANGO_DEBUG") == "TRUE":
     DEBUG = True
 
-ALLOWED_HOSTS = [os.getenv("HOSTNAME") or "localhost"]
+ALLOWED_HOSTS = [os.getenv("FQ_HOSTNAME") or "localhost"]
 if os.getenv("DJANGO_ADMINS"):
     ADMINS = json.loads(os.getenv("DJANGO_ADMINS"))
 
