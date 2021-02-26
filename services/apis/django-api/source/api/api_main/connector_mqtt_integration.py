@@ -45,7 +45,7 @@ class ConnectorMQTTIntegration():
             )
         return cls._instance
 
-    def __init__(self, mqtt_client=Client):
+    def __init__(self, mqtt_client=Client, n_cmi_write_threads_overload=None):
         """
         Initial configuration of the MQTT communication.
         """
@@ -73,6 +73,8 @@ class ConnectorMQTTIntegration():
         # Get this from settings in future:
         self.HISTORY_DB = True
         self.N_CMI_WRITE_THREADS = 32 # This should be 1 for SQLite
+        if n_cmi_write_threads_overload is not None:
+            self.N_CMI_WRITE_THREADS = n_cmi_write_threads_overload
 
         # Locks and queue for the message_handle_worker threads.
         self.message_queue = []

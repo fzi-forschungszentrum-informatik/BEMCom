@@ -43,7 +43,8 @@ def rest_endpoint_setup(request, django_db_setup, django_db_blocker):
     fake_client_1 = FakeMQTTClient(fake_broker=fake_broker)
     fake_client_2 = FakeMQTTClient(fake_broker=fake_broker)
     cmi = ConnectorMQTTIntegration(
-        mqtt_client=fake_client_1
+        mqtt_client=fake_client_1,
+        n_cmi_write_threads_overload=1,
     )
 
     # Setup MQTT client endpoints for test.

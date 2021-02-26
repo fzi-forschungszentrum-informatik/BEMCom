@@ -50,8 +50,10 @@ def connector_integration_setup(request, django_db_setup, django_db_blocker):
     test_connector = connector_factory(special_connector_name)
 
     cmi = ConnectorMQTTIntegration(
-        mqtt_client=fake_client_2
+        mqtt_client=fake_client_2,
+        n_cmi_write_threads_overload=1,
     )
+    cmi.N_CMI_WRITE_THREADS = 1
 
     # Inject objects into test class.
     request.cls.mqtt_client = mqtt_client
@@ -182,6 +184,7 @@ class TestConnectorIntegration():
         self.mqtt_client.publish(topic, payload, qos=2)
 
         # Wait for the data to reach the DB
+        time.sleep(0.5)
         waited_seconds = 0
         while Datapoint.objects.count() < 3:
             time.sleep(0.005)
@@ -261,6 +264,7 @@ class TestConnectorIntegration():
         self.mqtt_client.publish(topic, payload, qos=2)
 
         # Wait for the data to reach the DB
+        time.sleep(0.5)
         waited_seconds = 0
         while Datapoint.objects.count() < 4:
             time.sleep(0.005)
@@ -479,7 +483,8 @@ class TestGetInstance():
         mqtt_client.loop_start()
 
         initialized_instance = ConnectorMQTTIntegration(
-            mqtt_client=fake_client_1
+            mqtt_client=fake_client_1,
+            n_cmi_write_threads_overload=1,
         )
 
         retrieved_instance = ConnectorMQTTIntegration.get_instance()
@@ -504,11 +509,13 @@ class TestGetInstance():
         mqtt_client.loop_start()
 
         first_initialized_instance = ConnectorMQTTIntegration(
-            mqtt_client=fake_client_1
+            mqtt_client=fake_client_1,
+            n_cmi_write_threads_overload=1,
         )
 
         second_initialized_instance = ConnectorMQTTIntegration(
-            mqtt_client=fake_client_1
+            mqtt_client=fake_client_1,
+            n_cmi_write_threads_overload=1,
         )
 
         assert (
@@ -565,7 +572,8 @@ def update_subscription_setup(request, django_db_setup, django_db_blocker):
     test_connector = connector_factory(special_connector_name)
 
     cmi = ConnectorMQTTIntegration(
-        mqtt_client=fake_client_2
+        mqtt_client=fake_client_2,
+        n_cmi_write_threads_overload=1,
     )
 
     # Create additional connector and remove the first one to simulate
@@ -632,7 +640,7 @@ class TestUpdateSubscription():
 
         for mqtt_topic_attr in mqtt_topic_attrs:
             topic = getattr(self.test_connector_2, mqtt_topic_attr)
-            assert topic in self.cmi.userdata["topics"]
+            assert topic in self.cmi.topics
             assert topic in subscribed_topics
 
     def test_unsubscribe_from_removed_connector(self):
@@ -651,7 +659,7 @@ class TestUpdateSubscription():
         # Verify that the topics of test_connector_3 are available.
         for mqtt_topic_attr in mqtt_topic_attrs:
             topic = getattr(self.test_connector_3, mqtt_topic_attr)
-            assert topic in self.cmi.userdata["topics"]
+            assert topic in self.cmi.topics
             assert topic in subscribed_topics
 
         # Now delete the test_connector, give the signal some time and
@@ -661,7 +669,7 @@ class TestUpdateSubscription():
 
         for mqtt_topic_attr in mqtt_topic_attrs:
             topic = getattr(self.test_connector_3, mqtt_topic_attr)
-            assert topic not in self.cmi.userdata["topics"]
+            assert topic not in self.cmi.topics
             assert topic not in subscribed_topics
 
     def test_log_msg_received_new_connector(self):
@@ -766,6 +774,7 @@ class TestUpdateSubscription():
         self.mqtt_client.publish(topic, payload, qos=2)
 
         # Wait for the data to reach the DB
+        time.sleep(0.5)
         waited_seconds = 0
         dpos = Datapoint.objects
         while dpos.filter(connector=self.test_connector_2).count() < 3:

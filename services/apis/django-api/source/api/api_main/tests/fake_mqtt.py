@@ -2,7 +2,7 @@
 Fake MQTT Broker and Client for testing the MQTT communication without a live
 broker.
 """
-
+import time
 
 class FakeMQTTBroker():
     """
@@ -211,6 +211,11 @@ class FakeMQTTClient():
         msg.topic = topic
         msg.payload = payload
         self.fake_broker.publish_on_broker(msg)
+        # Give async processes some time to process the data.
+        # Especially the test_mqtt_integration.py will will fail
+        # randomly without this due to concurrent access to 
+        # the SQLite DB. 
+        time.sleep(0.1)
 
     def receive_from_broker(self, msg):
         """
