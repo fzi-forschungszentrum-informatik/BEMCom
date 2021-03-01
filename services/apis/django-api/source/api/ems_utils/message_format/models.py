@@ -273,6 +273,16 @@ class DatapointValueTemplate(models.Model):
             "for implementing the REST interfaces."
         )
     )
+    value_float = models.FloatField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text=(
+            "Similar to value but an internal float representation for "
+            "numeric datapoints."
+        )
+    )
+
     timestamp = models.DateTimeField(
         null=False,
         blank=False,
@@ -290,8 +300,27 @@ class DatapointValueTemplate(models.Model):
         """
         Update the last_value/last_value_timestamp fields in datapoint too.
         """
-        # But check first that the save for this object goes trough.
+        # Check if we can store the value as float, which is probably
+        # much more storage effiecient, comparing at least one byte
+        original_value = self.value
+        if self.value is not None:
+            try:
+                value_float = float(self.value)
+                parsable = True
+            except ValueError:
+                parsable = False
+
+            if parsable:
+                self.value_float = value_float
+                # AFAIK, null values can be stored quite effieciently by
+                # most databases.
+                self.value = None
+
         super().save(*args, **kwargs)
+
+        # Restore the original value, for any code that continous to work with
+        # the object.
+        self.value = original_value
 
         # A message without a timestamp cannot be latest.
         if self.timestamp is None:
@@ -301,6 +330,7 @@ class DatapointValueTemplate(models.Model):
         existing_ts = self.datapoint.last_value_timestamp
 
         if existing_ts is None or existing_ts <= self.timestamp:
+            print(original_value)
             self.datapoint.last_value = self.value
             self.datapoint.last_value_timestamp = self.timestamp
             self.datapoint.save(
@@ -309,6 +339,13 @@ class DatapointValueTemplate(models.Model):
                     "last_value_timestamp",
                 ]
             )
+
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        instance = super().from_db(db, field_names, values)
+        if instance.value_float is not None:
+            instance.value = str(instance.value_float)
+        return instance
 
 
 class DatapointScheduleTemplate(models.Model):

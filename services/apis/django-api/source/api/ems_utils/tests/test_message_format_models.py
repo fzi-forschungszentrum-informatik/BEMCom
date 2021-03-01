@@ -379,7 +379,7 @@ class TestDatapointValue(TransactionTestCase):
         """
         field_values = self.default_field_values.copy()
 
-        field_values.update({"value": "1"})
+        field_values.update({"value": "1.0"})
 
         self.generic_field_value_test(field_values=field_values)
 
@@ -451,6 +451,42 @@ class TestDatapointValue(TransactionTestCase):
         self.assertEqual(actual_value, expected_value)
         self.assertEqual(actual_timestamp, expected_timestamp)
 
+    def test_save_will_store_float_as_float(self):
+        """
+        There is an automatic mechanism that stores float values not as strings
+        but as floats to save storage space. It's hard to check here if the
+        values are really stored that way in DB, but we assume so if the
+        floats have been parsed.
+        """
+        field_values = self.default_field_values.copy()
+        dp_value = self.DatapointValue.objects.create(**field_values)
+        dp_value.save()
+
+        dp_value.value = "1"
+        dp_value.save()
+        dp_value.refresh_from_db()
+
+        expected_value = "1.0"
+        dp_value.refresh_from_db()
+        actual_value = dp_value.value
+
+        assert actual_value == expected_value
+
+    def test_value_float_also_populated(self):
+        """
+        Float values are made available as float (not string) under the
+        value_float field. Check this is the case.
+        """
+        field_values = self.default_field_values.copy()
+        dp_value = self.DatapointValue.objects.create(**field_values)
+        dp_value.value = "21.2"
+        dp_value.save()
+
+        dp_value.refresh_from_db()
+        expected_value = 21.2
+        actual_value = dp_value.value_float
+
+        assert actual_value == expected_value
 
 class TestDatapointSchedule(TransactionTestCase):
 
