@@ -22,16 +22,19 @@ from ems_utils.message_format.views import DatapointValueViewSetTemplate
 from ems_utils.message_format.views import DatapointScheduleViewSetTemplate
 from ems_utils.message_format.views import DatapointSetpointViewSetTemplate
 from .serializers import DatapointSerializer
+from .filters import DatapointFilter, DatapointValueFilter
+from .filters import DatapointSetpointFilter, DatapointScheduleFilter
 
 class DatapointViewSet(DatapointViewSetTemplate):
     __doc__ = Datapoint.__doc__
     datapoint_model = Datapoint
     serializer_class = DatapointSerializer
-    queryset = Datapoint.objects.none() # Required for DjangoModelPermissions
+    queryset = Datapoint.objects.all()
+    filterset_class = DatapointFilter
 
     def retrieve(self, request, dp_id):
         datapoint = get_object_or_404(
-            self.datapoint_model, id=dp_id, is_active=True
+            self.queryset, id=dp_id, is_active=True
         )
         serializer = self.serializer_class(datapoint)
         return Response(serializer.data)
@@ -41,7 +44,8 @@ class DatapointViewSet(DatapointViewSetTemplate):
         Similar to the version DatapointViewSetTemplate but only returns
         active Datapoints.
         """
-        datapoints = self.datapoint_model.objects.filter(is_active=True)
+        datapoints = self.queryset.filter(is_active=True)
+        datapoints = self.filter_queryset(datapoints)
         serializer = self.serializer_class(datapoints, many=True)
         return Response(serializer.data)
 
@@ -56,9 +60,9 @@ class DatapointValueViewSet(DatapointValueViewSetTemplate):
     __doc__ = DatapointValue.__doc__.strip()
     model = DatapointValue
     datapoint_model = Datapoint
+    queryset = DatapointValue.objects.all()
     create_for_actuators_only = True
-    # Required for DjangoModelPermissions
-    queryset = DatapointValue.objects.none()
+    filterset_class = DatapointValueFilter
 
     def create(self, request, dp_id):
         """
@@ -89,9 +93,8 @@ class DatapointScheduleViewSet(DatapointScheduleViewSetTemplate):
     __doc__ = DatapointSchedule.__doc__.strip()
     model = DatapointSchedule
     datapoint_model = Datapoint
+    queryset = DatapointSchedule.objects.all()
     create_for_actuators_only = True
-    # Required for DjangoModelPermissions
-    queryset = DatapointSchedule.objects.none()
 
     def create(self, request, dp_id):
         """
@@ -123,9 +126,8 @@ class DatapointSetpointViewSet(DatapointSetpointViewSetTemplate):
     __doc__ = DatapointSetpoint.__doc__.strip()
     model = DatapointSetpoint
     datapoint_model = Datapoint
+    queryset = DatapointSchedule.objects.all()
     create_for_actuators_only = True
-    # Required for DjangoModelPermissions
-    queryset = DatapointSetpoint.objects.none()
 
     def create(self, request, dp_id):
         """

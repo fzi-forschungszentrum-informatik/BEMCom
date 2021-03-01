@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'drf_spectacular',
+    'django_filters',
     'api_main.apps.ApiMainConfig',
     'api_admin_ui.apps.ApiAdminUiConfig',
     'api_rest_interface.apps.ApiRestInterfaceConfig',
