@@ -20,12 +20,13 @@ def datetime_from_timestamp(timestamp, tz_aware=True):
     dt: datetime object
         Corresponding datetime object
     """
+    # This returns the local time.
     dt = datetime.fromtimestamp(timestamp / 1000.)
-    if tz_aware:
-        # Don't use astimezone here, as this will try add the hour delta
-        # between the local timezone and UTC, while the timestamp is
-        # alrady in UTC.
-        dt = dt.replace(tzinfo=timezone.utc)
+    # So we recompute it to UTC.
+    dt = dt.astimezone(timezone.utc)
+    if not tz_aware:
+        # Remove timezone if not requested.
+        dt = dt.replace(tzinfo=None)
     return dt
 
 
