@@ -126,7 +126,7 @@ class DatapointSetpointViewSet(DatapointSetpointViewSetTemplate):
     __doc__ = DatapointSetpoint.__doc__.strip()
     model = DatapointSetpoint
     datapoint_model = Datapoint
-    queryset = DatapointSchedule.objects.all()
+    queryset = DatapointSetpoint.objects.all()
     create_for_actuators_only = True
 
     def create(self, request, dp_id):
