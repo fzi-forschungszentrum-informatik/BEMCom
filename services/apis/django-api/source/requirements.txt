@@ -4,6 +4,7 @@ channels==3.0.*
 django-guardian==2.3.*
 djangorestframework==3.12.*
 drf-spectacular==0.11.*
+django-filter==2.4.*
 
 # Required for communication with other services.
 paho-mqtt==1.5.*
