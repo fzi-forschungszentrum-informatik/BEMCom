@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+
+    pgadmin-tool:
+
+        container_name: pgadmin-tool
+
+        build:
+            context: ./source
+
+        restart: always
+
+        ports:
+            - "7999:443"
+
+        volumes:
+            - ${PGADMIN_DATA_DIR}:/var/lib/pgadmin
+
+        environment:
+            - "SSL_CERT_PEM=${SSL_CERT_PEM}"
+            - "SSL_KEY_PEM=${SSL_KEY_PEM}"
+            - "PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}"
+            - "PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}"
+            - "PGADMIN_ENABLE_TLS=TRUE"
