@@ -809,8 +809,6 @@ class TestConnectorRun(TestClassWithFixtures):
     def test_mqtt_log_handler_initiated_correctly(self):
         """
         Verify that MQTTHandler has received the correct args.
-        
-        TODO: This fails, but why?
         """
         self.cn = Connector(**self.connector_default_kwargs)
         self.cn.run()
