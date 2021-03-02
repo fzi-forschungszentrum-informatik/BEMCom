@@ -805,6 +805,23 @@ class TestConnectorRun(TestClassWithFixtures):
 
         logger = logging.getLogger("pyconnector")
         assert sum([isinstance(h, MQTTHandler) for h in logger.handlers]) == 1
+        
+    def test_mqtt_log_handler_initiated_correctly(self):
+        """
+        We expect to find the log handler exactly once in loggers, although
+        run has been called very often during the tests.
+        """
+        self.cn = Connector(**self.connector_default_kwargs)
+        self.cn.run()
+
+        logger = logging.getLogger("pyconnector")
+        for handler in logger.handlers:
+            if isinstance(handler, MQTTHandler):
+                mqtt_handler = handler
+                break
+        
+        assert mqtt_handler.mqtt_client == self.cn.mqtt_client
+        assert mqtt_handler.log_topic == self.cn.MQTT_TOPIC_LOGS
 
     def test_warn_if_device_dispatcher_is_none(self):
         """
