@@ -52,8 +52,7 @@ class Datapoint(DatapointTemplate):
             "the connector."
         )
     )
-    example_value = models.CharField(
-        max_length=30,
+    example_value = models.TextField(
         editable=False,
         help_text=(
             "One example value for this datapoint. Should help admins while "
