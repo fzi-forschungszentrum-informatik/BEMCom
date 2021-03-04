@@ -3,9 +3,6 @@
   "name": "holl-rest-api",
   "id": "fzi-holl-rest-api",
   "metrics": true,
-  "jsonData": {
-    "tlsSkipVerify": true
-  },
   "info": {
     "description": "a custom ds plugin for a json rest api",
     "author": {
@@ -20,7 +17,7 @@
     "links": [
       {
         "name": "Website",
-        "url": "https://github.com/grafana/simple-datasource"
+        "url": "https://iik-gitlab.fzi.de/HoLL-Therm/backend_new/-/tree/grafana-plugin/services/tools/grafana"
       },
       {
         "name": "License",

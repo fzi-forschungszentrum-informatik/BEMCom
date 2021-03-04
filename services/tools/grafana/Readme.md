@@ -76,8 +76,8 @@ You can...
 
 ### Changelog
 
-| Tag   | Changes                                                                                        |
-| ----- | ---------------------------------------------------------------------------------------------- |
-| 0.1.0 | Initial version                                                                                |
-| 0.1.1 | simpler setpoint selection                                                                     |
-| 1.0.0 | basic authentication enabled. Skipping TLS verification enabled for self seigned certificates. |
+| Tag   | Changes                                                                                       |
+| ----- | --------------------------------------------------------------------------------------------- |
+| 0.1.0 | Initial version                                                                               |
+| 0.1.1 | Simpler setpoint selection                                                                    |
+| 1.0.0 | Basic authentication enabled. Skipping TLS verification enabled for self signed certificates. |
