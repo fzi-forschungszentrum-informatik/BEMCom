@@ -1,9 +1,12 @@
 import React, { ChangeEvent, PureComponent } from 'react';
 import { LegacyForms } from '@grafana/ui';
 import { DataSourcePluginOptionsEditorProps } from '@grafana/data';
-import { MyDataSourceOptions } from './types'; // MySecureJsonData
+import { MyDataSourceOptions, MySecureJsonData } from './types';
 
-const { FormField } = LegacyForms; //SecretFormField
+const { FormField, SecretFormField } = LegacyForms;
+
+import FormControlLabel from '@material-ui/core/FormControlLabel';
+import { Checkbox, Switch } from '@material-ui/core';
 
 interface Props extends DataSourcePluginOptionsEditorProps<MyDataSourceOptions> {}
 
@@ -21,95 +24,151 @@ export class ConfigEditor extends PureComponent<Props, State> {
     onOptionsChange({ ...options, url });
   };
 
-  // onHostChange = (event: ChangeEvent<HTMLInputElement>) => {
-  //   const { onOptionsChange, options } = this.props;
-  //   const jsonData = {
-  //     ...options.jsonData,
-  //     host: event.target.value,
-  //   };
-  //   onOptionsChange({ ...options, jsonData });
-  // };
+  onBasicAuthChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { onOptionsChange, options } = this.props;
+    const basicAuth = !(event.target.value == 'true');
+    onOptionsChange({ ...options, basicAuth });
+  };
 
-  // onPathChange = (event: ChangeEvent<HTMLInputElement>) => {
-  //   const { onOptionsChange, options } = this.props;
-  //   const jsonData = {
-  //     ...options.jsonData,
-  //     path: event.target.value,
-  //   };
-  //   onOptionsChange({ ...options, jsonData });
-  // };
+  ontlsSkipVerifyChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { onOptionsChange, options } = this.props;
+    const tlsSkipVerify = !(event.target.value == 'true');
+    onOptionsChange({
+      ...options,
+      jsonData: {
+        tlsSkipVerify,
+      },
+    });
+  };
 
-  // // Secure field (only sent to the backend)
-  // onAPIKeyChange = (event: ChangeEvent<HTMLInputElement>) => {
-  //   const { onOptionsChange, options } = this.props;
-  //   onOptionsChange({
-  //     ...options,
-  //     secureJsonData: {
-  //       apiKey: event.target.value,
-  //     },
-  //   });
-  // };
+  onUserChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { onOptionsChange, options } = this.props;
+    const basicAuthUser = event.target.value;
+    onOptionsChange({
+      ...options,
+      basicAuthUser,
+      // jsonData: {
+      //   user: event.target.value,
+      // },
+    });
+  };
 
-  // onResetAPIKey = () => {
-  //   const { onOptionsChange, options } = this.props;
-  //   onOptionsChange({
-  //     ...options,
-  //     secureJsonFields: {
-  //       ...options.secureJsonFields,
-  //       apiKey: false,
-  //     },
-  //     secureJsonData: {
-  //       ...options.secureJsonData,
-  //       apiKey: '',
-  //     },
-  //   });
-  // };
+  // Secure field (only sent to the backend)
+  onPasswordChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { onOptionsChange, options } = this.props;
+    onOptionsChange({
+      ...options,
+      secureJsonData: {
+        basicAuthPassword: event.target.value,
+      },
+    });
+  };
+
+  onResetPassword = () => {
+    const { onOptionsChange, options } = this.props;
+    onOptionsChange({
+      ...options,
+      secureJsonFields: { ...options.secureJsonFields, basicAuthPassword: false },
+      secureJsonData: { ...options.secureJsonData, basicAuthPassword: '' },
+    });
+  };
 
   render() {
-    // console.log('RENDER Config Editr - options: ', this.props.options);
+    // console.log('RENDER Config Editor - props: ', this.props);
     const { options } = this.props;
-    // const { jsonData } = options;
-    // const secureJsonData = (options.secureJsonData || {}) as MySecureJsonData;
+    const { secureJsonFields } = options;
+
+    const jsonData = options.jsonData;
+    const secureJsonData = (options.secureJsonData || {}) as MySecureJsonData;
 
     return (
       <div className="gf-form-group">
-        <div className="gf-form">
-          <FormField
-            label="url"
-            labelWidth={6}
-            inputWidth={20}
-            onChange={this.onUriChange}
-            value={options.url || ''}
-            placeholder="datasource 'http://example.com:8888/api'"
-            tooltip="url to root of API"
-          />
-        </div>
-
-        {/* <div className="gf-form">
-          <FormField
-            label="Path"
-            labelWidth={6}
-            inputWidth={20}
-            onChange={this.onPathChange}
-            value={jsonData.path || ''}
-            placeholder="subpath to root of api. '/examle/api'"
-          />
-        </div> */}
-
-        {/* <div className="gf-form-inline">
+        <div className="gf-form-group">
+          {/* URL */}
           <div className="gf-form">
-            <SecretFormField
-              isConfigured={(secureJsonFields && secureJsonFields.apiKey) as boolean}
-              value={secureJsonData.apiKey || ''}
-              label="API Key"
-              placeholder="secure json field (backend only)"
-              labelWidth={6}
+            <FormField
+              label="url"
+              labelWidth={10}
               inputWidth={20}
-              onReset={this.onResetAPIKey}
-              onChange={this.onAPIKeyChange}
+              onChange={this.onUriChange}
+              value={options.url || ''}
+              placeholder="datasource 'http://example.com:8888/api'"
+              tooltip="url to root of API"
             />
           </div>
-        </div> */}
+        </div>
+
+        {/* Use basicAuth */}
+        <div className="gf-form-group">
+          <div className="gf-form">
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={options.basicAuth}
+                  value={options.basicAuth}
+                  onChange={this.onBasicAuthChange}
+                  name="useBasicAtuh"
+                  color="primary"
+                  size="small"
+                />
+              }
+              className="m-1"
+              label="use basic authentication"
+            />
+          </div>
+
+          {/* basicAuth user */}
+          <div className="gf-form-group">
+            <div className="gf-form">
+              <FormField
+                label="user"
+                placeholder="username"
+                tooltip="basicAuth user"
+                labelWidth={10}
+                inputWidth={20}
+                onChange={this.onUserChange}
+                value={options.basicAuthUser || ''}
+                disabled={!options.basicAuth}
+              />
+            </div>
+
+            {/* basicAuth password */}
+            <div className="gf-form">
+              <SecretFormField
+                label="password"
+                placeholder="password"
+                tooltip="basicAuth password"
+                labelWidth={10}
+                inputWidth={20}
+                isConfigured={(secureJsonFields && secureJsonFields.basicAuthPassword) as boolean}
+                onChange={this.onPasswordChange}
+                onReset={this.onResetPassword}
+                value={secureJsonData.basicAuthPassword || ''}
+                disabled={!options.basicAuth}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Skip TLS Verification */}
+        <div className="gf-form-group">
+          <div className="gf-form">
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={jsonData.tlsSkipVerify}
+                  value={jsonData.tlsSkipVerify}
+                  onChange={this.ontlsSkipVerifyChange}
+                  name="skip tls verify"
+                  color="primary"
+                  size="small"
+                />
+              }
+              className="m-1"
+              label="skip TLS verification (insecure! Use for self signed certificates - for now)"
+            />
+          </div>
+        </div>
       </div>
     );
   }

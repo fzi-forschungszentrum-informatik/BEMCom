@@ -3,6 +3,9 @@
   "name": "holl-rest-api",
   "id": "fzi-holl-rest-api",
   "metrics": true,
+  "jsonData": {
+    "tlsSkipVerify": true
+  },
   "info": {
     "description": "a custom ds plugin for a json rest api",
     "author": {
@@ -26,7 +29,7 @@
     ],
     "screenshots": [],
     "version": "1.0.0",
-    "updated": "2021-02-11"
+    "updated": "2021-03-04"
   },
   "dependencies": {
     "grafanaVersion": "6.5.x",

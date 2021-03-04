@@ -8,10 +8,10 @@ import {
   DataSourceInstanceSettings,
   MutableDataFrame,
   FieldType,
-  // getColumnFromDimension,
 } from '@grafana/data';
 
 import { MyQuery, MyDataSourceOptions } from './types';
+import { endsWith } from 'lodash';
 
 export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   // settings: DataSourceInstanceSettings;
@@ -49,7 +49,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     try {
       const result = await getBackendSrv().datasourceRequest({
         method: 'GET',
-        url: url, // '/api/datasources/proxy/1/datapoint/', //http://localhost:3000/api/datasources/proxy/1/datapoint/
+        url: url,
         params: params,
         // headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
       });
@@ -90,14 +90,14 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
           switch (target.datatype?.label) {
             case 'value':
               frame.name = 'value';
-              frame.addField({ name: 'value', type: FieldType.number });
+              frame.addField({ name: target.datapoint?.label + '_value' || 'value', type: FieldType.number });
               response.data.forEach((point: any) => {
                 frame.appendRow([point.timestamp, point.value]);
               });
               break;
             case 'schedule':
               frame.name = 'schedule';
-              frame.addField({ name: 'schedule', type: FieldType.number });
+              frame.addField({ name: target.datapoint?.label + '_schedule' || 'schedule', type: FieldType.number });
 
               let latest_schedule = response.data[response.data.length - 1];
               response.data.forEach((schedule: any) => {
@@ -129,9 +129,18 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
               });
 
               frame.name = 'setpoint';
-              frame.addField({ name: 'lower bound', type: FieldType.number });
-              frame.addField({ name: 'upper bound', type: FieldType.number });
-              frame.addField({ name: 'preferred value', type: FieldType.number });
+              frame.addField({
+                name: target.datapoint?.label + '_lower_bound' || 'lower_bound',
+                type: FieldType.number,
+              });
+              frame.addField({
+                name: target.datapoint?.label + '_upper_bound' || 'upper_bound',
+                type: FieldType.number,
+              });
+              frame.addField({
+                name: target.datapoint?.label + '_preferred_value' || 'preferred_value',
+                type: FieldType.number,
+              });
 
               latest_setpoint.setpoint.forEach((interval: any) => {
                 let acceptable_values = interval.acceptable_values.map((x: string) => Number(x));
@@ -177,21 +186,52 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   }
 
   async testDatasource() {
-    const result = await getBackendSrv().datasourceRequest({
-      method: 'GET',
-      url: this.url + '/datapoint/',
-    });
+    if (endsWith(this.url, '/')) {
+      this.url = this.url.slice(0, -1);
+    }
 
-    if (result.status === 200) {
-      return {
-        status: 'success',
-        message: 'Success',
-      };
-    } else {
-      return {
-        status: 'error',
-        message: 'Datasource did not respond properly',
-      };
+    try {
+      const result = await getBackendSrv().datasourceRequest({
+        method: 'GET',
+        url: this.url + '/datapoint/',
+        params: { format: 'json' },
+      });
+
+      if (result.status === 200) {
+        return {
+          status: 'success',
+          message: 'Success',
+        };
+      } else {
+        return {
+          status: 'error',
+          message: 'Datasource did not respond properly',
+        };
+      }
+    } catch (err) {
+      if (err.status == 502) {
+        return {
+          status: 'error',
+          message:
+            err.status.toString() +
+            ' - Bad Gateway. Maybe the url is wrong/ https is required/ a self signed certificate is used.',
+        };
+      } else if (err.status == 400) {
+        let message = err.status.toString() + ' - Bad Reqeust';
+
+        if (err.data.response == 'Authentication to data source failed') {
+          message = message + '. Authentication to data source failed.';
+        }
+        return {
+          status: 'error',
+          message: message,
+        };
+      } else {
+        return {
+          status: 'error',
+          message: 'Unknown error ' + err.status.toString(),
+        };
+      }
     }
   }
 }

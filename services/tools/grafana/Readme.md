@@ -18,9 +18,17 @@ Thus, the holl-rest-api datasource plugin for grafana can display these three ty
 
 #### Data source configuration
 
-The datasource is simply configured by providing a url to the APIs root. For example `http://example.fzi.de:8017/api`.
+The datasource is configured by providing the following settings:
 
-Authentication is not supported by the initial version 0.1.
+- required:
+  - `Name` of the datasource inside grafana
+  - `url` to the APIs root. For example `http://example.fzi.de:8017/api/`
+- optional:
+  - `use basic authentication`
+  - `basicAuth user`
+  - `basicAuth password`
+  - `skip TLS verification` - check this to ignore self signed certificates <br>
+    **important** this option renders https insecure. To enable verification and security a custom CA Authority for verification of certificates is needed.
 
 #### Query configuration
 
@@ -64,9 +72,12 @@ You can...
 | -------------------------------- | ---------------------------------- |
 | /graf_data/plugins/holl-rest-api | Contains the holl-rest-api plugin. |
 
+**Hint**: Add custom volumes to persist changes in Grafana.
+
 ### Changelog
 
-| Tag   | Changes                    |
-| ----- | -------------------------- |
-| 0.1.0 | Initial version            |
-| 0.1.1 | simpler setpoint selection |
+| Tag   | Changes                                                                                        |
+| ----- | ---------------------------------------------------------------------------------------------- |
+| 0.1.0 | Initial version                                                                                |
+| 0.1.1 | simpler setpoint selection                                                                     |
+| 1.0.0 | basic authentication enabled. Skipping TLS verification enabled for self seigned certificates. |

@@ -3,6 +3,9 @@
   "name": "holl-rest-api",
   "id": "fzi-holl-rest-api",
   "metrics": true,
+  "jsonData": {
+    "tlsSkipVerify": true
+  },
   "info": {
     "description": "a custom ds plugin for a json rest api",
     "author": {
