@@ -91,6 +91,12 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
             case 'value':
               frame.name = 'value';
               frame.addField({ name: target.datapoint?.label + '_value' || 'value', type: FieldType.number });
+
+              // sort response.data by timestamps
+              response.data = response.data.sort((first: any, second: any) => {
+                return first.timestamp > second.timestamp ? 1 : -1;
+              });
+
               response.data.forEach((point: any) => {
                 frame.appendRow([point.timestamp, point.value]);
               });
@@ -99,12 +105,17 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
               frame.name = 'schedule';
               frame.addField({ name: target.datapoint?.label + '_schedule' || 'schedule', type: FieldType.number });
 
-              let latest_schedule = response.data[response.data.length - 1];
-              response.data.forEach((schedule: any) => {
-                if (schedule.timestamp > latest_schedule.timestamp) {
-                  latest_schedule = schedule;
-                }
+              // sort response.data by timestamps
+              response.data = response.data.sort((first: any, second: any) => {
+                return first.timestamp > second.timestamp ? 1 : -1;
               });
+
+              let latest_schedule = response.data[response.data.length - 1];
+              // response.data.forEach((schedule: any) => {
+              //   if (schedule.timestamp > latest_schedule.timestamp) {
+              //     latest_schedule = schedule;
+              //   }
+              // });
 
               latest_schedule.schedule.forEach((interval: any) => {
                 // set frame content
@@ -121,12 +132,17 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
               break;
             case 'setpoint':
-              let latest_setpoint = response.data[response.data.length - 1];
-              response.data.forEach((setpoint: any) => {
-                if (setpoint.timestamp > latest_setpoint.timestamp) {
-                  latest_setpoint = setpoint;
-                }
+              // sort response.data by timestamps
+              response.data = response.data.sort((first: any, second: any) => {
+                return first.timestamp > second.timestamp ? 1 : -1;
               });
+
+              let latest_setpoint = response.data[response.data.length - 1];
+              // response.data.forEach((setpoint: any) => {
+              //   if (setpoint.timestamp > latest_setpoint.timestamp) {
+              //     latest_setpoint = setpoint;
+              //   }
+              // });
 
               frame.name = 'setpoint';
               frame.addField({
@@ -178,6 +194,8 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
               });
               break;
           }
+          console.log('frame.fields:');
+          console.log(frame.fields);
           return frame;
         }
       })
