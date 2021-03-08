@@ -1,0 +1,17 @@
+version: "3"
+
+services:
+    grafana-tool:
+        container_name: grafana-tool 
+        build:
+            context: ./source
+        restart: always
+        ports:
+            - 3000:3000
+        volumes:
+            - "${GRAFANA_DB_FILE}:/var/lib/grafana/grafana.db"
+#            - ./souce/grafana_plugins/bemcom-django-api/dist:/var/lib/grafana/plugins/bemcom-django-api
+        user: "${USER_ID}:${GROUP_ID}"
+        environment:
+            - "GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}"
+            - "GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}"

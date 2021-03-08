@@ -1,0 +1,35 @@
+{
+  "type": "datasource",
+  "name": "BEMCom-Django-API",
+  "id": "bemcom-django-api",
+  "metrics": true,
+  "info": {
+    "description": "A custom ds plugin for to ingerate the Rest API of BEMComs Django API service.",
+    "author": {
+      "name": "key",
+      "url": "fzi.de"
+    },
+    "keywords": [],
+    "logos": {
+      "small": "img/logo.svg",
+      "large": "img/logo.svg"
+    },
+    "links": [
+      {
+        "name": "Website",
+        "url": "https://github.com/fzi-forschungszentrum-informatik/bemcom"
+      },
+      {
+        "name": "License",
+        "url": "https://github.com/fzi-forschungszentrum-informatik/bemcom/blob/master/LICENSE"
+      }
+    ],
+    "screenshots": [],
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
+  },
+  "dependencies": {
+    "grafanaVersion": "6.5.x",
+    "plugins": []
+  }
+}
