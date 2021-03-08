@@ -1,16 +1,15 @@
 version: "3"
 
 services:
-  holl-bemcom-app-grafana-rest-api:
-    image: grafana/grafana:7.3.6
-    container_name: holl-bemcom-app-grafana-rest-api
-    restart: always
-    expose:
-      - 3000
-    ports:
-      - 3000:3000
-    volumes:
-      - ./graf_data/plugins/holl-rest-api:/var/lib/grafana/plugins/holl-rest-api
-    environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: password
+    grafana-tool:
+        container_name: grafana-tool 
+        build:
+            context: ./source
+        restart: always
+        ports:
+            - 3000:3000
+        #volumes:
+        #    - ./souce/graf_data/plugins/holl-rest-api:/var/lib/grafana/plugins/holl-rest-api
+        environment:
+            - "GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}"
+            - "GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}"

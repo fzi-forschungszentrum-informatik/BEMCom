@@ -1,18 +1,29 @@
-# Grafana instance with holl specific REST API plugin
+# Grafana Tool
 
-This monitoring service provides a grafana instance with a self-written datasource plugin to visualize data from the BEMcom REST API.
+This service provides a Grafana instance with a custom plug-in that allows direct data retrieval from REST interface of the Django-API service. 
 
-The REST API basically provides datapoints with three types of time series data:
+### Configuration
 
-- values - measured values of the datapoint
-- set-points - a user input marking an interval of acceptable values as well as a preferred value for one or several time intervals
-- schedules - the road map to be executed. A schedule could be inferred by an optimzation service given a set-point as input
+##### Ports
 
-Not all datapoints provide all types of data as a datapoint can be a sensor - thus having values but no schedules - as well as an actor - having also schedules and set-points.
+| Port | Usage/Remarks           |
+| ---- | ----------------------- |
+| 3000 | Default Grafana Ui port |
 
-See the BEMcom documentation (TODO: insert link) for more details.
+##### Environment Variables
 
-Thus, the holl-rest-api datasource plugin for grafana can display these three types of time series quickly.
+| Enironment Variable        | Example Value | Usage/Remarks              |
+| -------------------------- | ------------- | -------------------------- |
+| GF_SECURITY_ADMIN_USER     | admin         | The default admin user     |
+| GF_SECURITY_ADMIN_PASSWORD | very!secret&  | The default admin password |
+
+##### Volumes
+
+| Path in Container                | Usage/Remarks                                                |
+| -------------------------------- | ------------------------------------------------------------ |
+| /graf_data/plugins/holl-rest-api | Allows mounting in the custom plugin. Use for development only. |
+
+**Hint**: Add custom volumes to persist changes in Grafana.
 
 ### On the holl-rest-api plugin
 
@@ -22,7 +33,7 @@ The datasource is configured by providing the following settings:
 
 - required:
   - `Name` of the datasource inside grafana
-  - `url` to the APIs root. For example `http://example.fzi.de:8017/api/`
+  - `url` to the APIs root. For example `http://django-api.example.com:8000/`
 - optional:
   - `use basic authentication`
   - `basicAuth user`
@@ -50,29 +61,6 @@ You can...
 - Make your changes to the source files under `./graf_data/plugins/holl-rest-api/src`
 - Hot build the plugin to see changes in the browser on reload with `yarn dev --watch`
 - Build the plugin for production with `yarn build`
-
-### Configuration
-
-##### Ports
-
-| Port | Usage/Remarks           |
-| ---- | ----------------------- |
-| 3000 | Default Grafana Ui port |
-
-##### Environment Variables
-
-| Enironment Variable        | Example Value | Usage/Remarks              |
-| -------------------------- | ------------- | -------------------------- |
-| GF_SECURITY_ADMIN_USER     | admin         | The default admin user     |
-| GF_SECURITY_ADMIN_PASSWORD | password      | The default admin password |
-
-##### Volumes
-
-| Path in Container                | Usage/Remarks                      |
-| -------------------------------- | ---------------------------------- |
-| /graf_data/plugins/holl-rest-api | Contains the holl-rest-api plugin. |
-
-**Hint**: Add custom volumes to persist changes in Grafana.
 
 ### Changelog
 
