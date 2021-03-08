@@ -26,13 +26,13 @@ export class ConfigEditor extends PureComponent<Props, State> {
 
   onBasicAuthChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { onOptionsChange, options } = this.props;
-    const basicAuth = !(event.target.value == 'true');
+    const basicAuth = !(event.target.value === 'true');
     onOptionsChange({ ...options, basicAuth });
   };
 
   ontlsSkipVerifyChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { onOptionsChange, options } = this.props;
-    const tlsSkipVerify = !(event.target.value == 'true');
+    const tlsSkipVerify = !(event.target.value === 'true');
     onOptionsChange({
       ...options,
       jsonData: {

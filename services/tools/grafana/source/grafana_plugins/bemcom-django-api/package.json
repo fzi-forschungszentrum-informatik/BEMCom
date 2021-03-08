@@ -1,7 +1,7 @@
 {
-  "name": "fzi-holl-rest-api",
-  "version": "1.0.0",
-  "description": "a custom ds plugin for a json rest api",
+  "name": "BEMCom-Django-API",
+  "version": "0.1.2",
+  "description": "A custom ds plugin for to ingerate the Rest API of BEMComs Django API service.",
   "scripts": {
     "build": "grafana-toolkit plugin:build",
     "test": "grafana-toolkit plugin:test",
@@ -9,7 +9,7 @@
     "watch": "grafana-toolkit plugin:dev --watch"
   },
   "author": "key",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "devDependencies": {
     "@grafana/data": "^7.0.0",
     "@grafana/toolkit": "^7.0.0",

@@ -73,7 +73,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
     const promises = options.targets.map(target =>
       this.doRequest(target).then(response => {
-        if (!response || response.data == undefined || response.data.length == 0) {
+        if (!response || response.data === undefined || response.data.length === 0) {
           return [];
         }
         if (target.getMeta) {
@@ -227,17 +227,17 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         };
       }
     } catch (err) {
-      if (err.status == 502) {
+      if (err.status === 502) {
         return {
           status: 'error',
           message:
             err.status.toString() +
             ' - Bad Gateway. Maybe the url is wrong/ https is required/ a self signed certificate is used.',
         };
-      } else if (err.status == 400) {
+      } else if (err.status === 400) {
         let message = err.status.toString() + ' - Bad Reqeust';
 
-        if (err.data.response == 'Authentication to data source failed') {
+        if (err.data.response === 'Authentication to data source failed') {
           message = message + '. Authentication to data source failed.';
         }
         return {

@@ -1,1 +1,1 @@
-docker build ./source -t bemcom/django-api:0.0.1
+docker build ./source -t bemcom/grafana-tool:0.1.2
