@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+set -u
 
 echo "Entering entrypoint.sh"
 
@@ -9,7 +10,7 @@ python3 /source/api/manage.py makemigrations
 python3 /source/api/manage.py migrate
 
 # Run prod deploy checks if not in devl.
-if [ $DJANGO_DEBUG != "TRUE" ]
+if [ "${DJANGO_DEBUG:-False}" != "TRUE" ]
 then
     printf "\n\n"
     echo "Running Djangos production deploy checks"
@@ -26,7 +27,7 @@ echo "Checking the certificate situation."
 mkdir -p /tmp/cert
 chmod 700 /tmp/cert
 cd /tmp/cert
-if [ -z "$SSL_CERT_PEM" ] || [ -z "$SSL_KEY_PEM" ]
+if [ -z "${SSL_CERT_PEM:-}" ] || [ -z "${SSL_KEY_PEM:-}" ]
 then
     # As proposed by:
     # https://stackoverflow.com/questions/10175812/how-to-create-a-self-signed-certificate-with-openssl
@@ -43,7 +44,7 @@ fi
 
 # Start up the server, use the internal devl server in debug mode.
 # Both should bind to port 8000 within the container and start the server.
-if [[ $DJANGO_DEBUG == "TRUE" ]]
+if  [[ "${DJANGO_DEBUG:-FALSE}" == "TRUE" ]]
 then
     # --noreload prevents duplicate entries in DB.
     printf "\n\nStarting up Django development server.\n\n\n"
