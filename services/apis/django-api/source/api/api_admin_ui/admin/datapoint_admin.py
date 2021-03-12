@@ -32,8 +32,8 @@ class DatapointAdmin(admin.ModelAdmin):
         "short_name",
         "description",
         "unit",
-        "example_value",
-        "last_value",
+        "example_value_truncated",
+        "last_value_truncated",
         "last_value_timestamp_pretty",
     )
     list_display_links = (
@@ -135,6 +135,30 @@ class DatapointAdmin(admin.ModelAdmin):
             pass
         return setpoint
     last_setpoint_pretty.short_description = "Last setpoint"
+
+    def example_value_truncated(self, obj):
+        """
+        Return a possible truncated value if the example value is very long.
+        """
+        value = obj.example_value
+        truncation_length = 100
+        if value is not None and len(value) >= truncation_length: 
+            value = value[:truncation_length] + " [truncated]"
+        return value
+    example_value_truncated.admin_order_field = "example_value"
+    example_value_truncated.short_description = "example_value"
+    
+    def last_value_truncated(self, obj):
+        """
+        Return a possible truncated value if the example value is very long.
+        """
+        value = obj.last_value
+        truncation_length = 100
+        if value is not None and len(value) >= truncation_length: 
+            value = value[:truncation_length] + " [truncated]"
+        return value
+    last_value_truncated.admin_order_field = "last_value"
+    last_value_truncated.short_description = "last_value"
 
     def get_fieldsets(self, request, obj=None):
         """
