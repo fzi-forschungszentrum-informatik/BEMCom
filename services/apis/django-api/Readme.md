@@ -105,6 +105,8 @@ If you have added a clean new database you need to initialize the database.
 * [ ] Query parameters to select only certain time ranges while retrieving values/setpoints/schedules from REST interface
 * [ ] Add functionality to align timestamps while retrieving data from REST interface.
 * [ ] Add functionality to disable controllers and the history DB to support new users.
+* [ ] Add export/import of Datapoint Metadata; E.g. add connector and key_in_connector fields to export and add a POST Method to import Lists of Datapoints. 
+* [ ] Add Websocket Push Interface.
 * [ ] Extend documentation:
   * [ ] REST and UI Endpoints
   * [ ] How to set certs, e.g. with:`MODE=PROD SSL_KEY_PEM=$(cat key.pem) SSL_CERT_PEM=$(cat cert.pem) docker-compose up --build`
