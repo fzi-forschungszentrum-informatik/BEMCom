@@ -51,6 +51,7 @@ class DatapointAdmin(admin.ModelAdmin):
         "connector",
         "data_format",
         "is_active",
+        ("short_name", admin.EmptyFieldListFilter)
     )
     search_fields = (
         "key_in_connector",
