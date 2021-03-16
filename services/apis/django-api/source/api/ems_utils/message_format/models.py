@@ -3,7 +3,7 @@ from django.db import models
 
 class DatapointTemplate(models.Model):
     """
-    Devices are abstracted as a set of datapoint.
+    Devices are abstracted as a set of datapoints.
 
     A datapoint represents one source of information. Devices will typically
     emit information on more then one datapoints. E.g. climate sensor in a
@@ -11,7 +11,7 @@ class DatapointTemplate(models.Model):
     treated as individual datapoints as this allows us to abstract away the
     complexity of the devices.
 
-    Each datapoint object contains the metadata to necessary to interpret
+    Each datapoint object contains the metadata necessary to interpret
     the datapoint.
     """
 

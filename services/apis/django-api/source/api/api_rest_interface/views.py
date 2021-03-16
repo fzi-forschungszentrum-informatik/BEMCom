@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from django.shortcuts import render, get_object_or_404
 
+from api_main.models.connector import Connector
 from api_main.models.datapoint import Datapoint
 from api_main.models.datapoint import DatapointValue
 from api_main.models.datapoint import DatapointSchedule
@@ -25,12 +26,17 @@ from .serializers import DatapointSerializer
 from .filters import DatapointFilter, DatapointValueFilter
 from .filters import DatapointSetpointFilter, DatapointScheduleFilter
 
+from drf_spectacular.utils import extend_schema, inline_serializer, extend_schema_serializer
+
 class DatapointViewSet(DatapointViewSetTemplate):
-    __doc__ = Datapoint.__doc__
+    __doc__ = DatapointViewSetTemplate.__doc__
     datapoint_model = Datapoint
     serializer_class = DatapointSerializer
     queryset = Datapoint.objects.all()
     filterset_class = DatapointFilter
+    # Ids might change in between instances. The combinations of
+    # these too fields in contrast should be unique even if the ID changed.
+    unique_together_fields = ("connector", "key_in_connector")
 
     def retrieve(self, request, dp_id):
         datapoint = get_object_or_404(
@@ -48,6 +54,7 @@ class DatapointViewSet(DatapointViewSetTemplate):
         datapoints = self.filter_queryset(datapoints)
         serializer = self.serializer_class(datapoints, many=True)
         return Response(serializer.data)
+    list.__doc__ = DatapointViewSetTemplate.list.__doc__
 
     def create(self, request):
         raise NotImplementedError(
@@ -55,6 +62,58 @@ class DatapointViewSet(DatapointViewSetTemplate):
             "connectors can define new Datapoints."
         )
 
+
+    @extend_schema(
+        request=serializer_class(Datapoint, many=True),
+        ##
+        ## This might help with the broken schema but will introduce some
+        ## query parameters which do not make much sense here.
+        ##
+        # responses=serializer_class(Datapoint, many=True),
+        parameters=[],
+    )
+    def update_many(self, request):
+        """
+        This method allows to update a a bunch of datapoints which must exist
+        already.
+        Method will try to match the input to the existing datapoints.
+        This is done by searching for field connector_name and key_in_connector.
+        """
+        # Check first that the DB lookups are worth it. This also verifies
+        # that we receive a list of objects as expected.
+        serializer = self.serializer_class(data=request.data, many=True)
+        serializer.is_valid(raise_exception=True)
+
+        errors = []
+        for data in request.data:
+            if not "connector" in data:
+                errors.append({})
+                continue
+            cn_qs = Connector.objects.filter(name=data["connector"])
+            if cn_qs.count() == 0:
+                errors.append({
+                    "connector": (
+                        "No Connector found matching name: %s."
+                        % data["connector"]
+                    )
+                })
+            # This should not be possible, but better save..
+            elif cn_qs.count() > 1:
+                errors.append({
+                    "connector": (
+                        "Multiple connectors found matching name: %s."
+                        % data["connector"]
+                    )
+                })
+            else:
+                errors.append({})
+                data["connector"] = cn_qs[0].id
+
+        if any(errors):
+            raise ValidationError(errors)
+        else:
+            return super().update_many(request)
+    update_many.__doc__ = __doc__ + "<br><br>" + update_many.__doc__.strip()
 
 class DatapointValueViewSet(DatapointValueViewSetTemplate):
     __doc__ = DatapointValue.__doc__.strip()

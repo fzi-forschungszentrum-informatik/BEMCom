@@ -122,6 +122,9 @@ class TestRESTEndpoint(TestCase):
             "max_value": dp.max_value,
             "allowed_values": dp.allowed_values,
             "unit": dp.unit,
+            "connector": dp.connector.name,
+            "key_in_connector": dp.key_in_connector,
+
         }
         assert request.data == expected_data
 

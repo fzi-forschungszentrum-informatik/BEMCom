@@ -12,6 +12,7 @@ urlpatterns = [
         "datapoint/",
         DatapointViewSet.as_view({
             "get": "list",
+            "put": "update_many",
         })
     ),
     path(
