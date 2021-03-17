@@ -34,10 +34,14 @@ class DatapointTemplate(models.Model):
     )
     short_name = models.TextField(
         max_length=30,
-        null=True,  # Auto generated datapoints will be stored as null...
+        null=True,  # Auto generated datapoints will be stored as null.
         default=None,
         unique=True,
-        blank=False,  # ... but once it is edited in admin we need a value.
+        # Allowing short name to be an empty string would raise unique
+        # validation errors. So we ensure while saving the model that
+        # empty strings will be stored as Nones. However, we still need
+        # to allow blank inputs to prevent validation errors in admin.
+        blank=True,
         help_text=(
             "A short name to identify the datapoint."
         )
@@ -223,6 +227,8 @@ class DatapointTemplate(models.Model):
         """
         if self.origin_id == "":
             self.origin_id = None
+        if self.short_name == "":
+            self.short_name = None
         super().save(*args, **kwargs)
 
     def __str__(self):

@@ -108,7 +108,6 @@ If you have added a clean new database you need to initialize the database.
 * [ ] Add functionality to disable controllers and the history DB to support new users.
 * [ ] Add Websocket Push Interface.
 * [ ] Fix adding Controller Admin Pages, there seems to be while defining controlled_datapoints.
-* [ ] Improve Admin Pages to also allow saving if short_name is empty?
 * [ ] Extend documentation:
   * [ ] REST and UI Endpoints
   * [ ] How to set certs, e.g. with:`MODE=PROD SSL_KEY_PEM=$(cat key.pem) SSL_CERT_PEM=$(cat cert.pem) docker-compose up --build`

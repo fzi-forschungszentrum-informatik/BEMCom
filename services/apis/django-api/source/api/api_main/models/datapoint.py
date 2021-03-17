@@ -96,6 +96,8 @@ class Datapoint(DatapointTemplate):
         Disable the inherited save method from ems_utils.
         This Datapoint definition has no origin_id.
         """
+        if self.short_name == "":
+            self.short_name = None
         models.Model.save(self, *args, **kwargs)
 
 

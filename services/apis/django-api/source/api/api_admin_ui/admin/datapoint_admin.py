@@ -333,6 +333,39 @@ class DatapointAdmin(admin.ModelAdmin):
         """
         return False
 
+    def get_changelist_formset(self,request, **kwargs):
+        """
+        This ensures that when we edit a couple of datapoints in list
+        mode we can save and ignore those datapoints that have not been
+        touched. If we don't inject these methods the Admin will interpret
+        the empty string in short name as string and raise a Validation
+        Error, as two emtpy strings are not different (while two None
+        values are). Hence we tell the admin to reset the empty strings
+        to Nones, which makes the Admin think then that the fields have
+        not changed and need not be saved.
+
+        To do so we overload the clean method of the short_name field.
+        However accessing this field is only possible after the formset
+        has been intialized, which happens shortly before is_valid is
+        called. Hence we use an extended is_valid method to inject the
+        changed clean function in the short_name form object. See:
+        https://github.com/django/django/blob/3.1/django/contrib/admin/options.py#L1758
+        """
+        formset = super().get_changelist_formset(request, **kwargs)
+
+        def clean(short_name):
+            if short_name == "":
+                short_name = None
+            return short_name
+
+        def is_valid(self):
+            for form in self.forms:
+                form.fields["short_name"].clean = clean
+            return super(type(self), self).is_valid()
+
+        formset.is_valid = is_valid
+        return formset
+
 
 @admin.register(DatapointValue)
 class DatapointValueAdmin(admin.ModelAdmin):
