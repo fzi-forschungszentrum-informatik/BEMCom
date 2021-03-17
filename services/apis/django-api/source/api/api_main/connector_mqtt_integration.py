@@ -70,12 +70,17 @@ class ConnectorMQTTIntegration():
             'port': settings.MQTT_BROKER['port'],
         }
 
-        # Get this from settings in future:
+        # TODO Get this from settings in future:
         self.HISTORY_DB = True
-        self.N_CMI_WRITE_THREADS = 32 # This should be 1 for SQLite
+        N_CMI_WRITE_THREADS = settings.N_CMI_WRITE_THREADS
         if n_cmi_write_threads_overload is not None:
-            self.N_CMI_WRITE_THREADS = n_cmi_write_threads_overload
-
+            N_CMI_WRITE_THREADS = n_cmi_write_threads_overload
+        if N_CMI_WRITE_THREADS < 1:
+            raise ValueError(
+                "N_CMI_WRITE_THREADS must be int larger then zero as we need "
+                "at least one thread to write the MQTT messages to DB."
+            )
+        
         # Locks and queue for the message_handle_worker threads.
         self.message_queue = []
         self.message_queue_lock = Lock()
@@ -90,7 +95,7 @@ class ConnectorMQTTIntegration():
         # Hence we have no change in this program to rely on a graceful
         # shutdown and start our threads as deamons too.
         self.msg_handler_threads = []
-        for i in range(self.N_CMI_WRITE_THREADS):
+        for i in range(N_CMI_WRITE_THREADS):
             message_handler_thread = Thread(
                 target=self.message_handle_worker, args=(), daemon=True,
             )
@@ -388,7 +393,8 @@ class ConnectorMQTTIntegration():
                 userdata["message_queue"].append(msg)
             else:
                 logger.warning(
-                    "Message Queue full! Droping message with topic: %s"
+                    "Message Queue full! Droping message with topic: %s\n"
+                    "Increasing N_CMI_WRITE_THREADS may solve this issue."
                     % msg.topic
                 )
 

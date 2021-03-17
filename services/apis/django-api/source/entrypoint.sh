@@ -43,20 +43,19 @@ else
 fi
 
 # Start up the server, use the internal devl server in debug mode.
-# Both should bind to port 8000 within the container and start the server.
+# Both serve plain http on port 8080 within the container.
+# The production server also serves https on 8443.
 if  [[ "${DJANGO_DEBUG:-FALSE}" == "TRUE" ]]
 then
     # --noreload prevents duplicate entries in DB.
     printf "\n\nStarting up Django development server.\n\n\n"
-    python3 /source/api/manage.py runserver --noreload 0.0.0.0:8000 &
+    python3 /source/api/manage.py runserver --noreload 0.0.0.0:8080 &
 else
-    # This also listens to port 8080 for normal HTTPS but you shouldn't use
-    # it and don't expose port 8080 as HTTPS is always prefered.
     printf "\n\nCollecting static files."
-    python3 /source/api/manage.py collectstatic
+    python3 /source/api/manage.py collectstatic --no-input
     cd /source/api && \
     printf "\n\nStarting up Daphne production server.\n\n\n"
-    daphne -e ssl:8000:privateKey=/tmp/cert/key.pem:certKey=/tmp/cert/cert.pem \
+    daphne -e ssl:8443:privateKey=/tmp/cert/key.pem:certKey=/tmp/cert/cert.pem \
            -b 0.0.0.0 \
            -p 8080 api_main.asgi:application &
 fi

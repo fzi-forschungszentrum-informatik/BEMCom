@@ -1,4 +1,4 @@
-# Django API
+Django API
 
 This is the reference implementation for an BEMCom API service.
 
@@ -7,9 +7,10 @@ This is the reference implementation for an BEMCom API service.
 
 ##### Ports
 
-| Port                    | Usage/Remarks                                                |
-| ----------------------- | ------------------------------------------------------------ |
-| 8000                    | REST interface and admin user interface.                     |
+| Port | Usage/Remarks                                                |
+| ---- | ------------------------------------------------------------ |
+| 8080 | REST interface and admin user interface on plain HTTP        |
+| 8443 | REST interface and admin user interface served securely over HTTPS |
 
 ##### Environment Variables
 
@@ -25,6 +26,7 @@ This is the reference implementation for an BEMCom API service.
 | SSL_CERT_PEM        | -----BEGIN CERTIFICATE-----<br/>MIIFCTCCAvG...    | The certificate to use for HTTPS. Will generate a self signed certificate if SSL_CERT_PEM or SSL_KEY_PEM are empty. The self signed certificate will make HTTPS work, but browsers will issue a warning. |
 | SSL_KEY_PEM         | -----BEGIN PRIVATE KEY-----<br/>MIIJQgIBADANBg... | Similar to SSL_CERT_PEM but should hold the private key of the certificate. |
 | DATABASE_SETTING    | see [Database Setup](#database-setup).            | Defines the default database for Django, see [Database Setup](#database-setup) for details. Defaults to SQLite with data stored in file source/db.sqlite3 . |
+| N_CMI_WRITE_THREADS | 1                                                 | The number of parallel threads the api_main/connector_mqtt_integration.py script uses to push incomming MQTT messages into the Database. This must be an integer. Defaults to 1 as SQLite DBs don't support parallel read or write operations. For PostgreSQL DBs Values like 32 or above give a significant increase in write throughput. |
 
 
 ##### Volumes
@@ -80,7 +82,7 @@ If you have added a clean new database you need to initialize the database.
   source/api/manage.py migrate
   ```
   
-  Note: This is done automatically if start up the API container.
+  Note: This is done automatically if you start up the API container.
   
 * To create the Admin user (that you need to login into the AdminUI) use:
 
@@ -102,11 +104,11 @@ If you have added a clean new database you need to initialize the database.
 
 * [ ] Alerting (E-Mail / Alertmanager) if operation goes wrong.
 * [ ] Document return objects and codes for errors of REST interface.
-* [ ] Query parameters to select only certain time ranges while retrieving values/setpoints/schedules from REST interface
 * [ ] Add functionality to align timestamps while retrieving data from REST interface.
 * [ ] Add functionality to disable controllers and the history DB to support new users.
-* [ ] Add export/import of Datapoint Metadata; E.g. add connector and key_in_connector fields to export and add a POST Method to import Lists of Datapoints. 
 * [ ] Add Websocket Push Interface.
+* [ ] Fix adding Controller Admin Pages, there seems to be while defining controlled_datapoints.
+* [ ] Improve Admin Pages to also allow saving if short_name is empty?
 * [ ] Extend documentation:
   * [ ] REST and UI Endpoints
   * [ ] How to set certs, e.g. with:`MODE=PROD SSL_KEY_PEM=$(cat key.pem) SSL_CERT_PEM=$(cat cert.pem) docker-compose up --build`
@@ -164,7 +166,7 @@ Follow the following steps while contributing to the connector:
 * After everything is ready check that service also works in production mode by executing:
 
   ```bash
-  MODE=PROD docker-compose up
+  DJANGO_DEBUG=FALSE docker-compose up
   ```
 
   
@@ -184,7 +186,7 @@ Follow the following steps while contributing to the connector:
 
 ### Changelog
 
-| Tag   | Changes                                                     |
-| ----- | ----------------------------------------------------------- |
-| 0.1.0 | Initial functional version                                  |
-| 0.1.1 | Massive performance improvement for handling MQTT messages. |
+| Tag   | Changes                                                      |
+| ----- | ------------------------------------------------------------ |
+| 0.1.0 | Initial functional version                                   |
+| 0.2.0 | Massive performance improvement for handling MQTT messages.<br />Extend REST Interface to allow importing Datapoint metadata from JSON.<br />Improve display of Datapoints in AdminUI. |

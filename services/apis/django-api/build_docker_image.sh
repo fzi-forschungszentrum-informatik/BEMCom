@@ -1,1 +1,1 @@
-docker build ./source -t bemcom/django-api:0.1.1-rc0
+docker build ./source -t bemcom/django-api:0.2.0

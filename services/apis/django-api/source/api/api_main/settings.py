@@ -30,6 +30,7 @@ load_dotenv(find_dotenv(), verbose=False, override=True)
 # Load custom configuration variables from environment variable
 MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST")
 MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT"))
+N_CMI_WRITE_THREADS = int(os.getenv("N_CMI_WRITE_THREADS") or 1)
 
 # Settings for connection to MQTT broker.
 MQTT_BROKER = {
