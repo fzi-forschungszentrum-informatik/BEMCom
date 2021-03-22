@@ -3,23 +3,16 @@ version: '3'
 services:
 
     django-api:
-
         container_name: django-api
-
         build:
             context: ./source
-
         restart: always
-
+        user: "${USER_ID}:${GROUP_ID}"
         ports:
             - "8080:8080"
             - "8443:8443"
-
         volumes:
             - ./source/api:/source/api
-
-        user: "${USER_ID}:${GROUP_ID}"
-
         environment:
             - "MQTT_BROKER_HOST=${MQTT_BROKER_HOST}"
             - "MQTT_BROKER_PORT=${MQTT_BROKER_PORT}"
@@ -32,3 +25,12 @@ services:
             - "SSL_KEY_PEM=${SSL_KEY_PEM}"
             - "DATABASE_SETTING=${DATABASE_SETTING}"
             - "N_CMI_WRITE_THREADS=${N_CMI_WRITE_THREADS}"
+
+    # Allows local testing.
+    django-api-devl-broker:
+        container_name: "django-api-devl-broker"
+        image: bemcom/mosquitto-mqtt-broker:0.1.0
+        restart: always
+        user: "${USER_ID}:${GROUP_ID}"
+        ports:
+            - "1883:1883"
