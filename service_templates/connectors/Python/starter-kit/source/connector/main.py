@@ -4,11 +4,15 @@
 """
 import os
 import json
+import logging
 
 from pyconnector_template.pyconector_template import SensorFlow as SFTemplate
 from pyconnector_template.pyconector_template import ActuatorFlow as AFTemplate
 from pyconnector_template.pyconector_template import Connector as CTemplate
 from pyconnector_template.dispatch import DispatchInInterval
+
+
+logger = logging.getLogger("pyconnector")
 
 
 class SensorFlow(SFTemplate):
@@ -264,30 +268,39 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
     """
     pass
 
+    def __init__(self, *args, **kwargs):
+        """
+        Init the inherited code from python_connector_template and add
+        connector specific code, like parsing additional environment variables
+        or specifying actuator datapoints.
+        """
+        # dotenv allows us to load env variables from .env files which is
+        # convient for developing. If you set override to False tests
+        # may fail as the tests assume that the existing environ variables
+        # have higher priority over ones defined in the .env file.
+        load_dotenv(find_dotenv(), verbose=True, override=False)
+
+        # We need to specify a dispatcher that triggers the connection with
+        # the device or gateway. Here we want to poll the device with the
+        # interval set in the POLL_SECONDS environment variable.
+        kwargs["DeviceDispatcher"] = DispatchInInterval
+        kwargs["device_dispatcher_kwargs"] = {
+            "call_interval": float(os.getenv("POLL_SECONDS"))
+        }
+
+        # Sensor datapoints will be added to available_datapoints automatically
+        # once they are first appear in run_sensor_flow method. It is thus not
+        # necessary to specify them here. actuator datapoints in contrast must
+        # be specified here.
+        kwargs["available_datapoints"] = {
+            "sensor": {},
+            "actuator": {}
+        }
+        CTemplate.__init__(self, *args, **kwargs)
+
+        self.custom_env_var = os.getenv("CUSTOM_ENV_VARR") or "default_value"
+
 
 if __name__ == "__main__":
-    # Sensor datapoints will be added to available_datapoints automatically
-    # once they are first appear in run_sensor_flow method. It is thus not
-    # necessary to specify them here. Actuator datapoints must be
-    # specified explicitly, including a demo value.
-    available_datapoints = {
-        "sensor": {},
-        "actuator": {}
-    }
-    # We need to specify a dispatcher that triggers the connection with
-    # the device or gateway. Here we want to poll the device every 5 seconds
-    # and use the DispatchInInterval interval thus, with suitable
-    # configuration. The run method of the Connector will automatically
-    # wire up target function of the dispatcher (run_sensor_flow) with
-    # the dispatcher.
-    DeviceDispatcher = DispatchInInterval
-    device_dispatcher_kwargs = {"call_interval": 5}
-
-    # Init the connector with the configuration and arguments defined above.
-    connector = Connector(
-        available_datapoints=available_datapoints,
-        DeviceDispatcher=DeviceDispatcher,
-        device_dispatcher_kwargs=device_dispatcher_kwargs,
-    )
-
+    connector = Connector()
     connector.run()
