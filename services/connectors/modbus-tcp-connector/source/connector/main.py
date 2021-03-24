@@ -8,6 +8,7 @@ import struct
 import logging
 from time import sleep
 
+from dotenv import load_dotenv, find_dotenv
 from pymodbus.client.sync import ModbusTcpClient
 from pymodbus.exceptions import ModbusIOException
 
@@ -17,7 +18,7 @@ from pyconnector_template.pyconector_template import Connector as CTemplate
 from pyconnector_template.dispatch import DispatchInInterval
 
 
-logger = logging.getLogger("modbus-typ-connector")
+logger = logging.getLogger("pyconnector")
 
 
 class SensorFlow(SFTemplate):
@@ -399,6 +400,11 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         function to parse the special environment variable args to configure
         this connector.
         """
+        # dotenv allows us to load env variables from .env files which is
+        # convient for developing. If you set override to False tests
+        # may fail as the tests assume that the existing environ variables
+        # have higher priority over ones defined in the .env file.
+        load_dotenv(find_dotenv(), verbose=True, override=False)
         # We need to specify a dispatcher that triggers the connection with
         # the device or gateway. Here we want to poll the device with the
         # interval set in the POLL_SECONDS environment variable.

@@ -119,6 +119,7 @@ Follow the following steps while contributing to the connector:
 
 ### Changelog
 
-| Tag   | Changes                                    |
-| ----- | ------------------------------------------ |
-| 0.1.0 | First productive version.                  |
+| Tag   | Changes                                 |
+| ----- | --------------------------------------- |
+| 0.1.0 | First productive version.               |
+| 0.1.1 | Bugfix. Emits Log messages on MQTT now. |
