@@ -133,6 +133,8 @@ class SensorFlow(SFTemplate):
                         "Request %s yielded response:\n%s",
                         *(request, response)
                     )
+                    if isinstance(response, bytes):
+                        response = response.decode()
                     raw_message[p30_name][request] = response
                     # This sleep is requested by the KEBA documentation
                     sleep(0.1)
@@ -219,8 +221,6 @@ class SensorFlow(SFTemplate):
             parsed_message[p30_name] = {}
             for request in raw_message[p30_name]:
                 raw_response = raw_message[p30_name][request]
-                if isinstance(raw_response, bytes):
-                    raw_response = raw_response.decode()
                 parsed_response = json.loads(raw_response)
                 parsed_message[p30_name][request] = parsed_response
 
