@@ -1,9 +1,16 @@
-FROM bemcom/node-red-connector-template:0.1.0
+FROM bemcom/python-connector-template:0.1.2
 
-# Export your flows to the flows folder. They will be installed on startup.
-COPY ./flows /flows
+# Installs dependencies.
+COPY ./requirements.txt /soucrce/requirements.txt
+RUN pip install -r /soucrce/requirements.txt
 
-# Place your dependencies here. E.g:
-# RUN npm install node-red-node-ui-table@0.2.2
+# Export your connector script. Ensure the main program of the
+# connector resides under ./source/connector/main.py
+COPY ./connector/ /source/connector/
+
+# Run all tests to verify the connector is ok.
+RUN pytest /source/connector/
+
+
 
 

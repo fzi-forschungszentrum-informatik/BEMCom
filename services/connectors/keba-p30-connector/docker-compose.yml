@@ -6,12 +6,15 @@ services:
         build:
             context: ./source
         restart: always
-        ports:
-            - 8207:1880
-            - 7090:7090
+        volumes: 
+            - ./source/connector/:/source/connector/
+        user: "${USER_ID}:${GROUP_ID}"
         environment:
             - CONNECTOR_NAME=keba-p30-connector
             - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}
             - MQTT_BROKER_PORT=${MQTT_BROKER_PORT}
             - SEND_RAW_MESSAGE_TO_DB=${SEND_RAW_MESSAGE_TO_DB}
-            - KEBA_P30_URL=${KEBA_P30_URL}
+            - DEBUG=${DEBUG}
+            - POLL_SECONDS=${POLL_SECONDS}
+            - KEBA_P30_CHARGE_STATIONS=${KEBA_P30_CHARGE_STATIONS}
+        network_mode: host
