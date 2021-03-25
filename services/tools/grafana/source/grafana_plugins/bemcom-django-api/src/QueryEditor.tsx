@@ -8,8 +8,8 @@ import { defaultQuery, MyDataSourceOptions, MyQuery } from './types';
 
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 import { Switch, Button } from '@material-ui/core';
-// import DeleteIcon from '@material-ui/icons/Delete';
-// import AddIcon from '@material-ui/icons/Add';
+import DeleteIcon from '@material-ui/icons/Delete';
+import AddIcon from '@material-ui/icons/Add';
 
 import { getBackendSrv } from '@grafana/runtime';
 const { FormField } = LegacyForms;
@@ -100,6 +100,12 @@ export class QueryEditor extends PureComponent<Props> {
     onRunQuery();
   };
 
+  // Managing queries
+
+  addQuery = (evenmt: any) => {
+    console.log('add query2');
+  };
+  deleteQuery = (evenmt: any) => {};
   render() {
     const query = defaults(this.props.query, defaultQuery);
     const { getMeta } = query;
@@ -196,14 +202,26 @@ export class QueryEditor extends PureComponent<Props> {
 
           {/* Button on Right side */}
 
-          {/* <div style={{ position: 'absolute', top: 20, right: 20 }}>
-            <Button style={{ backgroundColor: 'grey' }} variant="outlined" size="small" disabled={getMeta}>
+          <div style={{ position: 'absolute', top: 20, right: 20 }}>
+            <Button
+              style={{ backgroundColor: 'grey' }}
+              variant="outlined"
+              size="small"
+              disabled={getMeta}
+              onClick={this.deleteQuery}
+            >
               <DeleteIcon />
             </Button>
-            <Button style={{ backgroundColor: 'grey' }} variant="outlined" size="small" disabled={getMeta}>
+            <Button
+              style={{ backgroundColor: 'grey' }}
+              variant="outlined"
+              size="small"
+              disabled={getMeta}
+              onClick={this.addQuery}
+            >
               <AddIcon />
             </Button>
-          </div> */}
+          </div>
         </div>
       </div>
     );
