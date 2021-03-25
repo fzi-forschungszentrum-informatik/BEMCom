@@ -8,8 +8,8 @@ import { defaultQuery, MyDataSourceOptions, MyQuery } from './types';
 
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 import { Switch, Button } from '@material-ui/core';
-import DeleteIcon from '@material-ui/icons/Delete';
-import AddIcon from '@material-ui/icons/Add';
+// import DeleteIcon from '@material-ui/icons/Delete';
+// import AddIcon from '@material-ui/icons/Add';
 
 import { getBackendSrv } from '@grafana/runtime';
 const { FormField } = LegacyForms;
@@ -196,14 +196,14 @@ export class QueryEditor extends PureComponent<Props> {
 
           {/* Button on Right side */}
 
-          <div style={{ position: 'absolute', top: 20, right: 20 }}>
-            <Button style={{ backgroundColor: 'grey' }} variant="outlined" size="small">
+          {/* <div style={{ position: 'absolute', top: 20, right: 20 }}>
+            <Button style={{ backgroundColor: 'grey' }} variant="outlined" size="small" disabled={getMeta}>
               <DeleteIcon />
             </Button>
-            <Button style={{ backgroundColor: 'grey' }} variant="outlined" size="small">
+            <Button style={{ backgroundColor: 'grey' }} variant="outlined" size="small" disabled={getMeta}>
               <AddIcon />
             </Button>
-          </div>
+          </div> */}
         </div>
       </div>
     );
