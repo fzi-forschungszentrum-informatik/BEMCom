@@ -10,7 +10,7 @@ from time import sleep
 
 from dotenv import load_dotenv, find_dotenv
 from pymodbus.client.sync import ModbusTcpClient
-from pymodbus.exceptions import ModbusIOException
+from pymodbus.exceptions import ModbusException
 
 from pyconnector_template.pyconector_template import SensorFlow as SFTemplate
 from pyconnector_template.pyconector_template import ActuatorFlow as AFTemplate
@@ -120,6 +120,16 @@ class SensorFlow(SFTemplate):
             #     "datatypes": ">ffffffffff",
             # },
             for i, requested_range in enumerate(requested_ranges):
+                logger.debug(
+                    "Using method %s to request data from address %s with "
+                    "count %s from unit %s.",
+                    *(
+                        read_method_name,
+                        requested_range["address"],
+                        requested_range["count"],
+                        requested_range["unit"],
+                    )
+                )
                 retry = 0
                 while True:
                     response = read_method(
@@ -127,23 +137,25 @@ class SensorFlow(SFTemplate):
                         count=requested_range["count"],
                         unit=requested_range["unit"],
                     )
-                    if isinstance(response, ModbusIOException):
+                    if isinstance(response, BaseException) or response.isError():
                         # This track here is if the read failed. Then we wait
                         # a bit and retry a few times before we finally fail.
                         # If we retried to often we raise the execption and
                         # exit.
                         logger.info(
                             "Reading from modbus device failed with function "
-                            " %s for address %s. Retrying in %s seconds.",
+                            " %s for address %s. Retrying in %s seconds. "
+                            "Error was: %s",
                             *(
                                 read_method_name,
                                 requested_range["address"],
                                 self.retry_wait,
+                                str(response),
                             )
                         )
                         retry += 1
                         if retry >= self.max_retries:
-                            raise response
+                            raise RuntimeError("Max number of retries exceeded.")
                         sleep(self.retry_wait)
                         continue
                     # Pack the registers/coils into the raw message.
