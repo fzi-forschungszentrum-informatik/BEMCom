@@ -196,9 +196,11 @@ STATIC_ROOT = BASE_DIR.parent / "static"
 # Don't activate SECURE_HSTS_SECONDS and SECURE_SSL_REDIRECT, they will break
 # the tests but don't provide anything useful as the API does not expose a non
 # SSL endpoint in production mode.
+# Don't set SESSION_COOKIE_SECURE = True as this will prevent acces via
+# plain HTTP to the Admin. While you shouldn't access the admin over
+#plain HTTP in general, it may be useful for development.
 if os.getenv("DJANGO_DEBUG") != "TRUE":
     CSRF_COOKIE_SECURE = True
-    SESSION_COOKIE_SECURE = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_BROWSER_XSS_FILTER = True
     X_FRAME_OPTIONS = "DENY"
