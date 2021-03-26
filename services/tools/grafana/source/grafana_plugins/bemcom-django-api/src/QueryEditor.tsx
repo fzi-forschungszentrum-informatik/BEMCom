@@ -4,7 +4,7 @@ import React, { ChangeEvent, PureComponent } from 'react';
 import { Select, InlineFormLabel, LegacyForms } from '@grafana/ui';
 import { QueryEditorProps } from '@grafana/data';
 import { DataSource } from './DataSource';
-import { defaultQuery, MyDataSourceOptions, MyQuery } from './types';
+import { defaultQuery, MyDataSourceOptions, MyQuery, MyDatapoint, MyDatatype } from './types';
 
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 import { Switch, Button } from '@material-ui/core';
@@ -32,10 +32,13 @@ export class QueryEditor extends PureComponent<Props> {
       { label: 'schedule', value: 1, description: 'currently active schedule' },
       { label: 'setpoint', value: 2, description: 'latest setpoint' },
     ],
+    queries: [],
   };
 
   async componentDidMount() {
     // query backend meta to get options.
+    console.log('props:');
+    console.log(this.props);
     try {
       const result = await getBackendSrv().datasourceRequest({
         method: 'GET',
@@ -69,30 +72,35 @@ export class QueryEditor extends PureComponent<Props> {
 
   onDatapointChange = (event: any) => {
     const { onChange, query, onRunQuery } = this.props;
+    let dp = [{ ...query.datapoint }[0]];
+    console.log(dp);
+    dp.push(event);
 
     // change query and execute
-    onChange({ ...query, datapoint: event });
+    onChange({ ...query, datapoint: dp });
     onRunQuery();
   };
 
   onDatatypeChange = (event: any) => {
     const { onChange, query, onRunQuery } = this.props;
+    let dt = [{ ...query.datatype }[0]];
+    dt.push(event);
 
     // change query and execute
-    onChange({ ...query, datatype: event });
+    onChange({ ...query, datatype: dt });
     onRunQuery();
   };
 
   onDisplayNameChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { onChange, query } = this.props;
     const displayName = event.target.value;
-    onChange({ ...query, displayName });
+    onChange({ ...query, displayName: [displayName] });
   };
 
   onScalingFactorChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { onChange, query } = this.props;
     const sf = parseFloat(event.target.value);
-    onChange({ ...query, scalingFactor: sf });
+    onChange({ ...query, scalingFactor: [sf] });
   };
 
   onUserMetaChange = (event: any) => {
@@ -101,13 +109,27 @@ export class QueryEditor extends PureComponent<Props> {
   };
 
   // Managing queries
+  renderQueries(something: number) {
+    return (
+      <div>
+        <h1>Hello {something}</h1>
+      </div>
+    );
+  }
 
   addQuery = (evenmt: any) => {
-    console.log('add query2');
+    const { query, onChange } = this.props;
+    const nQueries = query.nQueries + 1;
+    onChange({ ...query, nQueries });
+    console.log('added query');
   };
-  deleteQuery = (evenmt: any) => {};
+  deleteQuery = (evenmt: any) => {
+    console.log('del query');
+  };
   render() {
     const query = defaults(this.props.query, defaultQuery);
+    console.log('Inside render - query:');
+    console.log(query);
     const { getMeta } = query;
 
     return (
@@ -178,7 +200,7 @@ export class QueryEditor extends PureComponent<Props> {
                   labelWidth={8}
                   inputWidth={10}
                   onChange={this.onDisplayNameChange}
-                  value={query.displayName || ''}
+                  value={query.displayName[0] || ''}
                   placeholder=""
                   tooltip="custom name for the data point"
                 />
@@ -189,7 +211,7 @@ export class QueryEditor extends PureComponent<Props> {
                   labelWidth={8}
                   inputWidth={10}
                   onChange={this.onScalingFactorChange}
-                  value={query.scalingFactor || ''}
+                  value={query.scalingFactor[0] || ''}
                   placeholder=""
                   tooltip="custom scaling factor to apply to the data"
                 />
@@ -222,6 +244,10 @@ export class QueryEditor extends PureComponent<Props> {
               <AddIcon />
             </Button>
           </div>
+        </div>
+        <div>
+          hohoho
+          {this.renderQueries(1)}
         </div>
       </div>
     );

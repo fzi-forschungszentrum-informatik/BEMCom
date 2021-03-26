@@ -2,20 +2,22 @@ import { DataQuery, DataSourceJsonData } from '@grafana/data';
 
 export interface MyQuery extends DataQuery {
   getMeta: boolean;
-  datapoint?: MyDatapoint;
-  datatype?: MyDatatype;
-  displayName?: string;
-  scalingFactor?: number;
+  datapoint: MyDatapoint[];
+  datatype: MyDatatype[];
+  displayName: string[];
+  scalingFactor: number[];
+  nQueries: number;
   from?: number;
   to?: number;
 }
 
 export const defaultQuery: Partial<MyQuery> = {
   getMeta: false,
-  datapoint: { label: '', value: 0, description: '' },
-  datatype: { label: 'value', value: 0, description: 'timeseries of values' },
-  displayName: '',
-  scalingFactor: 1,
+  nQueries: 1,
+  datapoint: [{ label: '', value: 0, description: '' }],
+  datatype: [{ label: 'value', value: 0, description: 'timeseries of values' }],
+  displayName: [''],
+  scalingFactor: [1],
 };
 
 /**

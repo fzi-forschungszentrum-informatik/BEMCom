@@ -53449,11 +53449,13 @@ function (_super) {
 
   DataSource.prototype.query = function (options) {
     return Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__awaiter"])(this, void 0, Promise, function () {
-      var range, from, to, promises;
+      var range, from, to, sampleTarget, ntargets, i, newTarget, promises;
 
       var _this = this;
 
       return Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__generator"])(this, function (_a) {
+        console.log('Inside query - ');
+        console.log(options);
         range = options.range;
         from = range.from.valueOf();
         to = range.to.valueOf();
@@ -53461,6 +53463,33 @@ function (_super) {
           target.from = from;
           target.to = to;
         });
+        sampleTarget = options.targets.pop();
+        console.log('taret lists:');
+        console.log(sampleTarget);
+        ntargets = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.nQueries) || 0;
+
+        for (i = 0; i < ntargets; i++) {
+          newTarget = {};
+          newTarget.datapoint = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.datapoint[i]) || {
+            label: '',
+            value: 0,
+            description: ''
+          };
+          newTarget.datatype = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.datatype[i]) || {
+            label: 'value',
+            value: 0,
+            description: 'timeseries of values'
+          };
+          newTarget.displayName = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.displayName[i]) || '';
+          newTarget.scalingFactor = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.scalingFactor[i]) || 1;
+          newTarget.getMeta = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.getMeta) || '';
+          newTarget.refId = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.refId) || '';
+          newTarget.datasource = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.datasource) || '';
+          newTarget.from = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.from) || '';
+          newTarget.to = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.to) || '';
+          options.targets.push(newTarget);
+        }
+
         promises = options.targets.map(function (target) {
           return _this.doRequest(target).then(function (response) {
             var _a, _b;
@@ -53572,10 +53601,10 @@ function (_super) {
                     }
                   });
                   break;
-              }
+              } // console.log('frame.fields:');
+              // console.log(frame.fields);
 
-              console.log('frame.fields:');
-              console.log(frame.fields);
+
               return frame;
             }
           });
@@ -53760,7 +53789,8 @@ function (_super) {
         label: 'setpoint',
         value: 2,
         description: 'latest setpoint'
-      }]
+      }],
+      queries: []
     };
 
     _this.onMetaChange = function (event, child) {
@@ -53787,10 +53817,13 @@ function (_super) {
       var _a = _this.props,
           onChange = _a.onChange,
           query = _a.query,
-          onRunQuery = _a.onRunQuery; // change query and execute
+          onRunQuery = _a.onRunQuery;
+      var dp = [Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, query.datapoint)[0]];
+      console.log(dp);
+      dp.push(event); // change query and execute
 
       onChange(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, query), {
-        datapoint: event
+        datapoint: dp
       }));
       onRunQuery();
     };
@@ -53799,10 +53832,12 @@ function (_super) {
       var _a = _this.props,
           onChange = _a.onChange,
           query = _a.query,
-          onRunQuery = _a.onRunQuery; // change query and execute
+          onRunQuery = _a.onRunQuery;
+      var dt = [Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, query.datatype)[0]];
+      dt.push(event); // change query and execute
 
       onChange(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, query), {
-        datatype: event
+        datatype: dt
       }));
       onRunQuery();
     };
@@ -53813,7 +53848,7 @@ function (_super) {
           query = _a.query;
       var displayName = event.target.value;
       onChange(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, query), {
-        displayName: displayName
+        displayName: [displayName]
       }));
     };
 
@@ -53823,21 +53858,29 @@ function (_super) {
           query = _a.query;
       var sf = parseFloat(event.target.value);
       onChange(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, query), {
-        scalingFactor: sf
+        scalingFactor: [sf]
       }));
     };
 
     _this.onUserMetaChange = function (event) {
       var onRunQuery = _this.props.onRunQuery;
       onRunQuery();
-    }; // Managing queries
-
-
-    _this.addQuery = function (evenmt) {
-      console.log('add query2');
     };
 
-    _this.deleteQuery = function (evenmt) {};
+    _this.addQuery = function (evenmt) {
+      var _a = _this.props,
+          query = _a.query,
+          onChange = _a.onChange;
+      var nQueries = query.nQueries + 1;
+      onChange(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, query), {
+        nQueries: nQueries
+      }));
+      console.log('added query');
+    };
+
+    _this.deleteQuery = function (evenmt) {
+      console.log('del query');
+    };
 
     return _this;
   }
@@ -53851,7 +53894,13 @@ function (_super) {
       return Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__generator"])(this, function (_a) {
         switch (_a.label) {
           case 0:
-            _a.trys.push([0, 2,, 3]);
+            // query backend meta to get options.
+            console.log('props:');
+            console.log(this.props);
+            _a.label = 1;
+
+          case 1:
+            _a.trys.push([1, 3,, 4]);
 
             return [4
             /*yield*/
@@ -53860,7 +53909,7 @@ function (_super) {
               url: this.props.datasource.url + '/datapoint/'
             })];
 
-          case 1:
+          case 2:
             result = _a.sent();
             datapoint_options_1 = [];
             result.data.forEach(function (option) {
@@ -53876,26 +53925,33 @@ function (_super) {
             });
             return [3
             /*break*/
-            , 3];
+            , 4];
 
-          case 2:
+          case 3:
             error_1 = _a.sent();
             console.log('Error when requesting meta data from datasource: ', error_1);
             return [3
             /*break*/
-            , 3];
+            , 4];
 
-          case 3:
+          case 4:
             return [2
             /*return*/
             ];
         }
       });
     });
+  }; // Managing queries
+
+
+  QueryEditor.prototype.renderQueries = function (something) {
+    return react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", null, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("h1", null, "Hello ", something));
   };
 
   QueryEditor.prototype.render = function () {
     var query = lodash_defaults__WEBPACK_IMPORTED_MODULE_1___default()(this.props.query, _types__WEBPACK_IMPORTED_MODULE_4__["defaultQuery"]);
+    console.log('Inside render - query:');
+    console.log(query);
     var getMeta = query.getMeta;
     return react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", null, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", {
       style: {
@@ -53962,7 +54018,7 @@ function (_super) {
       labelWidth: 8,
       inputWidth: 10,
       onChange: this.onDisplayNameChange,
-      value: query.displayName || '',
+      value: query.displayName[0] || '',
       placeholder: "",
       tooltip: "custom name for the data point"
     }), react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(FormField, {
@@ -53972,7 +54028,7 @@ function (_super) {
       labelWidth: 8,
       inputWidth: 10,
       onChange: this.onScalingFactorChange,
-      value: query.scalingFactor || '',
+      value: query.scalingFactor[0] || '',
       placeholder: "",
       tooltip: "custom scaling factor to apply to the data"
     }), react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_material_ui_core__WEBPACK_IMPORTED_MODULE_6__["Button"], {
@@ -54002,7 +54058,7 @@ function (_super) {
       size: "small",
       disabled: getMeta,
       onClick: this.addQuery
-    }, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_material_ui_icons_Add__WEBPACK_IMPORTED_MODULE_8___default.a, null)))));
+    }, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_material_ui_icons_Add__WEBPACK_IMPORTED_MODULE_8___default.a, null)))), react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", null, "hohoho", this.renderQueries(1)));
   };
 
   return QueryEditor;
@@ -54047,18 +54103,19 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "defaultQuery", function() { return defaultQuery; });
 var defaultQuery = {
   getMeta: false,
-  datapoint: {
+  nQueries: 1,
+  datapoint: [{
     label: '',
     value: 0,
     description: ''
-  },
-  datatype: {
+  }],
+  datatype: [{
     label: 'value',
     value: 0,
     description: 'timeseries of values'
-  },
-  displayName: '',
-  scalingFactor: 1
+  }],
+  displayName: [''],
+  scalingFactor: [1]
 };
 
 /***/ }),

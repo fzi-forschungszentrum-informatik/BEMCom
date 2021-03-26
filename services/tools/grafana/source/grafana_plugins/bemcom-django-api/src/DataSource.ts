@@ -62,7 +62,8 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   }
 
   async query(options: DataQueryRequest<MyQuery>): Promise<DataQueryResponse> {
-    // console.log('Inside query - ');
+    console.log('Inside query - ');
+    console.log(options);
     const { range } = options;
     const from = range!.from.valueOf();
     const to = range!.to.valueOf();
@@ -70,6 +71,30 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       target.from = from;
       target.to = to;
     });
+
+    // translate arrays from query attributes to an array of targets
+    let sampleTarget = options.targets.pop();
+    console.log('taret lists:');
+    console.log(sampleTarget);
+    const ntargets = sampleTarget?.nQueries || 0;
+    for (var i = 0; i < ntargets; i++) {
+      let newTarget: { [k: string]: any } = {};
+      newTarget.datapoint = sampleTarget?.datapoint[i] || { label: '', value: 0, description: '' };
+      newTarget.datatype = sampleTarget?.datatype[i] || {
+        label: 'value',
+        value: 0,
+        description: 'timeseries of values',
+      };
+      newTarget.displayName = sampleTarget?.displayName[i] || '';
+      newTarget.scalingFactor = sampleTarget?.scalingFactor[i] || 1;
+      newTarget.getMeta = sampleTarget?.getMeta || '';
+
+      newTarget.refId = sampleTarget?.refId || '';
+      newTarget.datasource = sampleTarget?.datasource || '';
+      newTarget.from = sampleTarget?.from || '';
+      newTarget.to = sampleTarget?.to || '';
+      options.targets.push(newTarget);
+    }
 
     const promises = options.targets.map((target) =>
       this.doRequest(target).then((response) => {
@@ -198,8 +223,8 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
               });
               break;
           }
-          console.log('frame.fields:');
-          console.log(frame.fields);
+          // console.log('frame.fields:');
+          // console.log(frame.fields);
           return frame;
         }
       })
