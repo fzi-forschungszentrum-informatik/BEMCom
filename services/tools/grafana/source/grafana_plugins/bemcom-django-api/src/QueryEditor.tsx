@@ -4,7 +4,7 @@ import React, { ChangeEvent, PureComponent } from 'react';
 import { Select, InlineFormLabel, LegacyForms } from '@grafana/ui';
 import { QueryEditorProps } from '@grafana/data';
 import { DataSource } from './DataSource';
-import { defaultQuery, MyDataSourceOptions, MyQuery, MyDatapoint, MyDatatype } from './types';
+import { defaultQuery, defaultQueryEntry, MyDataSourceOptions, MyQuery, MyQueryEntry } from './types';
 
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 import { Switch, Button } from '@material-ui/core';
@@ -32,12 +32,11 @@ export class QueryEditor extends PureComponent<Props> {
       { label: 'schedule', value: 1, description: 'currently active schedule' },
       { label: 'setpoint', value: 2, description: 'latest setpoint' },
     ],
+    changed_input_style: false ? { backgroundColor: 'darkslategrey' } : {},
   };
 
   async componentDidMount() {
     // query backend meta to get options.
-    console.log('query Editor did mount - props:');
-    console.log(this.props);
     try {
       const result = await getBackendSrv().datasourceRequest({
         method: 'GET',
@@ -69,74 +68,46 @@ export class QueryEditor extends PureComponent<Props> {
     onRunQuery();
   };
 
-  onDatapointChange = (event: any) => {
+  onDatapointChange = (event: any, entry: MyQueryEntry) => {
     const { onChange, query, onRunQuery } = this.props;
-    let datapoints = query.datapoints;
 
-    let i = 0;
-    if (i >= datapoints.length) {
-      datapoints.push(event);
-    } else {
-      datapoints[i] = event;
-    }
+    entry.datapoint = event;
 
-    console.log('updatd datapoints:');
-    console.log(datapoints);
-
-    // change query and execute
-    onChange({ ...query, datapoints });
+    let entries = query.entries;
+    entries[entry.id] = entry;
+    onChange({ ...query, entries });
     onRunQuery();
   };
 
-  onDatatypeChange = (event: any) => {
+  onDatatypeChange = (event: any, entry: MyQueryEntry) => {
     const { onChange, query, onRunQuery } = this.props;
-    let datatypes = query.datatypes;
 
-    let i = 0;
-    if (i >= datatypes.length) {
-      datatypes.push(event);
-    } else {
-      datatypes[i] = event;
-    }
+    entry.datatype = event;
 
-    console.log('updatd datatypes:');
-    console.log(datatypes);
-
-    // change query and execute
-    onChange({ ...query, datatypes });
+    let entries = query.entries;
+    entries[entry.id] = entry;
+    onChange({ ...query, entries });
     onRunQuery();
   };
 
-  onDisplayNameChange = (event: ChangeEvent<HTMLInputElement>) => {
+  onDisplayNameChange = (event: ChangeEvent<HTMLInputElement>, entry: MyQueryEntry) => {
     const { onChange, query } = this.props;
-    let displayNames = query.displayNames;
 
-    let i = 0;
-    if (i >= displayNames.length) {
-      displayNames.push(event.target.value);
-    } else {
-      displayNames[i] = event.target.value;
-    }
-    console.log('updatd displayNames:');
-    console.log(displayNames);
+    entry.displayName = event.target.value;
 
-    onChange({ ...query, displayNames });
+    let entries = query.entries;
+    entries[entry.id] = entry;
+    onChange({ ...query, entries });
   };
 
-  onScalingFactorChange = (event: ChangeEvent<HTMLInputElement>) => {
+  onScalingFactorChange = (event: ChangeEvent<HTMLInputElement>, entry: MyQueryEntry) => {
     const { onChange, query } = this.props;
-    let scalingFactors = query.scalingFactors;
 
-    let i = 0;
-    if (i >= scalingFactors.length) {
-      scalingFactors.push(parseFloat(event.target.value));
-    } else {
-      scalingFactors[i] = parseFloat(event.target.value);
-    }
-    console.log('updatd scalingFactors:');
-    console.log(scalingFactors);
+    entry.scalingFactor = parseFloat(event.target.value);
 
-    onChange({ ...query, scalingFactors });
+    let entries = query.entries;
+    entries[entry.id] = entry;
+    onChange({ ...query, entries });
   };
 
   onUserMetaChange = (event: any) => {
@@ -145,18 +116,13 @@ export class QueryEditor extends PureComponent<Props> {
   };
 
   // Managing queries
-  renderQuery(i: number) {
-    const query = defaults(this.props.query, defaultQuery);
-    // console.log('Inside render - query:');
-    // console.log(query);
-    const { getMeta } = query;
-
+  renderQuery(entry: MyQueryEntry, getMeta: boolean) {
     return (
       <div style={{ position: 'relative' }}>
-        <div className="gf-form-group">
+        <div className="gf-form-group" style={{ marginBottom: 0, marginTop: 0 }}>
           {/* First Row */}
           <div className="gf-form">
-            <div className="gf-form">
+            <div className="gf-form" style={{ marginBottom: 0 }}>
               <InlineFormLabel
                 width={10}
                 tooltip="Select the datapoint to display. Options are loaded according to the meta data."
@@ -167,25 +133,28 @@ export class QueryEditor extends PureComponent<Props> {
                 width={30}
                 placeholder="Select datapoint"
                 disabled={getMeta}
-                value={query.datapoints[i]}
+                value={entry.datapoint}
                 maxMenuHeight={140}
                 // defaultValue={this.state.datapoint_default}
-                onChange={this.onDatapointChange}
+                onChange={(e) => this.onDatapointChange(e, entry)}
                 options={this.state.datapoint_options}
               />
             </div>
-            <div className="gf-form">
-              <InlineFormLabel width={10} tooltip="Select the data to display.">
+            <div className="gf-form" style={{ marginBottom: 0, marginLeft: 4 }}>
+              <InlineFormLabel
+                width={10}
+                tooltip="Select the type of data to display. Options are defined according to BEMCom."
+              >
                 Select Data Type
               </InlineFormLabel>
               <Select
                 width={30}
                 placeholder="Select data type"
                 disabled={getMeta}
-                value={query.datatypes[i]}
+                value={entry.datatype}
                 maxMenuHeight={140}
                 // defaultValue={this.state.datatype_options[0]}
-                onChange={this.onDatatypeChange}
+                onChange={(e) => this.onDatatypeChange(e, entry)}
                 options={this.state.datatype_options}
               />
             </div>
@@ -196,25 +165,27 @@ export class QueryEditor extends PureComponent<Props> {
           <div className="gf-form" style={{ marginLeft: 20 }}>
             <span className="gf-form">
               <FormField
+                style={this.state.changed_input_style}
                 label="displayName"
                 disabled={getMeta}
                 labelWidth={8}
                 inputWidth={10}
-                onChange={this.onDisplayNameChange}
-                value={query.displayNames[i]}
+                onChange={(e) => this.onDisplayNameChange(e, entry)}
+                value={entry.displayName}
                 placeholder=""
-                tooltip="custom name for the data point"
+                tooltip="Custom name for this datapoint"
               />
               <FormField
+                style={this.state.changed_input_style}
                 label="scalingFactor"
                 disabled={getMeta}
                 type="number"
                 labelWidth={8}
                 inputWidth={10}
-                onChange={this.onScalingFactorChange}
-                value={query.scalingFactors[i]}
+                onChange={(e) => this.onScalingFactorChange(e, entry)}
+                value={entry.scalingFactor}
                 placeholder=""
-                tooltip="custom scaling factor to apply to the data"
+                tooltip="Custom scaling factor for this datapoint"
               />
               <Button variant="contained" size="small" disabled={getMeta} onClick={this.onUserMetaChange}>
                 apply
@@ -231,7 +202,7 @@ export class QueryEditor extends PureComponent<Props> {
             variant="outlined"
             size="small"
             disabled={getMeta}
-            onClick={this.deleteQuery}
+            onClick={(e) => this.deleteQuery(e, entry)}
           >
             <DeleteIcon />
           </Button>
@@ -240,7 +211,7 @@ export class QueryEditor extends PureComponent<Props> {
             variant="outlined"
             size="small"
             disabled={getMeta}
-            onClick={this.addQuery}
+            onClick={(e) => this.addQuery(e, entry)}
           >
             <AddIcon />
           </Button>
@@ -249,25 +220,46 @@ export class QueryEditor extends PureComponent<Props> {
     );
   }
 
-  addQuery = (evenmt: any) => {
+  addQuery = (event: any, entry: MyQueryEntry) => {
     const { query, onChange } = this.props;
-    const nQueries = query.nQueries + 1;
-    onChange({ ...query, nQueries });
-    console.log('added query');
+
+    let entries = query.entries;
+    let defaultEntry: MyQueryEntry = { ...defaults(defaultQueryEntry) };
+    defaultEntry.id = entry.id + 1;
+
+    // add new entry after the calling entry
+    if (defaultEntry.id == entries.length) {
+      entries.push(defaultEntry);
+    } else {
+      // shift all ids after new entry by one
+      for (var i = entry.id + 1; i < entries.length; i++) {
+        entries[i].id++;
+      }
+
+      entries.splice(entry.id + 1, 0, defaultEntry);
+    }
+
+    onChange({ ...query, entries });
   };
-  deleteQuery = (evenmt: any) => {
-    console.log('del query');
+
+  deleteQuery = (event: any, entry: MyQueryEntry) => {
+    const { query, onChange, onRunQuery } = this.props;
+
+    let entries = query.entries;
+    // delete entry
+    entries.splice(entry.id, 1);
+    // shift id's of following entries by -1
+    for (var i = entry.id; i < entries.length; i++) {
+      entries[i].id--;
+    }
+
+    onChange({ ...query, entries });
+    onRunQuery();
   };
 
   render() {
     const query = defaults(this.props.query, defaultQuery);
-    const { getMeta } = query;
-
-    var queries = [];
-
-    for (let i = 0; i < query.nQueries; i++) {
-      queries.push(this.renderQuery(i));
-    }
+    const { getMeta, entries } = query;
 
     return (
       <div>
@@ -288,7 +280,7 @@ export class QueryEditor extends PureComponent<Props> {
           />
         </div>
 
-        {queries}
+        {entries.map((entry) => this.renderQuery(entry, getMeta))}
       </div>
     );
   }

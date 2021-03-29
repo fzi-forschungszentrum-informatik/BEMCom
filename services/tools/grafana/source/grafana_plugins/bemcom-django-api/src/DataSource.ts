@@ -24,8 +24,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   }
 
   async doRequest(query: { [k: string]: any }) {
-    //type: MyQuery
-    // console.log('inside doRequests. Query is:', query);
+    // type: MyQuery
     // build url
     let url = '';
     if (query.getMeta) {
@@ -63,49 +62,48 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   }
 
   async query(options: DataQueryRequest<MyQuery>): Promise<DataQueryResponse> {
-    console.log('Inside query - options:');
-    console.log(options);
     const { range } = options;
     const from = range!.from.valueOf();
     const to = range!.to.valueOf();
-    options.targets.forEach((target) => {
-      target.from = from;
-      target.to = to;
-    });
 
-    // translate arrays of attributes from first target to an array of targets
-    let sampleTarget = options.targets.pop();
-    console.log('sample target:');
-    console.log(sampleTarget);
-    const ntargets = sampleTarget?.nQueries || 0;
+    // for queries defined by Grafana UI:
+    // options.targets.forEach((mainQuery) => {});
 
-    var myTargets = [];
+    const mainQuery: MyQuery | undefined = options.targets.pop();
 
-    for (var i = 0; i < ntargets; i++) {
+    let targets: { [k: string]: any }[] = [];
+
+    // handle getMeta
+    if (mainQuery?.getMeta) {
       let newTarget: { [k: string]: any } = {};
+      newTarget.getMeta = mainQuery?.getMeta;
 
-      newTarget.datapoint = sampleTarget?.datapoints[i] || { label: '', value: 0, description: '' };
-      newTarget.datatype = sampleTarget?.datatypes[i] || {
-        label: 'value',
-        value: 0,
-        description: 'timeseries of values',
-      };
-      newTarget.displayName = sampleTarget?.displayNames[i] || '';
-      newTarget.scalingFactor = sampleTarget?.scalingFactors[i] || 1;
-      newTarget.getMeta = sampleTarget?.getMeta || '';
+      newTarget.refId = mainQuery?.refId || '';
+      newTarget.datasource = mainQuery?.datasource || '';
+      newTarget.from = from || '';
+      newTarget.to = to || '';
 
-      newTarget.refId = sampleTarget?.refId || '';
-      newTarget.datasource = sampleTarget?.datasource || '';
-      newTarget.from = sampleTarget?.from || '';
-      newTarget.to = sampleTarget?.to || '';
-      myTargets.push(newTarget);
+      targets.push(newTarget);
+    } else {
+      // handle normal query if getMeta is false
+
+      mainQuery?.entries.forEach((entry) => {
+        let newTarget: { [k: string]: any } = {};
+        newTarget.datapoint = entry.datapoint;
+        newTarget.datatype = entry.datatype;
+        newTarget.displayName = entry.displayName;
+        newTarget.scalingFactor = entry.scalingFactor;
+
+        newTarget.refId = mainQuery?.refId || '';
+        newTarget.datasource = mainQuery?.datasource || '';
+        newTarget.from = from || '';
+        newTarget.to = to || '';
+        targets.push(newTarget);
+      });
     }
 
-    console.log('myTargets:');
-    console.log(myTargets);
-
     // const promises = options.targets.map((target) =>
-    const promises = myTargets.map((target) =>
+    const promises = targets.map((target) =>
       this.doRequest(target).then((response) => {
         if (!response || response.data === undefined || response.data.length === 0) {
           return [];
@@ -149,11 +147,6 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
               });
 
               let latest_schedule = response.data[response.data.length - 1];
-              // response.data.forEach((schedule: any) => {
-              //   if (schedule.timestamp > latest_schedule.timestamp) {
-              //     latest_schedule = schedule;
-              //   }
-              // });
 
               latest_schedule.schedule.forEach((interval: any) => {
                 // set frame content
@@ -176,11 +169,6 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
               });
 
               let latest_setpoint = response.data[response.data.length - 1];
-              // response.data.forEach((setpoint: any) => {
-              //   if (setpoint.timestamp > latest_setpoint.timestamp) {
-              //     latest_setpoint = setpoint;
-              //   }
-              // });
 
               frame.name = 'setpoint';
               frame.addField({
@@ -232,12 +220,11 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
               });
               break;
           }
-          // console.log('frame.fields:');
-          // console.log(frame.fields);
           return frame;
         }
       })
     );
+
     return Promise.all(promises).then((data) => ({ data }));
   }
 

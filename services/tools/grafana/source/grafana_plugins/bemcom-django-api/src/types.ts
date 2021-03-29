@@ -2,22 +2,37 @@ import { DataQuery, DataSourceJsonData } from '@grafana/data';
 
 export interface MyQuery extends DataQuery {
   getMeta: boolean;
-  datapoints: MyDatapoint[];
-  datatypes: MyDatatype[];
-  displayNames: string[];
-  scalingFactors: number[];
+
+  entries: MyQueryEntry[];
+  // datapoints: new Array({ label: '', value: 0, description: '' }),
+  // datatypes: new Array({ label: 'value', value: 0, description: 'timeseries of values' }),
+  // displayNames: new Array(''),
+  // scalingFactors: new Array(1),
+
   nQueries: number;
   from?: number;
   to?: number;
 }
 
+// defaults:
 export const defaultQuery: Partial<MyQuery> = {
   getMeta: false,
   nQueries: 1,
-  datapoints: new Array({ label: '', value: 0, description: '' }),
-  datatypes: new Array({ label: 'value', value: 0, description: 'timeseries of values' }),
-  displayNames: new Array(''),
-  scalingFactors: new Array(1),
+  entries: new Array({
+    id: 0,
+    datapoint: { label: '', value: 0, description: '' },
+    datatype: { label: 'value', value: 0, description: 'timeseries of values' },
+    displayName: '',
+    scalingFactor: 1,
+  }),
+};
+
+export const defaultQueryEntry: MyQueryEntry = {
+  id: NaN,
+  datapoint: { label: '', value: 0, description: '' },
+  datatype: { label: 'value', value: 0, description: 'timeseries of values' },
+  displayName: '',
+  scalingFactor: 1,
 };
 
 /**
@@ -53,4 +68,12 @@ export interface MyDatatype {
   label: string;
   value: number;
   description: string;
+}
+
+export interface MyQueryEntry {
+  id: number;
+  datapoint: MyDatapoint;
+  datatype: MyDatatype;
+  displayName: string;
+  scalingFactor: number;
 }
