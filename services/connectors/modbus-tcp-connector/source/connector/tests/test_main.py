@@ -55,8 +55,6 @@ class ModbusTestServer():
             # a different status from previous runs.
             active_connections = [c for c in connections if c.status=="LISTEN"]
             used_port = active_connections[0].laddr.port
-            print(len(active_connections))
-
             return used_port
 
     def __exit__(self, exception_type, exception_value, traceback):
@@ -150,6 +148,101 @@ class TestReceiveRawMsg(unittest.TestCase):
             actual_values = payload["parsed_message"][modbus_function]
 
             assert actual_values == expected_values
+
+    def test_read_ints(self):
+        """
+        Verify that int values are read and parsed as epected.
+        """
+        expected_values = {
+            "0": "42",  # Fits into 8bit int
+            "1": "-42",  # Also fits into 8bit int, but only signed.
+            "2": "42",  # Fits into 8bit unsigned int
+            "3": "241",  # Also fits into 8bit int, but only ungsinged.
+            "4": "30000",  # Fits into 16 bit int, but not 8 bit.
+            "5": "-30000",  # and so on ...
+            "6": "30000",
+            "7": "60000",
+            "8": "2111222333",
+            "10": "-2111222333",
+            "12": "2111222333",
+            "14": "4111222333",
+            "16": "9111222333444555666",
+            "20": "-9111222333444555666",
+            "24": "9111222333444555666",
+            "28": "18111222333444555666",
+        }
+        test_cases = [
+            # byteorder, wordorder, used modbus function
+            [Endian.Big, Endian.Big, "read_holding_registers"],
+            [Endian.Little, Endian.Little, "read_holding_registers"],
+            [Endian.Big, Endian.Big, "read_input_registers"],
+            [Endian.Little, Endian.Little, "read_input_registers"],
+        ]
+        for test_case in test_cases:
+            byteorder = test_case[0]
+            wordorder = test_case[1]
+            modbus_function = test_case[2]
+
+            print("running test case: %s" % test_case)
+            # Configure the expected_values for the temporary modbus server.
+            builder = BinaryPayloadBuilder(
+                byteorder=byteorder,
+                wordorder=wordorder,
+            )
+            builder.add_8bit_int(0)  # This is a pad byte, which prevents that
+            # the following bytes overlap into this register.
+            builder.add_8bit_int(int(expected_values["0"]))
+            builder.add_8bit_int(0)
+            builder.add_8bit_int(int(expected_values["1"]))
+            builder.add_8bit_int(0)
+            builder.add_8bit_uint(int(expected_values["2"]))
+            builder.add_8bit_int(0)
+            builder.add_8bit_uint(int(expected_values["3"]))
+            builder.add_16bit_int(int(expected_values["4"]))
+            builder.add_16bit_int(int(expected_values["5"]))
+            builder.add_16bit_uint(int(expected_values["6"]))
+            builder.add_16bit_uint(int(expected_values["7"]))
+            builder.add_32bit_int(int(expected_values["8"]))
+            builder.add_32bit_int(int(expected_values["10"]))
+            builder.add_32bit_uint(int(expected_values["12"]))
+            builder.add_32bit_uint(int(expected_values["14"]))
+            builder.add_64bit_int(int(expected_values["16"]))
+            builder.add_64bit_int(int(expected_values["20"]))
+            builder.add_64bit_uint(int(expected_values["24"]))
+            builder.add_64bit_uint(int(expected_values["28"]))
+            msc = {}
+            if modbus_function == "read_holding_registers":
+                msc["hr"] = ModbusSequentialDataBlock(1, builder.to_registers())
+            if modbus_function == "read_input_registers":
+                msc["ir"] = ModbusSequentialDataBlock(1, builder.to_registers())
+            modbus_slave_context_kwargs = msc
+
+            # Compute the matching configuration for the modbus-tcp-connector.
+            test_modbus_config = {
+                modbus_function: [
+                    {
+                        "address": 0,
+                        "count": 32,
+                        "unit": 1,
+                        "datatypes": "{}xbxbxBxBhhHHllLLqqQQ".format(byteorder),
+                    },
+                ],
+            }
+            os.environ["MODBUS_CONFIG"] = json.dumps(test_modbus_config)
+
+            with ModbusTestServer(
+                modbus_slave_context_kwargs=modbus_slave_context_kwargs
+            ) as used_port:
+                os.environ["MODBUS_MASTER_PORT"] = str(used_port)
+                connector = Connector()
+                raw_msg = connector.receive_raw_msg()
+                raw_msg["payload"]["timestamp"] = 1617027818000
+            parsed_msg = connector.parse_raw_msg(raw_msg=raw_msg)
+            payload = parsed_msg["payload"]
+            actual_values = payload["parsed_message"][modbus_function]
+
+            assert actual_values == expected_values
+
 
 class TestParseRawMsg(unittest.TestCase):
 
