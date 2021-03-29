@@ -79,6 +79,9 @@ class TestReceiveRawMsg(unittest.TestCase):
         os.environ["MQTT_BROKER_HOST"] = "localhost"
         os.environ["MQTT_BROKER_PORT"] = "1883"
         os.environ["POLL_SECONDS"] = "5"
+        # These make tests fail faster while developing these.
+        os.environ["MODBUS_MAX_RETRIES"] = "1"
+        os.environ["MODBUS_RETRY_WAIT_SECONDS"] = "0"
 
     def test_read_floats(self):
         """
@@ -236,6 +239,75 @@ class TestReceiveRawMsg(unittest.TestCase):
                 os.environ["MODBUS_MASTER_PORT"] = str(used_port)
                 connector = Connector()
                 raw_msg = connector.receive_raw_msg()
+                raw_msg["payload"]["timestamp"] = 1617027818000
+            parsed_msg = connector.parse_raw_msg(raw_msg=raw_msg)
+            payload = parsed_msg["payload"]
+            actual_values = payload["parsed_message"][modbus_function]
+
+            assert actual_values == expected_values
+
+    def test_read_bits(self):
+        """
+        Verify that int values are read and parsed as epected.
+        """
+        expected_values = {
+            "0": "1",
+            "1": "1",
+            "2": "1",
+            "3": "0",
+            "4": "1",
+        }
+        test_cases = [
+            # byteorder, wordorder, used modbus function
+            [Endian.Big, Endian.Big, "read_coils"],
+            [Endian.Little, Endian.Little, "read_coils"],
+            [Endian.Big, Endian.Big, "read_discrete_inputs"],
+            [Endian.Little, Endian.Little, "read_discrete_inputs"],
+        ]
+        for test_case in test_cases:
+            byteorder = test_case[0]
+            wordorder = test_case[1]
+            modbus_function = test_case[2]
+
+            print("running test case: %s" % test_case)
+            # Configure the expected_values for the temporary modbus server.
+            builder = BinaryPayloadBuilder(
+                byteorder=byteorder,
+                wordorder=wordorder,
+            )
+            bits = []
+            for addr in sorted(expected_values):
+                bits.append(int(expected_values[addr]))
+            # The bits must be ordered like Bit7, Bit6, ... , Bit0
+            # Also add zero padding for the same reason.
+            builder.add_bits((bits+[0, 0, 0])[::-1])
+            print(bits[::-1])
+            msc = {}
+            if modbus_function == "read_coils":
+                msc["co"] = ModbusSequentialDataBlock(1, builder.to_coils())
+            if modbus_function == "read_discrete_inputs":
+                msc["di"] = ModbusSequentialDataBlock(1, builder.to_coils())
+            modbus_slave_context_kwargs = msc
+
+            # Compute the matching configuration for the modbus-tcp-connector.
+            test_modbus_config = {
+                modbus_function: [
+                    {
+                        "address": 0,
+                        "count": 5,
+                        "unit": 1,
+                    },
+                ],
+            }
+            os.environ["MODBUS_CONFIG"] = json.dumps(test_modbus_config)
+
+            with ModbusTestServer(
+                modbus_slave_context_kwargs=modbus_slave_context_kwargs
+            ) as used_port:
+                os.environ["MODBUS_MASTER_PORT"] = str(used_port)
+                connector = Connector()
+                raw_msg = connector.receive_raw_msg()
+                print(raw_msg)
                 raw_msg["payload"]["timestamp"] = 1617027818000
             parsed_msg = connector.parse_raw_msg(raw_msg=raw_msg)
             payload = parsed_msg["payload"]
@@ -460,7 +532,7 @@ class TestParseModbusConfig(unittest.TestCase):
         assert "not_expected_keyword" not in actual_config
 
 
-class TestComputeRegisterAddresses(unittest.TestCase):
+class TestComputeAddresses(unittest.TestCase):
 
     def test_for_32bit_floats(self):
         """
@@ -493,7 +565,7 @@ class TestComputeRegisterAddresses(unittest.TestCase):
             },
         }
 
-        actual_register_addresses = Connector.compute_register_addresses(
+        actual_register_addresses = Connector.compute_addresses(
             modbus_config=test_config
         )
 
@@ -541,8 +613,40 @@ class TestComputeRegisterAddresses(unittest.TestCase):
             },
         }
 
-        actual_register_addresses = Connector.compute_register_addresses(
+        actual_register_addresses = Connector.compute_addresses(
             modbus_config=test_config
         )
 
         assert actual_register_addresses == expected_register_addresses
+
+    def test_for_coils(self):
+        """
+        Verify that coil addresses are computet correctly too.
+        """
+        for method_name in ["read_coils", "read_discrete_inputs"]:
+            test_config = {
+                method_name: [
+                    {
+                        "address": 1,
+                        "count": 5,
+                        "unit": 1,
+                    },
+                    {
+                        "address": 10,
+                        "count": 6,
+                        "unit": 1,
+                    },
+                ],
+            }
+            expected_addresses = {
+                method_name: {
+                    0: [ 1, 2, 3, 4, 5 ],
+                    1: [ 10, 11, 12, 13, 14, 15 ],
+                },
+            }
+
+            actual_addresses = Connector.compute_addresses(
+                modbus_config=test_config
+            )
+
+            assert actual_addresses == expected_addresses

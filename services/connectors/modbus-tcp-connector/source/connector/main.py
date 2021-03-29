@@ -224,14 +224,12 @@ class SensorFlow(SFTemplate):
         for read_method_name in raw_message:
             parsed_message[read_method_name] = {}
             modbus_config_for_method = self.modbus_config[read_method_name]
-            mbas_for_method = self.modbus_register_addresses[read_method_name]
+            mbas_for_method = self.modbus_addresses[read_method_name]
             for i in raw_message[read_method_name]:
-                # TODO: Add for COILS too.
-
+                mbas = mbas_for_method[i]
                 if "_registers" in read_method_name:
                     registers = raw_message[read_method_name][i]
                     datatypes = modbus_config_for_method[i]["datatypes"]
-                    mbas = mbas_for_method[i]
 
                     # Now we going to to encode the registers (which are
                     # currently represented as 16bit int values) to bytes so
@@ -254,20 +252,24 @@ class SensorFlow(SFTemplate):
                         )
                         raise
 
-                    # Store each value under it's Modbus address.
-                    # This may overwrite values if overlapping address
-                    # ranges have been specified by the user.
-                    for mba, value in zip(mbas, values):
-                        # mba must be string as the _flatten_parsed_msg
-                        # method expects this. The value is stored as string
-                        # by message format convention.
-                        parsed_message[read_method_name][str(mba)] = str(value)
-
                 else:
-                    # TODO: Implement similar for coils here.
-                    raise NotImplementedError(
-                        "No unpacking for coils implemented yet."
-                    )
+                    values = []
+                    for value in raw_message[read_method_name][i]:
+                        if value:
+                            values.append("1")
+                        else:
+                            values.append("0")
+
+                # Store each value under it's Modbus address.
+                # This may overwrite values if overlapping address
+                # ranges have been specified by the user.
+                for mba, value in zip(mbas, values):
+                    # mba must be string as the _flatten_parsed_msg
+                    # method expects this. The value is stored as string
+                    # by message format convention.
+                    parsed_message[read_method_name][str(mba)] = str(value)
+
+
 
         msg = {
             "payload": {
@@ -412,8 +414,9 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         function to parse the special environment variable args to configure
         this connector.
 
-        TODO: Add support for swapping ordering of bits? Seems like python
-        always assumes big endian here.
+        TODO: Add support for swapping ordering of bits? Seems like our code
+        works if byte order and bit are identical, i.e. both Big endian or
+        both little endian. Is there a use case for other scenarios?
         """
         # dotenv allows us to load env variables from .env files which is
         # convient for developing. If you set override to True tests
@@ -443,14 +446,14 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         self.modbus_config = self.parse_modbus_config(
             config_json_str=os.getenv("MODBUS_CONFIG")
         )
-        self.modbus_register_addresses = self.compute_register_addresses(
+        self.modbus_addresses = self.compute_addresses(
             modbus_config=self.modbus_config
         )
         self.modbus_read_method_names = [
             k for k in self.modbus_config if "read_" in k
         ]
-        self.max_retries = os.getenv("MODBUS_MAX_RETRIES") or 3
-        self.retry_wait = os.getenv("MODBUS_RETRY_WAIT_SECONDS") or 15
+        self.max_retries = int(os.getenv("MODBUS_MAX_RETRIES") or 3)
+        self.retry_wait = int(os.getenv("MODBUS_RETRY_WAIT_SECONDS") or 15)
 
     @staticmethod
     def parse_modbus_config(config_json_str):
@@ -488,13 +491,14 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
                     *(config_key, json.dumps(config[config_key], indent=2))
                 )
                 del config[config_key]
+
         return config
 
     @staticmethod
-    def compute_register_addresses(modbus_config):
+    def compute_addresses(modbus_config):
         """
-        Compute the corresponding register addresses to the address ranges
-        specified by the user in MODBUS_CONFIG.
+        Compute the corresponding register and coil addresses to the address
+        ranges specified by the user in MODBUS_CONFIG.
 
         Arguments:
         ----------
@@ -504,8 +508,10 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         # These are the Modbus functions (supported by the connector)
         # that interact with registers.
         method_names = [
+            "read_coils",
+            "read_discrete_inputs",
             "read_holding_registers",
-            "read_input_registers"
+            "read_input_registers",
         ]
 
         # These is the mapping from the struct keys to the Modbus
@@ -530,34 +536,45 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
             "d": 4,
         }
 
-        register_addresses = {}
+        addresses = {}
         for method_name in method_names:
             if method_name not in modbus_config:
                 continue
 
-            register_addresses[method_name] = {}
+            addresses[method_name] = {}
             requested_ranges = modbus_config[method_name]
-            for i, requested_range in enumerate(requested_ranges):
-                # The first value starts at the start of the
-                # address range.
-                range_addresses = []
-                current_address = requested_range["address"]
-                for datatype_char in requested_range["datatypes"]:
-                    if datatype_char not in char_register_size:
-                        # Ignore chars defining endianess or padding.
-                        continue
 
-                    # Append the address this value starts and add it's
-                    # length so we get the starting address of the next
-                    # value.
-                    range_addresses.append(current_address)
-                    current_address += char_register_size[datatype_char]
+            if "register" in method_name:
+                for i, requested_range in enumerate(requested_ranges):
+                    # The first value starts at the start of the
+                    # address range.
+                    range_addresses = []
+                    current_address = requested_range["address"]
+                    for datatype_char in requested_range["datatypes"]:
+                        if datatype_char not in char_register_size:
+                            # Ignore chars defining endianess or padding.
+                            continue
 
-                # Finally store the addresses of this range under the
-                # index the range has in the config.
-                register_addresses[method_name][i] = range_addresses
+                        # Append the address this value starts and add it's
+                        # length so we get the starting address of the next
+                        # value.
+                        range_addresses.append(current_address)
+                        current_address += char_register_size[datatype_char]
 
-        return register_addresses
+                    # Finally store the addresses of this range under the
+                    # index the range has in the config.
+                    addresses[method_name][i] = range_addresses
+
+            else:
+                # Handling for read_discrete_inputs and read_coils methods,
+                # is acutally quite simple as every bit is exactly one bit
+                # long :)
+                for i, requested_range in enumerate(requested_ranges):
+                    start = requested_range["address"]
+                    count = requested_range["count"]
+                    addresses[method_name][i] = list(range(start, start+count))
+
+        return addresses
 
 
 if __name__ == "__main__":
