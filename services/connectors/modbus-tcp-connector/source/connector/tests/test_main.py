@@ -329,6 +329,16 @@ class TestParseRawMsg(unittest.TestCase):
                     "unit": 1,
                     "datatypes": ">ffffffffff",
                 },
+                {
+                    "address": 20000,
+                    "count": 4,
+                    "unit": 1,
+                    "datatypes": ">ff",
+                    "scaling_factors": {
+                        20000: 0.1,
+                        20002: 10,
+                    }
+                },
             ],
         }
 
@@ -433,10 +443,10 @@ class TestParseRawMsg(unittest.TestCase):
             }
         }
 
-        # Overload the modbus_register_addresses attribute to ensure that
+        # Overload the modbus_addresses attribute to ensure that
         # this test doesn't fail because of errors in the
-        # compute_register_addresses method.
-        self.connector.modbus_register_addresses = {
+        # compute_addresses method.
+        self.connector.modbus_addresses = {
             "read_input_registers": {
                 0: [
                     19000,
@@ -449,6 +459,52 @@ class TestParseRawMsg(unittest.TestCase):
                     19014,
                     19016,
                     19018,
+                ],
+            },
+        }
+
+        actual_parsed_msg = self.connector.parse_raw_msg(raw_msg=test_raw_msg)
+        assert actual_parsed_msg == expected_parsed_msg
+
+    def test_read_scaling_factors_applied(self):
+        """
+        Verify that the scaling factors are applied as expected.
+        """
+        test_raw_msg = {
+            "payload": {
+                "raw_message": {
+                    "read_input_registers": {
+                        1: [
+                            17259,
+                            1512,
+                            17258,
+                            31341,
+                        ]
+                    }
+                },
+                "timestamp": 1612969083914
+            }
+        }
+        expected_parsed_msg = {
+            "payload": {
+                "parsed_message": {
+                    "read_input_registers": {
+                        "20000": "23.502307128906253",
+                        "20002": "2344.782257080078",
+                    }
+                },
+                "timestamp": 1612969083914
+            }
+        }
+
+        # Overload the modbus_addresses attribute to ensure that
+        # this test doesn't fail because of errors in the
+        # compute_addresses method.
+        self.connector.modbus_addresses = {
+            "read_input_registers": {
+                1: [
+                    20000,
+                    20002,
                 ],
             },
         }

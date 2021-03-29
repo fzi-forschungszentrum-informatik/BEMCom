@@ -226,7 +226,10 @@ class SensorFlow(SFTemplate):
             modbus_config_for_method = self.modbus_config[read_method_name]
             mbas_for_method = self.modbus_addresses[read_method_name]
             for i in raw_message[read_method_name]:
-                mbas = mbas_for_method[i]
+                # Load modbus addresses as strings as other stuff is loaded
+                # from JSON and expects strings too.
+                mbas = [str(m) for m in mbas_for_method[i]]
+
                 if "_registers" in read_method_name:
                     registers = raw_message[read_method_name][i]
                     datatypes = modbus_config_for_method[i]["datatypes"]
@@ -263,13 +266,25 @@ class SensorFlow(SFTemplate):
                 # Store each value under it's Modbus address.
                 # This may overwrite values if overlapping address
                 # ranges have been specified by the user.
+                # Also apply scaling factors while we are here, but only
+                # to registers. Scaling bits doesn't make sense, even if the
+                # user would request it.
+                sfs = {}
+                if (
+                    "scaling_factors" in modbus_config_for_method[i] and
+                    "_registers" in read_method_name
+                ):
+                    sfs = modbus_config_for_method[i]["scaling_factors"]
                 for mba, value in zip(mbas, values):
-                    # mba must be string as the _flatten_parsed_msg
-                    # method expects this. The value is stored as string
-                    # by message format convention.
-                    parsed_message[read_method_name][str(mba)] = str(value)
+                    if mba in sfs:
+                        try:
+                            scaled_value = float(value) * sfs[mba]
+                            value = str(scaled_value)
+                        except ValueError:
+                            pass
 
-
+                    # All values are handled as strings in BEMCom.
+                    parsed_message[read_method_name][mba] = str(value)
 
         msg = {
             "payload": {
