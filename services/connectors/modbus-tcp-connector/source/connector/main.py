@@ -411,9 +411,12 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         Init the inherited code from python_connector_template and add
         function to parse the special environment variable args to configure
         this connector.
+
+        TODO: Add support for swapping ordering of bits? Seems like python
+        always assumes big endian here.
         """
         # dotenv allows us to load env variables from .env files which is
-        # convient for developing. If you set override to False tests
+        # convient for developing. If you set override to True tests
         # may fail as the tests assume that the existing environ variables
         # have higher priority over ones defined in the .env file.
         load_dotenv(find_dotenv(), verbose=True, override=False)

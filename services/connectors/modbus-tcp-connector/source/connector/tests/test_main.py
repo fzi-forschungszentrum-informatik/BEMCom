@@ -1,11 +1,155 @@
 import os
 import json
+import time
 import logging
 import unittest
+from multiprocessing import Process
 
+import psutil
 import pytest
+from pymodbus.constants import Endian
+from pymodbus.server.sync import StartTcpServer
+from pymodbus.payload import BinaryPayloadBuilder
+from pymodbus.datastore import ModbusSequentialDataBlock
+from pymodbus.datastore import ModbusSlaveContext, ModbusServerContext
 
 from ..main import Connector
+
+
+class ModbusTestServer():
+    """
+    A simple context manager that allows starting a Modbus Server for
+    the tests in a dedicated process.
+    """
+
+    def __init__(self, modbus_slave_context_kwargs):
+        self.modbus_slave_context_kwargs = modbus_slave_context_kwargs
+
+    def __enter__(self):
+            store = ModbusSlaveContext(**self.modbus_slave_context_kwargs)
+            context = ModbusServerContext(slaves=store, single=True)
+            # This will configure the Modbus server to listen on a random
+            # available port. This is necessary as after using a sepcific
+            # port the os takes 20-30 seconds until this port is marked
+            # as free again. However, we don not want to wait so long
+            # in between our tests.
+            self.modbus_server_process = Process(
+                target=StartTcpServer,
+                kwargs={
+                    "context": context,
+                    "address": ("127.0.0.1", 0),
+                }
+            )
+            self.modbus_server_process.start()
+            # After the server has started we have no clue which port it used.
+            # so lets find out.
+            for i in range(100):
+                # It may take a while after the process has started until
+                # the port is claimed from the OS. Hence we poll a few times.
+                psutil_process = psutil.Process(self.modbus_server_process.pid)
+                if psutil_process.connections():
+                    break
+                time.sleep(0.01)
+            connections = psutil_process.connections()
+            # This should be only one, but some old connections exist with
+            # a different status from previous runs.
+            active_connections = [c for c in connections if c.status=="LISTEN"]
+            used_port = active_connections[0].laddr.port
+            print(len(active_connections))
+
+            return used_port
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        # stop the process after we are done.
+        self.modbus_server_process.terminate()
+        self.modbus_server_process.join()
+        self.modbus_server_process.close()
+
+class TestReceiveRawMsg(unittest.TestCase):
+    """
+    Verify that we can read the expeceted values via Modbus.
+    Assumes that PyModbus is correct in terms of byte parsing operations.
+    Also partly tests that the numbers are parsed correctly as this simplifies
+    the tests significantly.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        # These must be set to match ModbusTestServer above.
+        os.environ["MODBUS_MASTER_IP"] = "localhost"
+        # These must just be present to prevent errors.
+        os.environ["MQTT_BROKER_HOST"] = "localhost"
+        os.environ["MQTT_BROKER_PORT"] = "1883"
+        os.environ["POLL_SECONDS"] = "5"
+
+    def test_read_floats(self):
+        """
+        Verify that float values are read and parsed as epected.
+        """
+        expected_values = {
+            "0": "12.34375",
+            "1": "-12.34375",
+            "2": "22.0",
+            "4": "-22.0",
+            "6": "123.45",
+            "10": "-123.45"
+        }
+        test_cases = [
+            # byteorder, wordorder, used modbus function
+            [Endian.Big, Endian.Big, "read_holding_registers"],
+            [Endian.Little, Endian.Little, "read_holding_registers"],
+            [Endian.Big, Endian.Big, "read_input_registers"],
+            [Endian.Little, Endian.Little, "read_input_registers"],
+        ]
+        for test_case in test_cases:
+            byteorder = test_case[0]
+            wordorder = test_case[1]
+            modbus_function = test_case[2]
+
+            print("running test case: %s" % test_case)
+            # Configure the expected_values for the temporary modbus server.
+            builder = BinaryPayloadBuilder(
+                byteorder=byteorder,
+                wordorder=wordorder,
+            )
+            builder.add_16bit_float(float(expected_values["0"]))
+            builder.add_16bit_float(float(expected_values["1"]))
+            builder.add_32bit_float(float(expected_values["2"]))
+            builder.add_32bit_float(float(expected_values["4"]))
+            builder.add_64bit_float(float(expected_values["6"]))
+            builder.add_64bit_float(float(expected_values["10"]))
+            msc = {}
+            if modbus_function == "read_holding_registers":
+                msc["hr"] = ModbusSequentialDataBlock(1, builder.to_registers())
+            if modbus_function == "read_input_registers":
+                msc["ir"] = ModbusSequentialDataBlock(1, builder.to_registers())
+            modbus_slave_context_kwargs = msc
+
+            # Compute the matching configuration for the modbus-tcp-connector.
+            test_modbus_config = {
+                modbus_function: [
+                    {
+                        "address": 0,
+                        "count": 14,
+                        "unit": 1,
+                        "datatypes": "{}eeffdd".format(byteorder),
+                    },
+                ],
+            }
+            os.environ["MODBUS_CONFIG"] = json.dumps(test_modbus_config)
+
+            with ModbusTestServer(
+                modbus_slave_context_kwargs=modbus_slave_context_kwargs
+            ) as used_port:
+                os.environ["MODBUS_MASTER_PORT"] = str(used_port)
+                connector = Connector()
+                raw_msg = connector.receive_raw_msg()
+                raw_msg["payload"]["timestamp"] = 1617027818000
+            parsed_msg = connector.parse_raw_msg(raw_msg=raw_msg)
+            payload = parsed_msg["payload"]
+            actual_values = payload["parsed_message"][modbus_function]
+
+            assert actual_values == expected_values
 
 class TestParseRawMsg(unittest.TestCase):
 
@@ -28,7 +172,7 @@ class TestParseRawMsg(unittest.TestCase):
         os.environ["MODBUS_MASTER_PORT"] = "502"
         os.environ["MQTT_BROKER_HOST"] = "localhost"
         os.environ["MQTT_BROKER_PORT"] = "1883"
-        os.environ["POLL_SECONDS"] = "5" 
+        os.environ["POLL_SECONDS"] = "5"
         os.environ["MODBUS_CONFIG"] = json.dumps(test_modbus_config)
         cls.connector = Connector()
 

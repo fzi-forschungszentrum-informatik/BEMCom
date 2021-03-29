@@ -1,2 +1,5 @@
 pymodbus==2.4.*
+
+# Only to run the tests.
 pytest
+psutil==5.8.0
