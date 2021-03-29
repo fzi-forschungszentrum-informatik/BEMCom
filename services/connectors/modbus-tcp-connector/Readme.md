@@ -6,6 +6,8 @@ The following Modbus function codes are currently supported:
 
 | Modbus Function Code | Name                  |
 | -------------------- | --------------------- |
+| 1                    | Read coil             |
+| 2                    | Read discrete input   |
 | 3                    | Read holding register |
 | 4                    | Read input register   |
 
@@ -13,8 +15,6 @@ The following Modbus function codes are planned for future support:
 
 | Modbus Function Code | Name                          |
 | -------------------- | ----------------------------- |
-| 1                    | Read coil                     |
-| 2                    | Read discrete input           |
 | 5                    | Write single coil             |
 | 6                    | Write single holding register |
 
