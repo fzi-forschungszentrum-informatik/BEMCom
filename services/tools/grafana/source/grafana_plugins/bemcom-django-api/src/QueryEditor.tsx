@@ -32,12 +32,11 @@ export class QueryEditor extends PureComponent<Props> {
       { label: 'schedule', value: 1, description: 'currently active schedule' },
       { label: 'setpoint', value: 2, description: 'latest setpoint' },
     ],
-    queries: [],
   };
 
   async componentDidMount() {
     // query backend meta to get options.
-    console.log('props:');
+    console.log('query Editor did mount - props:');
     console.log(this.props);
     try {
       const result = await getBackendSrv().datasourceRequest({
@@ -72,35 +71,72 @@ export class QueryEditor extends PureComponent<Props> {
 
   onDatapointChange = (event: any) => {
     const { onChange, query, onRunQuery } = this.props;
-    let dp = [{ ...query.datapoint }[0]];
-    console.log(dp);
-    dp.push(event);
+    let datapoints = query.datapoints;
+
+    let i = 0;
+    if (i >= datapoints.length) {
+      datapoints.push(event);
+    } else {
+      datapoints[i] = event;
+    }
+
+    console.log('updatd datapoints:');
+    console.log(datapoints);
 
     // change query and execute
-    onChange({ ...query, datapoint: dp });
+    onChange({ ...query, datapoints });
     onRunQuery();
   };
 
   onDatatypeChange = (event: any) => {
     const { onChange, query, onRunQuery } = this.props;
-    let dt = [{ ...query.datatype }[0]];
-    dt.push(event);
+    let datatypes = query.datatypes;
+
+    let i = 0;
+    if (i >= datatypes.length) {
+      datatypes.push(event);
+    } else {
+      datatypes[i] = event;
+    }
+
+    console.log('updatd datatypes:');
+    console.log(datatypes);
 
     // change query and execute
-    onChange({ ...query, datatype: dt });
+    onChange({ ...query, datatypes });
     onRunQuery();
   };
 
   onDisplayNameChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { onChange, query } = this.props;
-    const displayName = event.target.value;
-    onChange({ ...query, displayName: [displayName] });
+    let displayNames = query.displayNames;
+
+    let i = 0;
+    if (i >= displayNames.length) {
+      displayNames.push(event.target.value);
+    } else {
+      displayNames[i] = event.target.value;
+    }
+    console.log('updatd displayNames:');
+    console.log(displayNames);
+
+    onChange({ ...query, displayNames });
   };
 
   onScalingFactorChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { onChange, query } = this.props;
-    const sf = parseFloat(event.target.value);
-    onChange({ ...query, scalingFactor: [sf] });
+    let scalingFactors = query.scalingFactors;
+
+    let i = 0;
+    if (i >= scalingFactors.length) {
+      scalingFactors.push(parseFloat(event.target.value));
+    } else {
+      scalingFactors[i] = parseFloat(event.target.value);
+    }
+    console.log('updatd scalingFactors:');
+    console.log(scalingFactors);
+
+    onChange({ ...query, scalingFactors });
   };
 
   onUserMetaChange = (event: any) => {
@@ -109,10 +145,106 @@ export class QueryEditor extends PureComponent<Props> {
   };
 
   // Managing queries
-  renderQueries(something: number) {
+  renderQuery(i: number) {
+    const query = defaults(this.props.query, defaultQuery);
+    // console.log('Inside render - query:');
+    // console.log(query);
+    const { getMeta } = query;
+
     return (
-      <div>
-        <h1>Hello {something}</h1>
+      <div style={{ position: 'relative' }}>
+        <div className="gf-form-group">
+          {/* First Row */}
+          <div className="gf-form">
+            <div className="gf-form">
+              <InlineFormLabel
+                width={10}
+                tooltip="Select the datapoint to display. Options are loaded according to the meta data."
+              >
+                Select Datapoint
+              </InlineFormLabel>
+              <Select
+                width={30}
+                placeholder="Select datapoint"
+                disabled={getMeta}
+                value={query.datapoints[i]}
+                maxMenuHeight={140}
+                // defaultValue={this.state.datapoint_default}
+                onChange={this.onDatapointChange}
+                options={this.state.datapoint_options}
+              />
+            </div>
+            <div className="gf-form">
+              <InlineFormLabel width={10} tooltip="Select the data to display.">
+                Select Data Type
+              </InlineFormLabel>
+              <Select
+                width={30}
+                placeholder="Select data type"
+                disabled={getMeta}
+                value={query.datatypes[i]}
+                maxMenuHeight={140}
+                // defaultValue={this.state.datatype_options[0]}
+                onChange={this.onDatatypeChange}
+                options={this.state.datatype_options}
+              />
+            </div>
+          </div>
+
+          {/* Second Row */}
+
+          <div className="gf-form" style={{ marginLeft: 20 }}>
+            <span className="gf-form">
+              <FormField
+                label="displayName"
+                disabled={getMeta}
+                labelWidth={8}
+                inputWidth={10}
+                onChange={this.onDisplayNameChange}
+                value={query.displayNames[i]}
+                placeholder=""
+                tooltip="custom name for the data point"
+              />
+              <FormField
+                label="scalingFactor"
+                disabled={getMeta}
+                type="number"
+                labelWidth={8}
+                inputWidth={10}
+                onChange={this.onScalingFactorChange}
+                value={query.scalingFactors[i]}
+                placeholder=""
+                tooltip="custom scaling factor to apply to the data"
+              />
+              <Button variant="contained" size="small" disabled={getMeta} onClick={this.onUserMetaChange}>
+                apply
+              </Button>
+            </span>
+          </div>
+        </div>
+
+        {/* Button on Right side */}
+
+        <div style={{ position: 'absolute', top: 20, right: 20 }}>
+          <Button
+            style={{ backgroundColor: 'grey' }}
+            variant="outlined"
+            size="small"
+            disabled={getMeta}
+            onClick={this.deleteQuery}
+          >
+            <DeleteIcon />
+          </Button>
+          <Button
+            style={{ backgroundColor: 'grey' }}
+            variant="outlined"
+            size="small"
+            disabled={getMeta}
+            onClick={this.addQuery}
+          >
+            <AddIcon />
+          </Button>
+        </div>
       </div>
     );
   }
@@ -128,127 +260,34 @@ export class QueryEditor extends PureComponent<Props> {
   };
   render() {
     const query = defaults(this.props.query, defaultQuery);
-    console.log('Inside render - query:');
-    console.log(query);
     const { getMeta } = query;
+
+    var queries = [];
+
+    for (let i = 0; i < query.nQueries; i++) {
+      queries.push(this.renderQuery(i));
+    }
 
     return (
       <div>
-        <div style={{ position: 'relative' }}>
-          <div className="gf-form-group">
-            {/* First Row */}
-            <div className="gf-form">
-              <div className="gf-form">
-                <InlineFormLabel
-                  width={10}
-                  tooltip="Select the datapoint to display. Options are loaded according to the meta data."
-                >
-                  Select Datapoint
-                </InlineFormLabel>
-                <Select
-                  width={30}
-                  placeholder="Select datapoint"
-                  disabled={getMeta}
-                  value={this.props.query.datapoint}
-                  maxMenuHeight={140}
-                  // defaultValue={this.state.datapoint_default}
-                  onChange={this.onDatapointChange}
-                  options={this.state.datapoint_options}
-                />
-              </div>
-              <div className="gf-form">
-                <InlineFormLabel width={10} tooltip="Select the data to display.">
-                  Select Data Type
-                </InlineFormLabel>
-                <Select
-                  width={30}
-                  placeholder="Select data type"
-                  disabled={getMeta}
-                  value={this.props.query.datatype}
-                  maxMenuHeight={140}
-                  // defaultValue={this.state.datatype_options[0]}
-                  onChange={this.onDatatypeChange}
-                  options={this.state.datatype_options}
-                />
-              </div>
-
-              <div className="gf-form" style={{ marginLeft: 20 }}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={getMeta}
-                      value={getMeta}
-                      onChange={this.onMetaChange}
-                      name="checkedMeta"
-                      color="primary"
-                      size="small"
-                    />
-                  }
-                  className="m-1"
-                  label="Show meta data"
-                />
-              </div>
-            </div>
-
-            {/* Second Row */}
-
-            <div className="gf-form" style={{ marginLeft: 20 }}>
-              <span className="gf-form">
-                <FormField
-                  label="displayName"
-                  disabled={getMeta}
-                  labelWidth={8}
-                  inputWidth={10}
-                  onChange={this.onDisplayNameChange}
-                  value={query.displayName[0] || ''}
-                  placeholder=""
-                  tooltip="custom name for the data point"
-                />
-                <FormField
-                  label="scalingFactor"
-                  disabled={getMeta}
-                  type="number"
-                  labelWidth={8}
-                  inputWidth={10}
-                  onChange={this.onScalingFactorChange}
-                  value={query.scalingFactor[0] || ''}
-                  placeholder=""
-                  tooltip="custom scaling factor to apply to the data"
-                />
-                <Button variant="contained" size="small" disabled={getMeta} onClick={this.onUserMetaChange}>
-                  apply
-                </Button>
-              </span>
-            </div>
-          </div>
-
-          {/* Button on Right side */}
-
-          <div style={{ position: 'absolute', top: 20, right: 20 }}>
-            <Button
-              style={{ backgroundColor: 'grey' }}
-              variant="outlined"
-              size="small"
-              disabled={getMeta}
-              onClick={this.deleteQuery}
-            >
-              <DeleteIcon />
-            </Button>
-            <Button
-              style={{ backgroundColor: 'grey' }}
-              variant="outlined"
-              size="small"
-              disabled={getMeta}
-              onClick={this.addQuery}
-            >
-              <AddIcon />
-            </Button>
-          </div>
+        <div className="gf-form" style={{ marginLeft: 0 }}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={getMeta}
+                value={getMeta}
+                onChange={this.onMetaChange}
+                name="checkedMeta"
+                color="primary"
+                size="small"
+              />
+            }
+            className="m-1"
+            label="Show meta data"
+          />
         </div>
-        <div>
-          hohoho
-          {this.renderQueries(1)}
-        </div>
+
+        {queries}
       </div>
     );
   }

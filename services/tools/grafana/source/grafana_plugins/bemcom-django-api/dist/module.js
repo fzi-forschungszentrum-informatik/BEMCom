@@ -53449,12 +53449,12 @@ function (_super) {
 
   DataSource.prototype.query = function (options) {
     return Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__awaiter"])(this, void 0, Promise, function () {
-      var range, from, to, sampleTarget, ntargets, i, newTarget, promises;
+      var range, from, to, sampleTarget, ntargets, myTargets, i, newTarget, promises;
 
       var _this = this;
 
       return Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__generator"])(this, function (_a) {
-        console.log('Inside query - ');
+        console.log('Inside query - options:');
         console.log(options);
         range = options.range;
         from = range.from.valueOf();
@@ -53464,33 +53464,36 @@ function (_super) {
           target.to = to;
         });
         sampleTarget = options.targets.pop();
-        console.log('taret lists:');
+        console.log('sample target:');
         console.log(sampleTarget);
         ntargets = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.nQueries) || 0;
+        myTargets = [];
 
         for (i = 0; i < ntargets; i++) {
           newTarget = {};
-          newTarget.datapoint = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.datapoint[i]) || {
+          newTarget.datapoint = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.datapoints[i]) || {
             label: '',
             value: 0,
             description: ''
           };
-          newTarget.datatype = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.datatype[i]) || {
+          newTarget.datatype = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.datatypes[i]) || {
             label: 'value',
             value: 0,
             description: 'timeseries of values'
           };
-          newTarget.displayName = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.displayName[i]) || '';
-          newTarget.scalingFactor = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.scalingFactor[i]) || 1;
+          newTarget.displayName = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.displayNames[i]) || '';
+          newTarget.scalingFactor = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.scalingFactors[i]) || 1;
           newTarget.getMeta = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.getMeta) || '';
           newTarget.refId = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.refId) || '';
           newTarget.datasource = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.datasource) || '';
           newTarget.from = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.from) || '';
           newTarget.to = (sampleTarget === null || sampleTarget === void 0 ? void 0 : sampleTarget.to) || '';
-          options.targets.push(newTarget);
+          myTargets.push(newTarget);
         }
 
-        promises = options.targets.map(function (target) {
+        console.log('myTargets:');
+        console.log(myTargets);
+        promises = myTargets.map(function (target) {
           return _this.doRequest(target).then(function (response) {
             var _a, _b;
 
@@ -53789,8 +53792,7 @@ function (_super) {
         label: 'setpoint',
         value: 2,
         description: 'latest setpoint'
-      }],
-      queries: []
+      }]
     };
 
     _this.onMetaChange = function (event, child) {
@@ -53818,12 +53820,20 @@ function (_super) {
           onChange = _a.onChange,
           query = _a.query,
           onRunQuery = _a.onRunQuery;
-      var dp = [Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, query.datapoint)[0]];
-      console.log(dp);
-      dp.push(event); // change query and execute
+      var datapoints = query.datapoints;
+      var i = 0;
+
+      if (i >= datapoints.length) {
+        datapoints.push(event);
+      } else {
+        datapoints[i] = event;
+      }
+
+      console.log('updatd datapoints:');
+      console.log(datapoints); // change query and execute
 
       onChange(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, query), {
-        datapoint: dp
+        datapoints: datapoints
       }));
       onRunQuery();
     };
@@ -53833,11 +53843,20 @@ function (_super) {
           onChange = _a.onChange,
           query = _a.query,
           onRunQuery = _a.onRunQuery;
-      var dt = [Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, query.datatype)[0]];
-      dt.push(event); // change query and execute
+      var datatypes = query.datatypes;
+      var i = 0;
+
+      if (i >= datatypes.length) {
+        datatypes.push(event);
+      } else {
+        datatypes[i] = event;
+      }
+
+      console.log('updatd datatypes:');
+      console.log(datatypes); // change query and execute
 
       onChange(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, query), {
-        datatype: dt
+        datatypes: datatypes
       }));
       onRunQuery();
     };
@@ -53846,9 +53865,19 @@ function (_super) {
       var _a = _this.props,
           onChange = _a.onChange,
           query = _a.query;
-      var displayName = event.target.value;
+      var displayNames = query.displayNames;
+      var i = 0;
+
+      if (i >= displayNames.length) {
+        displayNames.push(event.target.value);
+      } else {
+        displayNames[i] = event.target.value;
+      }
+
+      console.log('updatd displayNames:');
+      console.log(displayNames);
       onChange(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, query), {
-        displayName: [displayName]
+        displayNames: displayNames
       }));
     };
 
@@ -53856,9 +53885,19 @@ function (_super) {
       var _a = _this.props,
           onChange = _a.onChange,
           query = _a.query;
-      var sf = parseFloat(event.target.value);
+      var scalingFactors = query.scalingFactors;
+      var i = 0;
+
+      if (i >= scalingFactors.length) {
+        scalingFactors.push(parseFloat(event.target.value));
+      } else {
+        scalingFactors[i] = parseFloat(event.target.value);
+      }
+
+      console.log('updatd scalingFactors:');
+      console.log(scalingFactors);
       onChange(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, query), {
-        scalingFactor: [sf]
+        scalingFactors: scalingFactors
       }));
     };
 
@@ -53895,7 +53934,7 @@ function (_super) {
         switch (_a.label) {
           case 0:
             // query backend meta to get options.
-            console.log('props:');
+            console.log('query Editor did mount - props:');
             console.log(this.props);
             _a.label = 1;
 
@@ -53944,16 +53983,12 @@ function (_super) {
   }; // Managing queries
 
 
-  QueryEditor.prototype.renderQueries = function (something) {
-    return react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", null, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("h1", null, "Hello ", something));
-  };
+  QueryEditor.prototype.renderQuery = function (i) {
+    var query = lodash_defaults__WEBPACK_IMPORTED_MODULE_1___default()(this.props.query, _types__WEBPACK_IMPORTED_MODULE_4__["defaultQuery"]); // console.log('Inside render - query:');
+    // console.log(query);
 
-  QueryEditor.prototype.render = function () {
-    var query = lodash_defaults__WEBPACK_IMPORTED_MODULE_1___default()(this.props.query, _types__WEBPACK_IMPORTED_MODULE_4__["defaultQuery"]);
-    console.log('Inside render - query:');
-    console.log(query);
     var getMeta = query.getMeta;
-    return react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", null, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", {
+    return react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", {
       style: {
         position: 'relative'
       }
@@ -53970,7 +54005,7 @@ function (_super) {
       width: 30,
       placeholder: "Select datapoint",
       disabled: getMeta,
-      value: this.props.query.datapoint,
+      value: query.datapoints[i],
       maxMenuHeight: 140,
       // defaultValue={this.state.datapoint_default}
       onChange: this.onDatapointChange,
@@ -53984,27 +54019,11 @@ function (_super) {
       width: 30,
       placeholder: "Select data type",
       disabled: getMeta,
-      value: this.props.query.datatype,
+      value: query.datatypes[i],
       maxMenuHeight: 140,
       // defaultValue={this.state.datatype_options[0]}
       onChange: this.onDatatypeChange,
       options: this.state.datatype_options
-    })), react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", {
-      className: "gf-form",
-      style: {
-        marginLeft: 20
-      }
-    }, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_material_ui_core_FormControlLabel__WEBPACK_IMPORTED_MODULE_5__["default"], {
-      control: react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_material_ui_core__WEBPACK_IMPORTED_MODULE_6__["Switch"], {
-        checked: getMeta,
-        value: getMeta,
-        onChange: this.onMetaChange,
-        name: "checkedMeta",
-        color: "primary",
-        size: "small"
-      }),
-      className: "m-1",
-      label: "Show meta data"
     }))), react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", {
       className: "gf-form",
       style: {
@@ -54018,7 +54037,7 @@ function (_super) {
       labelWidth: 8,
       inputWidth: 10,
       onChange: this.onDisplayNameChange,
-      value: query.displayName[0] || '',
+      value: query.displayNames[i],
       placeholder: "",
       tooltip: "custom name for the data point"
     }), react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(FormField, {
@@ -54028,7 +54047,7 @@ function (_super) {
       labelWidth: 8,
       inputWidth: 10,
       onChange: this.onScalingFactorChange,
-      value: query.scalingFactor[0] || '',
+      value: query.scalingFactors[i],
       placeholder: "",
       tooltip: "custom scaling factor to apply to the data"
     }), react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_material_ui_core__WEBPACK_IMPORTED_MODULE_6__["Button"], {
@@ -54058,7 +54077,35 @@ function (_super) {
       size: "small",
       disabled: getMeta,
       onClick: this.addQuery
-    }, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_material_ui_icons_Add__WEBPACK_IMPORTED_MODULE_8___default.a, null)))), react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", null, "hohoho", this.renderQueries(1)));
+    }, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_material_ui_icons_Add__WEBPACK_IMPORTED_MODULE_8___default.a, null))));
+  };
+
+  QueryEditor.prototype.render = function () {
+    var query = lodash_defaults__WEBPACK_IMPORTED_MODULE_1___default()(this.props.query, _types__WEBPACK_IMPORTED_MODULE_4__["defaultQuery"]);
+    var getMeta = query.getMeta;
+    var queries = [];
+
+    for (var i = 0; i < query.nQueries; i++) {
+      queries.push(this.renderQuery(i));
+    }
+
+    return react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", null, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", {
+      className: "gf-form",
+      style: {
+        marginLeft: 0
+      }
+    }, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_material_ui_core_FormControlLabel__WEBPACK_IMPORTED_MODULE_5__["default"], {
+      control: react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_material_ui_core__WEBPACK_IMPORTED_MODULE_6__["Switch"], {
+        checked: getMeta,
+        value: getMeta,
+        onChange: this.onMetaChange,
+        name: "checkedMeta",
+        color: "primary",
+        size: "small"
+      }),
+      className: "m-1",
+      label: "Show meta data"
+    })), queries);
   };
 
   return QueryEditor;
@@ -54104,18 +54151,18 @@ __webpack_require__.r(__webpack_exports__);
 var defaultQuery = {
   getMeta: false,
   nQueries: 1,
-  datapoint: [{
+  datapoints: new Array({
     label: '',
     value: 0,
     description: ''
-  }],
-  datatype: [{
+  }),
+  datatypes: new Array({
     label: 'value',
     value: 0,
     description: 'timeseries of values'
-  }],
-  displayName: [''],
-  scalingFactor: [1]
+  }),
+  displayNames: new Array(''),
+  scalingFactors: new Array(1)
 };
 
 /***/ }),

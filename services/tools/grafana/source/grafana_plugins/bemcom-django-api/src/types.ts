@@ -2,10 +2,10 @@ import { DataQuery, DataSourceJsonData } from '@grafana/data';
 
 export interface MyQuery extends DataQuery {
   getMeta: boolean;
-  datapoint: MyDatapoint[];
-  datatype: MyDatatype[];
-  displayName: string[];
-  scalingFactor: number[];
+  datapoints: MyDatapoint[];
+  datatypes: MyDatatype[];
+  displayNames: string[];
+  scalingFactors: number[];
   nQueries: number;
   from?: number;
   to?: number;
@@ -14,10 +14,10 @@ export interface MyQuery extends DataQuery {
 export const defaultQuery: Partial<MyQuery> = {
   getMeta: false,
   nQueries: 1,
-  datapoint: [{ label: '', value: 0, description: '' }],
-  datatype: [{ label: 'value', value: 0, description: 'timeseries of values' }],
-  displayName: [''],
-  scalingFactor: [1],
+  datapoints: new Array({ label: '', value: 0, description: '' }),
+  datatypes: new Array({ label: 'value', value: 0, description: 'timeseries of values' }),
+  displayNames: new Array(''),
+  scalingFactors: new Array(1),
 };
 
 /**

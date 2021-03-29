@@ -23,7 +23,8 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     this.url = instanceSettings.url || '';
   }
 
-  async doRequest(query: MyQuery) {
+  async doRequest(query: { [k: string]: any }) {
+    //type: MyQuery
     // console.log('inside doRequests. Query is:', query);
     // build url
     let url = '';
@@ -62,7 +63,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   }
 
   async query(options: DataQueryRequest<MyQuery>): Promise<DataQueryResponse> {
-    console.log('Inside query - ');
+    console.log('Inside query - options:');
     console.log(options);
     const { range } = options;
     const from = range!.from.valueOf();
@@ -72,31 +73,39 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       target.to = to;
     });
 
-    // translate arrays from query attributes to an array of targets
+    // translate arrays of attributes from first target to an array of targets
     let sampleTarget = options.targets.pop();
-    console.log('taret lists:');
+    console.log('sample target:');
     console.log(sampleTarget);
     const ntargets = sampleTarget?.nQueries || 0;
+
+    var myTargets = [];
+
     for (var i = 0; i < ntargets; i++) {
       let newTarget: { [k: string]: any } = {};
-      newTarget.datapoint = sampleTarget?.datapoint[i] || { label: '', value: 0, description: '' };
-      newTarget.datatype = sampleTarget?.datatype[i] || {
+
+      newTarget.datapoint = sampleTarget?.datapoints[i] || { label: '', value: 0, description: '' };
+      newTarget.datatype = sampleTarget?.datatypes[i] || {
         label: 'value',
         value: 0,
         description: 'timeseries of values',
       };
-      newTarget.displayName = sampleTarget?.displayName[i] || '';
-      newTarget.scalingFactor = sampleTarget?.scalingFactor[i] || 1;
+      newTarget.displayName = sampleTarget?.displayNames[i] || '';
+      newTarget.scalingFactor = sampleTarget?.scalingFactors[i] || 1;
       newTarget.getMeta = sampleTarget?.getMeta || '';
 
       newTarget.refId = sampleTarget?.refId || '';
       newTarget.datasource = sampleTarget?.datasource || '';
       newTarget.from = sampleTarget?.from || '';
       newTarget.to = sampleTarget?.to || '';
-      options.targets.push(newTarget);
+      myTargets.push(newTarget);
     }
 
-    const promises = options.targets.map((target) =>
+    console.log('myTargets:');
+    console.log(myTargets);
+
+    // const promises = options.targets.map((target) =>
+    const promises = myTargets.map((target) =>
       this.doRequest(target).then((response) => {
         if (!response || response.data === undefined || response.data.length === 0) {
           return [];
