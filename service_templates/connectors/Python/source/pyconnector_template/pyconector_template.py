@@ -570,7 +570,7 @@ class Connector():
 
         logger.debug("Loading settings from environment variables.")
         # dotenv allows us to load env variables from .env files which is
-        # convient for developing. If you set override to False tests
+        # convient for developing. If you set override to True tests
         # may fail as the tests assume that the existing environ variables
         # have higher priority over ones defined in the .env file.
         load_dotenv(find_dotenv(), verbose=True, override=False)
