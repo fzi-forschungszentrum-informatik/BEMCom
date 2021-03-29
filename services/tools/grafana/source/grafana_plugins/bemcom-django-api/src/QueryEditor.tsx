@@ -258,6 +258,7 @@ export class QueryEditor extends PureComponent<Props> {
   deleteQuery = (evenmt: any) => {
     console.log('del query');
   };
+
   render() {
     const query = defaults(this.props.query, defaultQuery);
     const { getMeta } = query;
