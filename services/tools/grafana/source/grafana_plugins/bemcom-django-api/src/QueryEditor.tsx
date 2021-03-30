@@ -32,7 +32,9 @@ export class QueryEditor extends PureComponent<Props> {
       { label: 'schedule', value: 1, description: 'currently active schedule' },
       { label: 'setpoint', value: 2, description: 'latest setpoint' },
     ],
-    changed_input_style: false ? { backgroundColor: 'darkslategrey' } : {},
+    custom_user_scaling: [false],
+    custom_user_name: [false],
+    changed_input_style: (changed: boolean) => (changed ? { backgroundColor: 'darkslategrey' } : {}),
   };
 
   async componentDidMount() {
@@ -93,6 +95,12 @@ export class QueryEditor extends PureComponent<Props> {
   onDisplayNameChange = (event: ChangeEvent<HTMLInputElement>, entry: MyQueryEntry) => {
     const { onChange, query } = this.props;
 
+    // for updating state for colorful input tracking
+    let custom_user_name = this.state.custom_user_name;
+    custom_user_name[entry.id] = true;
+
+    this.setState({ ...this.state, custom_user_name });
+
     entry.displayName = event.target.value;
 
     let entries = query.entries;
@@ -103,6 +111,12 @@ export class QueryEditor extends PureComponent<Props> {
   onScalingFactorChange = (event: ChangeEvent<HTMLInputElement>, entry: MyQueryEntry) => {
     const { onChange, query } = this.props;
 
+    // for updating state for colorful input tracking
+    let custom_user_scaling = this.state.custom_user_scaling;
+    custom_user_scaling[entry.id] = true;
+
+    this.setState({ ...this.state, custom_user_scaling });
+
     entry.scalingFactor = parseFloat(event.target.value);
 
     let entries = query.entries;
@@ -110,8 +124,15 @@ export class QueryEditor extends PureComponent<Props> {
     onChange({ ...query, entries });
   };
 
-  onUserMetaChange = (event: any) => {
+  onUserMetaChange = (event: any, entry: MyQueryEntry) => {
     const { onRunQuery } = this.props;
+
+    // for updating state for colorful input tracking
+    let custom_user_scaling = this.state.custom_user_scaling;
+    custom_user_scaling = custom_user_scaling.map((x) => false);
+    let custom_user_name = this.state.custom_user_name;
+    custom_user_name = custom_user_name.map((x) => false);
+    this.setState({ ...this.state, custom_user_scaling, custom_user_name });
     onRunQuery();
   };
 
@@ -165,7 +186,7 @@ export class QueryEditor extends PureComponent<Props> {
           <div className="gf-form" style={{ marginLeft: 20 }}>
             <span className="gf-form">
               <FormField
-                style={this.state.changed_input_style}
+                style={this.state.changed_input_style(this.state.custom_user_name[entry.id])}
                 label="displayName"
                 disabled={getMeta}
                 labelWidth={8}
@@ -176,7 +197,7 @@ export class QueryEditor extends PureComponent<Props> {
                 tooltip="Custom name for this datapoint"
               />
               <FormField
-                style={this.state.changed_input_style}
+                style={this.state.changed_input_style(this.state.custom_user_scaling[entry.id])}
                 label="scalingFactor"
                 disabled={getMeta}
                 type="number"
@@ -187,7 +208,12 @@ export class QueryEditor extends PureComponent<Props> {
                 placeholder=""
                 tooltip="Custom scaling factor for this datapoint"
               />
-              <Button variant="contained" size="small" disabled={getMeta} onClick={this.onUserMetaChange}>
+              <Button
+                variant="contained"
+                size="small"
+                disabled={getMeta}
+                onClick={(e) => this.onUserMetaChange(e, entry)}
+              >
                 apply
               </Button>
             </span>
@@ -227,9 +253,15 @@ export class QueryEditor extends PureComponent<Props> {
     let defaultEntry: MyQueryEntry = { ...defaults(defaultQueryEntry) };
     defaultEntry.id = entry.id + 1;
 
+    // for updating state for colorful input tracking
+    let custom_user_scaling = this.state.custom_user_scaling;
+    let custom_user_name = this.state.custom_user_name;
+
     // add new entry after the calling entry
     if (defaultEntry.id == entries.length) {
       entries.push(defaultEntry);
+      custom_user_scaling.push(false);
+      custom_user_name.push(false);
     } else {
       // shift all ids after new entry by one
       for (var i = entry.id + 1; i < entries.length; i++) {
@@ -237,23 +269,34 @@ export class QueryEditor extends PureComponent<Props> {
       }
 
       entries.splice(entry.id + 1, 0, defaultEntry);
+      custom_user_scaling.splice(defaultEntry.id, 0, false);
+      custom_user_name.splice(defaultEntry.id, 0, false);
     }
 
     onChange({ ...query, entries });
+    this.setState({ ...this.state, custom_user_scaling, custom_user_name });
   };
 
   deleteQuery = (event: any, entry: MyQueryEntry) => {
     const { query, onChange, onRunQuery } = this.props;
 
     let entries = query.entries;
+
+    // for updating state for colorful input tracking
+    let custom_user_scaling = this.state.custom_user_scaling;
+    let custom_user_name = this.state.custom_user_name;
+
     // delete entry
     entries.splice(entry.id, 1);
+    custom_user_scaling.splice(entry.id, 1);
+    custom_user_name.splice(entry.id, 1);
     // shift id's of following entries by -1
     for (var i = entry.id; i < entries.length; i++) {
       entries[i].id--;
     }
 
     onChange({ ...query, entries });
+    this.setState({ ...this.state, custom_user_scaling, custom_user_name });
     onRunQuery();
   };
 
@@ -279,6 +322,28 @@ export class QueryEditor extends PureComponent<Props> {
             label="Show meta data"
           />
         </div>
+
+        {query.entries.length == 0 && (
+          <div className="gf-form-group">
+            <Button
+              style={{ backgroundColor: 'grey' }}
+              variant="outlined"
+              size="small"
+              disabled={getMeta}
+              onClick={(e) =>
+                this.addQuery(e, {
+                  id: -1,
+                  datapoint: { label: '', value: 0, description: '' },
+                  datatype: { label: '', value: 0, description: '' },
+                  displayName: '',
+                  scalingFactor: 1,
+                })
+              }
+            >
+              <AddIcon />
+            </Button>
+          </div>
+        )}
 
         {entries.map((entry) => this.renderQuery(entry, getMeta))}
       </div>

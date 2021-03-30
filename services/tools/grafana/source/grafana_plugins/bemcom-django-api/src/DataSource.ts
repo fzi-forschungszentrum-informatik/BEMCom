@@ -219,15 +219,21 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
                 });
                 break;
             }
+
             return frame;
           }
         })
       );
 
-      return Promise.all(promises).then((data) => ({ data })); // TODO: find out how to parse promises and data correctly
+      return promises; //.then((data) => ({ data }));
     });
 
-    return Promise.all(allQueryPromises).then((data) => ({ data }));
+    var mergedPromises = allQueryPromises[0];
+    allQueryPromises.slice(1).forEach((promise) => {
+      mergedPromises = mergedPromises.concat(promise);
+    });
+
+    return Promise.all(mergedPromises).then((data) => ({ data }));
   }
 
   async testDatasource() {
