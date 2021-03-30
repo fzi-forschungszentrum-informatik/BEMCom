@@ -24,6 +24,7 @@ class DatapointAdmin(admin.ModelAdmin):
     that e.g. jsons fields are parsable.
     """
     list_display = (
+        "id",
         "connector",
         "key_in_connector",
         "type",
@@ -37,7 +38,7 @@ class DatapointAdmin(admin.ModelAdmin):
         "last_value_timestamp_pretty",
     )
     list_display_links = (
-        "key_in_connector",
+        "id",
     )
     list_editable = (
         "is_active",
@@ -59,6 +60,7 @@ class DatapointAdmin(admin.ModelAdmin):
         "type",
     )
     readonly_fields = (
+        "id",
         "connector",
         "key_in_connector",
         "type",
@@ -167,6 +169,7 @@ class DatapointAdmin(admin.ModelAdmin):
         of data_format or additional fields for actuators.
         """
         generic_metadata_fields = [
+                "id",
                 "connector",
                 "key_in_connector",
                 "type",

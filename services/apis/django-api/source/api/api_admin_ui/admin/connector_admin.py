@@ -61,14 +61,25 @@ class ConnectorLogEntryInline(admin.TabularInline):
     """
     model = ConnectorLogEntry
     verbose_name_plural = "Last 10 log entries"
-    fields = ('timestamp', 'msg', 'emitter', )
+    fields = (
+        "level",
+        "timestamp_pretty",
+        "emitter",
+        "msg",
+    )
     readonly_fields = fields
-    ordering = ('timestamp', )
     can_delete = False
     classes = ('collapse', )
 
     def has_add_permission(self, request, obj=None):
         return False
+
+    def timestamp_pretty(self, obj):
+        """
+        Displays a prettier timestamp format.
+        """
+        return datetime_to_pretty_str(obj.timestamp)
+    timestamp_pretty.short_description = "Timestamp"
 
     def get_queryset(self, request):
         """
@@ -80,10 +91,12 @@ class ConnectorLogEntryInline(admin.TabularInline):
               -> Returned query set can now be filtered again for the current
               connector :)
         """
-        all_entries = super().get_queryset(request)
-        ids_of_last_ten_entries = all_entries.order_by('-timestamp').values('id')[:10]
-        last_ten_entries = ConnectorLogEntry.objects.filter(id__in=ids_of_last_ten_entries)
-        return last_ten_entries
+        # request URL looks like: /admin/api_main/connector/5/change/
+        connector_id = request.path_info.split("/")[-3]
+        all_log_entries = ConnectorLogEntry.objects.filter(connector=connector_id)
+        ids_of_last_ten_entries = all_log_entries.order_by('-timestamp').values('id')[:10]
+        last_ten_entries = all_log_entries.filter(id__in=ids_of_last_ten_entries)
+        return last_ten_entries.order_by('-timestamp')
 
 
 @admin.register(Connector)
