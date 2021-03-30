@@ -101,6 +101,10 @@ class SensorFlow(SFTemplate):
         """
         if not hasattr(self, "modbus_connection"):
             # Establish connection to modbus master device.
+            logger.debug(
+                "Connecting to Modbus master %s:%s",
+                *(self.modbus_master_ip, self.modbus_master_port)
+            )
             self.modbus_connection = ModbusTcpClient(
                 host=self.modbus_master_ip, port=self.modbus_master_port
             )
@@ -164,6 +168,15 @@ class SensorFlow(SFTemplate):
                     else:
                         raw_message[read_method_name][i] = response.bits
                     break
+                # Maybe wait a bit before next request.
+                sleep(self.poll_break)
+
+        if self.disconnect_between_polls:
+            logger.debug("Disconnecting from Modbus Master.")
+            self.modbus_connection.close()
+            # This is required so we create a new connection next poll.
+            delattr(self, "modbus_connection")
+
         msg = {
             "payload": {
                 "raw_message": raw_message
@@ -469,6 +482,10 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         ]
         self.max_retries = int(os.getenv("MODBUS_MAX_RETRIES") or 3)
         self.retry_wait = int(os.getenv("MODBUS_RETRY_WAIT_SECONDS") or 15)
+        self.poll_break = float(os.getenv("MODBUS_POLL_BREAK") or 0)
+        self.disconnect_between_polls = False
+        if os.getenv("MODBUS_DISCONNECT_BETWEEN_POLLS") == "TRUE":
+            self.disconnect_between_polls = True
 
     @staticmethod
     def parse_modbus_config(config_json_str):

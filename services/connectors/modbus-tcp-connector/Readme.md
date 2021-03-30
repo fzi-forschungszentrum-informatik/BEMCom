@@ -34,19 +34,21 @@ This connector should be able to communicate with any Modbus Device or Gateway. 
 
 ##### Environment Variables
 
-| Enironment Variable       | Example  Value                   | Usage/Remarks                                                |
-| ------------------------- | -------------------------------- | ------------------------------------------------------------ |
-| CONNECTOR_NAME            | modbus-tcp-connector-device-name | The name of the connector. Must be unique and is used to compute the MQTT topics. Use all lowercase chars and only dashes for separation to prevent clashes with Dockers internal name resolution system. |
-| MQTT_BROKER_HOST          | broker.domain.de                 | The DNS name or IP address of the MQTT broker. `localhost` will not work, use the full DNS name of the host machine instead. |
-| MQTT_BROKER_HOST          | 1883                             | The port of the MQTT broker.                                 |
-| SEND_RAW_MESSAGE_TO_DB    | TRUE                             | If set to `TRUE` (that is a string of capital letters) will publish all received raw messages on topic `${CONNECTOR_NAME}/raw_message_to_db` |
-| DEBUG                     | TRUE                             | If == "TRUE" (i.e. the string) will set the loglevel of the connector the logging.DEBUG. Else is logging.INFO. |
-| POLL_SECONDS              | 30                               | The period of polling the Modbus device/gateway for sensor datapoints. |
-| MODBUS_MASTER_IP          | 192.168.0.1                      | The ip adress or DNS name of the Modbus master device which we want to connect to. |
-| MODBUS_MASTER_PORT        | 502                              | The port on which  the master device awaits Modbus communication. |
-| MODBUS_CONFIG             | see below.                       | see below.                                                   |
-| MODBUS_MAX_RETRIES        | 3                                | Maximum number of retrying a failed read/write operation before the connector shuts down with an error. Default value is 3. |
-| MODBUS_RETRY_WAIT_SECONDS | 15                               | Wait time in seconds after a failed read/write operation before trying again. Defaults to 15 seconds. |
+| Enironment Variable             | Example  Value                   | Usage/Remarks                                                |
+| ------------------------------- | -------------------------------- | ------------------------------------------------------------ |
+| CONNECTOR_NAME                  | modbus-tcp-connector-device-name | The name of the connector. Must be unique and is used to compute the MQTT topics. Use all lowercase chars and only dashes for separation to prevent clashes with Dockers internal name resolution system. |
+| MQTT_BROKER_HOST                | broker.domain.de                 | The DNS name or IP address of the MQTT broker. `localhost` will not work, use the full DNS name of the host machine instead. |
+| MQTT_BROKER_HOST                | 1883                             | The port of the MQTT broker.                                 |
+| SEND_RAW_MESSAGE_TO_DB          | TRUE                             | If set to `TRUE` (that is a string of capital letters) will publish all received raw messages on topic `${CONNECTOR_NAME}/raw_message_to_db` |
+| DEBUG                           | TRUE                             | If == "TRUE" (i.e. the string) will set the loglevel of the connector the logging.DEBUG. Else is logging.INFO. |
+| POLL_SECONDS                    | 30                               | The period of polling the Modbus device/gateway for sensor datapoints. |
+| MODBUS_MASTER_IP                | 192.168.0.1                      | The ip adress or DNS name of the Modbus master device which we want to connect to. |
+| MODBUS_MASTER_PORT              | 502                              | The port on which  the master device awaits Modbus communication. |
+| MODBUS_CONFIG                   | see below.                       | see below.                                                   |
+| MODBUS_MAX_RETRIES              | 3                                | Maximum number of retrying a failed read/write operation before the connector shuts down with an error. Default value is 3. |
+| MODBUS_RETRY_WAIT_SECONDS       | 15                               | Wait time in seconds after a failed read/write operation before trying again. Defaults to 15 seconds. |
+| MODBUS_POLL_BREAK               | 0.1                              | Wait time in seconds between two consecutive requests. Some devices react with errors if getting polled too often. Defaults to 0.0 |
+| MODBUS_DISCONNECT_BETWEEN_POLLS | TRUE                             | If == "TRUE" (i.e. the string) will disconnect from Modbus master device between polls. This is useful for devices that can only handle a single connection or that react with errors if POLL_SECONDS is larger then a few seconds. Defaults to FALSE. |
 
 The MODBUS_CONFIG allows to specify which registers should be read out by the connector as well as how to parse the values.
 
@@ -134,3 +136,4 @@ Follow the following steps while contributing to the connector:
 | ----- | ------------------------------------------------------------ |
 | 0.1.0 | First productive version.                                    |
 | 0.2.0 | Can read coils and discrete inputs now and allows application of scaling factors. |
+| 0.3.0 | Allow disconnecting between polls and breaks between requests in one poll run. |
