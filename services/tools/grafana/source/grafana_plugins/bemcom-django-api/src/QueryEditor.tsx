@@ -38,6 +38,8 @@ export class QueryEditor extends PureComponent<Props> {
   };
 
   async componentDidMount() {
+    console.log('componentDidMOunt - props:');
+    console.log(this.props);
     // query backend meta to get options.
     try {
       const result = await getBackendSrv().datasourceRequest({
