@@ -76,6 +76,7 @@ class MQTTHandler(logging.StreamHandler):
         self.mqtt_client.publish(
             payload=json.dumps(log_msg),
             topic=self.log_topic,
+            retain=True,
         )
 
 
