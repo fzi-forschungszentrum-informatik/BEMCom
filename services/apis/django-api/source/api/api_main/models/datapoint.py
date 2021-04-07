@@ -14,8 +14,8 @@ from ems_utils.message_format.models import DatapointScheduleTemplate
 
 class Datapoint(DatapointTemplate):
     """
-    Similar to the generic Datapoint model (see docstring in DatapointTemplate for
-    more information) but with fields adapted to the needs of API service.
+    Similar to the generic Datapoint model (see docstring in DatapointTemplate
+    for more information) but with fields adapted to the needs of API service.
     """
     # Overload the docstring with the one of DatapointTemplate for the
     # automatic generation of documentation in schema, as the original
@@ -59,8 +59,8 @@ class Datapoint(DatapointTemplate):
             "mangeing datapoints, i.e. to specify the correct data format."
         )
     )
-    # Delete these fields, the API IS THE origin of meta data.
-    exclude = ("origin_id", "origin_description")
+    # Delete this field, the API IS THE origin of meta data.
+    exclude = ("origin_id", )
 
     def __str__(self):
         if self.short_name is not None:

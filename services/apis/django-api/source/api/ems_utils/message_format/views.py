@@ -61,9 +61,9 @@ class DatapointViewSetTemplate(GenericViewSet):
     """
     datapoint_model = None
     queryset = None
-    serializer_class = DatapointSerializer
+    serializer_class = None
     filter_backends = (filters.DjangoFilterBackend,)
-    unique_together_fields = ("id", )
+    unique_together_fields = ("origin_id", )
 
     # Reuse the Docstring of Datapoint of the API schema.
     __doc__ = DatapointTemplate.__doc__
@@ -83,6 +83,7 @@ class DatapointViewSetTemplate(GenericViewSet):
         This methods allows to retrieve the data of multiple datapoints.
         """
         datapoints = self.queryset.all()
+        datapoints = self.filter_queryset(datapoints)
         serializer = self.serializer_class(datapoints, many=True)
         return Response(serializer.data)
     list.__doc__ = __doc__ + "<br><br>" + list.__doc__.strip()
@@ -106,7 +107,7 @@ class DatapointViewSetTemplate(GenericViewSet):
                 "A datapoint with such field values exists already: %s" % q
             )
 
-        datapoint = Datapoint(**vd)
+        datapoint = self.datapoint_model(**vd)
         datapoint.save()
 
         serializer = self.serializer_class(datapoint)

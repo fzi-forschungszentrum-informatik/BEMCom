@@ -99,15 +99,6 @@ class DatapointTemplate(models.Model):
             "users of the API wihtout knowledge about connector details."
         )
     )
-    origin_description = models.TextField(
-        editable=True,
-        blank=True,
-        help_text=(
-            "A human readable description of the datapoint targeted on "
-            "users of the API wihtout knowledge about connector details."
-            "This is the description provided by the extenral tool."
-        )
-    )
     #
     ##########################################################################
     #

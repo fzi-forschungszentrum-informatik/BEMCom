@@ -67,7 +67,7 @@ class GenericValidators():
             # Could be None or emptry string, both should be handled no values
             # allowed.
             if datapoint.allowed_values:
-                allowed_values = json.loads(datapoint.allowed_values)
+                allowed_values = datapoint.allowed_values
             else:
                 allowed_values = []
             if value not in allowed_values:
@@ -304,13 +304,14 @@ class GenericValidators():
         return setpoint
 
 
-class DatapointSerializer(serializers.HyperlinkedModelSerializer):
+class DatapointSerializer(serializers.ModelSerializer):
     """
-    Serializer matching the fields of the Datapoint model generated from
-    models.DatapointTemplate.
+    This is not functional but just a template for copy&paste.
+    Overload the Meta.model variable below to make it work.
     """
 
     class Meta:
+        model = None
         fields = [
             "id",
             "origin_id",
@@ -318,7 +319,6 @@ class DatapointSerializer(serializers.HyperlinkedModelSerializer):
             "data_format",
             "short_name",
             "description",
-            "origin_description",
             "min_value",
             "max_value",
             "allowed_values",
@@ -334,16 +334,6 @@ class DatapointSerializer(serializers.HyperlinkedModelSerializer):
                 'validators': [],
             }
         }
-
-    def __init__(self, DatapointModel):
-        """
-        Parameters
-        ----------
-        DatapointModel : Django model
-            The datapoint model that is used to identify the nessary fields
-            of this serializer.
-        """
-        self.Meta.model = DatapointModel
 
 
 class DatapointValueSerializer(serializers.Serializer):

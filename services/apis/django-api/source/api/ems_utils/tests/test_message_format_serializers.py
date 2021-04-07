@@ -130,7 +130,7 @@ class TestDatapointValueSerializer(TransactionTestCase):
         accepted.
         """
         dp = self.datapoint
-        dp.allowed_values = '["not a number"]'
+        dp.allowed_values = ["not a number"]
         dp.save()
 
         numeric_data_formats = [
@@ -264,22 +264,22 @@ class TestDatapointValueSerializer(TransactionTestCase):
             {
                 "value": 2.0,
                 "data_format": "discrete_numeric",
-                "allowed_values": '[1.0, 2.0, 3.0]'
+                "allowed_values": [1.0, 2.0, 3.0]
             },
             {
                 "value": 2,
                 "data_format": "discrete_numeric",
-                "allowed_values": '[1, 2, 3]'
+                "allowed_values": [1, 2, 3]
             },
             {
                 "value": "OK",
                 "data_format": "discrete_text",
-                "allowed_values": '["OK", "Done"]'
+                "allowed_values": ["OK", "Done"]
             },
             {
                 "value": None,
                 "data_format": "discrete_text",
-                "allowed_values": '[null, "Nope"]'
+                "allowed_values": [None, "Nope"]
             },
         ]
         for valid_combination in valid_combinations:
@@ -309,32 +309,32 @@ class TestDatapointValueSerializer(TransactionTestCase):
             {
                 "value": 2.0,
                 "data_format": "discrete_numeric",
-                "allowed_values": '[1.0, 3.0]'
+                "allowed_values": [1.0, 3.0]
             },
             {
                 "value": 2,
                 "data_format": "discrete_numeric",
-                "allowed_values": '[1, 3]'
+                "allowed_values": [1, 3]
             },
             {
                 "value": 2,
                 "data_format": "discrete_numeric",
-                "allowed_values": '[]'
+                "allowed_values": []
             },
             {
                 "value": "OK",
                 "data_format": "discrete_text",
-                "allowed_values": '["NotOK", "OK "]'
+                "allowed_values": ["NotOK", "OK "]
             },
             {
                 "value": "",
                 "data_format": "discrete_text",
-                "allowed_values": '["OK"]'
+                "allowed_values": ["OK"]
             },
             {
                 "value": None,
                 "data_format": "discrete_text",
-                "allowed_values": '["OK"]'
+                "allowed_values": ["OK"]
             },
         ]
         for invalid_combination in invalid_combinations:
@@ -896,22 +896,22 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
             {
                 "value": 2.0,
                 "data_format": "discrete_numeric",
-                "allowed_values": '[1.0, 2.0, 3.0]'
+                "allowed_values": [1.0, 2.0, 3.0]
             },
             {
                 "value": 2,
                 "data_format": "discrete_numeric",
-                "allowed_values": '[1, 2, 3]'
+                "allowed_values": [1, 2, 3]
             },
             {
                 "value": "OK",
                 "data_format": "discrete_text",
-                "allowed_values": '["OK", "Done"]'
+                "allowed_values": ["OK", "Done"]
             },
             {
                 "value": None,
                 "data_format": "discrete_text",
-                "allowed_values": '[null, "Nope"]'
+                "allowed_values": [None, "Nope"]
             },
         ]
         for valid_combination in valid_combinations:
@@ -946,32 +946,32 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
             {
                 "value": 2.0,
                 "data_format": "discrete_numeric",
-                "allowed_values": '[1.0, 3.0]'
+                "allowed_values": [1.0, 3.0]
             },
             {
                 "value": 2,
                 "data_format": "discrete_numeric",
-                "allowed_values": '[1, 3]'
+                "allowed_values": [1, 3]
             },
             {
                 "value": 2,
                 "data_format": "discrete_numeric",
-                "allowed_values": '[]'
+                "allowed_values": []
             },
             {
                 "value": "OK",
                 "data_format": "discrete_text",
-                "allowed_values": '["NotOK", "OK "]'
+                "allowed_values": ["NotOK", "OK "]
             },
             {
                 "value": "",
                 "data_format": "discrete_text",
-                "allowed_values": '["OK"]'
+                "allowed_values": ["OK"]
             },
             {
                 "value": None,
                 "data_format": "discrete_text",
-                "allowed_values": '["OK"]'
+                "allowed_values": ["OK"]
             },
         ]
         for invalid_combination in invalid_combinations:
@@ -1776,22 +1776,22 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
             {
                 "preferred_value": 2.0,
                 "data_format": "discrete_numeric",
-                "allowed_values": '[1.0, 2.0, 3.0]'
+                "allowed_values": [1.0, 2.0, 3.0]
             },
             {
                 "preferred_value": 2,
                 "data_format": "discrete_numeric",
-                "allowed_values": '[1, 2, 3]'
+                "allowed_values": [1, 2, 3]
             },
             {
                 "preferred_value": "OK",
                 "data_format": "discrete_text",
-                "allowed_values": '["OK", "Done"]'
+                "allowed_values": ["OK", "Done"]
             },
             {
                 "preferred_value": None,
                 "data_format": "discrete_text",
-                "allowed_values": '[null, "Nope"]'
+                "allowed_values": [None, "Nope"]
             },
         ]
         for valid_combination in valid_combinations:
@@ -1829,32 +1829,32 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
             {
                 "preferred_value": 2.0,
                 "data_format": "discrete_numeric",
-                "allowed_values": '[1.0, 3.0]'
+                "allowed_values": [1.0, 3.0]
             },
             {
                 "preferred_value": 2,
                 "data_format": "discrete_numeric",
-                "allowed_values": '[1, 3]'
+                "allowed_values": [1, 3]
             },
             {
                 "preferred_value": 2,
                 "data_format": "discrete_numeric",
-                "allowed_values": '[]'
+                "allowed_values": []
             },
             {
                 "preferred_value": "OK",
                 "data_format": "discrete_text",
-                "allowed_values": '["NotOK", "OK "]'
+                "allowed_values": ["NotOK", "OK "]
             },
             {
                 "preferred_value": "",
                 "data_format": "discrete_text",
-                "allowed_values": '["OK"]'
+                "allowed_values": ["OK"]
             },
             {
                 "preferred_value": None,
                 "data_format": "discrete_text",
-                "allowed_values": '["OK"]'
+                "allowed_values": ["OK"]
             },
         ]
         for invalid_combination in invalid_combinations:
