@@ -1,8 +1,6 @@
 # Grafana Tool
 
-This service provides a Grafana instance with a custom plug-in that allows direct data retrieval from REST interface of the Django-API service. 
-
-
+This service provides a Grafana instance with a custom plug-in that allows direct data retrieval from REST interface of the Django-API service.
 
 ### Configuration
 
@@ -21,20 +19,18 @@ This service provides a Grafana instance with a custom plug-in that allows direc
 
 ##### Volumes
 
-| Path in Container                          | Usage/Remarks                                                |
-| ------------------------------------------ | ------------------------------------------------------------ |
+| Path in Container                          | Usage/Remarks                                                                        |
+| ------------------------------------------ | ------------------------------------------------------------------------------------ |
 | /var/lib/grafana/grafana.db                | Grafana SQLite database file. Store on local file system to persist grafan settings. |
-| /var/lib/grafana/plugins/bemcom-django-api | Allows mounting in the custom plugin. Use for development only. |
+| /var/lib/grafana/plugins/bemcom-django-api | Allows mounting in the custom plugin. Use for development only.                      |
 
 **Hint**: Add custom volumes to persist changes in Grafana.
-
-
 
 ### Usage Instructions
 
 ##### Initial Setup
 
-* Ensure that the `${GRAFANA_DB_FILE}` exists and has read/write permissions for the user running the container.
+- Ensure that the `${GRAFANA_DB_FILE}` exists and has read/write permissions for the user running the container.
 
 ##### Data source configuration
 
@@ -57,9 +53,7 @@ A query can either display meta data on the API or timeseries data.
 **Meta data** is toggled by a switch. The received table-like data gives information on all available datapoints.
 
 **Timeseries data** can be of the above described data types. Simply choose the datapoint by its short name and the datatype.
-The dropdown also features an autoselection when typing.
-
-
+The dropdown also features an autoselection when typing. A custom name and scaling factor can optionally be defined. Clicjk "apply" or enter to commit changes here.
 
 ### Development
 
@@ -82,9 +76,9 @@ You can...
 
 Once finished with developing do:
 
-* Update the image tag in  [./build_docker_image.sh](./build_docker_image.sh) and execute the shell script to build an updated image. 
-* Document your changes and new tag by appending the list below.
-* git add, commit and push.
+- Update the image tag in [./build_docker_image.sh](./build_docker_image.sh) and execute the shell script to build an updated image.
+- Document your changes and new tag by appending the list below.
+- git add, commit and push.
 
 Further instructions about working with Grafana:
 
@@ -93,12 +87,11 @@ Further instructions about working with Grafana:
 - [Grafana Tutorials](https://grafana.com/tutorials/) - Grafana Tutorials are step-by-step guides that help you make the most of Grafana
 - [Grafana UI Library](https://developers.grafana.com/ui) - UI components to help you build interfaces using Grafana Design System
 
-
-
 ### Changelog
 
-| Tag   | Changes                                                      |
-| ----- | ------------------------------------------------------------ |
-| 0.1.0 | Initial version                                              |
-| 0.1.1 | Simpler setpoint selection                                   |
+| Tag   | Changes                                                                                       |
+| ----- | --------------------------------------------------------------------------------------------- |
+| 0.1.0 | Initial version                                                                               |
+| 0.1.1 | Simpler setpoint selection                                                                    |
 | 0.1.2 | Basic authentication enabled. Skipping TLS verification enabled for self signed certificates. |
+| 0.1.3 | Additional fields for custom name, scaling factor and datapoint description                   |

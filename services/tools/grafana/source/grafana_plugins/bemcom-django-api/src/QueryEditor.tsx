@@ -106,7 +106,7 @@ export class QueryEditor extends PureComponent<Props> {
     onChange({ ...query, scalingFactor });
   };
 
-  onUserMetaChange = (event: any) => {
+  onUserMetaChange = () => {
     const { onRunQuery } = this.props;
 
     // for updating state for colorful input tracking
@@ -116,6 +116,15 @@ export class QueryEditor extends PureComponent<Props> {
     custom_user_name = false;
     this.setState({ ...this.state, custom_user_scaling, custom_user_name });
     onRunQuery();
+  };
+
+  onKeyUp = (event: React.KeyboardEvent<HTMLDivElement>): void => {
+    // 'keypress' event misbehaves on mobile so we track 'Enter' key via 'keydown' event
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      event.stopPropagation();
+      this.onUserMetaChange();
+    }
   };
 
   // Managing queries
@@ -173,6 +182,7 @@ export class QueryEditor extends PureComponent<Props> {
                 disabled={query.getMeta}
                 labelWidth={8}
                 inputWidth={10}
+                onKeyUp={this.onKeyUp}
                 onChange={(e) => this.onDisplayNameChange(e)}
                 value={query.displayName}
                 placeholder=""
@@ -185,17 +195,13 @@ export class QueryEditor extends PureComponent<Props> {
                 type="number"
                 labelWidth={8}
                 inputWidth={10}
+                onKeyUp={this.onKeyUp}
                 onChange={(e) => this.onScalingFactorChange(e)}
                 value={query.scalingFactor}
                 placeholder=""
                 tooltip="Custom scaling factor for this datapoint"
               />
-              <Button
-                variant="contained"
-                size="small"
-                disabled={query.getMeta}
-                onClick={(e) => this.onUserMetaChange(e)}
-              >
+              <Button variant="contained" size="small" disabled={query.getMeta} onClick={this.onUserMetaChange}>
                 apply
               </Button>
             </span>
@@ -225,6 +231,14 @@ export class QueryEditor extends PureComponent<Props> {
             }
             className="m-1"
             label="Show meta data"
+          />
+          <FormField
+            label="description"
+            placeholder="description"
+            labelWidth={5}
+            inputWidth={30}
+            value={query.datapoint.description || ''}
+            disabled={true}
           />
         </div>
 
