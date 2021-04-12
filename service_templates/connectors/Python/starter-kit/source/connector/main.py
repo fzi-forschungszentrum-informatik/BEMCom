@@ -6,6 +6,7 @@ import os
 import json
 import logging
 
+from dotenv import load_dotenv, find_dotenv
 from pyconnector_template.pyconector_template import SensorFlow as SFTemplate
 from pyconnector_template.pyconector_template import ActuatorFlow as AFTemplate
 from pyconnector_template.pyconector_template import Connector as CTemplate
@@ -266,7 +267,6 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         Note thereby that the keys "sensor" and "actuator"" must alaways be
         present, even if the child dicts are empty.
     """
-    pass
 
     def __init__(self, *args, **kwargs):
         """
@@ -283,9 +283,13 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         # We need to specify a dispatcher that triggers the connection with
         # the device or gateway. Here we want to poll the device with the
         # interval set in the POLL_SECONDS environment variable.
+        # At each poll we want to execute the full run_sensor_flow
+        # As this contains all the expected logic the connector should do
+        # with sensor data.
         kwargs["DeviceDispatcher"] = DispatchInInterval
         kwargs["device_dispatcher_kwargs"] = {
-            "call_interval": float(os.getenv("POLL_SECONDS"))
+            "call_interval": float(os.getenv("POLL_SECONDS")),
+            "target_func": self.run_sensor_flow,
         }
 
         # Sensor datapoints will be added to available_datapoints automatically
