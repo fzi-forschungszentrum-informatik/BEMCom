@@ -805,7 +805,7 @@ class TestConnectorRun(TestClassWithFixtures):
 
         logger = logging.getLogger("pyconnector")
         assert sum([isinstance(h, MQTTHandler) for h in logger.handlers]) == 1
-        
+
     def test_mqtt_log_handler_initiated_correctly(self):
         """
         Verify that MQTTHandler has received the correct args.
@@ -818,10 +818,10 @@ class TestConnectorRun(TestClassWithFixtures):
             if isinstance(handler, MQTTHandler):
                 mqtt_handler = handler
                 break
-        
+
         assert mqtt_handler.log_topic == self.cn.MQTT_TOPIC_LOGS
         #
-        # TODO: This test would also be usefuly but fails once executing all 
+        # TODO: This test would also be usefuly but fails once executing all
         # tests, no clue why.
         # assert mqtt_handler.mqtt_client == self.cn.mqtt_client
 
@@ -850,6 +850,42 @@ class TestConnectorRun(TestClassWithFixtures):
         """
         device_dispatcher_mock = RecursiveMagicMock()
         device_dispatcher_mock.is_alive = MagicMock(return_value=True)
+        device_dispatcher_target_func = MagicMock()
+        device_dispatcher_kwargs = {
+            "call_interval": 5, "target_func": device_dispatcher_target_func,
+        }
+
+        self.cn = Connector(**self.connector_default_kwargs)
+        self.cn._MqttClient = MagicMock()
+        self.cn._DeviceDispatcher = device_dispatcher_mock
+        self.cn._device_dispatcher_kwargs = device_dispatcher_kwargs
+        self.cn.run()
+
+        # Check that the device dispatcher has been initiated correctly.
+        assert device_dispatcher_mock.called
+
+        # Don't reuse the dict from above, it has been changed by the
+        # connector class.
+        expected_dd_kwargs = {
+            "call_interval": 5, "target_func": device_dispatcher_target_func
+        }
+        actual_dd_kwargs = device_dispatcher_mock.call_args.kwargs
+        assert actual_dd_kwargs == expected_dd_kwargs
+
+        # Finally verify the dispatcher has been started as it won't run else.
+        assert device_dispatcher_mock.start.called
+
+    def test_device_dispatcher_target_func_falls_back_to_run_sensor_flow(self):
+        """
+        Verify that if target_func is not specified we fall back to
+        cn.run_sensor_flow as this has been the default behaviour until
+        version 0.1.3. However we expect a warning.
+        """
+        self.caplog.set_level(logging.WARNING, logger=self.logger_name)
+        self.caplog.clear()
+
+        device_dispatcher_mock = RecursiveMagicMock()
+        device_dispatcher_mock.is_alive = MagicMock(return_value=True)
         device_dispatcher_kwargs = {"call_interval": 5}
         run_sensor_flow = MagicMock()
 
@@ -871,8 +907,9 @@ class TestConnectorRun(TestClassWithFixtures):
         actual_dd_kwargs = device_dispatcher_mock.call_args.kwargs
         assert actual_dd_kwargs == expected_dd_kwargs
 
-        # Finally verify the dispatcher has been started as it won't run else.
-        assert device_dispatcher_mock.start.called
+        records = self.caplog.records
+        assert records[0].levelname == "WARNING"
+        assert "Did not find a target function " in records[0].message
 
     def test_send_heartbeat_is_called(self):
         """
@@ -985,8 +1022,8 @@ class TestConnectorRun(TestClassWithFixtures):
 
     def test_main_loop_normal_exit_no_error(self):
         """
-        Simulate that the device dispatcher is not alive. We expect an
-        error message and a shutdown of the connector.
+        Simulate that the device dispatcher is alive.
+        We expect no error messags.
         """
         self.caplog.set_level(logging.WARNING, logger=self.logger_name)
         self.caplog.clear()
@@ -1007,7 +1044,12 @@ class TestConnectorRun(TestClassWithFixtures):
 
         _send_heartbeat_mock = MagicMock()
 
-        self.cn = Connector(MqttClient=MagicMock, heartbeat_interval=0.1)
+        self.cn = Connector(
+            MqttClient=MagicMock,
+            heartbeat_interval=0.1,
+            # Without this we would get a warning.
+            device_dispatcher_kwargs={"target_func": MagicMock()}
+        )
         self.cn._DeviceDispatcher = _DeviceDispatcher_mock
         self.cn._MqttClient = _MqttClient_mock
         self.cn._send_heartbeat = _send_heartbeat_mock

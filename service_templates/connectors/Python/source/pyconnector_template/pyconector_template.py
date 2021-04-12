@@ -151,7 +151,7 @@ class SensorFlow():
         # Send raw msg to raw message DB if activated in settings.
         # Handle bytes, as these are not JSON serializable.
         if self.SEND_RAW_MESSAGE_TO_DB == "TRUE":
-            payload = msg["payload"]
+            payload = msg["payload"].copy()
             if isinstance(payload["raw_message"], (bytes, bytearray)):
                 payload["raw_message"] = {
                     "bytes": payload["raw_message"].decode()
@@ -677,7 +677,14 @@ class Connector():
         else:
             logger.debug("Starting device dispatcher")
             device_dispatcher_kwargs = self._device_dispatcher_kwargs
-            device_dispatcher_kwargs["target_func"] = self.run_sensor_flow
+            if not "target_func" in device_dispatcher_kwargs:
+                logger.warning(
+                    "Did not find a target function (the target_func argument) "
+                    "in device_dispatcher_kwargs. Without it the connector "
+                    "would shut down immediatly. Using the default value of "
+                    "self.run_sensor_flow ."
+                )
+                device_dispatcher_kwargs["target_func"] = self.run_sensor_flow
             device_dispatcher = self._DeviceDispatcher(
                 **device_dispatcher_kwargs
             )

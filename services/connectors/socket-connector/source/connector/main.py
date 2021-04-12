@@ -4,13 +4,15 @@
 """
 import os
 import json
+import yaml
+import socket
 import logging
 
 from dotenv import load_dotenv, find_dotenv
 from pyconnector_template.pyconector_template import SensorFlow as SFTemplate
 from pyconnector_template.pyconector_template import ActuatorFlow as AFTemplate
 from pyconnector_template.pyconector_template import Connector as CTemplate
-from pyconnector_template.dispatch import DispatchInInterval
+from pyconnector_template.dispatch import DispatchOnce
 
 
 logger = logging.getLogger("pyconnector")
@@ -98,7 +100,12 @@ class SensorFlow(SFTemplate):
                     }
                 }
         """
-        raise NotImplementedError("receive_raw_msg has not been implemented.")
+        msg = {
+            "payload": {
+                "raw_message": raw_data
+            }
+        }
+        return msg
 
     def parse_raw_msg(self, raw_msg):
         """
@@ -148,7 +155,29 @@ class SensorFlow(SFTemplate):
                     }
                 }
         """
-        raise NotImplementedError("parse_raw_msg has not been implemented.")
+        timestamp = raw_msg["payload"]["timestamp"]
+        decoded_raw_message = raw_msg["payload"]["raw_message"].decode()
+        if self.parse_as == "JSON":
+            parsed_message = json.loads(decoded_raw_message)
+        elif self.parse_as == "YAML":
+            parsed_message = yaml.safe_load(decoded_raw_message)
+
+        # Convert all leafes of the dict into strings.
+        def values_to_str(d):
+            for k, v in d.items():
+                if isinstance(v, dict):
+                    values_to_str(v)
+                else:
+                    d[k] = str(v)
+        values_to_str(parsed_message)
+
+        msg = {
+            "payload": {
+                "parsed_message": parsed_message,
+                "timestamp": timestamp
+            }
+        }
+        return msg
 
 
 class ActuatorFlow(AFTemplate):
@@ -280,16 +309,28 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         # have higher priority over ones defined in the .env file.
         load_dotenv(find_dotenv(), verbose=True, override=False)
 
-        # We need to specify a dispatcher that triggers the connection with
-        # the device or gateway. Here we want to poll the device with the
-        # interval set in the POLL_SECONDS environment variable.
-        # At each poll we want to execute the full run_sensor_flow
-        # As this contains all the expected logic the connector should do
-        # with sensor data.
-        kwargs["DeviceDispatcher"] = DispatchInInterval
+        # Load the socket connector specific settings. See Readme.
+        server_ip = os.getenv("SERVER_IP")
+        server_port = int(os.getenv("SERVER_PORT"))
+        recv_bufsize = int(os.getenv("RECV_BUFSIZE") or 4096)
+        if os.getenv("PARSE_AS") == "YAML":
+            self.parse_as = "YAML"
+        else:
+            self.parse_as = "JSON"
+
+        # The rate of messages is actually the rate the server
+        # sends in data. Hence we use a custom function that blocks until
+        # data is received and which triggers run_sensor_flow for every
+        # received msg.
+        kwargs["DeviceDispatcher"] = DispatchOnce
         kwargs["device_dispatcher_kwargs"] = {
-            "call_interval": float(os.getenv("POLL_SECONDS")),
-            "target_func": self.run_sensor_flow,
+            "target_func": self.run_socket_client,
+            "target_kwargs": {
+                "server_ip": server_ip,
+                "server_port": server_port,
+                "recv_bufsize": recv_bufsize,
+            },
+            "cleanup_func": self.close_socket_client,
         }
 
         # Sensor datapoints will be added to available_datapoints automatically
@@ -303,6 +344,42 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         CTemplate.__init__(self, *args, **kwargs)
 
         self.custom_env_var = os.getenv("CUSTOM_ENV_VARR") or "default_value"
+
+    def run_socket_client(self, server_ip, server_port, recv_bufsize):
+        """
+        Connects to an UDP server, waits for data and calls run_sensor_flow
+        for every incoming.
+
+        Arguements:
+        -----------
+        see Readme.md
+        """
+        logger.info("Connecting to device %s:%s", *(server_ip, server_port))
+        self.socket = socket.socket(
+            family=socket.AF_INET,
+            type=socket.SOCK_STREAM
+        )
+        self.socket.connect((server_ip, server_port))
+        while True:
+            raw_data = self.socket.recv(recv_bufsize)
+            if len(raw_data) == 0:
+                # This should only be the case once the other side has
+                # closed the connection.
+                logger.error("Connection to device lost.")
+                break
+            # This call will certainly block the connector from receiving.
+            # new data until the most recent msg has been handled. This is
+            # might become an issue if a LOT of data is incoming. However,
+            # it is very likely that other parts of BEMCom (like the DBs)
+            # will also not be able to handle that much information.
+            self.run_sensor_flow(raw_data=raw_data)
+
+    def close_socket_client(self):
+        """
+        Hope this gets called on shutdown.
+        """
+        logger.info("Disconnecting from device")
+        self.socket.close()
 
 
 if __name__ == "__main__":

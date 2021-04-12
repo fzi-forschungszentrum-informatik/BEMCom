@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+    socket-connector:
+        container_name: socket-connector
+        build:
+            context: ./source
+        restart: always
+        volumes: 
+            - ./source/connector/:/source/connector/
+        user: "${USER_ID}:${GROUP_ID}"
+        environment:
+            - CONNECTOR_NAME=socket-connector
+            - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}
+            - MQTT_BROKER_PORT=${MQTT_BROKER_PORT}
+            - SEND_RAW_MESSAGE_TO_DB=${SEND_RAW_MESSAGE_TO_DB}
+            - DEBUG=${DEBUG}
+            - SERVER_IP=${SERVER_IP}
+            - SERVER_PORT=${SERVER_PORT}
+            - RECV_BUFSIZE=${RECV_BUFSIZE}
+            - PARSE_AS=${PARSE_AS}
