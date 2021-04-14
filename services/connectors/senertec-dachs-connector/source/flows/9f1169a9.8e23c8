@@ -1,0 +1,166 @@
+[
+    {
+        "id": "9f1169a9.8e23c8",
+        "type": "tab",
+        "label": "Send command",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "3b3d9738.5b6e88",
+        "type": "link in",
+        "z": "9f1169a9.8e23c8",
+        "name": "flow \"Send command\" in",
+        "links": [
+            "3ed4277f.ed75d8"
+        ],
+        "x": 255,
+        "y": 40,
+        "wires": [
+            [
+                "e6dc5668.2cd368"
+            ]
+        ]
+    },
+    {
+        "id": "a2e70d9f.fddd4",
+        "type": "inject",
+        "z": "9f1169a9.8e23c8",
+        "name": "Test Request for 1 Module",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"Stromf_Ew.Anforderung_GLT.bAnzahlModul\":1}",
+        "payloadType": "json",
+        "x": 150,
+        "y": 80,
+        "wires": [
+            [
+                "e6dc5668.2cd368"
+            ]
+        ]
+    },
+    {
+        "id": "34fde1bd.82c59e",
+        "type": "debug",
+        "z": "9f1169a9.8e23c8",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1130,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "eac91ef0.bc428",
+        "type": "http request",
+        "z": "9f1169a9.8e23c8",
+        "name": "do HTTP request",
+        "method": "POST",
+        "ret": "txt",
+        "paytoqs": "body",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "basic",
+        "x": 930,
+        "y": 40,
+        "wires": [
+            [
+                "437c8e99.9d4ee",
+                "34fde1bd.82c59e"
+            ]
+        ]
+    },
+    {
+        "id": "e6dc5668.2cd368",
+        "type": "function",
+        "z": "9f1169a9.8e23c8",
+        "name": "Prepare Actuator Request",
+        "func": "msg.url = \"http://\" + env.get(\"DACHS_IP\") +\":8080/setKeys\"\nlet module_count = msg.payload[\"Stromf_Ew.Anforderung_GLT.bAnzahlModul\"]\nlet power_request = 0\nif ( module_count > 0) {\n    power_request = 1\n}\nmsg.payload=(\n    \"Stromf_Ew.Anforderung_GLT.bAktiv=\" + power_request +\n    \"&Stromf_Ew.Anforderung_GLT.bAnzahlModule=\" + module_count\n)\nmsg.headers = {\n    \"Content-Type\": \"application/x-www-form-urlencoded\"\n}\nreturn msg",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 40,
+        "wires": [
+            [
+                "fb05b4f2.a8b058"
+            ]
+        ]
+    },
+    {
+        "id": "fb05b4f2.a8b058",
+        "type": "trigger",
+        "z": "9f1169a9.8e23c8",
+        "name": "",
+        "op1": "",
+        "op2": "0",
+        "op1type": "pay",
+        "op2type": "str",
+        "duration": "-5",
+        "extend": false,
+        "overrideDelay": false,
+        "units": "min",
+        "reset": "",
+        "bytopic": "all",
+        "topic": "topic",
+        "outputs": 1,
+        "x": 690,
+        "y": 40,
+        "wires": [
+            [
+                "eac91ef0.bc428",
+                "fd4e371.b0893c8"
+            ]
+        ]
+    },
+    {
+        "id": "437c8e99.9d4ee",
+        "type": "function",
+        "z": "9f1169a9.8e23c8",
+        "name": "Warn on error",
+        "func": "if ( msg.statusCode != 200 ) {\n    node.error(\n        \"Could not write data to Dachs. HTTP status code is: \" +\n        msg.statusCode\n    )\n}\n",
+        "outputs": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1160,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "fd4e371.b0893c8",
+        "type": "debug",
+        "z": "9f1169a9.8e23c8",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 890,
+        "y": 80,
+        "wires": []
+    }
+]

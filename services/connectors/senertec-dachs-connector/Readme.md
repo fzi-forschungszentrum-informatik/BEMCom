@@ -2,7 +2,7 @@
 
 This is a connector to integrate the Senertec Dach combined heat and power plant. It uses the REST interface of the Dachs for communication.
 
-
+Please refer to the official users manuel "Beschreibung der GLT-Schnittstelle - Dachs Ethernet" for detailed information about the available Datapoints.
 
 ### Supported Devices
 
@@ -74,6 +74,7 @@ Follow the following steps while contributing to the connector:
 
 ### Changelog
 
-| Tag   | Changes                                  |
-| ----- | ---------------------------------------- |
-| 0.1.0 | First productive version. Read only yet. |
+| Tag   | Changes                                                      |
+| ----- | ------------------------------------------------------------ |
+| 0.1.0 | First productive version. Read only yet.                     |
+| 0.2.1 | Added support for requesting Dachs operation via actuator datapoint. |

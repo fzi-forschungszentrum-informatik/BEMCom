@@ -8,7 +8,6 @@ services:
         restart: always
         ports:
             - 8200:1880
-        user: "${USER_ID}:${GROUP_ID}"
         environment:
             - CONNECTOR_NAME=senertec-dachs-connector
             - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}
@@ -16,5 +15,3 @@ services:
             - SEND_RAW_MESSAGE_TO_DB=${SEND_RAW_MESSAGE_TO_DB}
             - POLL_SECONDS=${POLL_SECONDS}
             - DACHS_IP=${DACHS_IP}
-            - DACHS_USER=glt
-            - DACHS_PASSWORD=
