@@ -1,0 +1,20 @@
+version: '3'
+
+services:
+    senertec-dachs-connector:
+        container_name: senertec-dachs-connector
+        build:
+            context: ./source
+        restart: always
+        ports:
+            - 8200:1880
+        user: "${USER_ID}:${GROUP_ID}"
+        environment:
+            - CONNECTOR_NAME=senertec-dachs-connector
+            - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}
+            - MQTT_BROKER_PORT=${MQTT_BROKER_PORT}
+            - SEND_RAW_MESSAGE_TO_DB=${SEND_RAW_MESSAGE_TO_DB}
+            - POLL_SECONDS=${POLL_SECONDS}
+            - DACHS_IP=${DACHS_IP}
+            - DACHS_USER=glt
+            - DACHS_PASSWORD=

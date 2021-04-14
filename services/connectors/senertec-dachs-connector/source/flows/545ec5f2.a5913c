@@ -1,0 +1,53 @@
+[
+    {
+        "id": "545ec5f2.a5913c",
+        "type": "tab",
+        "label": "Parse raw_message",
+        "disabled": false,
+        "info": "Parse an object from the received raw sensor datapoint data.\n\n# Receives\n... a message structured like this:\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": <the raw data>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": \"device_1:{sensor_1:2.12,sensor_2:3.12}\",\n        \"timestamp\": 1573680749000\n    }\n}\n```\n\n# Should return\n... a message containing the a parsed version of the raw data, structured like this:\n```\nmsg = {\n    \"payload\": {\n        \"parsed_message\": <the parsed data as object>,\n        \"timestamp\": <milliseconds since epoch>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"parsed_message\": {\n            \"device_1\": {\n                \"sensor_1\": \"2.12\",\n                \"sensor_2\": \"3.12\"\n            }\n        },\n        \"timestamp\": 1573680749000\n    }\n}\n```"
+    },
+    {
+        "id": "6a1342ab.73305c",
+        "type": "link in",
+        "z": "545ec5f2.a5913c",
+        "name": "flow \"Parse raw_message\" in",
+        "links": [
+            "5d6ccddc.75fcd4"
+        ],
+        "x": 155,
+        "y": 40,
+        "wires": [
+            [
+                "4817e2a2.a000ac"
+            ]
+        ]
+    },
+    {
+        "id": "376a4260.2d545e",
+        "type": "link out",
+        "z": "545ec5f2.a5913c",
+        "name": "flow \"Parse raw_message\" out",
+        "links": [
+            "498bc454.265e5c"
+        ],
+        "x": 735,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "4817e2a2.a000ac",
+        "type": "function",
+        "z": "545ec5f2.a5913c",
+        "name": "Parse Keys",
+        "func": "let parsed = {};\nlet key\nlet value\nfor (let keyvalue of msg.payload.raw_message.split(\"\\n\")){\n    // keyvalue is something like \"Hka_Bd.UHka_Anf.Anforderung.fStrom=false\"\n    key = keyvalue.split(\"=\")[0]\n    value = keyvalue.split(\"=\")[1]\n    \n    // Parse bool values for simpler plotting.\n    if (value == \"true\"){\n        value = \"1\"\n    } else if (value === \"false\") {\n        value = \"0\"\n    }\n    \n    parsed[key] = value\n}\nmsg = {\n    \"payload\": {\n        \"parsed_message\": parsed,\n        \"timestamp\": msg.payload.timestamp\n    }\n}\nreturn msg",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 370,
+        "y": 40,
+        "wires": [
+            [
+                "376a4260.2d545e"
+            ]
+        ]
+    }
+]

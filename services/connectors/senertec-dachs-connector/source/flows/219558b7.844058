@@ -1,0 +1,94 @@
+[
+    {
+        "id": "219558b7.844058",
+        "type": "tab",
+        "label": "Receive raw_message",
+        "disabled": false,
+        "info": "All logic necessary to receive data (sensor datapoints) from the device, gateway or data source.\n\n# Should return\n... the received message as raw message in the format:\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": <the raw data>\n    }\n}\n```\nE.g.\n```\nmsg = {\n    \"payload\": {\n        \"raw_message\": \"device_1:{sensor_1:2.12,sensor_2:3.12}\"\n    }\n}\n```"
+    },
+    {
+        "id": "bcadc615.60c708",
+        "type": "inject",
+        "z": "219558b7.844058",
+        "name": "",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "${POLL_SECONDS}",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "x": 110,
+        "y": 40,
+        "wires": [
+            [
+                "f02605bc.a96ec8"
+            ]
+        ]
+    },
+    {
+        "id": "6aae28b2.fb2688",
+        "type": "link out",
+        "z": "219558b7.844058",
+        "name": "flow \"Receive raw_message\" out",
+        "links": [
+            "b6c60262.69fb9"
+        ],
+        "x": 1135,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "abd01d90.9bdfe",
+        "type": "http request",
+        "z": "219558b7.844058",
+        "name": "do HTTP request",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": false,
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "basic",
+        "x": 650,
+        "y": 40,
+        "wires": [
+            [
+                "79050ac7.d1a4c4"
+            ]
+        ]
+    },
+    {
+        "id": "f02605bc.a96ec8",
+        "type": "function",
+        "z": "219558b7.844058",
+        "name": "Build URL with CHP parameters",
+        "func": "// These seem to be the interesting parameters of the Dachs.\nparams = [  \"Hka_Bd.Anforderung.ModulAnzahl\",\n            \"Hka_Bd.UStromF_Frei.bFreigabe\",\n            \"Hka_Bd.bStoerung\",\n            \"Hka_Bd.bWarnung\",\n            \"Hka_Bd.UHka_Anf.Anforderung.fStrom\",\n            \"Hka_Bd.UHka_Anf.usAnforderung\",\n            \"Hka_Bd.UHka_Frei.usFreigabe\",\n            \"Hka_Bd.ulArbeitElektr\",\n            \"Hka_Bd.ulArbeitThermHka\",\n            \"Hka_Bd.ulArbeitThermKon\",\n            \"Hka_Bd.ulBetriebssekunden\",\n            \"Hka_Bd.ulAnzahlStarts\",\n            \"Hka_Bd_Stat.uchTeilenummer\",\n            \"Hka_Bd_Stat.ulInbetriebnahmedatum\",\n            \"BD3112.Hka_Bd.ulBetriebssekunden\",\n            \"BD3112.Hka_Bd.ulAnzahlStarts\",\n            \"BD3112.Hka_Bd.ulArbeitThermHka\",\n            \"BD3112.Hka_Bd.ulArbeitThermKon\",\n            \"BD3112.Ww_Bd.ulWwMengepA\",\n            \"Brenner_Bd.bIstStatus\",\n            \"Brenner_Bd.bWarnung\",\n            \"Brenner_Bd.UBrenner_Anf.usAnforderung\",\n            \"Brenner_Bd.UBrenner_Frei.bFreigabe\",\n            \"Brenner_Bd.ulAnzahlStarts\",\n            \"Brenner_Bd.ulBetriebssekunden\",\n            \"Hka_Ew.HydraulikNr.bSpeicherArt\",\n            \"Hka_Ew.HydraulikNr.bWW_Art\",\n            \"Hka_Ew.HydraulikNr.b2_Waermeerzeuger\",\n            \"Hka_Ew.HydraulikNr.bMehrmodul\",\n            \"Hka_Mw1.Temp.sAbgasHKA\",\n            \"Hka_Mw1.Temp.sAbgasMotor\",\n            \"Hka_Mw1.Temp.sKapsel\",\n            \"Hka_Mw1.Temp.sbAussen\",\n            \"Hka_Mw1.Temp.sbFreigabeModul\",\n            \"Hka_Mw1.Temp.sbFuehler1\",\n            \"Hka_Mw1.Temp.sbFuehler2\",\n            \"Hka_Mw1.Temp.sbGen\",\n            \"Hka_Mw1.Temp.sbMotor\",\n            \"Hka_Mw1.Temp.sbRegler\",\n            \"Hka_Mw1.Temp.sbRuecklauf\",\n            \"Hka_Mw1.Temp.sbVorlauf\",\n            \"Hka_Mw1.Temp.sbZS_Fuehler3\",\n            \"Hka_Mw1.Temp.sbZS_Fuehler4\",\n            \"Hka_Mw1.Temp.sbZS_Vorlauf1\",\n            \"Hka_Mw1.Temp.sbZS_Vorlauf2\",\n            \"Hka_Mw1.Temp.sbZS_Warmwasser\",\n            \"Hka_Mw1.Solltemp.sbRuecklauf\",\n            \"Hka_Mw1.Solltemp.sbVorlauf\",\n            \"Hka_Mw1.Aktor.bWwPumpe\",\n            \"Hka_Mw1.Aktor.fFreiAltWaerm\",\n            \"Hka_Mw1.Aktor.fMischer1Auf\",\n            \"Hka_Mw1.Aktor.fMischer1Zu\",\n            \"Hka_Mw1.Aktor.fMischer2Auf\",\n            \"Hka_Mw1.Aktor.fMischer2Zu\",\n            \"Hka_Mw1.Aktor.fProgAus1\",\n            \"Hka_Mw1.Aktor.fProgAus2\",\n            \"Hka_Mw1.Aktor.fProgAus3\",\n            \"Hka_Mw1.Aktor.fStoerung\",\n            \"Hka_Mw1.Aktor.fUPHeizkreis1\",\n            \"Hka_Mw1.Aktor.fUPHeizkreis2\",\n            \"Hka_Mw1.Aktor.fUPKuehlung\",\n            \"Hka_Mw1.Aktor.fUPVordruck\",\n            \"Hka_Mw1.Aktor.fUPZirkulation\",\n            \"Hka_Mw1.Aktor.fWartung\",\n            \"Hka_Mw1.sWirkleistung\",\n            \"Hka_Mw1.ulMotorlaufsekunden\",\n            \"Hka_Mw1.usDrehzahl\"\n    ]\n\n// Load the IP or DNS name of the Dachs from environment variable.\ndachs_ip = env.get(\"DACHS_IP\")\n\n// Build a http request message for every parameter.\nlet url = \"http://\" + dachs_ip +\":8080/getKey?\"\nfor (let param of params) {\n    url += \"k=\" + param + \"&\"\n}\nreturn {'url': url}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 370,
+        "y": 40,
+        "wires": [
+            [
+                "abd01d90.9bdfe"
+            ]
+        ]
+    },
+    {
+        "id": "79050ac7.d1a4c4",
+        "type": "function",
+        "z": "219558b7.844058",
+        "name": "Build expected raw msg format",
+        "func": "if ( msg.statusCode != 200 ) {\n    node.error(\n        \"Could not read data from Dachs. HTTP status code is: \" +\n        msg.statusCode\n    )\n} else {\n    return {\"payload\": {\"raw_message\": msg.payload}}\n}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 930,
+        "y": 40,
+        "wires": [
+            [
+                "6aae28b2.fb2688"
+            ]
+        ]
+    }
+]
