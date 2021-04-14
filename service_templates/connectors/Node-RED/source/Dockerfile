@@ -1,4 +1,4 @@
-FROM nodered/node-red:1.0.3-4
+FROM nodered/node-red:1.3.2-12-amd64
 
 USER root
 RUN apk add jq

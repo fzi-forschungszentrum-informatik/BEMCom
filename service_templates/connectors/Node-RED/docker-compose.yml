@@ -8,8 +8,8 @@ services:
         restart: always        
         ports:
             - 8200:1880
-        volumes: 
-            - ./source/Node-RED_data:/data        
+        volumes:
+            - ./source/Node-RED_data:/data
         user: ${USER_ID}:${GROUP_ID}
         environment:
             - CONNECTOR_NAME=node-red-connector-template

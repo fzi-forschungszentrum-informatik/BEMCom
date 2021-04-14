@@ -52,13 +52,32 @@ None preferably. You should only add volumes, especially file mounts if it is re
 Follow the following steps while contributing to the connector:
 
 * Create a `.env` file with suitable configuration for your local setup.
+
 * Optional: Update the image of the node-red-connector-template by editing [source/Dockerfile](source/Dockerfile) 
+
 * Start the development instance with  `docker-compose up -d`
+
 * Edit the flows, ensure everything works as expected.
+
 * Export the changed flows and update/create the files in [./source/flows/](./source/flows/). The filenames should be the flows ids.
+
+* If you have added functionality that needs usernames and passwords, you also need to export the flow_cred.json file from the container, as the credentials are not exported with the flows. You might do this with something like:
+
+  ```bash
+  # Execute this in the root directory of the connector.
+  CONTAINER_NAME=$(cat docker-compose.yml | grep container_name | cut -d : -f 2 | xargs )
+  docker cp $CONTAINER_NAME:/data/flows_cred.json ./source/
+  ```
+
+  **Please note:** 
+  The credentials are stored unencrypted. If the connector needs credentials that are not well known (e.g. provided in the user manual of the device), it is better set them at runtime via [environment variable](https://nodered.org/docs/user-guide/environment-variables). This way the credentials will never appear in the repository and can be set by each user to the required values.
+
 * Update the image tag in  [./build_docker_image.sh](./build_docker_image.sh) and execute the shell script to build an updated image. 
+
 * Run the new image and check once more everything works as expected.
+
 * Document your changes and new tag by appending the list below.
+
 * git add, commit and push.
 
 
