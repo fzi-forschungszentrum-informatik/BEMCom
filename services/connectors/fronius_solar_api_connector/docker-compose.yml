@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+    fronius-solar-api-connector:
+        container_name: fronius-solar-api-connector
+        build:
+            context: ./source
+        restart: always
+        user: "${USER_ID}:${GROUP_ID}"
+        environment:
+            - CONNECTOR_NAME=fronius-solar-api-connector
+            - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}
+            - MQTT_BROKER_PORT=${MQTT_BROKER_PORT}
+            - SEND_RAW_MESSAGE_TO_DB=${SEND_RAW_MESSAGE_TO_DB}
+            - DEBUG=${DEBUG}
+            - POLL_SECONDS=${POLL_SECONDS}
+            - INVERTER_POWERFLOW_URL=${INVERTER_POWERFLOW_URL}
