@@ -101,15 +101,36 @@ class SensorFlow(SFTemplate):
                     }
                 }
         """
-        if not hasattr(self, "keba_socket"):
-            # KEBA P30 uses UDP.
-            self.keba_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # KEBA P30 uses UDP.
+        #
+        # In theory, data could be sent and received using a single datagram
+        # socket. However, since KEBA always sends replies to the fixed port
+        # 7090, we would have to bind our socket to that port. This would
+        # result in data also being sent from port 7090. Although this seems
+        # to be the natural and desired way to implement communication,
+        # problems can arise when running behind network address translation
+        # (NAT), especially docker.
+        # When the controller sends data from port 7090, the conntrack
+        # mechanism of the NAT will insert a (firewall) rule attempting to
+        # deliver replies to port 7090 back to the expected endpoint behind the
+        # NAT. Since UDP is stateless, this conntrack rule only expires after
+        # a certain timeout. When a docker container is restarted, stale rules
+        # may prevent the new container from using port 7090 to send and
+        # receive data.
+        # As a workaround to this problem, we use two datagram sockets. We send
+        # from a socket with a random port, for which the conntrack rules will
+        # be created. And we receive data from a socket which is bound to port
+        # 7090.
+        if not hasattr(self, "keba_send_socket"):
+            self.keba_send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        if not hasattr(self, "keba_receive_socket"):
+            self.keba_receive_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             # Listen on all networking devices on anwsers from the charging
             # stations, as these always return to port 7090 according to
             # KEBAs UDP communication manual.
-            self.keba_socket.bind(("0.0.0.0", 7090))
+            self.keba_receive_socket.bind(("0.0.0.0", 7090))
             # Configures socket to wait up to five seconds for data.
-            self.keba_socket.settimeout(5)
+            self.keba_receive_socket.settimeout(5)
 
         raw_message = {}
         for p30_name in self.keba_p30_charge_stations:
@@ -124,11 +145,11 @@ class SensorFlow(SFTemplate):
                 # the KEBA UDP manual.
                 raw_message[p30_name] = {}
                 for request in ["report 1", "report 2", "report 3"]:
-                    self.keba_socket.sendto(
+                    self.keba_send_socket.sendto(
                         request.encode(),
                         (p30_ip_addr_or_net_name, 7090)
                     )
-                    response = self.keba_socket.recv(4096)
+                    response = self.keba_receive_socket.recv(4096)
                     logger.debug(
                         "Request %s yielded response:\n%s",
                         *(request, response)
