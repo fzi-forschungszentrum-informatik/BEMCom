@@ -8,13 +8,14 @@ services:
         restart: always
         volumes: 
             - ./source/connector/:/source/connector/
+        ports:
+            - "7090:7090/udp"
         user: "${USER_ID}:${GROUP_ID}"
         environment:
-            - CONNECTOR_NAME=keba-p30-connector
+            - CONNECTOR_NAME=keba-p30-connector-test
             - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}
             - MQTT_BROKER_PORT=${MQTT_BROKER_PORT}
             - SEND_RAW_MESSAGE_TO_DB=${SEND_RAW_MESSAGE_TO_DB}
             - DEBUG=${DEBUG}
             - POLL_SECONDS=${POLL_SECONDS}
             - KEBA_P30_CHARGE_STATIONS=${KEBA_P30_CHARGE_STATIONS}
-        network_mode: host
