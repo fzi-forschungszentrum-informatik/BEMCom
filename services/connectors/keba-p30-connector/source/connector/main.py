@@ -7,6 +7,7 @@ import json
 import socket
 import logging
 from time import sleep
+from threading import Lock
 
 from dotenv import load_dotenv, find_dotenv
 
@@ -114,11 +115,16 @@ class SensorFlow(SFTemplate):
         raw_message = {}
         for p30_name in self.keba_p30_charge_stations:
             p30_ip_addr_or_net_name = self.keba_p30_charge_stations[p30_name]
+            # Lock the charge station to prevent parallel sending stuff
+            # from actuator datapoints.
+            p30_lock = self.keba_p30_locks[p30_name]
+            p30_lock.acquire()
             logger.debug(
                 "Requesting data from P30 charge station %s with "
                 " network name or ip: %s",
                 *(p30_name, p30_ip_addr_or_net_name)
             )
+
             try:
                 # Try to request all the available data as suggested in
                 # the KEBA UDP manual.
@@ -155,6 +161,7 @@ class SensorFlow(SFTemplate):
                     *(p30_name, p30_ip_addr_or_net_name)
                 )
                 raise
+            p30_lock.release()
 
         msg = {
             "payload": {
@@ -369,19 +376,55 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
             "call_interval": float(os.getenv("POLL_SECONDS"))
         }
 
-        # Sensor datapoints will be added to available_datapoints automatically
-        # once they are first appear in run_sensor_flow method. It is thus not
-        # necessary to specify them here, although it would be possible to
-        # compute all possible datapoints beforehand based on MODBUS_CONFIG
-        kwargs["available_datapoints"] = {
-            "sensor": {},
-            "actuator": {}
-        }
-        CTemplate.__init__(self, *args, **kwargs)
-
         self.keba_p30_charge_stations = json.loads(
             os.getenv("KEBA_P30_CHARGE_STATIONS")
         )
+
+        # One lock per charge station to prevent parallel access to the charge
+        # stations. This is necessary to guerantee the delays that are demanded
+        # by KEBA according to the UDP users guide.
+        self.keba_p30_locks = {k: Lock() for k in self.keba_p30_charge_stations}
+
+        # Sensor datapoints will be added to available_datapoints automatically
+        # once they are first appear in run_sensor_flow method. It is thus not
+        # necessary to specify them here, although it would be possible to
+        # compute all possible datapoints beforehand based on
+        # KEBA_P30_CHARGE_STATIONS
+        kwargs["available_datapoints"] = {
+            "sensor": {},
+            "actuator": self.compute_actuator_datapoints(
+                self.keba_p30_charge_stations
+            ),
+        }
+        CTemplate.__init__(self, *args, **kwargs)
+
+    def compute_actuator_datapoints(self, keba_p30_charge_stations):
+        """
+        Computes the key_in_connector and example_values for the actuator
+        datapoints.
+
+        It appears sufficient to expose the `ena`, `curr`, `setenergy` and
+        `display` UDP methods. The other methods appear not strictly necessary
+        and or may be replaced by BEMCom features, like `currtime`. Also
+        set example_value to sane defaults, most of them are inspired by
+        the example values in the KEBA UDP manual.
+
+        Arguments:
+        ----------
+        keba_p30_charge_stations : dict
+            The parsed version of the KEBA_P30_CHARGE_STATIONS JSON string
+            as defined in the Readme.
+        """
+        actuator_datapoints = {}
+        for cs_name in keba_p30_charge_stations:
+            cs_ad = {
+                "{}__ena".format(cs_name): "0",
+                "{}__curr".format(cs_name): "63000",
+                "{}__setenergy".format(cs_name): "100000",
+                "{}__display".format(cs_name): "0 0 0 0 Hello$KEBA",
+            }
+            actuator_datapoints.update(cs_ad)
+        return actuator_datapoints
 
 
 if __name__ == "__main__":
