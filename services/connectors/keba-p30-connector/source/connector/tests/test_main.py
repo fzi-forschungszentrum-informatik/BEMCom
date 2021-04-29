@@ -23,7 +23,49 @@ class TestParseRawMsg(unittest.TestCase):
 
 
 class TestSendCommand(unittest.TestCase):
-    pass
+
+    @classmethod
+    def setUpClass(cls):
+        cls.charge_stations = {
+            "test_1": "localhost",
+            "test_2": "127.0.0.1",
+        }
+        os.environ["KEBA_P30_CHARGE_STATIONS"] = json.dumps(cls.charge_stations)
+
+        # This is required to ensure the connector class can be created:
+        os.environ["POLL_SECONDS"] = "10"
+        os.environ["MQTT_BROKER_HOST"] = "locahost"
+        os.environ["MQTT_BROKER_PORT"] = "1883"
+
+    def test_valid_commands_are_send(self):
+        """
+        Verify that valid value messages adressing implemented datapoints
+        are send on socket.
+        """
+        # All these message should be valid.
+        test_value_msgs = [
+            # datapoint_key, datapoint_value
+            ["test_1__ena", "1"],
+            ["test_1__curr", "36000"],
+            ["test_1__setenergy", "100000"],
+            ["test_1__display", "0 0 0 0 Test$Msg"],
+        ]
+
+        cn = Connector()
+        for datapoint_key, datapoint_value in test_value_msgs:
+            cn.keba_socket = MagicMock()
+            cn.send_command(
+                datapoint_key=datapoint_key, datapoint_value=datapoint_value
+            )
+
+            keba_command = datapoint_key.split("__")[-1]
+            expected_send_to_args = (
+                (keba_command + " " + datapoint_value).encode(),
+                (self.charge_stations["test_1"], 7090)
+            )
+            assert cn.keba_socket.sendto.called
+            actual_send_to_args = cn.keba_socket.sendto.mock_calls[-1].args
+            assert actual_send_to_args == expected_send_to_args
 
 
 class TestInit(unittest.TestCase):

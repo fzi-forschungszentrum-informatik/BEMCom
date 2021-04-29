@@ -30,7 +30,6 @@ The following devices have been tested
 
 | Port                    | Usage/Remarks                                                |
 | ----------------------- | ------------------------------------------------------------ |
-| 1880                    | Node-RED development user interface.                         |
 | 7090 | UDP Port used by the charge station to receive and send messages. The charge station insists on sending the messages back on exactly this port. |
 
 ##### Environment Variables
@@ -94,3 +93,4 @@ Follow the following steps while contributing to the connector:
 | ----- | ------------------------------------------------------------ |
 | 0.1.0 | Initial version                                              |
 | 0.2.0 | Switch from Node-RED template to Python template to frequent connection losses due to the charge station ignoring the source port of the UDP message. |
+| 0.3.0 | Add functionality to write actuator values to charge station. |

@@ -134,7 +134,23 @@ class SensorFlow(SFTemplate):
                         request.encode(),
                         (p30_ip_addr_or_net_name, 7090)
                     )
-                    response = self.keba_socket.recv(4096)
+                    # Some events like setting ena will trigger the charge
+                    # station to automatically send some messages.
+                    response = True
+                    for i in range(21):
+                        response = self.keba_socket.recv(4096)
+                        if b"ID" in response:
+                            break
+                        logger.debug(
+                            "Skipping non report response: %s",
+                            response
+                            )
+                        if i >= 20:
+                            raise RuntimeError(
+                                "Received to many non-report responses from "
+                                "charge station."
+                            )
+
                     logger.debug(
                         "Request %s yielded response:\n%s",
                         *(request, response)
@@ -280,6 +296,10 @@ class ActuatorFlow(AFTemplate):
         """
         Send message to target device, via gateway if applicable.
 
+        TODO: You may want to check here that the datapoint_values match
+              the expected value ranges in the charge station manual.
+        TODO: Could also add a warning if no confirmation is received.
+
         Parameters
         ----------
         datapoint_key : string.
@@ -288,7 +308,40 @@ class ActuatorFlow(AFTemplate):
         value : string.
             The value that should be sent to the datapoint.
         """
-        raise NotImplementedError("send_command has not been implemented.")
+        logger.debug(
+            "Processing actuator value msg for datapoint_key %s with value %s.",
+            *(datapoint_key, datapoint_value)
+        )
+
+        # The name is stored in first part of the datapoint_key by
+        # compute_actuator_datapoints.
+        p30_name = datapoint_key.split("__")[0]
+        p30_ip_addr_or_net_name = self.keba_p30_charge_stations[p30_name]
+
+        # Lock the charge station to prevent parallel sending stuff
+        # from actuator datapoints.
+        p30_lock = self.keba_p30_locks[p30_name]
+        p30_lock.acquire()
+
+        try:
+            keba_command = datapoint_key.split("__")[1]
+            keba_payload = (keba_command + " " + datapoint_value).encode()
+            self.keba_socket.sendto(
+                keba_payload, (p30_ip_addr_or_net_name, 7090)
+            )
+            logger.debug(
+                "Sent %s to %s",
+                *(keba_payload, p30_ip_addr_or_net_name)
+            )
+            response = self.keba_socket.recv(4096)
+            logger.debug("Received response for send_command: %s", response)
+            # Prevent parallel communication until the required delay is over.
+            if "ena" in datapoint_key:
+                sleep(2)
+            else:
+                sleep(0.1)
+        finally:
+            p30_lock.release()
 
 
 class Connector(CTemplate, SensorFlow, ActuatorFlow):
@@ -383,7 +436,12 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         # One lock per charge station to prevent parallel access to the charge
         # stations. This is necessary to guerantee the delays that are demanded
         # by KEBA according to the UDP users guide.
-        self.keba_p30_locks = {k: Lock() for k in self.keba_p30_charge_stations}
+        # It might also be necessary to prevent one charge station to
+        # to be requested for data while we wait for a confirmation in
+        # send_command for another. In this case we want only one lock
+        # for all charge stations.
+        lock = Lock()
+        self.keba_p30_locks = {k: lock for k in self.keba_p30_charge_stations}
 
         # Sensor datapoints will be added to available_datapoints automatically
         # once they are first appear in run_sensor_flow method. It is thus not
