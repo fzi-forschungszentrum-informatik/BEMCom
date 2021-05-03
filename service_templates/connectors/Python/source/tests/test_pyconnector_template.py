@@ -10,9 +10,9 @@ from unittest.mock import MagicMock
 from paho.mqtt.client import Client
 
 from .base import TestClassWithFixtures
-from pyconnector_template.pyconector_template import MQTTHandler
-from pyconnector_template.pyconector_template import SensorFlow, Connector
-from pyconnector_template.pyconector_template import ActuatorFlow
+from pyconnector_template.pyconnector_template import MQTTHandler
+from pyconnector_template.pyconnector_template import SensorFlow, Connector
+from pyconnector_template.pyconnector_template import ActuatorFlow
 
 
 class RecursiveMagicMock(MagicMock):

@@ -5,8 +5,8 @@
 import os
 import json
 
-from pyconnector_template.pyconector_template import SensorFlow, Connector
-from pyconnector_template.pyconector_template import ActuatorFlow
+from pyconnector_template.pyconnector_template import SensorFlow, Connector
+from pyconnector_template.pyconnector_template import ActuatorFlow
 from pyconnector_template.dispatch import DispatchInInterval
 
 

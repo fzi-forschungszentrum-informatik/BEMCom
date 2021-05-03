@@ -1,4 +1,4 @@
-FROM bemcom/python-connector-template:0.2.2
+FROM bemcom/python-connector-template:0.2.3
 
 # Installs dependencies.
 COPY ./requirements.txt /source/requirements.txt

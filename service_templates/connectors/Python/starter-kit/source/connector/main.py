@@ -7,9 +7,9 @@ import json
 import logging
 
 from dotenv import load_dotenv, find_dotenv
-from pyconnector_template.pyconector_template import SensorFlow as SFTemplate
-from pyconnector_template.pyconector_template import ActuatorFlow as AFTemplate
-from pyconnector_template.pyconector_template import Connector as CTemplate
+from pyconnector_template.pyconnector_template import SensorFlow as SFTemplate
+from pyconnector_template.pyconnector_template import ActuatorFlow as AFTemplate
+from pyconnector_template.pyconnector_template import Connector as CTemplate
 from pyconnector_template.dispatch import DispatchInInterval
 
 
