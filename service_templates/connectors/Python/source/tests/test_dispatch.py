@@ -419,11 +419,13 @@ class TestDispatchInIntervalIntegration(TestClassWithFixtures):
         assert not thread.is_alive()
 
         # We expect that target_func has been executed three times with less
-        # then a percent deviation from the requested call interval.
+        # then two percent deviation from the requested call interval.
+        # This has been one percent before which was failing on some
+        # slow machines.
         assert len(execution_times) == 3
         actual_execution_time_0 = execution_times[1] - execution_times[0]
         actual_execution_time_1 = execution_times[2] - execution_times[1]
-        expected_execution_time = pytest.approx(0.1, 0.01)
+        expected_execution_time = pytest.approx(0.1, 0.02)
         assert actual_execution_time_0 == expected_execution_time
         assert actual_execution_time_1 == expected_execution_time
 
@@ -460,11 +462,13 @@ class TestDispatchInIntervalIntegration(TestClassWithFixtures):
         assert not thread.is_alive()
 
         # We expect that target_func has been executed three times with less
-        # then a percent deviation from the run time of the target function.
+        # then two percent deviation from the run time of the target function.
+        # This has been one percent before which was failing on some
+        # slow machines.
         assert len(execution_times) == 3
         actual_execution_time_0 = execution_times[1] - execution_times[0]
         actual_execution_time_1 = execution_times[2] - execution_times[1]
-        expected_execution_time = pytest.approx(0.2, 0.01)
+        expected_execution_time = pytest.approx(0.2, 0.02)
         assert actual_execution_time_0 == expected_execution_time
         assert actual_execution_time_1 == expected_execution_time
 
