@@ -1,1 +1,1 @@
-docker build ./source -t bemcom/python-connector-template:0.2.1
+docker build ./source -t bemcom/python-connector-template:0.2.2
