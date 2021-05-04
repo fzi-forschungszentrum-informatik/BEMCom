@@ -48,7 +48,7 @@ Contains ready-to-use services for use in your applications.
 
 Contains templates that can be used to efficiently create new services.
 
-# Contributers
+# Contributors
 
 TBA
 
