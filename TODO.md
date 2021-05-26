@@ -1,55 +1,43 @@
 # Track to OS Release
 
-* [ ] Repo root
-  * [x] Make build script process connector templates first
-  * [ ] Add test stages to pipeline
-  * [ ] Add license
-  * [ ] Update Readme
-  * [x] Remove application_builder, applications and application_templates folders
 * [ ] Demo
-  * [x] Move demo folder to root
-  * [ ] docker compose file
-  * [ ] Instructions how to build
-  * [ ] Instructions how to use the API.
-  * [ ] Instructions how to modify a Node-RED connector.
-* [ ] Documentation
-  * [ ] Dependencies (Docker, ..)
-  * [ ] Building locally vs Dockerhub
-  * [ ] Message Format
-  * [ ] High Level Introduction to components.
-* [ ] Services
-  * [ ] API
-    * [x] REST API pull
-    * [ ] REST API push incl. Docs
-    * [ ] Token authentication and access control
-    * [x] Prod Settings (Daphne, Debug, PG Database, HTTPs, self signed certs?)
-    * [ ] Service Documentation.
-    * [x] OpenAPI specification of REST API.
-    * [x] Define control groups in admin.
-  * [ ] Connectors
-    * [x] Aquametro
-      * [x] Service Documentation
-    * [x] Keba
-      * [x] Service Documentation
-    * [ ] Demo
-      * [ ] Implement in Node Red
-      * [ ] Two datapoints, one that yields current time as str, one that ping/pongs with delay.
-      * [ ] Service Documentation
-  * [x] Controller
-    * [x] Service Documentation
-    * [x] Implementation
-  * [x] Raw Message DB
-    * [x] Implement with Mongo + Python script to connect to MQTT.
-    * [x] Service Documentation
-    * [x] Fix auth bug
-  * [x] Message Broker Monitor
-    * [x] Service Documentation
-    * [x] Rename to mqtt-message-montior
-* [x] Service Templates
-  * [x] Connectors
-    * [x] Python
-      * [x] Move to devl branch
-    * [x] Node Red
-      * [x] Update documentation (How to)
-      * [x] Update docker-compose order of fields.
 
+  * [ ] Basic functionality demo
+    * [ ] Uses demo device and REST connector.
+    * [ ] Contains docker-compose file and .env file
+    * [ ] Instructions:
+      * [ ] How to create application.
+      * [ ] Building locally vs Dockerhub
+      * [ ] How to use the AdminUI
+      * [ ] how to use the API.
+    * [ ] Interactive version with Play With Docker?
+
+* [ ] Documentation
+
+  * [ ] First things first --> Docker
+  * [ ] General Concepts
+  * [ ] Application Concepts
+  * [ ] Message Format
+
+* [ ] Services
+
+  * [ ] API
+    * [ ] Django
+      * [ ] Implement Websocket incl. Docs
+      * [ ] Service Documentation.
+      * [ ] Some ToDos left in Code?
+  * [ ] Connectors
+    * [ ] REST Connector
+      * [ ] Implement in Python, match the Demo Device.
+      * [ ] Add documentation.
+  * [ ] Controllers
+    * [ ] Python
+      * [ ] Rename to something more goal oriented, i.e. that describes rather what the controller does.
+  * [ ] Monitors:
+    * [ ] Move MQTT message monitor to Tools
+  * [ ] Tools
+    * [ ] Demo Device
+      * [ ] Implement in FastAPI
+      * [ ] Should contain some sensor and some actuator data points.
+
+  
