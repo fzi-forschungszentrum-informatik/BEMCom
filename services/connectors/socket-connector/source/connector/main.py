@@ -73,7 +73,7 @@ class SensorFlow(SFTemplate):
         Functionality to receive a raw message from device.
 
         Poll the device/gateway for data and transforms this raw data
-        into the format epxected by run_sensor_flow. If the device/gateway
+        into the format expected by run_sensor_flow. If the device/gateway
         uses some protocol that pushes data, the raw data should be passed
         as the raw_data argument to the function.
 
@@ -112,7 +112,7 @@ class SensorFlow(SFTemplate):
         Functionality to receive a raw message from device.
 
         Poll the device/gateway for data and transforms this raw data
-        into the format epxected by run_sensor_flow. If the device/gateway
+        into the format expected by run_sensor_flow. If the device/gateway
         uses some protocol that pushes data, the raw data should be passed
         as the raw_data argument to the function.
 

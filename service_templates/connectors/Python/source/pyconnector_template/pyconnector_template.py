@@ -4,7 +4,7 @@
 This is a template for building BEMCom connectors with Python.
 
 The control flow and concepts are very similar to the Node-RED connector
-template. You might want to instpect the Main flow of the Node-RED connector
+template. You might want to inspect the Main flow of the Node-RED connector
 template first to familiarize yourself with these.
 """
 import os
@@ -195,7 +195,7 @@ class SensorFlow():
         Functionality to receive a raw message from device.
 
         Poll the device/gateway for data and transforms this raw data
-        into the format epxected by run_sensor_flow. If the device/gateway
+        into the format expected by run_sensor_flow. If the device/gateway
         uses some protocol that pushes data, the raw data should be passed
         as the raw_data argument to the function.
 
@@ -229,7 +229,7 @@ class SensorFlow():
         Functionality to receive a raw message from device.
 
         Poll the device/gateway for data and transforms this raw data
-        into the format epxected by run_sensor_flow. If the device/gateway
+        into the format expected by run_sensor_flow. If the device/gateway
         uses some protocol that pushes data, the raw data should be passed
         as the raw_data argument to the function.
 
