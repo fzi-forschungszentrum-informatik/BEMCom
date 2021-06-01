@@ -1,1 +1,0 @@
-Place here all information required to build an application.

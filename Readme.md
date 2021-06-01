@@ -7,7 +7,7 @@ In order to communicate with the devices of a target building, it is common in a
 
 ## Documentation
 
-Extensive documentation is provided provided in [documentation/Readme.md](documentation/Readme.md). We also provide a [demo](./demo/).
+Extensive documentation is provided provided in the [documentation](documentation/Readme.md) folder, please read the [documentation/Readme.md](documentation/Readme.md) file first. 
 
 
 
@@ -19,7 +19,7 @@ Please open a GitHub issue for any inquiry that relates to the source code. Feel
 
 ## Contributing
 
-Contributions are welcome, especially extensions to the documentation and new services. Please check that your code contains tests, obeys common conventions and is well documented before submitting a merge request. You may want to open up an issue about your ideas before starting to work on something to ensure that your work will match into this repo.
+Contributions are welcome, especially extensions to the documentation and new services. For the latter please see the documentation on [service development](documentation/03_service_development.md) before you start developing.
 
 
 

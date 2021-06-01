@@ -1,16 +1,14 @@
-# Documentation Table of Content
+# BEMCom Documentation
 
-1. [Introduction](./01_introduction.md)
-2. [Message Format](./02_message_format.md)
-3. [Services](./03_services.md)
-   1. [Connectors](./03_services_01_connectors.md)
-   2. [Message Brokers](./03_services_02_message_brokers.md)
-   3. [Databases](./03_services_03_databases.md)
-   4. [APIs](./03_services_04_apis.md)
-4. [Application Builder](./04_application_builder.md)
+## Before you start
 
+Please note this library relies heavily on docker and docker-compose. You may wish to familiarize yourself with these tools before using this library. A good starting point are the getting started pages of [docker](https://docs.docker.com/get-started/) and [docker-compose](https://docs.docker.com/compose/gettingstarted/) respectively.
 
+## Overview
 
-# Currently Missing
+This documentation contains of the following parts:
 
-* Contributing, i.e. description how to contribute to the project.
+1. [Concepts](./01_concepts.md): Introduces the general high level concepts of BEMCom. This should be read first.
+2. [Application Creation](./02_application_creation.md): Provides instructions how HAL applications can be build utilizing the BEMCom framework. This is for for those who wish to use BEMCom.
+3. [Service Development](./03_service_development.md): Covers additional information relevant while implementing new services or working on existing components. This is for those who wish to extend BEMCom with new components.
+4. [Message Format](./04_message_format.md): Defines the internal message format that BEMCom services use to communicate within an application. This may become relevant for debugging BEMCom applications but is most relevant for the development of services.
