@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+    mqtt-connector:
+        container_name: mqtt-connector
+        build:
+            context: ./source
+        restart: always
+        volumes:
+            - ./source/connector/:/source/connector/
+        user: "${USER_ID}:${GROUP_ID}"
+        environment:
+            - CONNECTOR_NAME=mqtt-connector
+            - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}
+            - MQTT_BROKER_PORT=${MQTT_BROKER_PORT}
+            - SEND_RAW_MESSAGE_TO_DB=${SEND_RAW_MESSAGE_TO_DB}
+            - DEBUG=${DEBUG}
+            - REMOTE_MQTT_BROKER_HOST=${REMOTE_MQTT_BROKER_HOST}
+            - REMOTE_MQTT_BROKER_PORT=${REMOTE_MQTT_BROKER_PORT}
+            - REMOTE_MQTT_BROKER_USE_TLS=${REMOTE_MQTT_BROKER_USE_TLS}
+            - REMOTE_MQTT_BROKER_CA_FILE=${REMOTE_MQTT_BROKER_CA_FILE}
+            - REMOTE_MQTT_BROKER_USERNAME=${REMOTE_MQTT_BROKER_USERNAME}
+            - REMOTE_MQTT_BROKER_PASSWORD=${REMOTE_MQTT_BROKER_PASSWORD}
+            - REMOTE_MQTT_BROKER_TOPIC_MAPPING=${REMOTE_MQTT_BROKER_TOPIC_MAPPING}
+            - REMOTE_MQTT_BROKER_PARSE_JSON=${REMOTE_MQTT_BROKER_PARSE_JSON}
