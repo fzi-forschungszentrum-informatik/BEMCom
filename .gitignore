@@ -9,3 +9,8 @@
 # may even contain sensitive information. They thus don't belong in the 
 # repo.
 .env
+
+
+# These temporary files have been encountered while developing in
+# dedicated branches.
+__pycache__
