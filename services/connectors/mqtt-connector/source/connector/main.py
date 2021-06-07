@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 """
+__version__="0.1.0"
+
 import os
 import ssl
 import json
@@ -47,7 +49,7 @@ class SensorFlow(SFTemplate):
     allow these methods to run correctly:
 
     mqtt_client : class instance.
-        Initialized Mqtt client library with signature of paho mqtt.
+        Initialized Mqtt client library with signature of paho MQTT.
     SEND_RAW_MESSAGE_TO_DB : string
         if SEND_RAW_MESSAGE_TO_DB == "TRUE" will send raw message
         to designated DB via MQTT.
@@ -81,11 +83,13 @@ class SensorFlow(SFTemplate):
         Returns
         -------
         msg : dict
-            The message object containing the raw unprocessed data.
+            The message object containing the raw data as string. It must
+            be a string to allow sending the raw_message object as JSON object
+            to the raw message DB.
             Should be formatted like this:
                 msg = {
                     "payload": {
-                        "raw_message": <the raw data>
+                        "raw_message": <the raw data as string>
                     }
                 }
             E.g.
@@ -99,7 +103,7 @@ class SensorFlow(SFTemplate):
             "payload": {
                 "raw_message": {
                     "topic": raw_data.topic,
-                    "payload": raw_data.payload,
+                    "payload": raw_data.payload.decode(),
                 }
             }
         }
@@ -209,7 +213,7 @@ class ActuatorFlow(AFTemplate):
                     "example-connector/msgs/0003": "Channel__P__setpoint__0",
                 }
             }
-        Note thereby that the keys "sensor" and "actuator"" must alaways be
+        Note thereby that the keys "sensor" and "actuator"" must always be
         present, even if the child dicts are empty.
     """
 
@@ -282,9 +286,9 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
     These attributes are created by init and are then dynamically used
     by the Connector.
     mqtt_client : class instance.
-        Initialized Mqtt client library with signature of paho mqtt.
+        Initialized MQTT client library with signature of paho MQTT.
     remote_mqtt_client : class instance.
-        Similar to the one above but for the remote mqtt broker.
+        Similar to the one above but for the remote MQTT broker.
     parse_sensor_msgs_as_json : bool
         Corresponds to REMOTE_MQTT_BROKER_PARSE_JSON, see above.
     available_datapoints : dict of dict.
@@ -521,7 +525,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
             The instance of MqttClient configured according to the environment
             variables.
         """
-        logger.debug("Configuring remote MQTT connection.")
+        logger.info("Configuring remote MQTT connection.")
         userdata = {
             "self": self,
             "topic_mapping": topic_mapping,
@@ -536,7 +540,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
             ca_file_fnp = None
             ca_content = os.getenv("REMOTE_MQTT_BROKER_CA_FILE")
             if ca_content:
-                logger.debug("Using CA file to check server certificate.")
+                logger.info("Using CA file to check server certificate.")
                 # Save the pem content to a file because paho mqtt expectes
                 # a file path.
                 with NamedTemporaryFile(mode="w", delete=False) as ca_file:
@@ -551,10 +555,10 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
 
         username = os.getenv("REMOTE_MQTT_BROKER_USERNAME")
         if username:
-            logger.debug("Using username %s for remote broker.", username)
+            logger.info("Using username %s for remote broker.", username)
             password = os.getenv("REMOTE_MQTT_BROKER_PASSWORD")
             if password is not None:
-                logger.debug(
+                logger.info(
                     "Using password with length %s for remote broker",
                     len(password)
                 )
@@ -611,5 +615,5 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
 
 
 if __name__ == "__main__":
-    connector = Connector()
+    connector = Connector(version=__version__)
     connector.run()

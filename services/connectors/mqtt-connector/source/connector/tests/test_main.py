@@ -15,6 +15,7 @@ from ..main import Connector
 # These are some useful default arguments for testing.
 # Most importantly prevent the MQTT clients from connecting.
 connector_default_kwargs = {
+    "version": "0.0.1",
     "MqttClient": MagicMock(),
     "RemoteMqttClient": MagicMock(),
 }
@@ -51,7 +52,7 @@ class TestReceiveRawMsg(unittest.TestCase):
         """
         test_msg = MagicMock()
         test_msg.topic = "/test/"
-        test_msg.payload = '{"test": "value"}'
+        test_msg.payload = b'{"test": "value"}'
 
         expected_raw_msg = {
             "payload": {
