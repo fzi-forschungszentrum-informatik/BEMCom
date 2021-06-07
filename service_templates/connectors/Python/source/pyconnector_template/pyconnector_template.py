@@ -566,11 +566,40 @@ class Connector():
             The time in seconds we wait between checking the dispatchers
             and sending a heartbeat signal. Defaults to 30 seconds.
         """
-        logger.info("Initiating Connector")
-        self.version = version
+        # dotenv allows us to load env variables from .env files which is
+        # convenient for developing. If you set override to True tests
+        # may fail as the tests assume that the existing environ variables
+        # have higher priority over ones defined in the .env file.
+        # usecwd will make finding dotenvs relative to the derived connector
+        # and not relative to this file, which is the default.
+        load_dotenv(find_dotenv(usecwd=True), verbose=True, override=False)
+        self.CONNECTOR_NAME = os.getenv("CONNECTOR_NAME") or "unknown-connector"
+        self.SEND_RAW_MESSAGE_TO_DB = os.getenv("SEND_RAW_MESSAGE_TO_DB")
+        self.DEBUG = os.getenv("DEBUG")
+        self.MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST")
+        self.MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT"))
 
-        # Store the class arguements that are used for run later.
-        logger.debug("Processing enviornment variables.")
+        logger.info(
+            "Initiating pyconnector.Connector class for: %s",
+            self.CONNECTOR_NAME
+        )
+
+        cn = self.CONNECTOR_NAME
+        self.MQTT_TOPIC_LOGS = "%s/logs" % cn
+        self.MQTT_TOPIC_HEARTBEAT = "%s/heartbeat" % cn
+        self.MQTT_TOPIC_AVAILABLE_DATAPOINTS = "%s/available_datapoints" % cn
+        self.MQTT_TOPIC_DATAPOINT_MAP = "%s/datapoint_map" % cn
+        self.MQTT_TOPIC_RAW_MESSAGE_TO_DB = "%s/raw_message_to_db" % cn
+
+        # Set the log level according to the DEBUG flag.
+        if self.DEBUG != "TRUE":
+            logger.info("Changing log level to INFO")
+            for logger_name in logging.root.manager.loggerDict:
+                logging.getLogger(logger_name).setLevel(logging.INFO)
+
+        # Store the class arguments that are used for run later.
+        logger.debug("Processing __init__ arguments.")
+        self.version = version
         self._DeviceDispatcher = DeviceDispatcher
         if device_dispatcher_kwargs is None:
             device_dispatcher_kwargs = {}  # Apply default value.
@@ -583,30 +612,7 @@ class Connector():
         self._initial_datapoint_map = datapoint_map
         self._initial_available_datapoints = available_datapoints
 
-        logger.debug("Loading settings from environment variables.")
-        # dotenv allows us to load env variables from .env files which is
-        # convenient for developing. If you set override to True tests
-        # may fail as the tests assume that the existing environ variables
-        # have higher priority over ones defined in the .env file.
-        load_dotenv(find_dotenv(), verbose=True, override=False)
-        self.CONNECTOR_NAME = os.getenv("CONNECTOR_NAME")
-        self.SEND_RAW_MESSAGE_TO_DB = os.getenv("SEND_RAW_MESSAGE_TO_DB")
-        self.DEBUG = os.getenv("DEBUG")
-        self.MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST")
-        self.MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT"))
 
-        cn = self.CONNECTOR_NAME
-        self.MQTT_TOPIC_LOGS = "%s/logs" % cn
-        self.MQTT_TOPIC_HEARTBEAT = "%s/heartbeat" % cn
-        self.MQTT_TOPIC_AVAILABLE_DATAPOINTS = "%s/available_datapoints" % cn
-        self.MQTT_TOPIC_DATAPOINT_MAP = "%s/datapoint_map" % cn
-        self.MQTT_TOPIC_RAW_MESSAGE_TO_DB = "%s/raw_message_to_db" % cn
-
-        # Set the log level according to the DEBUG flag.
-        if self.DEBUG != "TRUE":
-            logger.debug("Changing log level to INFO")
-            for logger_name in logging.root.manager.loggerDict:
-                logging.getLogger(logger_name).setLevel(logging.INFO)
 
         logger.debug("Finished Connector init.")
 
