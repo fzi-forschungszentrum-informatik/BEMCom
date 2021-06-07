@@ -49,7 +49,7 @@ class MQTTHandler(logging.StreamHandler):
         Parameters
         ----------
         mqtt_client : class instance.
-            Initialized Mqtt client library with signature of paho mqtt.
+            Initialized Mqtt client library with signature of paho MQTT.
         log_topic : string
             The topic on which this handler publishes the log messages.
         """
@@ -87,7 +87,7 @@ class SensorFlow():
     This is a template for a SensorFlow class, i.e. one that holds all
     functions that are necessary to handle messages from the device(s)
     towards the message broker. The methods could also be implemented
-    into the Connector class, but are seperated to support clarity.
+    into the Connector class, but are separated to support clarity.
 
     Overload these functions
     ------------------------
@@ -126,7 +126,7 @@ class SensorFlow():
                     "example-connector/msgs/0003": "Channel__P__setpoint__0",
                 }
             }
-        Note thereby that the keys "sensor" and "actuator"" must alaways be
+        Note thereby that the keys "sensor" and "actuator"" must always be
         present, even if the child dicts are empty.
     """
 
@@ -152,6 +152,8 @@ class SensorFlow():
         # Handle bytes, as these are not JSON serializable.
         if self.SEND_RAW_MESSAGE_TO_DB == "TRUE":
             payload = msg["payload"].copy()
+            # TODO: This fails for dicts that contain bytes.
+            # An alternative could be to make everything a string.
             if isinstance(payload["raw_message"], (bytes, bytearray)):
                 payload["raw_message"] = {
                     "bytes": payload["raw_message"].decode()
@@ -208,11 +210,13 @@ class SensorFlow():
         Returns
         -------
         msg : dict
-            The message object containing the raw unprocessed data.
-            Should be formated like this:
+            The message object containing the raw data as string. It must
+            be a string to allow sending the raw_message object as JSON object
+            to the raw message DB.
+            Should be formatted like this:
                 msg = {
                     "payload": {
-                        "raw_message": <the raw data>
+                        "raw_message": <the raw data as string>
                     }
                 }
             E.g.
@@ -239,7 +243,7 @@ class SensorFlow():
         Parameters
         ----------
         raw_msg : dict.
-            Raw msg with data from device/gateway. Should be formated like:
+            Raw msg with data from device/gateway. Should be formatted like:
                 msg = {
                     "payload": {
                         "raw_message": <the raw data>,
@@ -251,8 +255,8 @@ class SensorFlow():
         -------
         msg : dict
             The message object containing the parsed data as python dicts from
-            dicts strucuture.
-            Should be formated like this:
+            dicts structure.
+            Should be formatted like this:
                 msg = {
                     "payload": {
                         "parsed_message": <the parsed data as object>,
@@ -384,7 +388,7 @@ class ActuatorFlow():
     This is a template for a ActuatorFlow class, i.e. one that holds all
     functions that are necessary to handle messages from the message
     broker towards the devices/gateway. The methods could also be implemented
-    into the Connector class, but are seperated to support clarity.
+    into the Connector class, but are separated to support clarity.
 
     Overload these functions
     ------------------------
@@ -409,7 +413,7 @@ class ActuatorFlow():
                     "example-connector/msgs/0003": "Channel__P__setpoint__0",
                 }
             }
-        Note thereby that the keys "sensor" and "actuator"" must alaways be
+        Note thereby that the keys "sensor" and "actuator"" must always be
         present, even if the child dicts are empty.
     """
 
@@ -478,14 +482,14 @@ class Connector():
     MQTT_TOPIC_RAW_MESSAGE_TO_DB : string
         The topic which on which the raw messages will be published.
     DEBUG : string
-        if DEBUG == "TRUE" will log debug message to, elso loglevel is info.
+        if DEBUG == "TRUE" will log debug message to, else loglevel is info.
 
     Computed Attributes
     -------------------
-    These attriubutes are created by init and are then dynamically used
+    These attributes are created by init and are then dynamically used
     by the Connector.
     mqtt_client : class instance.
-        Initialized Mqtt client library with signature of paho mqtt.
+        Initialized MQTT client library with signature of paho mqtt.
     available_datapoints : dict of dict.
         Lists all datapoints known to the connector and is sent to the
         AdminUI. Actuator datapoints must be specified manually. Sensor
@@ -513,7 +517,7 @@ class Connector():
                     "example-connector/msgs/0003": "Channel__P__setpoint__0",
                 }
             }
-        Note thereby that the keys "sensor" and "actuator"" must alaways be
+        Note thereby that the keys "sensor" and "actuator"" must always be
         present, even if the child dicts are empty.
     """
 
@@ -531,10 +535,10 @@ class Connector():
         ----------
         datapoint_map : dict of dicts, optional.
             The initial datapoint_map before updating per MQTT. Format is
-            specified in the class attriubte docstring above.
+            specified in the class attribute docstring above.
         available_datapoints : dict of dicts, optional.
             The initial available_datapoints object before updating per MQTT.
-            Format is specified in the class attriubte docstring above.
+            Format is specified in the class attribute docstring above.
         DeviceDispatcher : Dispatcher class.
             A class with similar signature to the dispatchers located in
             pyconnector.dispatch. The device dispatcher is responsible
@@ -546,14 +550,14 @@ class Connector():
             Keyword arguments that will be provided to DeviceDispatcher
             on calling __init__. Defaults to {}.
         MqttClient : class.
-            Uninitialized MQTT client library with signature of paho mqtt.
+            Uninitialized MQTT client library with signature of paho MQTT.
             Defaults to paho.mqtt.client.Client. Providing other clients
             is mostly useful for testing.
         heartbeat_interval : int/float.
             The time in seconds we wait between checking the dispatchers
             and sending a heartbeat signal. Defaults to 30 seconds.
         """
-        logger.info("Initating Connector")
+        logger.info("Initiating Connector")
 
         # Store the class arguements that are used for run later.
         logger.debug("Processing enviornment variables.")
@@ -571,7 +575,7 @@ class Connector():
 
         logger.debug("Loading settings from environment variables.")
         # dotenv allows us to load env variables from .env files which is
-        # convient for developing. If you set override to True tests
+        # convenient for developing. If you set override to True tests
         # may fail as the tests assume that the existing environ variables
         # have higher priority over ones defined in the .env file.
         load_dotenv(find_dotenv(), verbose=True, override=False)
@@ -598,8 +602,8 @@ class Connector():
 
     def run(self):
         """
-        Run the connector until SystemExit or Keyboard interupt is received.
-        (Or of course an exception occured in the connector.)
+        Run the connector until SystemExit or Keyboard interrupt is received.
+        (Or of course an exception occurred in the connector.)
 
 
         """
@@ -646,7 +650,7 @@ class Connector():
             logger.addHandler(mqtt_log_handler)
 
         # Now that the connection to the message broker exists, we can
-        # initializete our datapoint registers.
+        # initialize our datapoint registers.
         logger.debug("Initiating datapoint_map")
         self.datapoint_map = {"sensor": {}, "actuator": {}}
         if self._initial_datapoint_map is not None:
@@ -661,9 +665,9 @@ class Connector():
                 available_datapoints=self._initial_available_datapoints
             )
 
-        # We want to receive the latest datapoint_maps and it wont't hurt
+        # We want to receive the latest datapoint_maps and it won't hurt
         # us too bad if we receive them multiple times. This can only be
-        # executed after the datapoint_map is intialized, as any retained
+        # executed after the datapoint_map is initialized, as any retained
         # datapoint map is else overwritten.
         self.mqtt_client.subscribe(topic=self.MQTT_TOPIC_DATAPOINT_MAP, qos=1)
 
@@ -700,7 +704,7 @@ class Connector():
                 if not all([d.is_alive() for d in dispatchers]):
                     # If one is not alive, see if we encountered an exception
                     # and raise it, as exceptions in threads are not
-                    # automatically forwareded to the main program.
+                    # automatically forwarded to the main program.
                     for d in dispatchers:
                         if d.exception is not None:
                             raise d.exception
@@ -743,19 +747,19 @@ class Connector():
     @staticmethod
     def _handle_incoming_mqtt_msg(client, userdata, msg):
         """
-        Handle incoming mqtt message by calling the appropriate methods.
+        Handle incoming MQTT message by calling the appropriate methods.
 
         Essentially we need to distinguish between messages that contain
         a new datapoint_map and messages that carry values for actuator
         datapoints.
 
-        This is the callback provided to the mqtt clients on_message
+        This is the callback provided to the MQTT clients on_message
         method.
 
         Parameters
         ----------
         client : client : class.
-            Initialized Mqtt client library with signature of paho mqtt.
+            Initialized MQTT client library with signature of paho MQTT.
         userdata : dict.
             Must contain {"self": <connector class>}.
         msg : paho mqtt message class.
@@ -791,7 +795,7 @@ class Connector():
         ----------
         datapoint_map_json : string
             datapoint_map to validate and store in JSON format.
-            Format is specified in the class attriubte docstring above.
+            Format is specified in the class attribute docstring above.
         """
         logger.debug("Started _validate_and_update_datapoint_map")
         datapoint_map = json.loads(datapoint_map_json)

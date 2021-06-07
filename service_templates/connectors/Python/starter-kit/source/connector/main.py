@@ -23,7 +23,7 @@ class SensorFlow(SFTemplate):
     This is a template for a SensorFlow class, i.e. one that holds all
     functions that are necessary to handle messages from the device(s)
     towards the message broker. The methods could also be implemented
-    into the Connector class, but are seperated to support clarity.
+    into the Connector class, but are separated to support clarity.
 
     Overload these functions
     ------------------------
@@ -44,7 +44,7 @@ class SensorFlow(SFTemplate):
     allow these methods to run correctly:
 
     mqtt_client : class instance.
-        Initialized Mqtt client library with signature of paho mqtt.
+        Initialized Mqtt client library with signature of paho MQTT.
     SEND_RAW_MESSAGE_TO_DB : string
         if SEND_RAW_MESSAGE_TO_DB == "TRUE" will send raw message
         to designated DB via MQTT.
@@ -84,11 +84,13 @@ class SensorFlow(SFTemplate):
         Returns
         -------
         msg : dict
-            The message object containing the raw unprocessed data.
-            Should be formated like this:
+            The message object containing the raw data as string. It must
+            be a string to allow sending the raw_message object as JSON object
+            to the raw message DB.
+            Should be formatted like this:
                 msg = {
                     "payload": {
-                        "raw_message": <the raw data>
+                        "raw_message": <the raw data as string>
                     }
                 }
             E.g.
@@ -115,7 +117,7 @@ class SensorFlow(SFTemplate):
         Parameters
         ----------
         raw_msg : dict.
-            Raw msg with data from device/gateway. Should be formated like:
+            Raw msg with data from device/gateway. Should be formatted like:
                 msg = {
                     "payload": {
                         "raw_message": <the raw data>,
@@ -127,8 +129,8 @@ class SensorFlow(SFTemplate):
         -------
         msg : dict
             The message object containing the parsed data as python dicts from
-            dicts strucuture.
-            Should be formated like this:
+            dicts structure.
+            Should be formatted like this:
                 msg = {
                     "payload": {
                         "parsed_message": <the parsed data as object>,
@@ -158,7 +160,7 @@ class ActuatorFlow(AFTemplate):
     This is a template for a ActuatorFlow class, i.e. one that holds all
     functions that are necessary to handle messages from the message
     broker towards the devices/gateway. The methods could also be implemented
-    into the Connector class, but are seperated to support clarity.
+    into the Connector class, but are separated to support clarity.
 
     Overload these functions
     ------------------------
@@ -183,7 +185,7 @@ class ActuatorFlow(AFTemplate):
                     "example-connector/msgs/0003": "Channel__P__setpoint__0",
                 }
             }
-        Note thereby that the keys "sensor" and "actuator"" must alaways be
+        Note thereby that the keys "sensor" and "actuator"" must always be
         present, even if the child dicts are empty.
     """
 
@@ -229,14 +231,14 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
     MQTT_TOPIC_RAW_MESSAGE_TO_DB : string
         The topic which on which the raw messages will be published.
     DEBUG : string
-        if DEBUG == "TRUE" will log debug message to, elso loglevel is info.
+        if DEBUG == "TRUE" will log debug message to, else loglevel is info.
 
     Computed Attributes
     -------------------
-    These attriubutes are created by init and are then dynamically used
+    These attributes are created by init and are then dynamically used
     by the Connector.
     mqtt_client : class instance.
-        Initialized Mqtt client library with signature of paho mqtt.
+        Initialized MQTT client library with signature of paho mqtt.
     available_datapoints : dict of dict.
         Lists all datapoints known to the connector and is sent to the
         AdminUI. Actuator datapoints must be specified manually. Sensor
@@ -264,7 +266,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
                     "example-connector/msgs/0003": "Channel__P__setpoint__0",
                 }
             }
-        Note thereby that the keys "sensor" and "actuator"" must alaways be
+        Note thereby that the keys "sensor" and "actuator"" must always be
         present, even if the child dicts are empty.
     """
 
@@ -275,7 +277,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         or specifying actuator datapoints.
         """
         # dotenv allows us to load env variables from .env files which is
-        # convient for developing. If you set override to True tests
+        # convenient for developing. If you set override to True tests
         # may fail as the tests assume that the existing environ variables
         # have higher priority over ones defined in the .env file.
         load_dotenv(find_dotenv(), verbose=True, override=False)
