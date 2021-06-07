@@ -5,8 +5,9 @@ import json
 import time
 import logging
 from datetime import datetime, timezone
-
 from unittest.mock import MagicMock
+
+import pytest
 from paho.mqtt.client import Client
 
 from .base import TestClassWithFixtures
@@ -143,6 +144,7 @@ class TestSensorFlowRun(TestClassWithFixtures):
     def setup_method(self, method):
 
         self.sf = SensorFlow()
+        self.sf.version = "0.0.1"
 
         # Patch receive_raw_msg and add return value with realistic signature.
         self.raw_msg_return = {
@@ -225,7 +227,10 @@ class TestSensorFlowRun(TestClassWithFixtures):
 
         self.sf.run_sensor_flow()
 
-        expected_raw_msg = self.raw_msg_return["payload"]["raw_message"]
+        expected_payload = {
+            "payload": self.raw_msg_return["payload"],
+            "connector_version": self.sf.version,
+        }
         expected_topic = self.sf.MQTT_TOPIC_RAW_MESSAGE_TO_DB
         # Ensure the message is received by the raw message DB.
         expected_qos = 2
@@ -233,10 +238,9 @@ class TestSensorFlowRun(TestClassWithFixtures):
         publish_call = self.sf.mqtt_client.publish.call_args_list[0]
         actual_topic = publish_call.kwargs["topic"]
         actual_payload = json.loads(publish_call.kwargs["payload"])
-        actual_raw_msg = actual_payload["raw_message"]
         actual_qos = publish_call.kwargs["qos"]
 
-        assert expected_raw_msg == actual_raw_msg
+        assert expected_payload == actual_payload
         assert expected_topic == actual_topic
         assert expected_qos == actual_qos
 
@@ -244,7 +248,10 @@ class TestSensorFlowRun(TestClassWithFixtures):
         """
         Check that the raw message is sent to raw message db if this option
         is set. Here check special handling if raw message is in bytes,
-        as bytes cannot be serialized to JSON.
+        as bytes cannot be serialized to JSON, hence we expect an exception
+        in contrast to earlier versions of the code, which have parsed it to
+        string. However this is inconsistent.
+
         """
         self.sf.SEND_RAW_MESSAGE_TO_DB = "TRUE"
         raw_msg_bytes_return = {
@@ -256,17 +263,8 @@ class TestSensorFlowRun(TestClassWithFixtures):
             return_value=raw_msg_bytes_return
         )
 
-        self.sf.run_sensor_flow()
-
-        expected_raw_msg = {
-            "bytes": b'some bytes and stuff'.decode()
-        }
-
-        publish_call = self.sf.mqtt_client.publish.call_args_list[0]
-        actual_payload = json.loads(publish_call.kwargs["payload"])
-        actual_raw_msg = actual_payload["raw_message"]
-
-        assert expected_raw_msg == actual_raw_msg
+        with pytest.raises(TypeError):
+            self.sf.run_sensor_flow()
 
     def test_parse_raw_msg_called(self):
         """
@@ -549,7 +547,7 @@ class TestConnector__Init__(TestClassWithFixtures):
         Verify that all environment variables are loaded and configuration
         attributes are populated as expected.
         """
-        self.cn = Connector()
+        self.cn = Connector(version="0.0.1")
 
         # These should be loaded as they are defined externally.
         assert self.cn.CONNECTOR_NAME == self.test_CONNECTOR_NAME
@@ -600,6 +598,7 @@ class TestConnector__Init__(TestClassWithFixtures):
         These need to be stored ad the appropriate places for the run method
         to use.
         """
+        version = MagicMock()
         datapoint_map = MagicMock()
         available_datapoints = MagicMock()
         DeviceDispatcher = MagicMock()
@@ -608,6 +607,7 @@ class TestConnector__Init__(TestClassWithFixtures):
         heartbeat_interval = MagicMock()
 
         self.cn = Connector(
+            version=version,
             datapoint_map=datapoint_map,
             available_datapoints=available_datapoints,
             DeviceDispatcher=DeviceDispatcher,
@@ -616,6 +616,7 @@ class TestConnector__Init__(TestClassWithFixtures):
             heartbeat_interval=heartbeat_interval,
         )
 
+        assert self.cn.version == version
         assert self.cn._initial_datapoint_map == datapoint_map
         assert self.cn._initial_available_datapoints == available_datapoints
         assert self.cn._DeviceDispatcher == DeviceDispatcher
@@ -628,7 +629,7 @@ class TestConnector__Init__(TestClassWithFixtures):
         Verify that default args are interpreted correctly. These are the
         default values that are expected by Connector.run()
         """
-        self.cn = Connector()
+        self.cn = Connector(version="0.0.1")
 
         assert self.cn._initial_datapoint_map == None
         assert self.cn._initial_available_datapoints == None
@@ -661,6 +662,7 @@ class TestConnectorRun(TestClassWithFixtures):
         # Some generally useful kwargs for Connector to ensure that
         # run doesn't fail or blocks for ages.
         self.connector_default_kwargs = {
+            "version": "0.0.1",
             "MqttClient": MagicMock,
             "heartbeat_interval": 0.05,
         }
@@ -934,7 +936,9 @@ class TestConnectorRun(TestClassWithFixtures):
 
         _send_heartbeat_mock = MagicMock()
 
-        self.cn = Connector(MqttClient=MagicMock, heartbeat_interval=0.1)
+        self.cn = Connector(
+            version="0.0.1", MqttClient=MagicMock, heartbeat_interval=0.1
+        )
         self.cn._DeviceDispatcher = _DeviceDispatcher_mock
         self.cn._MqttClient = _MqttClient_mock
         self.cn._send_heartbeat = _send_heartbeat_mock
@@ -968,7 +972,9 @@ class TestConnectorRun(TestClassWithFixtures):
 
         _send_heartbeat_mock = MagicMock()
 
-        self.cn = Connector(MqttClient=MagicMock, heartbeat_interval=0.05)
+        self.cn = Connector(
+            version="0.0.1", MqttClient=MagicMock, heartbeat_interval=0.05
+        )
         self.cn._DeviceDispatcher = _DeviceDispatcher_mock
         self.cn._MqttClient = _MqttClient_mock
         self.cn._send_heartbeat = _send_heartbeat_mock
@@ -1004,7 +1010,9 @@ class TestConnectorRun(TestClassWithFixtures):
 
         _send_heartbeat_mock = MagicMock()
 
-        self.cn = Connector(MqttClient=MagicMock, heartbeat_interval=0.05)
+        self.cn = Connector(
+            version="0.0.1", MqttClient=MagicMock, heartbeat_interval=0.05
+        )
         self.cn._DeviceDispatcher = _DeviceDispatcher_mock
         self.cn._MqttClient = _MqttClient_mock
         self.cn._send_heartbeat = _send_heartbeat_mock
@@ -1045,6 +1053,7 @@ class TestConnectorRun(TestClassWithFixtures):
         _send_heartbeat_mock = MagicMock()
 
         self.cn = Connector(
+            version="0.0.1",
             MqttClient=MagicMock,
             heartbeat_interval=0.1,
             # Without this we would get a warning.
@@ -1079,7 +1088,7 @@ class TestConnectorHandleIncomingMqttMsg(TestClassWithFixtures):
         os.environ["MQTT_BROKER_HOST"] = self.test_MQTT_BROKER_HOST
         os.environ["MQTT_BROKER_PORT"] = self.test_MQTT_BROKER_PORT
 
-        self.cn = Connector()
+        self.cn = Connector(version="0.0.1")
 
         # Overload some attributes/methods for testing.
         self.cn.MQTT_TOPIC_DATAPOINT_MAP = "tpyco/datapoint_map"
@@ -1163,7 +1172,7 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
         os.environ["MQTT_BROKER_HOST"] = self.test_MQTT_BROKER_HOST
         os.environ["MQTT_BROKER_PORT"] = self.test_MQTT_BROKER_PORT
 
-        self.cn = Connector()
+        self.cn = Connector(version="0.0.1")
         self.cn.datapoint_map = {"sensor": {}, "actuator": {}}
         # This is the name of the logger used in pyconnector_template.py
         self.logger_name = "pyconnector"
@@ -1384,7 +1393,7 @@ class TestConnectorUpdateAvailableDatapoints(TestClassWithFixtures):
         os.environ["MQTT_BROKER_HOST"] = self.test_MQTT_BROKER_HOST
         os.environ["MQTT_BROKER_PORT"] = self.test_MQTT_BROKER_PORT
 
-        self.cn = Connector()
+        self.cn = Connector(version="0.0.1")
 
         # Overload some attributes for testing.
         self.cn.mqtt_client = MagicMock()
@@ -1533,7 +1542,7 @@ class TestConnectorSendHeartbeat(TestClassWithFixtures):
         os.environ["MQTT_BROKER_HOST"] = self.test_MQTT_BROKER_HOST
         os.environ["MQTT_BROKER_PORT"] = self.test_MQTT_BROKER_PORT
 
-        self.cn = Connector()
+        self.cn = Connector(version="0.0.1")
         self.cn._heartbeat_interval = 22.1
         self.cn.mqtt_client = MagicMock()
 

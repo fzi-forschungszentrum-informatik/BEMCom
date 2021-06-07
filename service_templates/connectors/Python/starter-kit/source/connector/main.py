@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 """
+__version__="0.0.1"
+
 import os
 import json
 import logging
@@ -308,5 +310,5 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
 
 
 if __name__ == "__main__":
-    connector = Connector()
+    connector = Connector(version=__version__)
     connector.run()

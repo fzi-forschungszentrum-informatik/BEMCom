@@ -59,7 +59,7 @@ class MQTTHandler(logging.StreamHandler):
 
     def emit(self, record):
         """
-        Publish log recored on MQTT broker.
+        Publish log record on MQTT broker.
 
         Parameters
         ----------
@@ -149,19 +149,23 @@ class SensorFlow():
         msg["payload"]["timestamp"] = ts_utc_now
 
         # Send raw msg to raw message DB if activated in settings.
-        # Handle bytes, as these are not JSON serializable.
         if self.SEND_RAW_MESSAGE_TO_DB == "TRUE":
-            payload = msg["payload"].copy()
-            # TODO: This fails for dicts that contain bytes.
-            # An alternative could be to make everything a string.
-            if isinstance(payload["raw_message"], (bytes, bytearray)):
-                payload["raw_message"] = {
-                    "bytes": payload["raw_message"].decode()
-                }
-
+            # Add version number of connector too, this allows us to identify
+            # the used connector once reprocessing messages.
+            #
+            # The payload here is the payload of the internal message object,
+            # which we don not want to modify to provide exactly the same
+            # data as during the initial run while reprocessing the message.
+            # Hence we add the connection version one level up.
+            mqtt_payload = {
+                "payload": msg["payload"].copy(),
+                "connector_version": self.version,
+            }
             topic = self.MQTT_TOPIC_RAW_MESSAGE_TO_DB
+            # This fails if the raw_message is or contains bytes.
+            # Convert raw_message to string in parse_raw_msg in such cases.
             self.mqtt_client.publish(
-                payload=json.dumps(payload),
+                payload=json.dumps(mqtt_payload),
                 topic=topic,
                 qos=2,  # Ensures the message is received by the raw msg DB.
             )
@@ -523,6 +527,7 @@ class Connector():
 
     def __init__(
             self,
+            version,
             datapoint_map=None,
             available_datapoints=None,
             DeviceDispatcher=None,
@@ -533,6 +538,10 @@ class Connector():
         """
         Parameters
         ----------
+        version : string
+            The version number of the connector, e.g. "0.21.1"
+            The version number is stored in the raw message DB to allow
+            reprocessing with the correct version.
         datapoint_map : dict of dicts, optional.
             The initial datapoint_map before updating per MQTT. Format is
             specified in the class attribute docstring above.
@@ -558,6 +567,7 @@ class Connector():
             and sending a heartbeat signal. Defaults to 30 seconds.
         """
         logger.info("Initiating Connector")
+        self.version = version
 
         # Store the class arguements that are used for run later.
         logger.debug("Processing enviornment variables.")
