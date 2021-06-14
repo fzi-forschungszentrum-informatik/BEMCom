@@ -170,7 +170,7 @@ Follow the following steps while contributing to the connector:
 
   
 
-* Update the image name and tag in  [./build_docker_image.sh](./build_docker_image.sh) and execute the shell script to build an updated image. 
+* Update the image name and tag in  [./build_docker_image.sh](./build_docker_image.sh) and [source/api/api_main/settings.py](source/api/api_main/settings.py) and execute the shell script to build an updated image.
 
     ```bash
     # This will fail if not all tests are passed.
