@@ -165,7 +165,7 @@ Follow the following steps while contributing to the connector:
 * After everything is ready check that service also works in production mode by executing:
 
   ```bash
-  DJANGO_DEBUG=FALSE docker-compose up
+  DJANGO_DEBUG=FALSE docker-compose up --build
   ```
 
   
