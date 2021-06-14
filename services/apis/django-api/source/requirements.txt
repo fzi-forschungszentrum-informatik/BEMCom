@@ -3,7 +3,7 @@ Django==3.1.*
 channels==3.0.*
 django-guardian==2.3.*
 djangorestframework==3.12.*
-drf-spectacular==0.11.*
+drf-spectacular==0.17.*
 django-filter==2.4.*
 
 # Required for communication with other services.
@@ -14,7 +14,7 @@ pytest
 pytest-django
 
 # To parse settings from .env files.
-python-dotenv==0.15.*
+python-dotenv==0.17.*
 
 # Production servers.
 daphne==3.0.*

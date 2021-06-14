@@ -8,6 +8,21 @@ from ems_utils.message_format.models import DatapointSetpointTemplate
 from ems_utils.message_format.models import DatapointScheduleTemplate
 from ems_utils.timestamp import datetime_from_timestamp, timestamp_utc_now
 
+
+try:
+    # Define a Integer field that is also of format int64 in OpenAPI schema.
+    from drf_spectacular.types import OpenApiTypes
+    from drf_spectacular.utils import extend_schema_field
+    
+    @extend_schema_field(OpenApiTypes.INT64)
+    class Int64Field(serializers.IntegerField):
+        pass
+except ModuleNotFoundError:
+    # Fallback to normal int field if drf_spectacular is not installed.
+    class Int64Field(serializers.IntegerField):
+        pass
+     
+
 class GenericValidators():
     """
     Generic functions to validate the fields during deserialization.
@@ -353,7 +368,7 @@ class DatapointValueSerializer(serializers.Serializer):
         allow_null=True,
         help_text=DatapointValueTemplate.value.field.help_text,
     )
-    timestamp = serializers.IntegerField(
+    timestamp = Int64Field(
         allow_null=False,
         help_text=DatapointValueTemplate.timestamp.field.help_text,
     )
@@ -385,7 +400,7 @@ class DatapointScheduleItemSerializer(serializers.Serializer):
     """
     Represents the optimized actuator value for one interval in time.
     """
-    from_timestamp = serializers.IntegerField(
+    from_timestamp = Int64Field(
         allow_null=True,
         help_text=(
             "The time in milliseconds since 1970-01-01 UTC that the value "
@@ -394,7 +409,7 @@ class DatapointScheduleItemSerializer(serializers.Serializer):
             "the controller."
         ),
     )
-    to_timestamp = serializers.IntegerField(
+    to_timestamp = Int64Field(
         allow_null=True,
         help_text=(
             "The time in milliseconds since 1970-01-01 UTC that the value "
@@ -438,7 +453,7 @@ class DatapointScheduleSerializer(serializers.Serializer):
         allow_null=False,
         help_text=DatapointScheduleTemplate.schedule.field.help_text,
     )
-    timestamp = serializers.IntegerField(
+    timestamp = Int64Field(
         allow_null=False,
         help_text=DatapointScheduleTemplate.timestamp.field.help_text,
     )
@@ -469,7 +484,7 @@ class DatapointSetpointItemSerializer(serializers.Serializer):
     """
     Represents the user demand for one interval in time.
     """
-    from_timestamp = serializers.IntegerField(
+    from_timestamp = Int64Field(
         allow_null=True,
         help_text=(
             "The time in milliseconds since 1970-01-01 UTC that the setpoint "
@@ -478,7 +493,7 @@ class DatapointSetpointItemSerializer(serializers.Serializer):
             "the controller."
         ),
     )
-    to_timestamp = serializers.IntegerField(
+    to_timestamp = Int64Field(
         allow_null=True,
         help_text=(
             "The time in milliseconds since 1970-01-01 UTC that the setpoint "
@@ -557,7 +572,7 @@ class DatapointSetpointSerializer(serializers.Serializer):
         allow_null=True,
         help_text=DatapointSetpointTemplate.setpoint.field.help_text,
     )
-    timestamp = serializers.IntegerField(
+    timestamp = Int64Field(
         allow_null=False,
         help_text=DatapointSetpointTemplate.timestamp.field.help_text,
     )
