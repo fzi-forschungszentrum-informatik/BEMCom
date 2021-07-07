@@ -1,32 +1,28 @@
 # Modbus TCP Connector Gen24
 
-This is a connector to communicate with Devices over ModbusTCP. A short introduction to Modbus can e.g. be found [here](https://www.csimn.com/CSI_pages/Modbus101.html).
+This is a Modbus connector specifically for Fronius GEN24 inverters. Manufacturer's information can be found [here](https://www.fronius.com/de/solarenergie/installateure-partner/technische-daten/alle-produkte/anlagen-monitoring/offene-schnittstellen/modbus-tcp?id=a7db8a37-85fb-412d-8c06-9de458400f59).
 
-The following Modbus function codes are currently supported:
-
-| Modbus Function Code | Name                  |
-| -------------------- | --------------------- |
-| 1                    | Read coil             |
-| 2                    | Read discrete input   |
-| 3                    | Read holding register |
-| 4                    | Read input register   |
-| -------------------- | ----------------------------- |
-| 5                    | Write single coil             |
-| 6                    | Write single holding register |
-
-This connector is for controlling fronius gen24 inverter. To change the power limit we the enter value 1 in WMaxLim_Ena to start operation if WMaxLim_Pct is changed.
+The reason for this special connector is the requirement to write two registers in order to change the power limit of the inverter (see below).
 
 ### Supported Devices/Gateways
 
-This connector should be able to communicate with any Modbus Device or Gateway. The following devices have been explicitly tested:
+This connector is made for Fronius Symo GEN24 devices.
 
 | Manufacturer | Model      | Tested?/Remarks? |
 | ------------ | ---------- | ---------------- |
-| Janitza      | UMG-96RM-E | Tested.          |
-| Fronisu      | Gen-24     | Tested.
+| Fronius      | Symo Gen24 | Tested.          |
 
 
 ### Configuration
+
+To set the power limit, the following registers have to be written:
+
+| Name        | Type   | Unit                   | Register |
+| ----------- | ------ | ---------------------- |----------|
+| WMaxLimPct  | uint16 | % of max power (10 kW) | 40242    |
+| WMaxLim_Ena | enum16 |                        | 40246    |
+
+When WmaxLimPct is to be written, it is multiplied by the scaling factor of 100 and WmaxLim_Ena is set to 1 automatically so you only have to set the desired percentage of the power. If you'd like to control those Modbus registers directly, it is recommended to use the generic Modbus TCP Connector instead.
 
 ##### Environment Variables
 
@@ -81,8 +77,7 @@ A JSON string is expected that is is structured like this:
     ],
     "write_register": [
     {
-        "address": 21,
-        "count": 20,
+        "address": 40242,
         "unit": 1,
         "datatypes": ">H",
         "scaling_factor": 100
