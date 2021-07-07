@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+    modbus-tcp-connector:
+        container_name: modbus-tcp-connector
+        build:
+            context: ./source
+        restart: always
+        user: "${USER_ID}:${GROUP_ID}"
+        environment:
+            - CONNECTOR_NAME=modbus-tcp-connector
+            - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}
+            - MQTT_BROKER_PORT=${MQTT_BROKER_PORT}
+            - SEND_RAW_MESSAGE_TO_DB=${SEND_RAW_MESSAGE_TO_DB}
+            - DEBUG=${DEBUG}
+            - POLL_SECONDS=${POLL_SECONDS}
+            - MODBUS_MASTER_IP=${MODBUS_MASTER_IP}
+            - MODBUS_MASTER_PORT=${MODBUS_MASTER_PORT}
+            - MODBUS_CONFIG=${MODBUS_CONFIG}
+            - MODBUS_POLL_BREAK=${MODBUS_POLL_BREAK}
+            - MODBUS_DISCONNECT_BETWEEN_POLLS=${MODBUS_DISCONNECT_BETWEEN_POLLS}
