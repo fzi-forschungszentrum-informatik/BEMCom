@@ -1,6 +1,6 @@
 # Modbus TCP Connector Gen24
 
-This is a Modbus connector specifically for Fronius GEN24 inverters. Manufacturer's information can be found [here](https://www.fronius.com/de/solarenergie/installateure-partner/technische-daten/alle-produkte/anlagen-monitoring/offene-schnittstellen/modbus-tcp?id=a7db8a37-85fb-412d-8c06-9de458400f59).
+This is a Modbus connector specifically for Fronius Symo GEN24 inverters. Manufacturer's information can be found [here](https://www.fronius.com/de/solarenergie/installateure-partner/technische-daten/alle-produkte/anlagen-monitoring/offene-schnittstellen/modbus-tcp?id=a7db8a37-85fb-412d-8c06-9de458400f59).
 
 The reason for this special connector is the requirement to write two registers in order to change the power limit of the inverter (see below).
 
@@ -8,7 +8,7 @@ The reason for this special connector is the requirement to write two registers 
 
 This connector is made for Fronius Symo GEN24 devices.
 
-| Manufacturer | Model      | Tested?/Remarks? |
+| Manufacturer | Model      | Tested/Remarks   |
 | ------------ | ---------- | ---------------- |
 | Fronius      | Symo Gen24 | Tested.          |
 
@@ -22,7 +22,7 @@ To set the power limit, the following registers have to be written:
 | WMaxLimPct  | uint16 | % of max power (10 kW) | 40242    |
 | WMaxLim_Ena | enum16 |                        | 40246    |
 
-When WmaxLimPct is to be written, it is multiplied by the scaling factor of 100 and WmaxLim_Ena is set to 1 automatically so you only have to set the desired percentage of the power. If you'd like to control those Modbus registers directly, it is recommended to use the generic Modbus TCP Connector instead.
+When WmaxLimPct is to be written, the given value is multiplied by the scaling factor of 100 and WmaxLim_Ena is set to 1 automatically so you only have to set the desired percentage of the power. If you'd like to control those Modbus registers directly, it is recommended to use the generic Modbus TCP Connector instead.
 
 ##### Environment Variables
 
@@ -48,39 +48,38 @@ A JSON string is expected that is is structured like this:
 
 ```json
 {
-    "read_coils": [
-        {
-            "address": 10,
-            "count": 8,
-            "unit": 1,
-        }
-    ],
+    "read_coils": [],
     "read_discrete_inputs": [],
-    "read_holding_registers": [],
-    "read_input_registers": [
+    "read_holding_registers": [
         {
-            "address": 19000,
-            "count": 20,
+            "address": 40071,
+            "count": 46,
             "unit": 1,
-            "datatypes": ">ffffffffff",
-            "scaling_factors": {
-                "19002": 0.1
-            }
+            "datatypes":">fffffffffffffffffffffff"
+        },
+        {
+            "address": 40242,
+            "count": 1,
+            "unit":1,
+            "datatypes":">H"
         }
+
     ],
-    "write_coil": [
-    {
-        "address": 19,
-        "count": 20, 
-        "unit": 1
-    }
-    ],
+    "read_input_registers": [],
+    "write_coil": [],
     "write_register": [
     {
         "address": 40242,
         "unit": 1,
         "datatypes": ">H",
         "scaling_factor": 100
+
+    },
+    {
+        "address": 40246,
+        "unit": 1,
+        "datatypes": ">H",
+        "scaling_factor": 1
 
     }
     ]
