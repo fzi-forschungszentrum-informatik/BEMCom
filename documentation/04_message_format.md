@@ -1,46 +1,188 @@
 <font color="red">TODO: Check this, and merge documentation from final report, paper, and the API docs.</font>
 
-# Log messages (from Connector)
+# BEMCom Message Protocol
 
-### Topic:
+The BEMCom message protocol specifies how the services communicate within the application. A primary concern was to avoid restrictions on possible implementations of the services. Hence, the message protocol uses [MQTT](http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/mqtt-v3.1.1.html) to transport messages between the services, which was chosen as it is well established, robust, and open source implementations of clients exist for many platforms and programming languages (see e.g. [here](https://www.eclipse.org/paho/index.php)). While MQTT can be used to transport arbitrary strings, it is relatively common to encode the MQTT payload as [JSON](https://www.ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf) objects. The BEMCom message protocol follows this approach, as JSON objects are easy to interpret for humans, and JSON parsers should be available for any relevant programming language.
+
+The BEMCom Message Protocol consists primarily of six core message types which are used in every BEMCom application. Additionally two additional message types exist which allow the usage of controller services. For each message type a description is provided, followed by the MQTT topic on which the message type should be published. Furthermore, the general format of the messages is defined, i.e. the fields that are expected in the JSON string, including an explanation how the field value should be interpreted. Finally, an example message per corresponding message type is provided.
+
+
+
+## Core Messages
+
+The following six message types are required for every BEMCom application.
+
+### Log Message
+
+A message type emitted by a connector service to forward a log message that was written while running the connector. It is consumed by the API service and brought to display for the administrator to occasionally inspect the operation of the connector.
+
+#### Topic:
 
 ```
 <Connector_name>/logs
 ```
 
-### Format:
+Here, `<Connector_name>` should be replaced with the name of the connector as configured in the API service.
 
-The emitter field allows the identification of the logging node in Node-RED, which speeds up failure diagnostics in large flows. Can be left blanc for other connectors.
+#### Format:
 
 ```
-"payload": {
-	"timestamp": <unix timestamp in ms>,
-	"msg": <the log message text>,
-	"emitter" <The node/process/function generating the log>
-	"level" <Python log level as int>
+{
+	"timestamp": <integer>,
+	"msg": <string>,
+	"emitter" <string or null>,
+	"level" <integer>
 }
 ```
 
-### Example:
+#### Fields:
 
-```
-"payload": {
+| Key           | Value description                                            |
+| ------------- | ------------------------------------------------------------ |
+| `"timestamp"` | The time the message was logged by the connector as timestamp in milliseconds since 1970-01-01 UTC. |
+| `"msg"`       | The text of the log message.                                 |
+| `"emitter"`   | A string that supports the identification of the emitting entity, e.g. a function name. Can be `null` if not provided. |
+| `"level"`     | The severity level (i.e. log level) of the message as integer following the [python log level convention](https://docs.python.org/3/library/logging.html#logging-levels). |
+
+#### Example:
+
+```json
+{
     "timestamp": 1571843907448,
-    "msg": "TEest 112233",
-    "emitter": "cd54c61d.3064d8",
-    "level": 20,
+    "msg": "Connector running fine.",
+    "emitter": "main",
+    "level": 20
 }
 ```
 
-# Heartbeat (from Connector)
 
-### Topic:
+
+### Heartbeat
+
+A message type emitted by a connector service to indicate that it is running as expected. Is is consumed by the API service and brought to display for the administrator to occasionally verify that the connector operates as intended.
+
+#### Topic:
 
 ```
 <Connector_name>/heartbeat
 ```
 
-### Format:
+Here, `<Connector_name>` should be replaced with the name of the connector as configured in the API service.
+
+#### Format:
+
+```
+{
+    "this_heartbeats_timestamp": <integer>,
+    "next_heartbeats_timestamp": <integer>
+}
+```
+
+#### Fields:
+
+| Key                           | Value description                                            |
+| ----------------------------- | ------------------------------------------------------------ |
+| `"this_heartbeats_timestamp"` | The time the heartbeat message was created by the connector as timestamp in milliseconds since 1970-01-01 UTC. |
+| `"next_heartbeats_timestamp"` | The time the connector will create the following heartbeat message in milliseconds since 1970-01-01 UTC. |
+
+#### Example:
+
+```json
+{
+    "this_heartbeats_timestamp": 1571927361261,
+    "next_heartbeats_timestamp": 1571927366261
+}
+```
+
+
+
+### Available Datapoints
+
+A message type emitted by a connector that contains all datapoints provided by the devices connected to the connector. Connectors may build up the list of available datapoints in an iterative fashion, e.g. by listening to the incoming data of the devices. The message thus represents the currently best knowledge of the connector. Once new datapoints have been identified, an updated message with available datapoints must be published. The message is used by the API service to present all available datapoints to the administrator. Based on the available datapoints, the administrator selects a set of datapoints which should be processed by the connector service.
+
+#### Topic:
+
+```
+<Connector_name>/available_datapoints
+```
+
+Here, `<Connector_name>` should be replaced with the name of the connector as configured in the API service.
+
+#### Format:
+
+```
+{
+    "sensor": {
+        <string>: <string>,
+        <string>: <string>,
+        ...
+    },
+    "actuator": {
+        <string>: <string>,
+        <string>: <string>,
+        ...
+    }
+}
+```
+
+#### Fields:
+
+| Key                           | Value description                                            |
+| ----------------------------- | ------------------------------------------------------------ |
+| `"sensor"`                    | An object containing one entry for every available sensor datapoint. If no datapoints are known it must be an empty object. The entry should be formated as `{internal_dp_id}: {example_value}` , where `{internal_dp_id}` is some arbitrary but unique string that the connector defines and uses to identify a particular datapoint. `{example_value}` is an arbitrarily chosen value that the datapoint had at one time. It should be refrained from sending available datapoint message if only `{example_value}` has been changed, to prevent flooding the API service. |
+| `"next_heartbeats_timestamp"` | Similar to `"sensor"` but for actuator datapoints respectively. |
+
+
+
+#### Example:
+
+```json
+{
+    "sensor": {
+        "Channel__P__value__0": "0.122",
+        "Channel__P__unit__0": "kW"
+    },
+    "actuator": {
+        "Channel__P__setpoint__0": "0.4"
+    }
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Heartbeat
+
+#### Topic:
+
+```
+<Connector_name>/heartbeat
+```
+
+##### Format:
 
 ```
 "payload": {
