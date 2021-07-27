@@ -11,7 +11,6 @@
       * [ ] How to use the AdminUI
       * [ ] how to use the API.
     * [ ] Interactive version with Play With Docker?
-  * [ ] Message Format
 
 * [ ] Services
 
@@ -38,4 +37,3 @@
     * [ ] Demo Device
       * [ ] Implement in FastAPI
       * [ ] Should contain some sensor and some actuator data points.
-  
