@@ -513,9 +513,9 @@ class DatapointSetpointItemSerializer(serializers.Serializer):
             "(for continuous datapoints) as defined in this setpoint item.\n"
             "Furthermore, the value of `preferred_value` must match the "
             "requirements of the actuator datapoint, i.e. it must be in "
-            "`acceptable_values` (for discrete datapoints) or not between "
+            "`acceptable_values` (for discrete datapoints) or between "
             "`min_value` and `max_value` (for continuous datapoints) as "
-            "specified in the correpsonding fields of the actuator datapoint."
+            "specified in the corresponding fields of the actuator datapoint."
         ),
     )
     acceptable_values = serializers.ListField(
@@ -530,7 +530,7 @@ class DatapointSetpointItemSerializer(serializers.Serializer):
             "realized values the user is willing to accept. Consider e.g. the "
             "scenario where a room with a discrete heating control has "
             "currently 16°C. If the user specified this field with [20, 21, 22]"
-            "it means that only these three temperature values are acceptable. "
+            " it means that only these three temperature values are acceptable. "
             "This situation would cause the controller to immediately send the "
             "preferred_value to the actuator datapoint, even if the schedule "
             "would define a value that lays within the acceptable range."
@@ -541,7 +541,7 @@ class DatapointSetpointItemSerializer(serializers.Serializer):
         required=False,
         help_text=(
             "Similar to `acceptable_values` above but defines the minimum value"
-            "the user is willing to accept for continous datapoints."
+            "the user is willing to accept for continuous datapoints."
         ),
     )
     max_value = serializers.FloatField(
@@ -549,7 +549,7 @@ class DatapointSetpointItemSerializer(serializers.Serializer):
         required=False,
         help_text=(
             "Similar to `acceptable_values` above but defines the maximum value"
-            "the user is willing to accept for continous datapoints."
+            "the user is willing to accept for continuous datapoints."
         ),
     )
 

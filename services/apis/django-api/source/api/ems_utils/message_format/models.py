@@ -349,7 +349,7 @@ class DatapointScheduleTemplate(models.Model):
     """
     The schedule is a list of actuator values computed by an optimization
     algorithm that should be executed on the specified actuator datapoint
-    as long as the setpoint constraints is not violated. Executing
+    as long as the setpoint constraints are not violated. Executing
     setpoints requires a controller service in BEMCom.
     """
 
@@ -417,8 +417,8 @@ class DatapointSetpointTemplate(models.Model):
     """
     The setpoint specifies the demand of the users of the system. The setpoint
     must hold a preferred_value which is the value the user would appreciate
-    most, and can additially define flexibility of values the user would also
-    accept. The setpoint message is used by optimiazation algorithms as
+    most, and can additionally define flexibility of values the user would also
+    accept. The setpoint message is used by optimization algorithms as
     constraints while computing schedules, as well as by controller services
     to ensure that the demand of the user is always met.
     """
