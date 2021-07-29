@@ -16,17 +16,25 @@ import { endsWith } from 'lodash';
 export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   // settings: DataSourceInstanceSettings;
   url: string;
+  queryLimit: number | null;
+  // frequency: string | null;
+  // offset: string | null;
 
   constructor(instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>) {
     super(instanceSettings);
+    console.log('constructor of DataSource instanceSsettings: ', instanceSettings);
+
     // this.settings = instanceSettings;
     this.url = instanceSettings.url || '';
+    this.queryLimit = instanceSettings.jsonData.queryLimit || null;
+    // this.frequency = null;
+    // this.offset = null;
   }
 
   async doRequest(query: { [k: string]: any }) {
     // type: MyQuery
     // build url
-    let url = '';
+    let url: string = '';
     if (query.getMeta) {
       // get meta data ignore other query parameters
       url = this.url + '/datapoint/';
@@ -41,9 +49,15 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     }
 
     // build query parameters
+    const frequency: string | null = query.frequency || null;
+    const offset: string | null = query.offset || null;
+
     const params = {
       timestamp__gte: query.from,
       timestamp__lte: query.to,
+      limit: this.queryLimit,
+      frequency: frequency,
+      offset: offset,
     };
 
     try {
@@ -67,13 +81,13 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     const to = range!.to.valueOf();
 
     let targets = options.targets;
-    targets.forEach((target) => {
+    targets.forEach(target => {
       target.from = from;
       target.to = to;
     });
 
-    const promises = targets.map((target) =>
-      this.doRequest(target).then((response) => {
+    const promises = targets.map(target =>
+      this.doRequest(target).then(response => {
         if (!response || response.data === undefined || response.data.length === 0) {
           return [];
         }
@@ -195,7 +209,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       })
     );
 
-    return Promise.all(promises).then((data) => ({ data }));
+    return Promise.all(promises).then(data => ({ data }));
   }
 
   async testDatasource() {

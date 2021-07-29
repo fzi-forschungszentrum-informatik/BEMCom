@@ -30,6 +30,29 @@ export class QueryEditor extends PureComponent<Props> {
       { label: 'schedule', value: 1, description: 'currently active schedule' },
       { label: 'setpoint', value: 2, description: 'latest setpoint' },
     ],
+    frequency: '',
+    frequency_value: '',
+    frequency_unit: { label: '-', value: null },
+    frequency_unit_options: [
+      { label: '-', value: null },
+      { label: 'milliseconds', value: 'milliseconds' },
+      { label: 'seconds', value: 'seconds' },
+      { label: 'minutes', value: 'minutes' },
+      { label: 'hours', value: 'hours' },
+      { label: 'days', value: 'days' },
+    ],
+    offset: '',
+    offset_value: '',
+    offset_unit: { label: '-', value: null },
+    offset_unit_options: [
+      { label: '-', value: null },
+      { label: 'milliseconds', value: 'milliseconds' },
+      { label: 'seconds', value: 'seconds' },
+      { label: 'minutes', value: 'minutes' },
+      { label: 'hours', value: 'hours' },
+      { label: 'days', value: 'days' },
+    ],
+
     custom_user_scaling: false,
     custom_user_name: false,
     changed_input_style: (changed: boolean) => (changed ? { backgroundColor: 'darkslategrey' } : {}),
@@ -94,6 +117,70 @@ export class QueryEditor extends PureComponent<Props> {
     onChange({ ...query, displayName });
   };
 
+  onFrequencyValueChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { onChange, query, onRunQuery } = this.props;
+
+    let state = { ...this.state };
+    state.frequency_value = event.target.value;
+    let frequency = '';
+    if (state.frequency_value != '' && state.frequency_unit.value != null) {
+      frequency = state.frequency_value + ' ' + state.frequency_unit.value;
+    }
+    state.frequency = frequency;
+    this.setState(state);
+
+    onChange({ ...query, frequency });
+    onRunQuery();
+  };
+
+  onFrequencyUnitChange = (event: any) => {
+    const { onChange, query, onRunQuery } = this.props;
+
+    let state = { ...this.state };
+    state.frequency_unit = event;
+    let frequency = '';
+    if (event.value != null && state.frequency_value != '') {
+      frequency = state.frequency_value + ' ' + state.frequency_unit.value || '';
+    }
+    state.frequency = frequency;
+    this.setState(state);
+
+    onChange({ ...query, frequency });
+    onRunQuery();
+  };
+
+  onOffsetValueChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { onChange, query, onRunQuery } = this.props;
+
+    let state = { ...this.state };
+    state.offset_value = event.target.value;
+    let offset = '';
+    if (state.offset_value != '' && state.offset_unit.value != null) {
+      offset = state.offset_value + ' ' + state.offset_unit.value;
+    }
+    state.offset = offset;
+    this.setState(state);
+
+    onChange({ ...query, offset });
+    onRunQuery();
+  };
+
+  onOffsetUnitChange = (event: any) => {
+    const { onChange, query, onRunQuery } = this.props;
+
+    let state = { ...this.state };
+    state.offset_unit = event;
+    let offset = '';
+    if (event.value != null && state.offset_value != '') {
+      offset = state.offset_value + ' ' + state.offset_unit.value || '';
+    }
+    state.offset = offset;
+    this.setState(state);
+
+    onChange({ ...query, offset });
+    onRunQuery();
+  };
+
   onScalingFactorChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { onChange, query } = this.props;
 
@@ -118,7 +205,7 @@ export class QueryEditor extends PureComponent<Props> {
     onRunQuery();
   };
 
-  onKeyUp = (event: React.KeyboardEvent<HTMLDivElement>): void => {
+  onKeyUp = (event: React.KeyboardEvent<HTMLInputElement>): void => {
     // 'keypress' event misbehaves on mobile so we track 'Enter' key via 'keydown' event
     if (event.key === 'Enter') {
       event.preventDefault();
@@ -148,7 +235,7 @@ export class QueryEditor extends PureComponent<Props> {
                 value={query.datapoint}
                 maxMenuHeight={140}
                 // defaultValue={this.state.datapoint_default}
-                onChange={(e) => this.onDatapointChange(e)}
+                onChange={e => this.onDatapointChange(e)}
                 options={this.state.datapoint_options}
               />
             </div>
@@ -166,13 +253,65 @@ export class QueryEditor extends PureComponent<Props> {
                 value={query.datatype}
                 maxMenuHeight={140}
                 // defaultValue={this.state.datatype_options[0]}
-                onChange={(e) => this.onDatatypeChange(e)}
+                onChange={e => this.onDatatypeChange(e)}
                 options={this.state.datatype_options}
               />
             </div>
           </div>
 
           {/* Second Row */}
+          <div className="gf-form">
+            <div className="gf-form" style={{ marginBottom: 0 }}>
+              <FormField
+                label="Frequency"
+                disabled={query.getMeta}
+                labelWidth={10}
+                inputWidth={5}
+                // onKeyUp={this.onKeyUp}
+                onChange={e => this.onFrequencyValueChange(e)}
+                value={this.state.frequency_value}
+                placeholder=""
+                tooltip="(optional) set a frequency for the queried time range."
+              />
+
+              <Select
+                width={20}
+                placeholder="time unit"
+                disabled={query.getMeta}
+                value={this.state.frequency_unit}
+                maxMenuHeight={140}
+                // defaultValue={this.state.datapoint_default}
+                onChange={e => this.onFrequencyUnitChange(e)}
+                options={this.state.frequency_unit_options}
+              />
+            </div>
+            <div className="gf-form" style={{ marginBottom: 0 }}>
+              <FormField
+                label="Offset"
+                disabled={query.getMeta}
+                labelWidth={10}
+                inputWidth={5}
+                // onKeyUp={this.onKeyUp}
+                onChange={e => this.onOffsetValueChange(e)}
+                value={this.state.offset_value}
+                placeholder=""
+                tooltip="(optional) set an offset around the timestamps defined by the frquency."
+              />
+
+              <Select
+                width={20}
+                placeholder="time unit"
+                disabled={query.getMeta}
+                value={this.state.offset_unit}
+                maxMenuHeight={140}
+                // defaultValue={this.state.datapoint_default}
+                onChange={e => this.onOffsetUnitChange(e)}
+                options={this.state.offset_unit_options}
+              />
+            </div>
+          </div>
+
+          {/* Third Row */}
 
           <div className="gf-form" style={{ marginLeft: 20 }}>
             <span className="gf-form">
@@ -183,7 +322,7 @@ export class QueryEditor extends PureComponent<Props> {
                 labelWidth={8}
                 inputWidth={10}
                 onKeyUp={this.onKeyUp}
-                onChange={(e) => this.onDisplayNameChange(e)}
+                onChange={e => this.onDisplayNameChange(e)}
                 value={query.displayName}
                 placeholder=""
                 tooltip="Custom name for this datapoint"
@@ -196,7 +335,7 @@ export class QueryEditor extends PureComponent<Props> {
                 labelWidth={8}
                 inputWidth={10}
                 onKeyUp={this.onKeyUp}
-                onChange={(e) => this.onScalingFactorChange(e)}
+                onChange={e => this.onScalingFactorChange(e)}
                 value={query.scalingFactor}
                 placeholder=""
                 tooltip="Custom scaling factor for this datapoint"

@@ -7,6 +7,8 @@ export interface MyQuery extends DataQuery {
   datatype: MyDatatype;
   displayName: string;
   scalingFactor: number;
+  frequency: string;
+  offset: string;
 
   nQueries: number;
   from?: number;
@@ -29,6 +31,7 @@ export interface MyDataSourceOptions extends DataSourceJsonData {
   useBasicAuth?: boolean;
   basicAuthUser?: string;
   tlsSkipVerify?: boolean;
+  queryLimit?: number;
 
   user?: string;
 }
