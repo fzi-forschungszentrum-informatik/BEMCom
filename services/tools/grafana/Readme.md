@@ -52,8 +52,13 @@ A query can either display meta data on the API or timeseries data.
 
 **Meta data** is toggled by a switch. The received table-like data gives information on all available datapoints.
 
-**Timeseries data** can be of the above described data types. Simply choose the datapoint by its short name and the datatype.
-The dropdown also features an autoselection when typing. A custom name and scaling factor can optionally be defined. Clicjk "apply" or enter to commit changes here.
+**Timeseries data** can be of the above described data types.
+
+- Simply choose the datapoint by its short name and the datatype.
+  The dropdown also features an autoselection when typing. <br>
+- Optionally you can define a frequency of the queried entries and an offset of the frequency to define the time range over which the average is taken.
+  Warning: This option is not implemented in BEMCom, yet (Juli 2021). <br>
+- A custom name and scaling factor can optionally be defined. Click "apply" or press enter to commit changes here.
 
 ### Development
 
@@ -65,11 +70,13 @@ You need to have node.js and yarn installed for the following commands. If you h
 conda create -n node -c conda-forge nodejs==12.* yarn
 ```
 
-You can...
+To see your changes in a local grafana instance, change the `docker-compose.yml` file to development mode (see comments in the file) and start grafana as docker container.
+
+Then, to actually work on the plugin:
 
 - Install all needed modules for development from within the `bemcom-django-api` folder with <br>
   `yarn install`
-- Make your changes to the source files under `./graf_data/plugins/bemcom-django-api/src`
+- Make your changes to the source files under `./source/grafana_plugins/bemcom-django-api/src`
 - Hot build the plugin to see changes in the browser on reload with `yarn dev --watch`
 - Run the tests with `yarn test`
 - Build the plugin for production with `yarn build`
@@ -89,9 +96,10 @@ Further instructions about working with Grafana:
 
 ### Changelog
 
-| Tag   | Changes                                                                                       |
-| ----- | --------------------------------------------------------------------------------------------- |
-| 0.1.0 | Initial version                                                                               |
-| 0.1.1 | Simpler setpoint selection                                                                    |
-| 0.1.2 | Basic authentication enabled. Skipping TLS verification enabled for self signed certificates. |
-| 0.1.3 | Additional fields for custom name, scaling factor and datapoint description                   |
+| Tag   | Changes                                                                                                                   |
+| ----- | ------------------------------------------------------------------------------------------------------------------------- |
+| 0.1.0 | Initial version                                                                                                           |
+| 0.1.1 | Simpler setpoint selection                                                                                                |
+| 0.1.2 | Basic authentication enabled. Skipping TLS verification enabled for self signed certificates.                             |
+| 0.1.3 | Additional fields for custom name, scaling factor and datapoint description                                               |
+| 0.1.4 | Optional query fields for selecting a frequency and an offset. Define a query-entry limit to prevent BEMCom from crashing |
