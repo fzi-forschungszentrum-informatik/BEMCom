@@ -12,10 +12,10 @@ This service provides a Grafana instance with a custom plug-in that allows direc
 
 ##### Environment Variables
 
-| Enironment Variable        | Example Value | Usage/Remarks              |
-| -------------------------- | ------------- | -------------------------- |
-| GF_SECURITY_ADMIN_USER     | admin         | The default admin user     |
-| GF_SECURITY_ADMIN_PASSWORD | very!secret&  | The default admin password |
+| Enironment Variable        | Example Value | Usage/Remarks                                    |
+| -------------------------- | ------------- | ------------------------------------------------ |
+| GF_SECURITY_ADMIN_USER     | admin         | The default admin user. Defaults to `bemcom`     |
+| GF_SECURITY_ADMIN_PASSWORD | very!secret&  | The default admin password. Defaults to `bemcom` |
 
 ##### Volumes
 
