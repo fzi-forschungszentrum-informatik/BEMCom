@@ -21,14 +21,17 @@ Please note:
     and crash the django app with every request. Even if not, the chunks
     will likely contain many copies of the existing messages.
 """
+import os
 import bz2
 import json
 import logging
 import argparse
 from pathlib import Path
+from multiprocessing import Pool
 from datetime import date, datetime, timedelta, timezone
 
 import requests
+from tqdm import tqdm
 
 logging.basicConfig(
     level=logging.INFO,
@@ -88,7 +91,7 @@ def backup_datapoint_metadata(args, auth):
     datapoint_metadata = response.json()
 
     # Store the metadata on disk.
-    out_fn = "all_datapoint_metadata_%s.json.bz2" % datetime.utcnow().date()
+    out_fn = "datapoint_metadata_%s.json.bz2" % datetime.utcnow().date()
     out_fnp = args.data_directory / out_fn
     with open(out_fnp, "wb") as f:
         out_json = json.dumps(datapoint_metadata, indent=4)
@@ -97,6 +100,34 @@ def backup_datapoint_metadata(args, auth):
     # Compute the IDs which will be used later to fetch the messages.
     datapoint_ids = [dp["id"] for dp in datapoint_metadata]
     return datapoint_ids
+
+def load_datapoint_message(cv):
+    """
+    The worker that loads, compresses and saves the datapoint messages for one
+    day.
+
+    Arguments:
+    ----------
+    cv : dict
+        The chunk_var dict containing all relevant information required to load
+        data for one datapoint_id, message_type and date.
+        As defined in backup_datapoint_messages.
+    """
+    logger.debug("Fetching datapoint data from: %s", cv["dp_data_url"])
+    response = requests.get(cv["dp_data_url"], auth=cv["auth"])
+
+    # Verify that the request returned OK.
+    if response.status_code != 200:
+        logger.error("Request failed: %s", response)
+        raise RuntimeError(
+            "Could not fetch datapoint data from url: %s" % cv["dp_data_url"]
+        )
+
+    # Store the data.
+    datapoint_data = response.json()
+    out_json = json.dumps(datapoint_data, indent=4)
+    with open(cv["out_fnp"], "wb") as f:
+        f.write(bz2.compress(out_json.encode()))
 
 def backup_datapoint_messages(args, auth, datapoint_ids):
     """
@@ -114,58 +145,66 @@ def backup_datapoint_messages(args, auth, datapoint_ids):
         A list of datapoint IDs for which the message should be backed up.
     """
     # Create a list all chunks to backup.
+    logger.info("Computing data chunks to backup.")
     chunk_vars = []
     date = args.start_date
-    while date < args.end_date:
+    skipped_chunks = 0
+    while date <= args.end_date:
+        # Create a folder for each day to keep the mess on HDD a bit sorted.
+        out_directory = args.data_directory / str(date)
+        if not out_directory.is_dir():
+            os.mkdir(out_directory)
+
         for datapoint_id in sorted(datapoint_ids):
             for message_type in ["value", "setpoint", "schedule"]:
+
+                # Compute filenames and full filename incl. path.
+                out_fn = (
+                    "dpdata_{}_{}_{}.json.bz2"
+                    .format(datapoint_id, date, message_type)
+                )
+                out_fnp = out_directory / out_fn
+
+                # If chunk file exists do not load again.
+                if out_fnp.is_file():
+                    skipped_chunks += 1
+                    continue
+
                 chunk_var = {
                     "date": date,
                     "datapoint_id": datapoint_id,
                     "message_type": message_type,
                     "ts_chunk_start": date_to_timestamp(date),
                     "ts_chunk_end": date_to_timestamp(date+timedelta(days=1)),
+                    "out_fn": out_fn,
+                    "out_fnp": out_fnp,
+                    "auth": auth,
                 }
+
+                # This URL should request a chunk containing data for one day.
+                # Well at least if the API implements the timestamp filters.
+                dp_data_url = args.target_url
+                dp_data_url += "/datapoint/{datapoint_id}/{message_type}/"
+                dp_data_url += "?timestamp__gte={ts_chunk_start}"
+                dp_data_url += "&timestamp__lt={ts_chunk_end}"
+                dp_data_url = dp_data_url.format(**chunk_var)
+                chunk_var["dp_data_url"] = dp_data_url
+
                 chunk_vars.append(chunk_var)
         date += timedelta(days=1)
 
-    total_chunks = len(chunk_vars)
-    for i, chunk_var in enumerate(chunk_vars):
-        out_fn = (
-            "dpdata_{datapoint_id}_{date}_{message_type}.json.bz2"
-            .format(**chunk_var)
-        )
-        out_fnp = args.data_directory / out_fn
-        logger.info(
-            "Processing chunk %s of %s: %s", *(i+1, total_chunks, out_fn)
-        )
-
-        # File exists.
-        if out_fnp.is_file():
-            continue
-
-        # This should request a chunk containing data for one day.
-        dp_data_url = args.target_url
-        dp_data_url += "/datapoint/{datapoint_id}/{message_type}/"
-        dp_data_url += "?timestamp__gte={ts_chunk_start}"
-        dp_data_url += "&timestamp__lt={ts_chunk_end}"
-        dp_data_url = dp_data_url.format(**chunk_var)
-
-        logger.debug("Fetching datapoint data from: %s", dp_data_url)
-        response = requests.get(dp_data_url, auth=auth)
-
-        # Verify that the request returned OK.
-        if response.status_code != 200:
-            logger.error("Request failed: %s", response)
-            raise RuntimeError(
-                "Could not fetch datapoint data from url: %s" % dp_data_url
-            )
-
-        # Store the data.
-        datapoint_data = response.json()
-        out_json = json.dumps(datapoint_data, indent=4)
-        with open(out_fnp, "wb") as f:
-            f.write(bz2.compress(out_json.encode()))
+    chunks_to_load = len(chunk_vars)
+    logger.info(
+        "User requested %s chunks. %s chunks exist already. Starting download.",
+        *(chunks_to_load+skipped_chunks, skipped_chunks)
+    )
+    # 8 Processes seems to be good compromise for decent download rates.
+    pool = Pool(processes=8)
+    for _ in tqdm(
+        pool.imap(load_datapoint_message, chunk_vars), total=chunks_to_load
+    ):
+        pass
+    logger.info("Finished loading %s chunks.", chunks_to_load)
 
 def main(args):
     """
