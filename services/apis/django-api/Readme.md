@@ -1,4 +1,4 @@
-Django API
+# Django API
 
 This is the reference implementation for an BEMCom API service.
 
@@ -97,6 +97,24 @@ If you have added a clean new database you need to initialize the database.
     ```bash
     docker exec -it django-api /source/api/manage.py createsuperuser
     ```
+
+
+
+### Backup & Restore
+
+**Starting from version 0.2.7** this container integrates a script to backup datapoint metadata and datapoint messages stored in the metadata database. The process uses the REST API and can thus be carried out from remote and is independent of the actual database used.
+
+The command reference of the corresponding script can be displayed with (on bash):
+
+```bash
+docker run bemcom/django-api:<tag_of_target_django-api> python /source/api/ems_utils/simple_db_backup.py --help
+```
+
+An example that backs up the data of 2021-08-01 to the current working directory is the following command (on bash):
+
+```bash
+docker run --rm -v ${PWD}:/data -u "$(id -u):$(id -g)" --name django-db-backup bemcom/django-api:<tag_of_target_django-api> python /source/api/ems_utils/simple_db_backup.py -b -t <URL_of_target_django-api> -s 2021-08-01 -e 2021-08-01 -d /data/ -u <username_at_target_django-api> -p <username_at_target_django-api>
+```
 
 
 

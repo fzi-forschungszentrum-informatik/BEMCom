@@ -99,6 +99,7 @@ def backup_datapoint_metadata(args, auth):
 
     # Compute the IDs which will be used later to fetch the messages.
     datapoint_ids = [dp["id"] for dp in datapoint_metadata]
+    logger.info("Fetched metadata for %s datapoints", len(datapoint_ids))
     return datapoint_ids
 
 def load_datapoint_message(cv):
