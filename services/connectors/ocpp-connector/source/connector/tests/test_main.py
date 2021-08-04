@@ -146,27 +146,27 @@ class TestClientConnection(unittest.TestCase):
                      main loop has caused an unexpected exception. Shuting down.
             This is the normal behaviour as
         """
-        # Creat a mock for the mqtt client that keeps the broker side
+        # Create a mock for the mqtt client that keeps the broker side
         # thread active for a bit, so it appears that the process is healthy.
-        # def fake_loop_forever():
-        #     sleep(0.05)
-        # _MqttClient_mock = RecursiveMagicMock()
-        # _MqttClient_mock.loop_forever = fake_loop_forever
-        #
-        # cn = Connector()
-        # cn.run_sensor_flow = MagicMock()
-        # cn._MqttClient = _MqttClient_mock
-        # cn.run()
-        # OcppTestClient()
-        #
-        # # This will fail if run_sensor_flow hasn't been called
-        # # as expected or the raw_data has not been forwarded to
-        # # run_sensor_flow
-        # expected_raw_data = "test message".encode()
-        # print(cn.run_sensor_flow.call_args)
-        # actual_raw_data = cn.run_sensor_flow.call_args
-        #
-        # assert actual_raw_data == expected_raw_data
+        def fake_loop_forever():
+            sleep(0.05)
+        _MqttClient_mock = RecursiveMagicMock()
+        _MqttClient_mock.loop_forever = fake_loop_forever
+
+        cn = Connector()
+        cn.run_sensor_flow = MagicMock()
+        cn._MqttClient = _MqttClient_mock
+        cn.run()
+        OcppTestClient()
+
+        # This will fail if run_sensor_flow hasn't been called
+        # as expected or the raw_data has not been forwarded to
+        # run_sensor_flow
+        expected_raw_data = "test message".encode()
+        print(cn.run_sensor_flow.call_args)
+        actual_raw_data = cn.run_sensor_flow.call_args
+
+        assert actual_raw_data == expected_raw_data
 
 
 class TestReceiveRawMsg(unittest.TestCase):

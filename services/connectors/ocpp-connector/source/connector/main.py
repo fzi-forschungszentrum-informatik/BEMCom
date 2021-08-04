@@ -13,7 +13,7 @@ import asyncio
 import websockets
 from datetime import datetime
 from ocpp.routing import on
-from ocpp.v16 import ChargePoint as cp
+from ocpp.v16 import ChargePoint as OCPPChargePoint
 from ocpp.v16 import call_result
 from ocpp.v16 import call
 from pyconnector_template.pyconector_template import SensorFlow as SFTemplate
@@ -24,7 +24,7 @@ from pyconnector_template.dispatch import DispatchOnce
 
 
 logger = logging.getLogger("pyconnector")
-
+logger.setLevel(os.getenv('LOGLEVEL'))
 
 class SensorFlow(SFTemplate):
     """
@@ -76,7 +76,7 @@ class SensorFlow(SFTemplate):
         present, even if the child dicts are empty.
     """
 
-    async def receive_raw_msg(self, raw_data=None):
+    def receive_raw_msg(self, raw_data=None):
         """
         Functionality to receive a raw message from device.
 
@@ -115,7 +115,7 @@ class SensorFlow(SFTemplate):
         }
         return msg
 
-    async def parse_raw_msg(self, raw_msg):
+    def parse_raw_msg(self, raw_msg):
         """
         Functionality to receive a raw message from device.
 
@@ -165,8 +165,7 @@ class SensorFlow(SFTemplate):
         """
         timestamp = raw_msg["payload"]["timestamp"]
         raw_message = raw_msg["payload"]["raw_message"]
-        await self.cp.route_message(raw_message)
-        parsed_message = self.cp.message
+        parsed_message = raw_message
         msg = {
             "payload": {
                 "parsed_message": parsed_message,
@@ -235,11 +234,15 @@ class ActuatorFlow(AFTemplate):
         )
 
 
-class ChargePoint(cp):
+class ChargePoint(OCPPChargePoint):
+
+    def __init__(self, cp_id, ws, sensor_flow_handler):
+        super().__init__(cp_id, ws)
+        self.sensor_flow_handler = sensor_flow_handler
 
     @on('BootNotification')
     def on_boot_notification(self, charge_point_vendor, charge_point_model, **kwargs):
-        self.message = {
+        message = {
             "message": "BootNotification",
             "charge_point_vendor": charge_point_vendor,
             "charge_point_model": charge_point_model
@@ -247,9 +250,11 @@ class ChargePoint(cp):
         logger.debug(
             "Charging station sent boot notification %s,",
             *(
-                self.message
+                message
             )
         )
+        self.sensor_flow_handler(message)
+
         return call_result.BootNotificationPayload(
             current_time=datetime.utcnow().isoformat(),
             interval=10,
@@ -258,22 +263,24 @@ class ChargePoint(cp):
 
     @on('MeterValues')
     def on_meter_value(self, connector_id, meter_value):
-        self.message = {
+        message = {
             "message": "MeterValues",
             "connector_id": connector_id,
             "meter_value": meter_value
         }
+        self.sensor_flow_handler(message)
         return call_result.MeterValuesPayload()
 
     @on('Heartbeat')
     def on_heartbeat(self):
+        self.sensor_flow_handler({"message": "Heartbeat"})
         return call_result.HeartbeatPayload(
             current_time=datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S') + "Z"
         )
 
     @on('Authorize')
     def on_authorize(self, id_tag):
-        self.message = {
+        message = {
             "message": "Authorize",
             "id_tag": id_tag
         }
@@ -298,12 +305,14 @@ class ChargePoint(cp):
 
     @on('StatusNotification')
     def on_status_notification(self, connector_id, error_code, status, timestamp):
-        self.message = {
+        message = {
             "message": "StatusNotification",
             "connector_id": connector_id,
             "error_code": error_code,
             "status": status
         }
+        self.sensor_flow_handler(message)
+
         print(connector_id, error_code, status, timestamp)
         return call_result.StatusNotificationPayload()
 
@@ -425,43 +434,19 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
 
     def __init__(self, *args, **kwargs):
 
-        CTemplate.__init__(self, *args, **kwargs)
-
-      #  DeviceDispatcher = DispatchInInterval
-      #  device_dispatcher_kwargs = {"call_interval": 5}
-
         load_dotenv(find_dotenv(), verbose=True, override=False)
         self.ocpp_port = os.getenv("OCPP_PORT")
         self.ocpp_config = os.getenv("OCPP_CONFIG")
 
-        # self.loop_server = asyncio.get_event_loop() # Function handler instead?
-        #
-        # kwargs["DeviceDispatcher"] = DispatchOnce
-        # kwargs["device_dispatcher_kwargs"] = {
-        #     "target_func": self.loop_in_thread_server,
-        #     "target_kwargs": {
-        #         "loop": self.loop_server,
-        #     },
-        #     "cleanup_func": self.close_server,
-        # }
-        #self.loop_server = asyncio.get_event_loop()  # Function handler instead?
-
-
-
-        kwargs["DeviceDispatcher"] = DispatchOnce
-        kwargs["device_dispatcher_kwargs"] = {
-            "target_func": self.sync_wrapper_run_ocpp_server,
-            "cleanup_func": self.close_server,
-        }
-
-        # add write methods to connector
-
+        # parse actuator datapoints from config
         self.ocpp_command_method_names = [
             k for k in self.ocpp_config if "execute_" in k
         ]
 
-        # parse actuator datapoints from config
-
+        kwargs["DeviceDispatcher"] = DispatchOnce
+        kwargs["device_dispatcher_kwargs"] = {
+            "target_func": self.sync_wrapper_run_ocpp_server
+        }
         # Sensor datapoints will be added to available_datapoints automatically
         # once they are first appear in run_sensor_flow method. It is thus not
         # necessary to specify them here. actuator datapoints in contrast must
@@ -470,7 +455,9 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
             "sensor": {},
             "actuator": self.compute_actuator_datapoints()
         }
+
         CTemplate.__init__(self, *args, **kwargs)
+
 
     def compute_actuator_datapoints(self):
         actuator_temp = {}
@@ -480,6 +467,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         return actuator_temp
 
     def sync_wrapper_run_ocpp_server(self):
+        logger.debug('Starting Server by DeviceDispatcher')
         asyncio.run(self.run_ocpp_server())
 
     def loop_in_thread_server(self, loop):
@@ -487,41 +475,27 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         loop.run_until_complete(self.run_ocpp_server())
 
     async def run_ocpp_server(self):
-        try:
-            self.server = await websockets.serve(
-                self.on_connect,
-                '0.0.0.0',
-                self.ocpp_port,
-                subprotocols=['ocpp1.6']
-            )
-            logging.info("Server started successfully")
+        self.server = await websockets.serve(
+            self.on_connect,
+            '0.0.0.0',
+            self.ocpp_port,
+            subprotocols=['ocpp1.6']
+        )
+        logging.info("Server started successfully")
 
-        finally:
-            await self.server.wait_closed()
+        await self.server.wait_closed()
 
     # handler is executed on every new connection
     async def on_connect(self, websocket, path):
         """ For every new charge point that connects, create a ChargePoint instance
-        and start listening for messages and calls run_sensor_flow
-        for every incoming one.
-
-
+        and start listening for messages.
         """
         charge_point_id = path.strip('/')
-        self.cp = ChargePoint(charge_point_id, websocket)
-        logger.debug(
-            "charging point connected %s",
-            *(charge_point_id)
-        )
-        while True:
-            raw_data = await self._connection.recv()
-            if len(raw_data) == 0:
-                # This should only be the case once the other side has
-                # closed the connection.
-                logger.error("Connection to device lost.")
-                break
-            logger.info('%s: receive message %s', self.id, raw_data)
-            self.run_sensor_flow(raw_data=raw_data)
+        self.cp = ChargePoint(charge_point_id, websocket, sensor_flow_handler=self.run_sensor_flow)
+        logger.debug(f'charging point connected: {charge_point_id}')
+
+        await self.cp.start()
+
 
     def close_server(self):
         logger.info("Closing ocpp server")
