@@ -152,7 +152,7 @@ class DatapointTemplate(models.Model):
     #
     ##########################################################################
     #
-    last_value = models.TextField(
+    last_value = models.JSONField(
         null=True,
         blank=True,
         default=None,
@@ -259,27 +259,34 @@ class DatapointValueTemplate(models.Model):
             "The datapoint that the value message belongs to."
         )
     )
-    value = models.TextField(
+    # JSON should be able to store everything as the messages arive
+    # packed in a JSON string.
+    value = models.JSONField(
         null=True,
         blank=True,
         default=None,
         help_text=(
-            "The last value of the datapoint. Will be a string "
-            "or null. Values of numeric datapoints are sent "
-            "as strings too, as this drastically reduces effort "
-            "for implementing the REST interfaces."
+            "The value part of the DatapointValue message."
         )
     )
-    value_float = models.FloatField(
+    _value_float = models.FloatField(
         null=True,
         blank=True,
         default=None,
         help_text=(
-            "Similar to value but an internal float representation for "
-            "numeric datapoints."
+            "Similar to value but an internal float representation "
+            "to store numeric values more efficiently."
         )
     )
-
+    _value_bool = models.BooleanField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text=(
+            "Similar to value but an internal bool representation "
+            "to store boolean values more efficiently."
+        )
+    )
     timestamp = models.DateTimeField(
         null=False,
         blank=False,
@@ -296,11 +303,16 @@ class DatapointValueTemplate(models.Model):
     def save(self, *args, **kwargs):
         """
         Update the last_value/last_value_timestamp fields in datapoint too.
+        Also check if the value can be stored as float or bool to save storage
+        space.
         """
-        # Check if we can store the value as float, which is probably
-        # much more storage effiecient, comparing at least one byte
+        # Store the value in the corresponding column.
         original_value = self.value
-        if self.value is not None:
+        if isinstance(self.value, bool):
+            self._value_bool = self.value
+            # PGSQL should be able to store the null rather efficiently.
+            self.value = None
+        elif self.value is not None:
             try:
                 value_float = float(self.value)
                 parsable = True
@@ -308,16 +320,15 @@ class DatapointValueTemplate(models.Model):
                 parsable = False
 
             if parsable:
-                self.value_float = value_float
-                # AFAIK, null values can be stored quite effieciently by
-                # most databases.
+                self._value_float = value_float
                 self.value = None
-
         super().save(*args, **kwargs)
 
-        # Restore the original value, for any code that continous to work with
+        # Restore the original values, for any code that continous to work with
         # the object.
         self.value = original_value
+        self._value_bool = None
+        self._value_float = None
 
         # A message without a timestamp cannot be latest.
         if self.timestamp is None:
@@ -327,7 +338,6 @@ class DatapointValueTemplate(models.Model):
         existing_ts = self.datapoint.last_value_timestamp
 
         if existing_ts is None or existing_ts <= self.timestamp:
-            print(original_value)
             self.datapoint.last_value = self.value
             self.datapoint.last_value_timestamp = self.timestamp
             self.datapoint.save(
@@ -340,8 +350,12 @@ class DatapointValueTemplate(models.Model):
     @classmethod
     def from_db(cls, db, field_names, values):
         instance = super().from_db(db, field_names, values)
-        if instance.value_float is not None:
-            instance.value = str(instance.value_float)
+        if instance._value_float is not None:
+            instance.value = instance._value_float
+            instance._value_float = None
+        elif instance._value_bool is not None:
+            instance.value = instance._value_bool
+            instance._value_bool = None
         return instance
 
 

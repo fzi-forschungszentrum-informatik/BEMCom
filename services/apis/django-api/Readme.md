@@ -207,3 +207,4 @@ Follow the following steps while contributing to the connector:
 | ----- | ------------------------------------------------------------ |
 | 0.1.0 | Initial functional version                                   |
 | 0.2.0 | Massive performance improvement for handling MQTT messages.<br />Extend REST Interface to allow importing Datapoint metadata from JSON.<br />Improve display of Datapoints in AdminUI. |
+| 0.3.0 | Datapoint Value and Available Datapoint messages and a can now contain any JSON data type as value. |

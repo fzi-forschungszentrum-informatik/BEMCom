@@ -11,7 +11,7 @@ import threading
 
 import pytest
 
-from ..main import Connector
+from ..main import Connector, __version__
 
 
 class TestReceiveRawMsg(unittest.TestCase):
@@ -39,7 +39,7 @@ class TestSendCommand(unittest.TestCase):
 
     def test_valid_commands_are_send(self):
         """
-        Verify that valid value messages adressing implemented datapoints
+        Verify that valid value messages addressing implemented datapoints
         are send on socket.
         """
         # All these message should be valid.
@@ -51,7 +51,7 @@ class TestSendCommand(unittest.TestCase):
             ["test_1__display", "0 0 0 0 Test$Msg"],
         ]
 
-        cn = Connector()
+        cn = Connector(version=__version__)
         for datapoint_key, datapoint_value in test_value_msgs:
             cn.keba_socket = MagicMock()
             cn.send_command(
@@ -88,7 +88,7 @@ class TestInit(unittest.TestCase):
         We require one lock per configured charge station. Check that these
         are created as expected.
         """
-        cn = Connector()
+        cn = Connector(version=__version__)
         for expceted_charge_station_name in self.charge_stations:
             assert expceted_charge_station_name in cn.keba_p30_locks
             actual_lock = cn.keba_p30_locks[expceted_charge_station_name]
@@ -110,7 +110,7 @@ class TestInit(unittest.TestCase):
             return_value=expected_available_datapoints["actuator"]
         )
 
-        cn = Connector()
+        cn = Connector(version=__version__)
         actual_available_datapoints = cn._initial_available_datapoints
         Connector.compute_actuator_datapoints = cad_backup
         assert actual_available_datapoints == expected_available_datapoints
@@ -134,7 +134,7 @@ class TestComputeActuatorDatapoints(unittest.TestCase):
         Verify that the expected values for the key_in_connector and
         example_value fields are returned.
         """
-        cn = Connector()
+        cn = Connector(version=__version__)
         expected_actuator_datapoints = {
             "test_1__ena": "0",
             "test_1__curr": "63000",

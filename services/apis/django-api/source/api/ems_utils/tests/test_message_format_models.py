@@ -1,4 +1,4 @@
-from django.db import connection, models
+from django.db import connection, connections, models
 from django.test import TransactionTestCase
 from django.db.utils import IntegrityError
 
@@ -379,7 +379,7 @@ class TestDatapointValue(TransactionTestCase):
         """
         field_values = self.default_field_values.copy()
 
-        field_values.update({"value": "1.0"})
+        field_values.update({"value": 1.0})
 
         self.generic_field_value_test(field_values=field_values)
 
@@ -406,7 +406,7 @@ class TestDatapointValue(TransactionTestCase):
         self.datapoint.last_value_timestamp = None
         self.datapoint.save()
 
-        expected_value = "3.14159"
+        expected_value = 3.14159
         ts = 1596240000000
         expected_timestamp = datetime_from_timestamp(ts, tz_aware=True)
         field_values.update(
@@ -429,14 +429,14 @@ class TestDatapointValue(TransactionTestCase):
         field_values = self.default_field_values.copy()
 
         # Ensure there is a newer msg available that will prevent saving.
-        expected_value = "3.14159"
+        expected_value = 3.14159
         self.datapoint.last_value = expected_value
         ts = 1596240000000
         expected_timestamp = datetime_from_timestamp(ts, tz_aware=True)
         self.datapoint.last_value_timestamp = expected_timestamp
         self.datapoint.save()
 
-        older_value = "-2.0"
+        older_value = -2.0
         ts = 1200000000000
         older_timestamp = datetime_from_timestamp(ts, tz_aware=True)
         field_values.update(
@@ -451,41 +451,146 @@ class TestDatapointValue(TransactionTestCase):
         self.assertEqual(actual_value, expected_value)
         self.assertEqual(actual_timestamp, expected_timestamp)
 
-    def test_save_will_store_float_as_float(self):
+    def get_raw_values_from_db(self, dp_value_id):
         """
-        There is an automatic mechanism that stores float values not as strings
-        but as floats to save storage space. It's hard to check here if the
-        values are really stored that way in DB, but we assume so if the
-        floats have been parsed.
+        A utility function that fetches the raw data from the DB.
+        """
+        query = (
+            'SELECT "value", "_value_float", "_value_bool"'
+            'FROM "{table_name}" WHERE id = %s'
+        ).format(table_name = self.DatapointValue.objects.model._meta.db_table)
+        with connection.cursor() as cursor:
+            cursor.execute(query, [dp_value_id])
+            row = cursor.fetchone()
+        return row
+
+    def test_save_will_store_string_on_value_field(self):
+        """
+        There is an automatic mechanism that stores floats and bool values
+        not as strings but as floats/bools to save storage space.
+        Verify that the string ends up in the intended table column and
+        that all other fields are empty as expected.
         """
         field_values = self.default_field_values.copy()
         dp_value = self.DatapointValue.objects.create(**field_values)
         dp_value.save()
 
-        dp_value.value = "1"
+        dp_value.value = "Hello there."
         dp_value.save()
-        dp_value.refresh_from_db()
 
-        expected_value = "1.0"
-        dp_value.refresh_from_db()
-        actual_value = dp_value.value
+        row = self.get_raw_values_from_db(dp_value_id=dp_value.id)
+        actual_value, actual_value_float, actual_value_bool = row
+
+         # Outer quotes because of the JSON field.
+        expected_value = '"Hello there."'
+        expected_value_float = None
+        expected_value_bool = None
 
         assert actual_value == expected_value
+        assert actual_value_float == expected_value_float
+        assert actual_value_bool == expected_value_bool
 
-    def test_value_float_also_populated(self):
+        # Finally also validate that the data can be fetched back from the
+        # the value field.
+        dp_value.refresh_from_db()
+        expected_value = "Hello there."
+        actual_value = dp_value.value
+        assert actual_value == expected_value
+
+    def test_save_will_store_float_on_value_float_field(self):
         """
-        Float values are made available as float (not string) under the
-        value_float field. Check this is the case.
+        There is an automatic mechanism that stores floats and bool values
+        not as strings but as floats/bools to save storage space.
+        Verify that the float ends up in the intended table column and
+        that all other fields are empty as expected.
         """
         field_values = self.default_field_values.copy()
         dp_value = self.DatapointValue.objects.create(**field_values)
-        dp_value.value = "21.2"
         dp_value.save()
 
-        dp_value.refresh_from_db()
-        expected_value = 21.2
-        actual_value = dp_value.value_float
+        dp_value.value = 1
+        dp_value.save()
 
+        row = self.get_raw_values_from_db(dp_value_id=dp_value.id)
+        actual_value, actual_value_float, actual_value_bool = row
+
+        expected_value = None
+        expected_value_float = 1
+        expected_value_bool = None
+
+        assert actual_value == expected_value
+        assert actual_value_float == expected_value_float
+        assert actual_value_bool == expected_value_bool
+
+        # Finally also validate that the data can be fetched back from the
+        # the value field.
+        dp_value.refresh_from_db()
+        expected_value = 1
+        actual_value = dp_value.value
+        assert actual_value == expected_value
+
+    def test_save_will_store_float_on_value_float_field(self):
+        """
+        There is an automatic mechanism that stores floats and bool values
+        not as strings but as floats/bools to save storage space.
+        Verify that the float ends up in the intended table column and
+        that all other fields are empty as expected.
+        """
+        field_values = self.default_field_values.copy()
+        dp_value = self.DatapointValue.objects.create(**field_values)
+        dp_value.save()
+
+        dp_value.value = 1
+        dp_value.save()
+
+        row = self.get_raw_values_from_db(dp_value_id=dp_value.id)
+        actual_value, actual_value_float, actual_value_bool = row
+
+        expected_value = None
+        expected_value_float = 1
+        expected_value_bool = None
+
+        assert actual_value == expected_value
+        assert actual_value_float == expected_value_float
+        assert actual_value_bool == expected_value_bool
+
+        # Finally also validate that the data can be fetched back from the
+        # the value field.
+        dp_value.refresh_from_db()
+        expected_value = 1
+        actual_value = dp_value.value
+        assert actual_value == expected_value
+
+    def test_save_will_store_float_on_value_float_field(self):
+        """
+        There is an automatic mechanism that stores floats and bool values
+        not as strings but as floats/bools to save storage space.
+        Verify that the bool ends up in the intended table column and
+        that all other fields are empty as expected.
+        """
+        field_values = self.default_field_values.copy()
+        dp_value = self.DatapointValue.objects.create(**field_values)
+        dp_value.save()
+
+        dp_value.value = True
+        dp_value.save()
+
+        row = self.get_raw_values_from_db(dp_value_id=dp_value.id)
+        actual_value, actual_value_float, actual_value_bool = row
+
+        expected_value = None
+        expected_value_float = None
+        expected_value_bool = True
+
+        assert actual_value == expected_value
+        assert actual_value_float == expected_value_float
+        assert actual_value_bool == expected_value_bool
+
+        # Finally also validate that the data can be fetched back from the
+        # the value field.
+        dp_value.refresh_from_db()
+        expected_value = True
+        actual_value = dp_value.value
         assert actual_value == expected_value
 
 class TestDatapointSchedule(TransactionTestCase):

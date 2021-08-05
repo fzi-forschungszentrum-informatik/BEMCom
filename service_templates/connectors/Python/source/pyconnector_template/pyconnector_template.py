@@ -234,15 +234,14 @@ class SensorFlow():
 
     def parse_raw_msg(self, raw_msg):
         """
-        Functionality to receive a raw message from device.
+        Parses the values from the raw_message.
 
-        Poll the device/gateway for data and transforms this raw data
-        into the format expected by run_sensor_flow. If the device/gateway
-        uses some protocol that pushes data, the raw data should be passed
-        as the raw_data argument to the function.
+        This parses the raw_message into an object (in a JSON meaning, a
+        dict in Python). The resulting object can be nested to allow
+        representation of hierarchical data.
 
         Be aware: All keys in the output message should be strings. All values
-        should be converted be strings, too.
+        must be convertable to JSON.
 
         Parameters
         ----------
@@ -259,8 +258,8 @@ class SensorFlow():
         -------
         msg : dict
             The message object containing the parsed data as python dicts from
-            dicts structure.
-            Should be formatted like this:
+            dicts structure. All keys should be strings. All value should be
+            of type string, bool or numbers. Should be formatted like this:
                 msg = {
                     "payload": {
                         "parsed_message": <the parsed data as object>,
@@ -272,8 +271,9 @@ class SensorFlow():
                     "payload": {
                         "parsed_message": {
                             "device_1": {
-                                "sensor_1": "2.12",
-                                "sensor_2": "3.12"
+                                "sensor_1": "test",
+                                "sensor_2": 3.12,
+                                "sensor_2": True,
                             }
                         },
                         "timestamp": 1573680749000
@@ -370,17 +370,36 @@ class SensorFlow():
             if datapoint_key not in self.datapoint_map["sensor"]:
                 continue
 
-            # By definition (message convention) the value should always be
-            # a string, and the upstream functions should have formated value
-            # as a string already, but better save then sorry here.
+            # The datapoint_value here must be convertible to a JSON.
+            # If in doubt pack it into a string.
+            timestamp = flattened_msg["payload"]["timestamp"]
             value_msg = {
-                "value": str(datapoint_value),
-                "timestamp": flattened_msg["payload"]["timestamp"],
+                "value": datapoint_value,
+                "timestamp": timestamp,
             }
 
+            # Previously this method was expected to return strings only.
+            # Now it accepts any datatype that is JSON serializable.
+            # This is a fallback in case a connector parsed values which
+            # are not JSON serializable.
+            topic = self.datapoint_map["sensor"][datapoint_key]
+            try:
+                payload = json.dumps(value_msg)
+            except TypeError:
+                logger.warning(
+                    "Encountered TypeError while serializing value message "
+                    "for topic: %s",
+                    topic
+                )
+                value_msg = {
+                    "value": str(datapoint_value),
+                    "timestamp": timestamp,
+                }
+                payload = json.dumps(value_msg)
+
             self.mqtt_client.publish(
-                topic=self.datapoint_map["sensor"][datapoint_key],
-                payload=json.dumps(value_msg),
+                topic=topic,
+                payload=payload,
                 retain=True,
             )
 

@@ -22,6 +22,16 @@ class Datapoint(DatapointTemplate):
     # docstring contains more general descriptions.
     __doc__ = DatapointTemplate.__doc__.strip()
     #
+    class Meta:
+        # This should hopefully prevent that datapoints can be inserted
+        # multiple times due to race conditions.
+        constraints = [
+            models.UniqueConstraint(
+                fields=['connector', 'key_in_connector'],
+                name='Datapoint key_in_connector and connector unique together',
+            ),
+        ]
+
     connector = models.ForeignKey(
         Connector,
         on_delete=models.CASCADE,
@@ -52,8 +62,9 @@ class Datapoint(DatapointTemplate):
             "the connector."
         )
     )
-    example_value = models.TextField(
+    example_value = models.JSONField(
         editable=False,
+        null=True,
         help_text=(
             "One example value for this datapoint. Should help admins while "
             "mangeing datapoints, i.e. to specify the correct data format."
@@ -126,10 +137,12 @@ class DatapointValue(DatapointValueTemplate):
         We update the last_* fields of Datapoint directly in
         ConnectorMQTTIntegration for better performance.
         """
-        # Check if we can store the value as float, which is probably
-        # much more storage effiecient, comparing at least one byte
         original_value = self.value
-        if self.value is not None:
+        if isinstance(self.value, bool):
+            self._value_bool = self.value
+            # PGSQL should be able to store the null rather efficiently.
+            self.value = None
+        elif self.value is not None:
             try:
                 value_float = float(self.value)
                 parsable = True
@@ -137,22 +150,26 @@ class DatapointValue(DatapointValueTemplate):
                 parsable = False
 
             if parsable:
-                self.value_float = value_float
-                # AFAIK, null values can be stored quite effieciently by
-                # most databases.
+                self._value_float = value_float
                 self.value = None
 
         models.Model.save(self, *args, **kwargs)
 
-        # Restore the original value, for any code that continous to work with
-        # the object, but keep the float value. It might become handy.
+        # Restore the original values, for any code that continous to work with
+        # the object.
         self.value = original_value
+        self._value_bool = None
+        self._value_float = None
 
     @classmethod
     def from_db(cls, db, field_names, values):
         instance = super().from_db(db, field_names, values)
-        if instance.value_float is not None:
-            instance.value = str(instance.value_float)
+        if instance._value_float is not None:
+            instance.value = instance._value_float
+            instance._value_float = None
+        elif instance._value_bool is not None:
+            instance.value = instance._value_bool
+            instance._value_bool = None
         return instance
 
 

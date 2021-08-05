@@ -14,7 +14,7 @@ from threading import Thread
 
 import pytest
 
-from ..main import Connector
+from ..main import Connector, __version__
 
 
 class RecursiveMagicMock(MagicMock):
@@ -71,6 +71,7 @@ class TestSocketClient(unittest.TestCase):
         self.connector_default_kwargs = {
             "MqttClient": MagicMock,
             "heartbeat_interval": 0.05,
+            "version": __version__
         }
 
     def test_data_received_from_tcp(self):
@@ -124,7 +125,7 @@ class TestReceiveRawMsg(unittest.TestCase):
                 "raw_message": "test_msg".encode()
             }
         }
-        cn = Connector()
+        cn = Connector(version=__version__)
         actual_msg = cn.receive_raw_msg(
             raw_data=expected_msg["payload"]["raw_message"]
         )
@@ -134,7 +135,7 @@ class TestParseRawMsg(unittest.TestCase):
 
     def test_json_parsed_correctly(self):
         os.environ["PARSE_AS"] = "JSON"
-        cn = Connector()
+        cn = Connector(version=__version__)
 
         # A message that allows us to differtiate between encodings due to
         # non ASCII characters.
@@ -162,7 +163,7 @@ class TestParseRawMsg(unittest.TestCase):
 
     def test_yaml_parsed_correctly(self):
         os.environ["PARSE_AS"] = "YAML"
-        cn = Connector()
+        cn = Connector(version=__version__)
 
         # A message that allows us to differtiate between encodings due to
         # non ASCII characters.

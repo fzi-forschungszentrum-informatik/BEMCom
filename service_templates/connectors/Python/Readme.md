@@ -46,4 +46,5 @@ This template allows the the implementation of connectors in Python with maximum
 | 0.1.3 | Retain log messages as the "Startup OK" message is usually emitted before the API is online. |
 | 0.2.0 | Target function for device dispatcher is now flexible.       |
 | 0.3.0 | Added connector version to raw message for raw message DB and make handling of bytes messages more consistent. |
+| 0.4.0 | Datapoint Value and Available Datapoint messages and a can now contain any JSON data type as value. |
 

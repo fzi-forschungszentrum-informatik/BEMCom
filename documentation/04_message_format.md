@@ -113,10 +113,10 @@ Here, `${Connector_name}` should be replaced with the name of the connector as c
 ```
 {
     "sensor": {
-        <string>: <string>
+        <string>: <string, number, bool or null>
     },
     "actuator": {
-        <string>: <string>
+        <string>: <string, number, bool or null>
     }
 }
 ```
@@ -125,7 +125,7 @@ Here, `${Connector_name}` should be replaced with the name of the connector as c
 
 | Key          | Value description                                            |
 | ------------ | ------------------------------------------------------------ |
-| `"sensor"`   | An object containing one entry for every available sensor datapoint. If no datapoints are known it must be an empty object. The entry should be formated as `${internal_dp_id}: ${example_value}` , where `${internal_dp_id}` is some arbitrary but unique string that the connector defines and uses to identify a particular datapoint. `${example_value}` is an arbitrarily chosen value that the datapoint had at one time. It should be refrained from sending available datapoint message if only `${example_value}` has been changed, to prevent flooding the API service. |
+| `"sensor"`   | An object containing one entry for every available sensor datapoint. If no datapoints are known it must be an empty object. The entry should be formated as `${internal_dp_id}: ${example_value}` , where `${internal_dp_id}` is some arbitrary but unique string that the connector defines and uses to identify a particular datapoint. `${example_value}` is an arbitrarily chosen value that the datapoint had at one time. See the [Datapoint Value message definition](#Datapoint Value) for further details on the message format of the value. It should be refrained from sending available datapoint message if only `${example_value}` has been changed, to prevent flooding the API service. |
 | `"actuator"` | Similar to `"sensor"` but for actuator datapoints respectively. |
 
 #### Example:
@@ -247,7 +247,7 @@ Here, `${Connector_name}` should be replaced with the name of the connector as c
 
 ```
 {
-    "value": <string>,
+    "value": <string, number, bool or null>,
     "timestamp": <integer>
 }
 ```
@@ -256,7 +256,7 @@ Here, `${Connector_name}` should be replaced with the name of the connector as c
 
 | Key           | Value description                                            |
 | ------------- | ------------------------------------------------------------ |
-| `"value"`     | The last value of the datapoint. Will be a string or `null`. Values of numeric datapoints are sent as strings too, as this drastically reduces the effort for implementing the external (REST) interface of the API service. |
+| `"value"`     | The last value of the datapoint. Must be a string, a number, a boolean value or `null`. Should **not** be an object or an array as this message should carry a **single** value. If it is absolutely necessary to transport an object or an array it is nevertheless possible. |
 | `"timestamp"` | For sensor datapoints: The time the value was received by the connector. <br />For actuator datapoints: The time the message was created by the external entity. <br />Both in milliseconds since 1970-01-01 UTC. |
 
 #### Example:

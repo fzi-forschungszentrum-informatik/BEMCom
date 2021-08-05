@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ..main import Connector
+from ..main import Connector, __version__
 
 # These are some useful default arguments for testing.
 # Most importantly prevent the MQTT clients from connecting.

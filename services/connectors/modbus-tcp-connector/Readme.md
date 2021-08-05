@@ -105,7 +105,7 @@ Follow the following steps while contributing to the connector:
 
   * ```bash
     # in service_templates/connectors/Python/
-    pip install ./source/
+    pip install -e ./source/
     ```
 
   * ```bash
@@ -117,7 +117,9 @@ Follow the following steps while contributing to the connector:
 
 * Ensure all relevant tests exist and all of those are passed before preceding. 
 
-* Update the image name and tag in  [./build_docker_image.sh](./build_docker_image.sh) and execute the shell script to build an updated image. 
+* Update the version number (aka. the tag) in [source/connector/main.py](./source/connector/main.py) before building the docker image. 
+
+* Execute [./build_docker_image.sh](./build_docker_image.sh) to build an updated image. 
 
   ```bash
   # This will fail if not all tests are passed.
@@ -137,3 +139,4 @@ Follow the following steps while contributing to the connector:
 | 0.1.0 | First productive version.                                    |
 | 0.2.0 | Can read coils and discrete inputs now and allows application of scaling factors. |
 | 0.3.0 | Allow disconnecting between polls and breaks between requests in one poll run. |
+| 0.4.0 | Update to python connector template 0.4.0 (Datapoint Value and Available Datapoint messages and a can now contain any JSON data type as value.) |
