@@ -24,17 +24,17 @@ export class ConfigEditor extends PureComponent<Props, State> {
     onOptionsChange({ ...options, url });
   };
 
-  onLimitChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const { onOptionsChange, options } = this.props;
-    const queryLimit = parseInt(event.target.value);
-    onOptionsChange({
-      ...options,
-      jsonData: {
-        ...options.jsonData,
-        queryLimit,
-      },
-    });
-  };
+  // onLimitChange = (event: ChangeEvent<HTMLInputElement>) => {
+  //   const { onOptionsChange, options } = this.props;
+  //   const queryLimit = parseInt(event.target.value);
+  //   onOptionsChange({
+  //     ...options,
+  //     jsonData: {
+  //       ...options.jsonData,
+  //       queryLimit,
+  //     },
+  //   });
+  // };
 
   onBasicAuthChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { onOptionsChange, options } = this.props;
@@ -111,7 +111,7 @@ export class ConfigEditor extends PureComponent<Props, State> {
           </div>
 
           {/* Limit */}
-          <div className="gf-form">
+          {/* <div className="gf-form">
             <FormField
               label="query limit"
               labelWidth={10}
@@ -121,7 +121,7 @@ export class ConfigEditor extends PureComponent<Props, State> {
               placeholder="max number of requested entries per query"
               tooltip="Set a limit on the number of entries requested per query to prevent an exhausting query to crush the backend. Similar to the SQL LIMIT instruction."
             />
-          </div>
+          </div> */}
         </div>
 
         {/* Use basicAuth */}

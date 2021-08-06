@@ -7,8 +7,10 @@ export interface MyQuery extends DataQuery {
   datatype: MyDatatype;
   displayName: string;
   scalingFactor: number;
-  frequency: string;
+
+  interval?: string;
   offset: string;
+  useIntervalAndOffset?: boolean;
 
   nQueries: number;
   from?: number;
@@ -22,6 +24,7 @@ export const defaultQuery: Partial<MyQuery> = {
   datatype: { label: 'value', value: 0, description: 'timeseries of values' },
   displayName: '',
   scalingFactor: 1,
+  useIntervalAndOffset: true,
 };
 
 /**

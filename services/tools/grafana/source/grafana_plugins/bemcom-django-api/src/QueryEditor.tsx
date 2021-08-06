@@ -7,7 +7,7 @@ import { DataSource } from './DataSource';
 import { defaultQuery, MyDataSourceOptions, MyQuery } from './types';
 
 import FormControlLabel from '@material-ui/core/FormControlLabel';
-import { Switch, Button } from '@material-ui/core';
+import { Switch, Button, Checkbox } from '@material-ui/core';
 
 import { getBackendSrv } from '@grafana/runtime';
 const { FormField } = LegacyForms;
@@ -29,28 +29,6 @@ export class QueryEditor extends PureComponent<Props> {
       { label: 'value', value: 0, description: 'timeseries of values' },
       { label: 'schedule', value: 1, description: 'currently active schedule' },
       { label: 'setpoint', value: 2, description: 'latest setpoint' },
-    ],
-    frequency: '',
-    frequency_value: '',
-    frequency_unit: { label: '-', value: null },
-    frequency_unit_options: [
-      { label: '-', value: null },
-      { label: 'milliseconds', value: 'milliseconds' },
-      { label: 'seconds', value: 'seconds' },
-      { label: 'minutes', value: 'minutes' },
-      { label: 'hours', value: 'hours' },
-      { label: 'days', value: 'days' },
-    ],
-    offset: '',
-    offset_value: '',
-    offset_unit: { label: '-', value: null },
-    offset_unit_options: [
-      { label: '-', value: null },
-      { label: 'milliseconds', value: 'milliseconds' },
-      { label: 'seconds', value: 'seconds' },
-      { label: 'minutes', value: 'minutes' },
-      { label: 'hours', value: 'hours' },
-      { label: 'days', value: 'days' },
     ],
 
     custom_user_scaling: false,
@@ -117,67 +95,17 @@ export class QueryEditor extends PureComponent<Props> {
     onChange({ ...query, displayName });
   };
 
-  onFrequencyValueChange = (event: ChangeEvent<HTMLInputElement>) => {
+  onOffsetChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { onChange, query, onRunQuery } = this.props;
-
-    let state = { ...this.state };
-    state.frequency_value = event.target.value;
-    let frequency = '';
-    if (state.frequency_value != '' && state.frequency_unit.value != null) {
-      frequency = state.frequency_value + ' ' + state.frequency_unit.value;
-    }
-    state.frequency = frequency;
-    this.setState(state);
-
-    onChange({ ...query, frequency });
-    onRunQuery();
-  };
-
-  onFrequencyUnitChange = (event: any) => {
-    const { onChange, query, onRunQuery } = this.props;
-
-    let state = { ...this.state };
-    state.frequency_unit = event;
-    let frequency = '';
-    if (event.value != null && state.frequency_value != '') {
-      frequency = state.frequency_value + ' ' + state.frequency_unit.value || '';
-    }
-    state.frequency = frequency;
-    this.setState(state);
-
-    onChange({ ...query, frequency });
-    onRunQuery();
-  };
-
-  onOffsetValueChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const { onChange, query, onRunQuery } = this.props;
-
-    let state = { ...this.state };
-    state.offset_value = event.target.value;
-    let offset = '';
-    if (state.offset_value != '' && state.offset_unit.value != null) {
-      offset = state.offset_value + ' ' + state.offset_unit.value;
-    }
-    state.offset = offset;
-    this.setState(state);
-
+    let offset = event.target.value;
     onChange({ ...query, offset });
     onRunQuery();
   };
 
-  onOffsetUnitChange = (event: any) => {
+  onUseIntervalAndOffset = (event: ChangeEvent<HTMLInputElement>) => {
     const { onChange, query, onRunQuery } = this.props;
-
-    let state = { ...this.state };
-    state.offset_unit = event;
-    let offset = '';
-    if (event.value != null && state.offset_value != '') {
-      offset = state.offset_value + ' ' + state.offset_unit.value || '';
-    }
-    state.offset = offset;
-    this.setState(state);
-
-    onChange({ ...query, offset });
+    const useIntervalAndOffset = !(event.target.value === 'true');
+    onChange({ ...query, useIntervalAndOffset });
     onRunQuery();
   };
 
@@ -259,91 +187,82 @@ export class QueryEditor extends PureComponent<Props> {
             </div>
           </div>
 
-          {/* Second Row */}
-          <div className="gf-form">
-            <div className="gf-form" style={{ marginBottom: 0 }}>
-              <FormField
-                label="Frequency"
-                disabled={query.getMeta}
-                labelWidth={10}
-                inputWidth={5}
-                // onKeyUp={this.onKeyUp}
-                onChange={e => this.onFrequencyValueChange(e)}
-                value={this.state.frequency_value}
-                placeholder=""
-                tooltip="(optional) set a frequency for the queried time range."
-              />
-
-              <Select
-                width={20}
-                placeholder="time unit"
-                disabled={query.getMeta}
-                value={this.state.frequency_unit}
-                maxMenuHeight={140}
-                // defaultValue={this.state.datapoint_default}
-                onChange={e => this.onFrequencyUnitChange(e)}
-                options={this.state.frequency_unit_options}
-              />
+          {/* Optional settigns */}
+          <div style={{ backgroundColor: '#0A0A0A', display: 'inline-block' }}>
+            {/* Second Row */}
+            <div className="gf-form" style={{ marginLeft: 10, marginRight: 10, borderBottom: '1px solid #333333' }}>
+              <div className="gf-form" style={{ marginBottom: 0, marginTop: 5 }}>
+                <FormField
+                  label="Offset"
+                  disabled={query.getMeta}
+                  labelWidth={8}
+                  inputWidth={9}
+                  // onKeyUp={this.onKeyUp}
+                  onChange={e => this.onOffsetChange(e)}
+                  value={query.offset}
+                  placeholder="-0 s"
+                  tooltip="(optional) set an offset around the timestamps generated through the interval-paremter of grafana's Query options. Example: '-2.5 seconds', '-1 h', '-5 min'"
+                />
+              </div>
+              <div className="gf-form" style={{ marginLeft: 10 }}>
+                <FormControlLabel
+                  style={{ marginTop: 2 }}
+                  control={
+                    <Checkbox
+                      checked={query.useIntervalAndOffset}
+                      value={query.useIntervalAndOffset}
+                      onChange={this.onUseIntervalAndOffset}
+                      name="useIntervalAndOffset"
+                      color="primary"
+                      size="small"
+                    />
+                  }
+                  className="m-1"
+                  label="use interval and offset"
+                />
+              </div>
             </div>
-            <div className="gf-form" style={{ marginBottom: 0 }}>
-              <FormField
-                label="Offset"
-                disabled={query.getMeta}
-                labelWidth={10}
-                inputWidth={5}
-                // onKeyUp={this.onKeyUp}
-                onChange={e => this.onOffsetValueChange(e)}
-                value={this.state.offset_value}
-                placeholder=""
-                tooltip="(optional) set an offset around the timestamps defined by the frquency."
-              />
 
-              <Select
-                width={20}
-                placeholder="time unit"
-                disabled={query.getMeta}
-                value={this.state.offset_unit}
-                maxMenuHeight={140}
-                // defaultValue={this.state.datapoint_default}
-                onChange={e => this.onOffsetUnitChange(e)}
-                options={this.state.offset_unit_options}
-              />
+            {/* Third Row */}
+
+            <div className="gf-form" style={{ marginLeft: 10, marginRight: 10 }}>
+              <span className="gf-form">
+                <FormField
+                  style={this.state.changed_input_style(this.state.custom_user_name)}
+                  label="displayName"
+                  disabled={query.getMeta}
+                  labelWidth={8}
+                  inputWidth={9}
+                  onKeyUp={this.onKeyUp}
+                  onChange={e => this.onDisplayNameChange(e)}
+                  value={query.displayName}
+                  placeholder=""
+                  tooltip="Custom name for this datapoint"
+                />
+                <FormField
+                  style={this.state.changed_input_style(this.state.custom_user_scaling)}
+                  label="scalingFactor"
+                  disabled={query.getMeta}
+                  type="number"
+                  labelWidth={8}
+                  inputWidth={5}
+                  onKeyUp={this.onKeyUp}
+                  onChange={e => this.onScalingFactorChange(e)}
+                  value={query.scalingFactor}
+                  placeholder=""
+                  tooltip="Custom scaling factor for this datapoint"
+                />
+                <Button
+                  style={{ marginTop: 2 }}
+                  variant="contained"
+                  size="small"
+                  disabled={query.getMeta}
+                  onClick={this.onUserMetaChange}
+                >
+                  apply
+                </Button>
+              </span>
             </div>
-          </div>
-
-          {/* Third Row */}
-
-          <div className="gf-form" style={{ marginLeft: 20 }}>
-            <span className="gf-form">
-              <FormField
-                style={this.state.changed_input_style(this.state.custom_user_name)}
-                label="displayName"
-                disabled={query.getMeta}
-                labelWidth={8}
-                inputWidth={10}
-                onKeyUp={this.onKeyUp}
-                onChange={e => this.onDisplayNameChange(e)}
-                value={query.displayName}
-                placeholder=""
-                tooltip="Custom name for this datapoint"
-              />
-              <FormField
-                style={this.state.changed_input_style(this.state.custom_user_scaling)}
-                label="scalingFactor"
-                disabled={query.getMeta}
-                type="number"
-                labelWidth={8}
-                inputWidth={10}
-                onKeyUp={this.onKeyUp}
-                onChange={e => this.onScalingFactorChange(e)}
-                value={query.scalingFactor}
-                placeholder=""
-                tooltip="Custom scaling factor for this datapoint"
-              />
-              <Button variant="contained" size="small" disabled={query.getMeta} onClick={this.onUserMetaChange}>
-                apply
-              </Button>
-            </span>
           </div>
         </div>
       </div>
