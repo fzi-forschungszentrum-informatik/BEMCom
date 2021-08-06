@@ -14,21 +14,82 @@ import { MyQuery, MyDataSourceOptions } from './types';
 import { endsWith } from 'lodash';
 
 export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
-  // settings: DataSourceInstanceSettings;
   url: string;
-  queryLimit: number | null;
-  // frequency: string | null;
-  // offset: string | null;
 
   constructor(instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>) {
     super(instanceSettings);
-    console.log('constructor of DataSource instanceSsettings: ', instanceSettings);
-
-    // this.settings = instanceSettings;
     this.url = instanceSettings.url || '';
-    this.queryLimit = instanceSettings.jsonData.queryLimit || null;
-    // this.frequency = null;
-    // this.offset = null;
+  }
+
+  translateInterval(interval: string) {
+    // translate the grafana typical notation of the interval ('1s'. '2h', ...)
+    // to time-bucket like notation ('1 days', '30 seconds')
+    const value = parseInt(interval.match(/\d/g)?.join('') || '');
+    const type = interval.match(/\D/g)?.join('') || '';
+
+    let newType = '';
+    switch (type) {
+      case 'ms':
+        newType = 'milliseconds';
+        break;
+      case 's':
+        newType = 'seconds';
+        break;
+      case 'm':
+        newType = 'minutes';
+        break;
+      case 'h':
+        newType = 'hours';
+        break;
+      case 'd':
+        newType = 'days';
+        break;
+    }
+
+    return value.toString() + ' ' + newType;
+  }
+
+  translateOffset(offset: string) {
+    // translate the grafana typical notation of the interval ('1s'. '2h', ...)
+    // to time-bucket like notation ('1 days', '30 seconds')
+    const offsetParts = offset.split(' ');
+    if (offsetParts.length != 2) {
+      return '';
+    }
+    const value = parseFloat(offsetParts[0]);
+    const type = offsetParts[1];
+    console.log('value: ', value);
+    console.log('type:', type);
+
+    let newType = '';
+    switch (true) {
+      case ['ms', 'milliseconds', 'milli'].indexOf(type) >= 0:
+        newType = 'milliseconds';
+        break;
+      case ['s', 'sec', 'secs', 'seconds', 'second'].indexOf(type) >= 0:
+        newType = 'seconds';
+        break;
+      case ['m', 'min', 'mins', 'minute', 'minutes'].indexOf(type) >= 0:
+        newType = 'minutes';
+        break;
+      case ['h', 'hour', 'hours'].indexOf(type) >= 0:
+        newType = 'hours';
+        break;
+      case ['d', 'day', 'days'].indexOf(type) >= 0:
+        newType = 'days';
+        break;
+      case ['w', 'week', 'weeks'].indexOf(type) >= 0:
+        newType = 'weeks';
+        break;
+      case ['M', 'month', 'months'].indexOf(type) >= 0:
+        newType = 'months';
+        break;
+      case ['y', 'year', 'years'].indexOf(type) >= 0:
+        newType = 'years';
+        break;
+    }
+
+    return value.toString() + ' ' + newType;
   }
 
   async doRequest(query: { [k: string]: any }) {
@@ -49,16 +110,27 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     }
 
     // build query parameters
-    const frequency: string | null = query.frequency || null;
-    const offset: string | null = query.offset || null;
+    const interval: string = query.interval;
+    const offset: string = query.offset;
+    const offsetParam = this.translateOffset(offset);
+    console.log('offsetParam: ', offsetParam);
 
-    const params = {
-      timestamp__gte: query.from,
-      timestamp__lte: query.to,
-      limit: this.queryLimit,
-      frequency: frequency,
-      offset: offset,
-    };
+    const useIntervalAndOffset: boolean = query.useIntervalAndOffset;
+    let params: Object;
+    console.log('useIntervalAndOffset:', useIntervalAndOffset);
+    if (useIntervalAndOffset) {
+      params = {
+        timestamp__gte: query.from,
+        timestamp__lte: query.to,
+        interval: interval,
+        offset: offsetParam,
+      };
+    } else {
+      params = {
+        timestamp__gte: query.from,
+        timestamp__lte: query.to,
+      };
+    }
 
     try {
       const result = await getBackendSrv().datasourceRequest({
@@ -76,14 +148,22 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   }
 
   async query(options: DataQueryRequest<MyQuery>): Promise<DataQueryResponse> {
+    console.log('query options: ', options);
     const { range } = options;
+    const { interval } = options; //string
     const from = range!.from.valueOf();
     const to = range!.to.valueOf();
+
+    // translate grafana interval string to time bucket like interval string
+    // see https://docs.timescale.com/api/latest/hyperfunctions/time_bucket/#sample-usage
+    let intervalParam = this.translateInterval(interval);
+    console.log('intervalParam:', intervalParam);
 
     let targets = options.targets;
     targets.forEach(target => {
       target.from = from;
       target.to = to;
+      target.interval = intervalParam;
     });
 
     const promises = targets.map(target =>

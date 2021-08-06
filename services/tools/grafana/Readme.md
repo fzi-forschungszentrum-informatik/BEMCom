@@ -96,10 +96,10 @@ Further instructions about working with Grafana:
 
 ### Changelog
 
-| Tag   | Changes                                                                                                                   |
-| ----- | ------------------------------------------------------------------------------------------------------------------------- |
-| 0.1.0 | Initial version                                                                                                           |
-| 0.1.1 | Simpler setpoint selection                                                                                                |
-| 0.1.2 | Basic authentication enabled. Skipping TLS verification enabled for self signed certificates.                             |
-| 0.1.3 | Additional fields for custom name, scaling factor and datapoint description                                               |
-| 0.1.4 | Optional query fields for selecting a frequency and an offset. Define a query-entry limit to prevent BEMCom from crashing |
+| Tag   | Changes                                                                                                    |
+| ----- | ---------------------------------------------------------------------------------------------------------- |
+| 0.1.0 | Initial version                                                                                            |
+| 0.1.1 | Simpler setpoint selection                                                                                 |
+| 0.1.2 | Basic authentication enabled. Skipping TLS verification enabled for self signed certificates.              |
+| 0.1.3 | Additional fields for custom name, scaling factor and datapoint description                                |
+| 0.1.4 | Restructured query editor. Optional field to define an offset. Integrate grafana's query option 'interval' |
