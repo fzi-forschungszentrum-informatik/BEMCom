@@ -89,13 +89,19 @@ class SensorFlow(SFTemplate):
         Returns
         -------
         msg : dict
-            The message object containing the raw data as string. It must
-            be a string to allow sending the raw_message object as JSON object
-            to the raw message DB.
+            The message object containing the raw data. It must be
+            JSON serializable (to allow sending the raw_message object as JSON
+            object to the raw message DB). If the data received from the device
+            or gateway cannot be packed to JSON directly (like e.g. for bytes)
+            it must modified accordingly. Avoid manipulation of the data as much
+            as possible, to prevent data losses when these operations fail.
+            A simple solution may often be to cast the raw data to strings.
+            Dict structures are fine, especially if created in this function,
+            e.g. by iterating over many endpoints of one device.
             Should be formatted like this:
                 msg = {
                     "payload": {
-                        "raw_message": <the raw data as string>
+                        "raw_message": <raw data in JSON serializable form>
                     }
                 }
             E.g.
@@ -107,7 +113,8 @@ class SensorFlow(SFTemplate):
         """
         msg = {
             "payload": {
-                "raw_message": raw_data
+                # Raw message is bytes
+                "raw_message": str(raw_data)
             }
         }
         return msg
@@ -161,20 +168,12 @@ class SensorFlow(SFTemplate):
                 }
         """
         timestamp = raw_msg["payload"]["timestamp"]
-        decoded_raw_message = raw_msg["payload"]["raw_message"].decode()
+        raw_message_as_bytes = eval(raw_msg["payload"]["raw_message"])
+        decoded_raw_message = raw_message_as_bytes.decode()
         if self.parse_as == "JSON":
             parsed_message = json.loads(decoded_raw_message)
         elif self.parse_as == "YAML":
             parsed_message = yaml.safe_load(decoded_raw_message)
-
-        # Convert all leafes of the dict into strings.
-        def values_to_str(d):
-            for k, v in d.items():
-                if isinstance(v, dict):
-                    values_to_str(v)
-                else:
-                    d[k] = str(v)
-        values_to_str(parsed_message)
 
         msg = {
             "payload": {

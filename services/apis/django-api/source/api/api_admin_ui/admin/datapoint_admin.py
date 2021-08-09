@@ -143,7 +143,7 @@ class DatapointAdmin(admin.ModelAdmin):
         """
         Return a possible truncated value if the example value is very long.
         """
-        value = obj.example_value
+        value = str(obj.example_value)
         truncation_length = 100
         if value is not None and len(value) >= truncation_length: 
             value = value[:truncation_length] + " [truncated]"
@@ -155,7 +155,7 @@ class DatapointAdmin(admin.ModelAdmin):
         """
         Return a possible truncated value if the example value is very long.
         """
-        value = obj.last_value
+        value = str(obj.last_value)
         truncation_length = 100
         if value is not None and len(value) >= truncation_length: 
             value = value[:truncation_length] + " [truncated]"
@@ -384,6 +384,10 @@ class DatapointValueAdmin(admin.ModelAdmin):
     )
     readonly_fields = (
         "id",
+    )
+    exclude = (
+        "_value_float", 
+        "_value_bool",
     )
 
     def timestamp_pretty(self, obj):

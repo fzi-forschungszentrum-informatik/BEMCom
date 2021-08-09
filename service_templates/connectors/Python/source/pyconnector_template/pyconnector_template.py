@@ -214,13 +214,19 @@ class SensorFlow():
         Returns
         -------
         msg : dict
-            The message object containing the raw data as string. It must
-            be a string to allow sending the raw_message object as JSON object
-            to the raw message DB.
+            The message object containing the raw data. It must be
+            JSON serializable (to allow sending the raw_message object as JSON
+            object to the raw message DB). If the data received from the device
+            or gateway cannot be packed to JSON directly (like e.g. for bytes)
+            it must modified accordingly. Avoid manipulation of the data as much
+            as possible, to prevent data losses when these operations fail.
+            A simple solution may often be to cast the raw data to strings.
+            Dict structures are fine, especially if created in this function,
+            e.g. by iterating over many endpoints of one device.
             Should be formatted like this:
                 msg = {
                     "payload": {
-                        "raw_message": <the raw data as string>
+                        "raw_message": <raw data in JSON serializable form>
                     }
                 }
             E.g.

@@ -71,6 +71,48 @@ class SensorFlow(SFTemplate):
 
     def receive_raw_msg(self, raw_data=None):
         """
+        Functionality to receive a raw message from device.
+
+        Poll the device/gateway for data and transforms this raw data
+        into the format expected by run_sensor_flow. If the device/gateway
+        uses some protocol that pushes data, the raw data should be passed
+        as the raw_data argument to the function.
+
+        Parameters
+        ----------
+        raw_data : TYPE, optional
+            Raw data of device/gateway if the device pushes and is not
+            pulled for data. The default is None.
+
+        Returns
+        -------
+        msg : dict
+            The message object containing the raw data. It must be
+            JSON serializable (to allow sending the raw_message object as JSON
+            object to the raw message DB). If the data received from the device
+            or gateway cannot be packed to JSON directly (like e.g. for bytes)
+            it must modified accordingly. Avoid manipulation of the data as much
+            as possible, to prevent data losses when these operations fail.
+            A simple solution may often be to cast the raw data to strings.
+            Dict structures are fine, especially if created in this function,
+            e.g. by iterating over many endpoints of one device.
+            Should be formatted like this:
+                msg = {
+                    "payload": {
+                        "raw_message": <raw data in JSON serializable form>
+                    }
+                }
+            E.g.
+                msg = {
+                    "payload": {
+                        "raw_message": "device_1:{sensor_1:2.12,sensor_2:3.12}"
+                    }
+                }
+        """
+        raise NotImplementedError("receive_raw_msg has not been implemented.")
+
+    def parse_raw_msg(self, raw_msg):
+        """
         Parses the values from the raw_message.
 
         This parses the raw_message into an object (in a JSON meaning, a
