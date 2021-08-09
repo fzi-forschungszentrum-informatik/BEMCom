@@ -83,7 +83,7 @@ class TestRESTEndpoint(TestCase):
 
     TODO: Add test to verify that only active datapoints are returned.
     TODO: Add permission checks for POST/DELETE/PUT endpoints, although this
-          is not super crticial as all endpoints use the same permission
+          is not super critical as all endpoints use the same permission
           setting/setup.
     """
 
@@ -155,7 +155,7 @@ class TestRESTEndpoint(TestCase):
 
         assert request.data == expected_data
 
-    def test_put_datapoint_value_detail_rejected_for_sensor(self):
+    def test_post_datapoint_value_detail_rejected_for_sensor(self):
         """
         Check that it is not possible to write sensor message from the client.
 
@@ -183,7 +183,7 @@ class TestRESTEndpoint(TestCase):
         # if the user would't have permissions to access the data.
         assert request.status_code == 400
 
-    def test_put_datapoint_value_detail_for_actuator(self):
+    def test_post_datapoint_value_detail_for_actuator(self):
         """
         Write (PUT) a value message, that should trigger that the corresponding
         message is sent to the message broker and after that also stored in the
@@ -262,7 +262,7 @@ class TestRESTEndpoint(TestCase):
         )
         assert request.data == expected_msg
 
-    def test_put_datapoint_schedule_detail_rejected_for_sensor(self):
+    def test_post_datapoint_schedule_detail_rejected_for_sensor(self):
         """
         Check that a schedule detail cannot be written for a sensor, as
         this kind of message does only exist for actuators.
@@ -334,7 +334,7 @@ class TestRESTEndpoint(TestCase):
 
         assert request.data == expected_data
 
-    def test_put_datapoint_schedule_detail_actuator(self):
+    def test_post_datapoint_schedule_detail_actuator(self):
         """
         Write (PUT) a schedule message, that should trigger that the
         corresponding message is sent to the message broker and after that also
@@ -427,7 +427,7 @@ class TestRESTEndpoint(TestCase):
         )
         assert request.data == expected_msg
 
-    def test_put_datapoint_setpoint_detail_rejected_for_sensor(self):
+    def test_post_datapoint_setpoint_detail_rejected_for_sensor(self):
         """
         Check that a setpoint detail cannot be written for a sensor, as
         this kind of message does only exist for actuators.
@@ -494,7 +494,7 @@ class TestRESTEndpoint(TestCase):
 
         assert request.data == expected_data
 
-    def test_put_datapoint_setpoint_detail_for_actuator(self):
+    def test_post_datapoint_setpoint_detail_for_actuator(self):
         """
         Write (PUT) a setpoint message, that should trigger that the
         corresponding message is sent to the message broker and after that also
