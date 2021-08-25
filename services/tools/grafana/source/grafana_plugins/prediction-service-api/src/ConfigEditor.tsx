@@ -106,22 +106,9 @@ export class ConfigEditor extends PureComponent<Props, State> {
               onChange={this.onUriChange}
               value={options.url || ''}
               placeholder="datasource 'http://example.com:8888/api'"
-              tooltip="url to root of API"
+              tooltip="url to root of service API"
             />
           </div>
-
-          {/* Limit */}
-          {/* <div className="gf-form">
-            <FormField
-              label="query limit"
-              labelWidth={10}
-              inputWidth={20}
-              onChange={this.onLimitChange}
-              value={jsonData.queryLimit || ''}
-              placeholder="max number of requested entries per query"
-              tooltip="Set a limit on the number of entries requested per query to prevent an exhausting query to crush the backend. Similar to the SQL LIMIT instruction."
-            />
-          </div> */}
         </div>
 
         {/* Use basicAuth */}
@@ -133,7 +120,7 @@ export class ConfigEditor extends PureComponent<Props, State> {
                   checked={options.basicAuth}
                   value={options.basicAuth}
                   onChange={this.onBasicAuthChange}
-                  name="useBasicAtuh"
+                  name="useBasicAuth"
                   color="primary"
                   size="small"
                 />

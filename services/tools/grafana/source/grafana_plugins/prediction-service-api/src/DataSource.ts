@@ -160,14 +160,14 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     console.log('intervalParam:', intervalParam);
 
     let targets = options.targets;
-    targets.forEach(target => {
+    targets.forEach((target) => {
       target.from = from;
       target.to = to;
       target.interval = intervalParam;
     });
 
-    const promises = targets.map(target =>
-      this.doRequest(target).then(response => {
+    const promises = targets.map((target) =>
+      this.doRequest(target).then((response) => {
         if (!response || response.data === undefined || response.data.length === 0) {
           return [];
         }
@@ -289,7 +289,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       })
     );
 
-    return Promise.all(promises).then(data => ({ data }));
+    return Promise.all(promises).then((data) => ({ data }));
   }
 
   async testDatasource() {
@@ -297,48 +297,86 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       this.url = this.url.slice(0, -1);
     }
 
+    var valid_GET_response = false;
+    var valid_POST_response = false;
+    var message = 'error';
+
     try {
-      const result = await getBackendSrv().datasourceRequest({
+      console.log('requesting for test');
+      await getBackendSrv().datasourceRequest({
+        // const resultGET =
         method: 'GET',
-        url: this.url + '/datapoint/',
-        params: { format: 'json' },
+        url: this.url + '/request/',
+        // params: { format: 'json' },
       });
 
-      if (result.status === 200) {
-        return {
-          status: 'success',
-          message: 'Success',
-        };
-      } else {
-        return {
-          status: 'error',
-          message: 'Datasource did not respond properly',
-        };
-      }
+      // should not be executed bc an error with status 405 is expected: GET should not be allowed
+      valid_GET_response = false;
+      message = 'Datasource did not respond properly';
     } catch (err) {
-      if (err.status === 502) {
-        return {
-          status: 'error',
-          message:
-            err.status.toString() +
-            ' - Bad Gateway. Maybe the url is wrong/ https is required/ a self signed certificate is used.',
-        };
+      if (err.status === 405) {
+        valid_GET_response = true;
+        message = 'success';
+      } else if (err.status === 502) {
+        valid_GET_response = false;
+        message =
+          err.status.toString() +
+          ' - Bad Gateway. Maybe the url is wrong/ https is required/ a self signed certificate is used.';
       } else if (err.status === 400) {
-        let message = err.status.toString() + ' - Bad Reqeust';
-
+        valid_GET_response = false;
+        message = err.status.toString() + ' - Bad Reqeust';
         if (err.data.response === 'Authentication to data source failed') {
           message = message + '. Authentication to data source failed.';
         }
-        return {
-          status: 'error',
-          message: message,
-        };
       } else {
-        return {
-          status: 'error',
-          message: 'Unknown error ' + err.status.toString(),
-        };
+        valid_GET_response = false;
+        message = 'Unknown error ' + err.status.toString();
       }
     }
+
+    // early abort test, if GET test already failed
+    if (!valid_GET_response) {
+      return {
+        status: 'error',
+        message: message,
+      };
+    }
+
+    try {
+      await getBackendSrv().datasourceRequest({
+        //const resultPOST =
+        method: 'POST',
+        url: this.url + '/request/',
+        // params: { format: 'json' },
+      });
+
+      // should not be executed bc an error with status 422 is expected: POST needs params
+      valid_POST_response = false;
+      message = 'Datasource did not respond properly';
+    } catch (err) {
+      if (err.status === 422) {
+        valid_POST_response = true;
+        message = 'success';
+      } else if (err.status === 502) {
+        valid_POST_response = false;
+        message =
+          err.status.toString() +
+          ' - Bad Gateway. Maybe the url is wrong/ https is required/ a self signed certificate is used.';
+      } else if (err.status === 400) {
+        valid_POST_response = false;
+        message = err.status.toString() + ' - Bad Reqeust';
+        if (err.data.response === 'Authentication to data source failed') {
+          message = message + '. Authentication to data source failed.';
+        }
+      } else {
+        valid_POST_response = false;
+        message = 'Unknown error ' + err.status.toString();
+      }
+    }
+
+    return {
+      status: valid_GET_response && valid_POST_response ? 'success' : 'error',
+      message: message,
+    };
   }
 }
