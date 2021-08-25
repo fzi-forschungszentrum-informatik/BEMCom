@@ -1,0 +1,35 @@
+{
+  "type": "datasource",
+  "name": "Prediction-service-api",
+  "id": "prediction-service-api",
+  "metrics": true,
+  "info": {
+    "description": "A custom ds plugin to ingerate the Rest API of our prediction services.",
+    "author": {
+      "name": "key",
+      "url": "fzi.de"
+    },
+    "keywords": [],
+    "logos": {
+      "small": "img/logo.svg",
+      "large": "img/logo.svg"
+    },
+    "links": [
+      {
+        "name": "Website",
+        "url": "https://github.com/fzi-forschungszentrum-informatik/bemcom"
+      },
+      {
+        "name": "License",
+        "url": "https://github.com/fzi-forschungszentrum-informatik/bemcom/blob/master/LICENSE"
+      }
+    ],
+    "screenshots": [],
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
+  },
+  "dependencies": {
+    "grafanaVersion": "6.5.x",
+    "plugins": []
+  }
+}
