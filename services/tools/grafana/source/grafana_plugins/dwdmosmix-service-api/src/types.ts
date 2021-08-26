@@ -1,30 +1,18 @@
 import { DataQuery, DataSourceJsonData } from '@grafana/data';
 
 export interface MyQuery extends DataQuery {
-  getMeta: boolean;
-
-  datapoint: MyDatapoint;
-  datatype: MyDatatype;
-  displayName: string;
-  scalingFactor: number;
-
-  interval?: string;
-  offset: string;
-  useIntervalAndOffset?: boolean;
-
-  nQueries: number;
+  requestParamsJson: string;
   from?: number;
   to?: number;
+
+  nameSettingsJson: string;
+  filterByNames: boolean;
 }
 
 // defaults:
 export const defaultQuery: Partial<MyQuery> = {
-  getMeta: false,
-  datapoint: { label: '', value: 0, description: '' },
-  datatype: { label: 'value', value: 0, description: 'timeseries of values' },
-  displayName: '',
-  scalingFactor: 1,
-  useIntervalAndOffset: true,
+  nameSettingsJson: '',
+  filterByNames: false,
 };
 
 /**
@@ -34,7 +22,6 @@ export interface MyDataSourceOptions extends DataSourceJsonData {
   useBasicAuth?: boolean;
   basicAuthUser?: string;
   tlsSkipVerify?: boolean;
-  queryLimit?: number;
 
   user?: string;
 }
@@ -51,14 +38,14 @@ export interface MySecureJsonData {
 }
 
 // custom data types
-export interface MyDatapoint {
-  label: string;
-  value: number;
-  description: string;
-}
+// export interface MyDatapoint {
+//   label: string;
+//   value: number;
+//   description: string;
+// }
 
-export interface MyDatatype {
-  label: string;
-  value: number;
-  description: string;
-}
+// export interface MyDatatype {
+//   label: string;
+//   value: number;
+//   description: string;
+// }

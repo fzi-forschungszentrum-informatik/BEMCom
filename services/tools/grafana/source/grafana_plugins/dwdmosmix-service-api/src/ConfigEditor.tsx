@@ -87,7 +87,6 @@ export class ConfigEditor extends PureComponent<Props, State> {
   };
 
   render() {
-    // console.log('RENDER Config Editor - props: ', this.props);
     const { options } = this.props;
     const { secureJsonFields } = options;
 

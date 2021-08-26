@@ -53111,7 +53111,6 @@ function (_super) {
   }
 
   ConfigEditor.prototype.render = function () {
-    // console.log('RENDER Config Editor - props: ', this.props);
     var options = this.props.options;
     var secureJsonFields = options.secureJsonFields;
     var jsonData = options.jsonData;
@@ -53276,8 +53275,6 @@ function (_super) {
 
     var value = parseFloat(offsetParts[0]);
     var type = offsetParts[1];
-    console.log('value: ', value);
-    console.log('type:', type);
     var newType = '';
 
     switch (true) {
@@ -53319,42 +53316,12 @@ function (_super) {
 
   DataSource.prototype.doRequest = function (query) {
     return Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__awaiter"])(this, void 0, void 0, function () {
-      var url, deviceId, type, interval, offset, offsetParam, useIntervalAndOffset, params, result, error_1;
+      var urlReq, params, resultReq, error_1, requestID, urlRes, resultRes, error_2;
       return Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__generator"])(this, function (_a) {
         switch (_a.label) {
           case 0:
-            url = '';
-
-            if (query.getMeta) {
-              // get meta data ignore other query parameters
-              url = this.url + '/datapoint/';
-            } else {
-              deviceId = query.datapoint ? query.datapoint.value : 1;
-              type = query.datatype ? query.datatype.label.includes('setpoint') ? 'setpoint' : query.datatype.label : 'value';
-              url = this.url + '/datapoint/' + deviceId + '/' + type + '/';
-            }
-
-            interval = query.interval;
-            offset = query.offset;
-            offsetParam = this.translateOffset(offset);
-            console.log('offsetParam: ', offsetParam);
-            useIntervalAndOffset = query.useIntervalAndOffset;
-            console.log('useIntervalAndOffset:', useIntervalAndOffset);
-
-            if (useIntervalAndOffset) {
-              params = {
-                timestamp__gte: query.from,
-                timestamp__lte: query.to,
-                interval: interval,
-                offset: offsetParam
-              };
-            } else {
-              params = {
-                timestamp__gte: query.from,
-                timestamp__lte: query.to
-              };
-            }
-
+            urlReq = this.url + '/request/';
+            params = JSON.parse(query.requestParamsJson);
             _a.label = 1;
 
           case 1:
@@ -53363,16 +53330,16 @@ function (_super) {
             return [4
             /*yield*/
             , Object(_grafana_runtime__WEBPACK_IMPORTED_MODULE_1__["getBackendSrv"])().datasourceRequest({
-              method: 'GET',
-              url: url,
-              params: params
+              method: 'POST',
+              url: urlReq,
+              data: params
             })];
 
           case 2:
-            result = _a.sent();
-            return [2
-            /*return*/
-            , result];
+            resultReq = _a.sent();
+            return [3
+            /*break*/
+            , 4];
 
           case 3:
             error_1 = _a.sent();
@@ -53382,9 +53349,48 @@ function (_super) {
             , false];
 
           case 4:
+            // extract requestID
+            if (resultReq.status != 201) {
+              return [2
+              /*return*/
+              , false];
+            }
+
+            requestID = resultReq.data.request_ID;
+            urlRes = this.url + '/request/' + requestID + '/result/';
+            _a.label = 5;
+
+          case 5:
+            _a.trys.push([5, 7,, 8]);
+
+            return [4
+            /*yield*/
+            , Object(_grafana_runtime__WEBPACK_IMPORTED_MODULE_1__["getBackendSrv"])().datasourceRequest({
+              method: 'GET',
+              url: urlRes,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              }
+            })];
+
+          case 6:
+            resultRes = _a.sent();
+            return [3
+            /*break*/
+            , 8];
+
+          case 7:
+            error_2 = _a.sent();
+            console.log('Error: ', error_2.status, ' ', error_2.statusText);
             return [2
             /*return*/
-            ];
+            , false];
+
+          case 8:
+            return [2
+            /*return*/
+            , resultRes];
         }
       });
     });
@@ -53392,129 +53398,176 @@ function (_super) {
 
   DataSource.prototype.query = function (options) {
     return Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__awaiter"])(this, void 0, Promise, function () {
-      var range, interval, from, to, intervalParam, targets, promises;
+      var range, from, to, targets, promises;
 
       var _this = this;
 
       return Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__generator"])(this, function (_a) {
-        console.log('query options: ', options);
         range = options.range;
-        interval = options.interval;
         from = range.from.valueOf();
         to = range.to.valueOf();
-        intervalParam = this.translateInterval(interval);
-        console.log('intervalParam:', intervalParam);
         targets = options.targets;
         targets.forEach(function (target) {
           target.from = from;
           target.to = to;
-          target.interval = intervalParam;
         });
         promises = targets.map(function (target) {
           return _this.doRequest(target).then(function (response) {
-            var _a, _b;
+            var e_1, _a, e_2, _b, e_3, _c, e_4, _d, e_5, _e, e_6, _f;
 
             if (!response || response.data === undefined || response.data.length === 0) {
               return [];
-            }
+            } // time series like data.
 
-            if (target.getMeta) {
-              // table like data.
-              return response.data;
-            } else {
-              // time series like data.
-              var frame = new _grafana_data__WEBPACK_IMPORTED_MODULE_2__["MutableDataFrame"]({
-                refId: target.refId,
-                name: 'timeseries',
-                fields: [{
-                  name: 'time',
-                  type: _grafana_data__WEBPACK_IMPORTED_MODULE_2__["FieldType"].time
-                }]
-              }); // use displayName and scalingFactor
 
-              var displayName = target.displayName || ((_a = target.datapoint) === null || _a === void 0 ? void 0 : _a.label);
-              var scalingFactor_1 = target.scalingFactor || 1;
+            var frame = new _grafana_data__WEBPACK_IMPORTED_MODULE_2__["MutableDataFrame"]({
+              refId: target.refId,
+              name: 'timeseries',
+              fields: [{
+                name: 'time',
+                type: _grafana_data__WEBPACK_IMPORTED_MODULE_2__["FieldType"].time
+              }]
+            }); // parse returned data
+            // #######################
+            // MOSMIX
 
-              switch ((_b = target.datatype) === null || _b === void 0 ? void 0 : _b.label) {
-                case 'value':
-                  frame.name = 'value';
+            var data = response.data.mosmix_data; // if name settings are provided, and filter is switsched on, only parse the provided fields
+
+            var nameSettings = JSON.parse(target.nameSettingsJson || '{}');
+            var filterByNames = target.filterByNames;
+
+            if (Object.entries(nameSettings).length > 0 && filterByNames) {
+              try {
+                // add specified column names
+                for (var _g = Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__values"])(Object.keys(nameSettings)), _h = _g.next(); !_h.done; _h = _g.next()) {
+                  var key = _h.value;
                   frame.addField({
-                    name: displayName || 'value',
+                    name: nameSettings[key],
                     type: _grafana_data__WEBPACK_IMPORTED_MODULE_2__["FieldType"].number
-                  }); // sort response.data by timestamps
-
-                  response.data = response.data.sort(function (first, second) {
-                    return first.timestamp > second.timestamp ? 1 : -1;
                   });
-                  response.data.forEach(function (point) {
-                    frame.appendRow([point.timestamp, point.value * scalingFactor_1]);
-                  });
-                  break;
+                }
+              } catch (e_1_1) {
+                e_1 = {
+                  error: e_1_1
+                };
+              } finally {
+                try {
+                  if (_h && !_h.done && (_a = _g["return"])) _a.call(_g);
+                } finally {
+                  if (e_1) throw e_1.error;
+                }
+              } // build and add rows
 
-                case 'schedule':
-                  frame.name = 'schedule';
-                  frame.addField({
-                    name: displayName || 'schedule',
-                    type: _grafana_data__WEBPACK_IMPORTED_MODULE_2__["FieldType"].number
-                  }); // sort response.data by timestamps
 
-                  response.data = response.data.sort(function (first, second) {
-                    return first.timestamp > second.timestamp ? 1 : -1;
-                  });
-                  var latest_schedule = response.data[response.data.length - 1];
-                  latest_schedule.schedule.forEach(function (interval) {
-                    // set frame content
-                    // check if from or to is null
-                    if (interval.from_timestamp == null) {
-                      frame.appendRow([interval.to_timestamp - 1, interval.value * scalingFactor_1]);
-                    } else if (interval.to_timestamp == null) {
-                      frame.appendRow([interval.from_timestamp, interval.value * scalingFactor_1]);
-                    } else {
-                      frame.appendRow([interval.from_timestamp, interval.value * scalingFactor_1]);
-                      frame.appendRow([interval.to_timestamp - 1, interval.value * scalingFactor_1]);
+              var timestamps = Object.keys(data[Object.keys(data)[0]]);
+
+              try {
+                for (var timestamps_1 = Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__values"])(timestamps), timestamps_1_1 = timestamps_1.next(); !timestamps_1_1.done; timestamps_1_1 = timestamps_1.next()) {
+                  var time = timestamps_1_1.value;
+                  var row = [time];
+
+                  try {
+                    for (var _j = (e_3 = void 0, Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__values"])(Object.keys(nameSettings))), _k = _j.next(); !_k.done; _k = _j.next()) {
+                      var key = _k.value;
+                      row.push(data[key][time]);
                     }
-                  });
-                  break;
-
-                case 'setpoint':
-                  // sort response.data by timestamps
-                  response.data = response.data.sort(function (first, second) {
-                    return first.timestamp > second.timestamp ? 1 : -1;
-                  });
-                  var latest_setpoint = response.data[response.data.length - 1];
-                  frame.name = 'setpoint';
-                  frame.addField({
-                    name: displayName + '_low' || false,
-                    type: _grafana_data__WEBPACK_IMPORTED_MODULE_2__["FieldType"].number
-                  });
-                  frame.addField({
-                    name: displayName + '_up' || false,
-                    type: _grafana_data__WEBPACK_IMPORTED_MODULE_2__["FieldType"].number
-                  });
-                  frame.addField({
-                    name: displayName + '_pref' || false,
-                    type: _grafana_data__WEBPACK_IMPORTED_MODULE_2__["FieldType"].number
-                  });
-                  latest_setpoint.setpoint.forEach(function (interval) {
-                    var acceptable_values = interval.acceptable_values.map(function (x) {
-                      return Number(x) * scalingFactor_1;
-                    });
-                    var preferred_value = Number(interval.preferred_value) * scalingFactor_1; // check if from or to is null
-
-                    if (interval.from_timestamp == null) {
-                      frame.appendRow([interval.to_timestamp - 1, Math.min.apply(Math, Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__spread"])(acceptable_values)), Math.max.apply(Math, Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__spread"])(acceptable_values)), preferred_value]);
-                    } else if (interval.to_timestamp == null) {
-                      frame.appendRow([interval.from_timestamp, Math.min.apply(Math, Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__spread"])(acceptable_values)), Math.max.apply(Math, Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__spread"])(acceptable_values)), preferred_value]);
-                    } else {
-                      frame.appendRow([interval.from_timestamp, Math.min.apply(Math, Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__spread"])(acceptable_values)), Math.max.apply(Math, Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__spread"])(acceptable_values)), preferred_value]);
-                      frame.appendRow([interval.to_timestamp - 1, Math.min.apply(Math, Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__spread"])(acceptable_values)), Math.max.apply(Math, Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__spread"])(acceptable_values)), preferred_value]);
+                  } catch (e_3_1) {
+                    e_3 = {
+                      error: e_3_1
+                    };
+                  } finally {
+                    try {
+                      if (_k && !_k.done && (_c = _j["return"])) _c.call(_j);
+                    } finally {
+                      if (e_3) throw e_3.error;
                     }
-                  });
-                  break;
+                  }
+
+                  frame.appendRow(row);
+                }
+              } catch (e_2_1) {
+                e_2 = {
+                  error: e_2_1
+                };
+              } finally {
+                try {
+                  if (timestamps_1_1 && !timestamps_1_1.done && (_b = timestamps_1["return"])) _b.call(timestamps_1);
+                } finally {
+                  if (e_2) throw e_2.error;
+                }
               }
+            } else {
+              try {
+                // add all column names
+                for (var _l = Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__values"])(Object.keys(data)), _m = _l.next(); !_m.done; _m = _l.next()) {
+                  var key = _m.value;
 
-              return frame;
-            }
+                  if (Object.keys(nameSettings).indexOf(key) >= 0) {
+                    frame.addField({
+                      name: nameSettings[key],
+                      type: _grafana_data__WEBPACK_IMPORTED_MODULE_2__["FieldType"].number
+                    });
+                  } else {
+                    frame.addField({
+                      name: key,
+                      type: _grafana_data__WEBPACK_IMPORTED_MODULE_2__["FieldType"].number
+                    });
+                  }
+                }
+              } catch (e_4_1) {
+                e_4 = {
+                  error: e_4_1
+                };
+              } finally {
+                try {
+                  if (_m && !_m.done && (_d = _l["return"])) _d.call(_l);
+                } finally {
+                  if (e_4) throw e_4.error;
+                }
+              } // build and add rows
+
+
+              var timestamps = Object.keys(data[Object.keys(data)[0]]);
+
+              try {
+                for (var timestamps_2 = Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__values"])(timestamps), timestamps_2_1 = timestamps_2.next(); !timestamps_2_1.done; timestamps_2_1 = timestamps_2.next()) {
+                  var time = timestamps_2_1.value;
+                  var row = [time];
+
+                  try {
+                    for (var _o = (e_6 = void 0, Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__values"])(Object.keys(data))), _p = _o.next(); !_p.done; _p = _o.next()) {
+                      var key = _p.value;
+                      row.push(data[key][time]);
+                    }
+                  } catch (e_6_1) {
+                    e_6 = {
+                      error: e_6_1
+                    };
+                  } finally {
+                    try {
+                      if (_p && !_p.done && (_f = _o["return"])) _f.call(_o);
+                    } finally {
+                      if (e_6) throw e_6.error;
+                    }
+                  }
+
+                  frame.appendRow(row);
+                }
+              } catch (e_5_1) {
+                e_5 = {
+                  error: e_5_1
+                };
+              } finally {
+                try {
+                  if (timestamps_2_1 && !timestamps_2_1.done && (_e = timestamps_2["return"])) _e.call(timestamps_2);
+                } finally {
+                  if (e_5) throw e_5.error;
+                }
+              }
+            } // #######################
+
+
+            return frame;
           });
         });
         return [2
@@ -53546,7 +53599,6 @@ function (_super) {
           case 1:
             _a.trys.push([1, 3,, 4]);
 
-            console.log('requesting for test');
             return [4
             /*yield*/
             , Object(_grafana_runtime__WEBPACK_IMPORTED_MODULE_1__["getBackendSrv"])().datasourceRequest({
@@ -53685,20 +53737,14 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var react__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_2__);
 /* harmony import */ var _grafana_ui__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! @grafana/ui */ "@grafana/ui");
 /* harmony import */ var _grafana_ui__WEBPACK_IMPORTED_MODULE_3___default = /*#__PURE__*/__webpack_require__.n(_grafana_ui__WEBPACK_IMPORTED_MODULE_3__);
-/* harmony import */ var _types__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./types */ "./types.ts");
-/* harmony import */ var _material_ui_core_FormControlLabel__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! @material-ui/core/FormControlLabel */ "../node_modules/@material-ui/core/esm/FormControlLabel/index.js");
-/* harmony import */ var _material_ui_core__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! @material-ui/core */ "../node_modules/@material-ui/core/esm/index.js");
-/* harmony import */ var _grafana_runtime__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! @grafana/runtime */ "@grafana/runtime");
-/* harmony import */ var _grafana_runtime__WEBPACK_IMPORTED_MODULE_7___default = /*#__PURE__*/__webpack_require__.n(_grafana_runtime__WEBPACK_IMPORTED_MODULE_7__);
+/* harmony import */ var _material_ui_core__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! @material-ui/core */ "../node_modules/@material-ui/core/esm/index.js");
+/* harmony import */ var _types__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./types */ "./types.ts");
 
 
 
 
 
 
-
-
-var FormField = _grafana_ui__WEBPACK_IMPORTED_MODULE_3__["LegacyForms"].FormField;
 
 var QueryEditor =
 /** @class */
@@ -53708,158 +53754,7 @@ function (_super) {
   function QueryEditor() {
     var _this = _super !== null && _super.apply(this, arguments) || this;
 
-    _this.state = {
-      showMeta: false,
-      datapoint_options: [{
-        label: 'example option 1',
-        value: 1,
-        description: 'example description'
-      }, {
-        label: 'example option 2',
-        value: 2,
-        description: 'example description'
-      }],
-      datatype_options: [{
-        label: 'value',
-        value: 0,
-        description: 'timeseries of values'
-      }, {
-        label: 'schedule',
-        value: 1,
-        description: 'currently active schedule'
-      }, {
-        label: 'setpoint',
-        value: 2,
-        description: 'latest setpoint'
-      }],
-      custom_user_scaling: false,
-      custom_user_name: false,
-      changed_input_style: function changed_input_style(changed) {
-        return changed ? {
-          backgroundColor: 'darkslategrey'
-        } : {};
-      }
-    };
-
-    _this.onMetaChange = function (event, child) {
-      var _a = _this.props,
-          onChange = _a.onChange,
-          query = _a.query,
-          onRunQuery = _a.onRunQuery;
-
-      var s = Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, _this.state);
-
-      s.showMeta = child;
-
-      _this.setState({
-        s: s
-      });
-
-      onChange(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, query), {
-        getMeta: child
-      }));
-      onRunQuery();
-    };
-
-    _this.onDatapointChange = function (event) {
-      var _a = _this.props,
-          onChange = _a.onChange,
-          query = _a.query,
-          onRunQuery = _a.onRunQuery;
-      var datapoint = event;
-      onChange(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, query), {
-        datapoint: datapoint
-      }));
-      onRunQuery();
-    };
-
-    _this.onDatatypeChange = function (event) {
-      var _a = _this.props,
-          onChange = _a.onChange,
-          query = _a.query,
-          onRunQuery = _a.onRunQuery;
-      var datatype = event;
-      onChange(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, query), {
-        datatype: datatype
-      }));
-      onRunQuery();
-    };
-
-    _this.onDisplayNameChange = function (event) {
-      var _a = _this.props,
-          onChange = _a.onChange,
-          query = _a.query; // for updating state for colorful input tracking
-
-      var custom_user_name = _this.state.custom_user_name;
-      custom_user_name = true;
-
-      _this.setState(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, _this.state), {
-        custom_user_name: custom_user_name
-      }));
-
-      var displayName = event.target.value;
-      onChange(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, query), {
-        displayName: displayName
-      }));
-    };
-
-    _this.onOffsetChange = function (event) {
-      var _a = _this.props,
-          onChange = _a.onChange,
-          query = _a.query,
-          onRunQuery = _a.onRunQuery;
-      var offset = event.target.value;
-      onChange(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, query), {
-        offset: offset
-      }));
-      onRunQuery();
-    };
-
-    _this.onUseIntervalAndOffset = function (event) {
-      var _a = _this.props,
-          onChange = _a.onChange,
-          query = _a.query,
-          onRunQuery = _a.onRunQuery;
-      var useIntervalAndOffset = !(event.target.value === 'true');
-      onChange(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, query), {
-        useIntervalAndOffset: useIntervalAndOffset
-      }));
-      onRunQuery();
-    };
-
-    _this.onScalingFactorChange = function (event) {
-      var _a = _this.props,
-          onChange = _a.onChange,
-          query = _a.query; // for updating state for colorful input tracking
-
-      var custom_user_scaling = _this.state.custom_user_scaling;
-      custom_user_scaling = true;
-
-      _this.setState(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, _this.state), {
-        custom_user_scaling: custom_user_scaling
-      }));
-
-      var scalingFactor = parseFloat(event.target.value);
-      onChange(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, query), {
-        scalingFactor: scalingFactor
-      }));
-    };
-
-    _this.onUserMetaChange = function () {
-      var onRunQuery = _this.props.onRunQuery; // for updating state for colorful input tracking
-
-      var custom_user_scaling = _this.state.custom_user_scaling;
-      custom_user_scaling = false;
-      var custom_user_name = _this.state.custom_user_name;
-      custom_user_name = false;
-
-      _this.setState(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, _this.state), {
-        custom_user_scaling: custom_user_scaling,
-        custom_user_name: custom_user_name
-      }));
-
-      onRunQuery();
-    };
+    _this.state = {};
 
     _this.onKeyUp = function (event) {
       // 'keypress' event misbehaves on mobile so we track 'Enter' key via 'keydown' event
@@ -53867,8 +53762,49 @@ function (_super) {
         event.preventDefault();
         event.stopPropagation();
 
-        _this.onUserMetaChange();
+        _this.onRunQuery();
       }
+    };
+
+    _this.onRequestParamsJson = function (event) {
+      var _a = _this.props,
+          onChange = _a.onChange,
+          query = _a.query;
+      var value = event.target.value; // for updating state for colorful input tracking
+
+      var requestParamsJson = value;
+      onChange(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, query), {
+        requestParamsJson: requestParamsJson
+      }));
+    };
+
+    _this.onNameSettingsJsonChange = function (event) {
+      var _a = _this.props,
+          onChange = _a.onChange,
+          query = _a.query;
+      var value = event.target.value; // for updating state for colorful input tracking
+
+      var nameSettingsJson = value;
+      onChange(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, query), {
+        nameSettingsJson: nameSettingsJson
+      }));
+    };
+
+    _this.onFilterByNamesChanged = function (event) {
+      var _a = _this.props,
+          onChange = _a.onChange,
+          query = _a.query,
+          onRunQuery = _a.onRunQuery;
+      var filterByNames = event.target.checked;
+      onChange(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])(Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__assign"])({}, query), {
+        filterByNames: filterByNames
+      }));
+      onRunQuery();
+    };
+
+    _this.onRunQuery = function () {
+      var onRunQuery = _this.props.onRunQuery;
+      onRunQuery();
     };
 
     return _this;
@@ -53876,52 +53812,10 @@ function (_super) {
 
   QueryEditor.prototype.componentDidMount = function () {
     return Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__awaiter"])(this, void 0, void 0, function () {
-      var result, datapoint_options_1, error_1;
-
-      var _this = this;
-
       return Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__generator"])(this, function (_a) {
-        switch (_a.label) {
-          case 0:
-            _a.trys.push([0, 2,, 3]);
-
-            return [4
-            /*yield*/
-            , Object(_grafana_runtime__WEBPACK_IMPORTED_MODULE_7__["getBackendSrv"])().datasourceRequest({
-              method: 'GET',
-              url: this.props.datasource.url + '/datapoint/'
-            })];
-
-          case 1:
-            result = _a.sent();
-            datapoint_options_1 = [];
-            result.data.forEach(function (option) {
-              datapoint_options_1.push({
-                label: option.short_name,
-                value: option.id,
-                description: option.description
-              });
-
-              _this.setState({
-                datapoint_options: datapoint_options_1
-              });
-            });
-            return [3
-            /*break*/
-            , 3];
-
-          case 2:
-            error_1 = _a.sent();
-            console.log('Error when requesting meta data from datasource: ', error_1);
-            return [3
-            /*break*/
-            , 3];
-
-          case 3:
-            return [2
-            /*return*/
-            ];
-        }
+        return [2
+        /*return*/
+        ];
       });
     });
   }; // Managing queries
@@ -53941,168 +53835,71 @@ function (_super) {
         marginTop: 0
       }
     }, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", {
-      className: "gf-form"
-    }, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", {
-      className: "gf-form",
-      style: {
-        marginBottom: 0
-      }
-    }, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_grafana_ui__WEBPACK_IMPORTED_MODULE_3__["InlineFormLabel"], {
-      width: 10,
-      tooltip: "Select the datapoint to display. Options are loaded according to the meta data."
-    }, "Select Datapoint"), react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_grafana_ui__WEBPACK_IMPORTED_MODULE_3__["Select"], {
-      width: 30,
-      placeholder: "Select datapoint",
-      disabled: query.getMeta,
-      value: query.datapoint,
-      maxMenuHeight: 140,
-      // defaultValue={this.state.datapoint_default}
-      onChange: function onChange(e) {
-        return _this.onDatapointChange(e);
-      },
-      options: this.state.datapoint_options
-    })), react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", {
-      className: "gf-form",
-      style: {
-        marginBottom: 0,
-        marginLeft: 4
-      }
-    }, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_grafana_ui__WEBPACK_IMPORTED_MODULE_3__["InlineFormLabel"], {
-      width: 10,
-      tooltip: "Select the type of data to display. Options are defined according to BEMCom."
-    }, "Select Data Type"), react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_grafana_ui__WEBPACK_IMPORTED_MODULE_3__["Select"], {
-      width: 30,
-      placeholder: "Select data type",
-      disabled: query.getMeta,
-      value: query.datatype,
-      maxMenuHeight: 140,
-      // defaultValue={this.state.datatype_options[0]}
-      onChange: function onChange(e) {
-        return _this.onDatatypeChange(e);
-      },
-      options: this.state.datatype_options
-    }))), react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", {
-      style: {
-        backgroundColor: '#0A0A0A',
-        display: 'inline-block'
-      }
-    }, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", {
-      className: "gf-form",
-      style: {
-        marginLeft: 10,
-        marginRight: 10,
-        borderBottom: '1px solid #333333'
-      }
-    }, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", {
       className: "gf-form",
       style: {
         marginBottom: 0,
         marginTop: 5
       }
-    }, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(FormField, {
-      label: "Offset",
-      disabled: query.getMeta,
-      labelWidth: 8,
-      inputWidth: 9,
-      // onKeyUp={this.onKeyUp}
+    }, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_grafana_ui__WEBPACK_IMPORTED_MODULE_3__["Field"], {
+      label: "Query",
+      description: "Define your query in accordance with the service's parameters"
+    }, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_grafana_ui__WEBPACK_IMPORTED_MODULE_3__["TextArea"], {
+      name: "query",
       onChange: function onChange(e) {
-        return _this.onOffsetChange(e);
+        return _this.onRequestParamsJson(e);
       },
-      value: query.offset,
-      placeholder: "-0 s",
-      tooltip: "(optional) set an offset around the timestamps generated through the interval-paremter of grafana's Query options. Example: '-2.5 seconds', '-1 h', '-5 min'"
+      value: query.requestParamsJson,
+      placeholder: '\r\n                {\r\n                  "start_timestamp": "2021-08-04T10:39:37.639121+00:00",\r\n                  "end_timestamp": "2021-08-04T12:39:37.639130+00:00",\r\n                  ...\r\n                }',
+      required: true,
+      style: {
+        width: 600,
+        height: 160
+      }
     })), react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", {
+      style: {
+        marginLeft: 20
+      }
+    }, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_grafana_ui__WEBPACK_IMPORTED_MODULE_3__["Field"], {
+      label: "Fieldnames",
+      description: "Define custom names for specific fields"
+    }, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_grafana_ui__WEBPACK_IMPORTED_MODULE_3__["TextArea"], {
+      name: "settings",
+      onChange: function onChange(e) {
+        return _this.onNameSettingsJsonChange(e);
+      },
+      value: query.nameSettingsJson,
+      placeholder: '\r\n                {\r\n                  "yhat": "mean",\r\n                  "yhat_lower": "5.5 % quantile",\r\n                  "yhat_upper": "94.5 % quantile",\r\n                  ...\r\n                }',
+      style: {
+        width: 400,
+        height: 160
+      }
+    })))), react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_grafana_ui__WEBPACK_IMPORTED_MODULE_3__["Checkbox"], {
+      label: "filter by provided names",
+      checked: query.filterByNames,
+      value: query.filterByNames,
+      onChange: this.onFilterByNamesChanged,
+      name: "filterBynames",
+      color: "primary"
+    }), react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", {
       className: "gf-form",
       style: {
-        marginLeft: 10
+        marginBottom: 0,
+        marginTop: 5
       }
-    }, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_material_ui_core_FormControlLabel__WEBPACK_IMPORTED_MODULE_5__["default"], {
-      style: {
-        marginTop: 2
-      },
-      control: react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_material_ui_core__WEBPACK_IMPORTED_MODULE_6__["Checkbox"], {
-        checked: query.useIntervalAndOffset,
-        value: query.useIntervalAndOffset,
-        onChange: this.onUseIntervalAndOffset,
-        name: "useIntervalAndOffset",
-        color: "primary",
-        size: "small"
-      }),
-      className: "m-1",
-      label: "use interval and offset"
-    }))), react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", {
-      className: "gf-form",
-      style: {
-        marginLeft: 10,
-        marginRight: 10
-      }
-    }, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("span", {
-      className: "gf-form"
-    }, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(FormField, {
-      style: this.state.changed_input_style(this.state.custom_user_name),
-      label: "displayName",
-      disabled: query.getMeta,
-      labelWidth: 8,
-      inputWidth: 9,
-      onKeyUp: this.onKeyUp,
-      onChange: function onChange(e) {
-        return _this.onDisplayNameChange(e);
-      },
-      value: query.displayName,
-      placeholder: "",
-      tooltip: "Custom name for this datapoint"
-    }), react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(FormField, {
-      style: this.state.changed_input_style(this.state.custom_user_scaling),
-      label: "scalingFactor",
-      disabled: query.getMeta,
-      type: "number",
-      labelWidth: 8,
-      inputWidth: 5,
-      onKeyUp: this.onKeyUp,
-      onChange: function onChange(e) {
-        return _this.onScalingFactorChange(e);
-      },
-      value: query.scalingFactor,
-      placeholder: "",
-      tooltip: "Custom scaling factor for this datapoint"
-    }), react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_material_ui_core__WEBPACK_IMPORTED_MODULE_6__["Button"], {
+    }, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_material_ui_core__WEBPACK_IMPORTED_MODULE_4__["Button"], {
       style: {
         marginTop: 2
       },
       variant: "contained",
       size: "small",
-      disabled: query.getMeta,
-      onClick: this.onUserMetaChange
-    }, "apply"))))));
+      onClick: this.onRunQuery
+    }, "run"))));
   };
 
   QueryEditor.prototype.render = function () {
-    var query = lodash_defaults__WEBPACK_IMPORTED_MODULE_1___default()(this.props.query, _types__WEBPACK_IMPORTED_MODULE_4__["defaultQuery"]); // const { getMeta, datapoint, datatype, displayName, scalingFactor } = query;
+    var query = lodash_defaults__WEBPACK_IMPORTED_MODULE_1___default()(this.props.query, _types__WEBPACK_IMPORTED_MODULE_5__["defaultQuery"]); // const { getMeta, datapoint, datatype, displayName, scalingFactor } = query;
 
-    return react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", null, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", {
-      className: "gf-form",
-      style: {
-        marginLeft: 0
-      }
-    }, react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_material_ui_core_FormControlLabel__WEBPACK_IMPORTED_MODULE_5__["default"], {
-      control: react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(_material_ui_core__WEBPACK_IMPORTED_MODULE_6__["Switch"], {
-        checked: query.getMeta,
-        value: query.getMeta,
-        onChange: this.onMetaChange,
-        name: "checkedMeta",
-        color: "primary",
-        size: "small"
-      }),
-      className: "m-1",
-      label: "Show meta data"
-    }), react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement(FormField, {
-      label: "description",
-      placeholder: "description",
-      labelWidth: 5,
-      inputWidth: 30,
-      value: query.datapoint.description || '',
-      disabled: true
-    })), this.renderQuery(query));
+    return react__WEBPACK_IMPORTED_MODULE_2___default.a.createElement("div", null, this.renderQuery(query));
   };
 
   return QueryEditor;
@@ -54147,21 +53944,19 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "defaultQuery", function() { return defaultQuery; });
 // defaults:
 var defaultQuery = {
-  getMeta: false,
-  datapoint: {
-    label: '',
-    value: 0,
-    description: ''
-  },
-  datatype: {
-    label: 'value',
-    value: 0,
-    description: 'timeseries of values'
-  },
-  displayName: '',
-  scalingFactor: 1,
-  useIntervalAndOffset: true
-};
+  nameSettingsJson: '',
+  filterByNames: false
+}; // custom data types
+// export interface MyDatapoint {
+//   label: string;
+//   value: number;
+//   description: string;
+// }
+// export interface MyDatatype {
+//   label: string;
+//   value: number;
+//   description: string;
+// }
 
 /***/ }),
 
