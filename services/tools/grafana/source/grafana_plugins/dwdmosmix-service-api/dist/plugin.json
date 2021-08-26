@@ -1,10 +1,10 @@
 {
   "type": "datasource",
-  "name": "Prediction-service-api",
-  "id": "prediction-service-api",
+  "name": "DWD-MOSMix-service-api",
+  "id": "dwdmosmix-service-api",
   "metrics": true,
   "info": {
-    "description": "A custom ds plugin to ingerate the Rest API of our prediction services.",
+    "description": "A custom ds plugin to ingerate the Rest API of our DWD-MOSMix weather forecast service.",
     "author": {
       "name": "key",
       "url": "fzi.de"
