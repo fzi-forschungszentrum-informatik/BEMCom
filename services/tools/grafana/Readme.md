@@ -1,6 +1,13 @@
 # Grafana Tool
 
-This service provides a Grafana instance with a custom plug-in that allows direct data retrieval from REST interface of the Django-API service.
+This service provides a Grafana instance with custom plug-ins that allow:
+
+- `bemcom-django-api`: <br>
+  data retrieval from the REST interface of the BEMCom Django-API service
+- `prediction-service-api` <br>
+  request and display predictions of a stochastic prediction service
+- `dwdmosmix-service-api` <br>
+  display forecasts of the DWD MOSMix weather forecast service
 
 ### Configuration
 
@@ -19,10 +26,12 @@ This service provides a Grafana instance with a custom plug-in that allows direc
 
 ##### Volumes
 
-| Path in Container                          | Usage/Remarks                                                                        |
-| ------------------------------------------ | ------------------------------------------------------------------------------------ |
-| /var/lib/grafana/grafana.db                | Grafana SQLite database file. Store on local file system to persist grafan settings. |
-| /var/lib/grafana/plugins/bemcom-django-api | Allows mounting in the custom plugin. Use for development only.                      |
+| Path in Container                               | Usage/Remarks                                                                        |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------ |
+| /var/lib/grafana/grafana.db                     | Grafana SQLite database file. Store on local file system to persist grafan settings. |
+| /var/lib/grafana/plugins/bemcom-django-api      | Allows mounting in the custom plugin. Use for development only.                      |
+| /var/lib/grafana/plugins/dwdmosmix-service-api  | Allows mounting in the custom plugin. Use for development only.                      |
+| /var/lib/grafana/plugins/prediction-service-api | Allows mounting in the custom plugin. Use for development only.                      |
 
 **Hint**: Add custom volumes to persist changes in Grafana.
 
@@ -34,7 +43,7 @@ This service provides a Grafana instance with a custom plug-in that allows direc
 
 ##### Data source configuration
 
-The datasource is configured by providing the following settings:
+The datasources are configured by providing the following settings:
 
 - required:
   - `Name` of the datasource inside grafana
@@ -46,7 +55,11 @@ The datasource is configured by providing the following settings:
   - `skip TLS verification` - check this to ignore self signed certificates <br>
     **important** this option renders https insecure. To enable verification and security a custom CA Authority for verification of certificates is needed.
 
+Optional settings are initally only of importance to the BEMCom API.
+
 ##### Query configuration
+
+###### BEMCOM API plugin
 
 A query can either display meta data on the API or timeseries data.
 
@@ -59,6 +72,21 @@ A query can either display meta data on the API or timeseries data.
 - Optionally you can define a frequency of the queried entries and an offset of the frequency to define the time range over which the average is taken.
   Warning: This option is not implemented in BEMCom, yet (Juli 2021). <br>
 - A custom name and scaling factor can optionally be defined. Click "apply" or press enter to commit changes here.
+
+###### DWD MOXMix and stochastic prediction service API plugin
+
+Use the textfield to define the parameters needed for the request as JSON string. The concret format depends on the service queried and can be found on the Swagger UI at the root URL of the respective service. The DWD MOSMix API for example expects parameters as followed:
+
+```bash
+{
+  "station": "Q712",
+  "start_timestamp": "2021-08-04T10:39:37.639121+00:00",
+  "end_timestamp": "2021-08-04T12:39:37.639130+00:00",
+  "updates": "latest",
+  "mosmix_parameters": null
+}
+
+```
 
 ### Development
 
@@ -103,3 +131,4 @@ Further instructions about working with Grafana:
 | 0.1.2 | Basic authentication enabled. Skipping TLS verification enabled for self signed certificates.              |
 | 0.1.3 | Additional fields for custom name, scaling factor and datapoint description                                |
 | 0.1.4 | Restructured query editor. Optional field to define an offset. Integrate grafana's query option 'interval' |
+| 0.2.0 | Added additional plugins for querying DWD Mosmix weather forecasts and stochastic prediction services      |
