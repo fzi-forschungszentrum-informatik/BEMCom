@@ -24,18 +24,6 @@ export class ConfigEditor extends PureComponent<Props, State> {
     onOptionsChange({ ...options, url });
   };
 
-  // onLimitChange = (event: ChangeEvent<HTMLInputElement>) => {
-  //   const { onOptionsChange, options } = this.props;
-  //   const queryLimit = parseInt(event.target.value);
-  //   onOptionsChange({
-  //     ...options,
-  //     jsonData: {
-  //       ...options.jsonData,
-  //       queryLimit,
-  //     },
-  //   });
-  // };
-
   onBasicAuthChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { onOptionsChange, options } = this.props;
     const basicAuth = !(event.target.value === 'true');

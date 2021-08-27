@@ -157,8 +157,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
         // parse returned data
         // #######################
-        // MOSMIX
-        var data = response.data.mosmix_data;
+        var data = response.data;
         // if name settings are provided, and filter is switsched on, only parse the provided fields
         const nameSettings = JSON.parse(target.nameSettingsJson || '{}');
         const filterByNames = target.filterByNames;
@@ -170,14 +169,14 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
           }
 
           // build and add rows
-          const timestamps = Object.keys(data[Object.keys(data)[0]]);
-          for (const time of timestamps) {
-            let row = [time];
+          data[Object.keys(data)[0]].forEach((e: any, i: any) => {
+            let row = [e['timestamp']];
+
             for (const key of Object.keys(nameSettings)) {
-              row.push(data[key][time]);
+              row.push(data[key][i]['value']);
             }
             frame.appendRow(row);
-          }
+          });
         } else {
           // add all column names
           for (const key of Object.keys(data)) {
@@ -189,14 +188,14 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
           }
 
           // build and add rows
-          const timestamps = Object.keys(data[Object.keys(data)[0]]);
-          for (const time of timestamps) {
-            let row = [time];
+          data[Object.keys(data)[0]].forEach((e: any, i: any) => {
+            let row = [e['timestamp']];
+
             for (const key of Object.keys(data)) {
-              row.push(data[key][time]);
+              row.push(data[key][i]['value']);
             }
             frame.appendRow(row);
-          }
+          });
         }
         // #######################
 

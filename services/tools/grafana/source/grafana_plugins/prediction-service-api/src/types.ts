@@ -36,16 +36,3 @@ export interface MyDataSourceOptions extends DataSourceJsonData {
 export interface MySecureJsonData {
   basicAuthPassword?: string;
 }
-
-// custom data types
-// export interface MyDatapoint {
-//   label: string;
-//   value: number;
-//   description: string;
-// }
-
-// export interface MyDatatype {
-//   label: string;
-//   value: number;
-//   description: string;
-// }
