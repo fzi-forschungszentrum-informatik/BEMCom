@@ -94,8 +94,28 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     // type: MyQuery
     // build url
     const urlReq = this.url + '/request/';
+
     // get params from user input and parse to object
-    const params: Object = JSON.parse(query.requestParamsJson);
+    var paramString = query.requestParamsJson;
+
+    // replace placehodlers $from and $to
+    if (paramString.indexOf('$from') >= 0) {
+      var fromDate = new Date(query.from);
+      var fromString: string = fromDate.toISOString();
+      fromString = fromString.split('.')[0];
+      fromString = fromString + '+00:00';
+
+      paramString = paramString.replace('$from', '"' + fromString + '"');
+    }
+    if (paramString.indexOf('$to') >= 0) {
+      var toDate = new Date(query.to);
+      var toString: string = toDate.toISOString();
+      toString = toString.split('.')[0];
+      toString = toString + '+00:00';
+
+      paramString = paramString.replace('$to', '"' + toString + '"');
+    }
+    const params: Object = JSON.parse(paramString);
     var resultReq;
 
     try {
