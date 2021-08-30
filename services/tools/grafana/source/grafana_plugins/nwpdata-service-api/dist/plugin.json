@@ -1,10 +1,10 @@
 {
   "type": "datasource",
-  "name": "DWD-MOSMix-service-api",
-  "id": "dwdmosmix-service-api",
+  "name": "Nwpdata-service-api",
+  "id": "nwpdata-service-api",
   "metrics": true,
   "info": {
-    "description": "A custom ds plugin to ingerate the Rest API of our DWD-MOSMix weather forecast service.",
+    "description": "A custom ds plugin to access numerical weather predication data.",
     "author": {
       "name": "key",
       "url": "fzi.de"
@@ -26,7 +26,7 @@
     ],
     "screenshots": [],
     "version": "0.1.0",
-    "updated": "2021-08-27"
+    "updated": "2021-08-30"
   },
   "dependencies": {
     "grafanaVersion": "6.5.x",

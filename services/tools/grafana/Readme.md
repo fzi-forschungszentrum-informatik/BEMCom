@@ -2,12 +2,11 @@
 
 This service provides a Grafana instance with custom plug-ins that allow:
 
-- `bemcom-django-api`: <br>
-  data retrieval from the REST interface of the BEMCom Django-API service
-- `prediction-service-api` <br>
-  request and display predictions of a stochastic prediction service
-- `dwdmosmix-service-api` <br>
-  display forecasts of the DWD MOSMix weather forecast service
+- `bemcom-django-api`:  Data retrieval from the REST interface of the BEMCom Django-API service.
+- `prediction-service-api`: Request and display data provided via the prediction service REST API.
+- `nwpdata-service-api`: Request and display of data provided via the nwpdata service REST API.
+
+Please note that the prediction service and nwpdata service REST API have not been published to the public yet. You can simple ignore these plugins thus.
 
 ### Configuration
 
@@ -26,12 +25,12 @@ This service provides a Grafana instance with custom plug-ins that allow:
 
 ##### Volumes
 
-| Path in Container                               | Usage/Remarks                                                                        |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Path in Container                               | Usage/Remarks                                                |
+| ----------------------------------------------- | ------------------------------------------------------------ |
 | /var/lib/grafana/grafana.db                     | Grafana SQLite database file. Store on local file system to persist grafan settings. |
-| /var/lib/grafana/plugins/bemcom-django-api      | Allows mounting in the custom plugin. Use for development only.                      |
-| /var/lib/grafana/plugins/dwdmosmix-service-api  | Allows mounting in the custom plugin. Use for development only.                      |
-| /var/lib/grafana/plugins/prediction-service-api | Allows mounting in the custom plugin. Use for development only.                      |
+| /var/lib/grafana/plugins/bemcom-django-api      | Allows mounting in the custom plugin. Use for development only. |
+| /var/lib/grafana/plugins/nwpdata-service-api    | Allows mounting in the custom plugin. Use for development only. |
+| /var/lib/grafana/plugins/prediction-service-api | Allows mounting in the custom plugin. Use for development only. |
 
 **Hint**: Add custom volumes to persist changes in Grafana.
 
@@ -52,7 +51,7 @@ The datasources are configured by providing the following settings:
   - `use basic authentication`
   - `basicAuth user`
   - `basicAuth password`
-  - `skip TLS verification` - check this to ignore self signed certificates <br>
+  - `skip TLS verification` - check this to ignore self signed certificates.
     **important** this option renders https insecure. To enable verification and security a custom CA Authority for verification of certificates is needed.
 
 Optional settings are initally only of importance to the BEMCom API.
@@ -73,17 +72,17 @@ A query can either display meta data on the API or timeseries data.
   Warning: This option is not implemented in BEMCom, yet (Juli 2021). <br>
 - A custom name and scaling factor can optionally be defined. Click "apply" or press enter to commit changes here.
 
-###### DWD MOXMix and stochastic prediction service API plugin
+###### Nwpdata and stochastic prediction service API plugin
 
-Use the textfield to define the parameters needed for the request as JSON string. The concret format depends on the service queried and can be found on the Swagger UI at the root URL of the respective service. The DWD MOSMix API for example expects parameters as followed:
+Use the textfield to define the parameters needed for the request as JSON string. The actual format depends on the service queried and can be found on the Swagger UI at the root URL of the respective service. The following settings work well with the FZI internal DWD MOSMIX Data Service for example expects parameters as followed:
 
 ```bash
 {
   "station": "Q712",
-  "start_timestamp": "2021-08-04T10:39:37.639121+00:00",
-  "end_timestamp": "2021-08-04T12:39:37.639130+00:00",
+  "start_timestamp": $from,
+  "end_timestamp": $to,
   "updates": "latest",
-  "mosmix_parameters": null
+  "mosmix_parameters": ["TTT"]
 }
 
 ```
@@ -124,11 +123,11 @@ Further instructions about working with Grafana:
 
 ### Changelog
 
-| Tag   | Changes                                                                                                    |
-| ----- | ---------------------------------------------------------------------------------------------------------- |
-| 0.1.0 | Initial version                                                                                            |
-| 0.1.1 | Simpler setpoint selection                                                                                 |
-| 0.1.2 | Basic authentication enabled. Skipping TLS verification enabled for self signed certificates.              |
-| 0.1.3 | Additional fields for custom name, scaling factor and datapoint description                                |
+| Tag   | Changes                                                      |
+| ----- | ------------------------------------------------------------ |
+| 0.1.0 | Initial version                                              |
+| 0.1.1 | Simpler setpoint selection                                   |
+| 0.1.2 | Basic authentication enabled. Skipping TLS verification enabled for self signed certificates. |
+| 0.1.3 | Additional fields for custom name, scaling factor and datapoint description |
 | 0.1.4 | Restructured query editor. Optional field to define an offset. Integrate grafana's query option 'interval' |
-| 0.2.0 | Added additional plugins for querying DWD Mosmix weather forecasts and stochastic prediction services      |
+| 0.2.0 | Added additional plugins for querying nwpdata and stochastic prediction services |
