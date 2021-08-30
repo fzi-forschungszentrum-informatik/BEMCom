@@ -69,40 +69,21 @@ class TestDatapointValueSerializer(TransactionTestCase):
         """
         Check that a value message is serialzed as expected.
         """
-        expected_data = {
-            "value": "Test Value",
-            "timestamp": timestamp_utc_now(),
-        }
+        for test_value in [1, 2.2, "not a number", None, True, False]:
+            expected_data = {
+                "value": json.dumps(test_value),
+                "timestamp": timestamp_utc_now(),
+            }
 
-        field_values = self.default_field_values.copy()
-        field_values.update({
-            "value": expected_data["value"],
-            "timestamp": datetime_from_timestamp(expected_data["timestamp"])
-        })
-        dp_value = self.DatapointValue.objects.create(**field_values)
+            field_values = self.default_field_values.copy()
+            field_values.update({
+                "value": test_value,
+                "timestamp": datetime_from_timestamp(expected_data["timestamp"])
+            })
+            dp_value = self.DatapointValue.objects.create(**field_values)
 
-        serializer = DatapointValueSerializer(dp_value)
-        assert serializer.data == expected_data
-
-    def test_to_representation_for_none(self):
-        """
-        Check that a value message is serialzed as expected if the value is
-        None.
-        """
-        expected_data = {
-            "value": None,
-            "timestamp": timestamp_utc_now(),
-        }
-
-        field_values = self.default_field_values.copy()
-        field_values.update({
-            "value": expected_data["value"],
-            "timestamp": datetime_from_timestamp(expected_data["timestamp"])
-        })
-        dp_value = self.DatapointValue.objects.create(**field_values)
-
-        serializer = DatapointValueSerializer(dp_value)
-        assert serializer.data == expected_data
+            serializer = DatapointValueSerializer(dp_value)
+            assert serializer.data == expected_data
 
     def test_required_fields(self):
         """
@@ -124,14 +105,12 @@ class TestDatapointValueSerializer(TransactionTestCase):
         assert "value" in caught_execption.detail
         assert "timestamp" in caught_execption.detail
 
-    def test_numeric_value_validated(self):
+    def test_numeric_values_validated(self):
         """
         Check that for numeric data_format values, only numeric values are
         accepted.
         """
         dp = self.datapoint
-        dp.allowed_values = ["not a number"]
-        dp.save()
 
         numeric_data_formats = [
             "generic_numeric",
@@ -139,35 +118,97 @@ class TestDatapointValueSerializer(TransactionTestCase):
             "discrete_numeric",
         ]
         for data_format in numeric_data_formats:
-            dp.data_format = data_format
-            dp.save()
 
-            test_data = {
-                "value": "not a number",
-                "timestamp": timestamp_utc_now(),
-            }
-            serializer = DatapointValueSerializer(dp, data=test_data)
-            caught_execption = None
-            try:
-                serializer.is_valid(raise_exception=True)
-            except Exception as e:
-                caught_execption = e
+            # Verify that Non numeric types will raise.
+            for test_data_value in ["not a number", True, False]:
+                dp.data_format = data_format
+                dp.allowed_values = [test_data_value]
+                dp.save()
+                test_data = {
+                    "value": json.dumps(test_data_value),
+                    "timestamp": timestamp_utc_now(),
+                }
+                serializer = DatapointValueSerializer(dp, data=test_data)
+                caught_execption = None
+                try:
+                    serializer.is_valid(raise_exception=True)
+                except Exception as e:
+                    caught_execption = e
 
-            assert caught_execption is not None
-            assert caught_execption.status_code == 400
-            assert "value" in caught_execption.detail
+                assert caught_execption is not None
+                assert caught_execption.status_code == 400
+                assert "value" in caught_execption.detail
 
-        # Also verify the oposite, that text values are not rejected
+            # Check that JSON encoded floats and ints are encoded during
+            # validation.
+            for test_data_value in [1, 2.2, None]:
+                dp.data_format = data_format
+                dp.allowed_values = [test_data_value]
+                dp.save()
+                test_data = {
+                    "value": json.dumps(test_data_value),
+                    "timestamp": timestamp_utc_now(),
+                }
+                serializer = DatapointValueSerializer(dp, data=test_data)
+                assert serializer.is_valid(raise_exception=True)
+                assert serializer.validated_data["value"] == test_data_value
+
+    def test_text_values_validated(self):
+        """
+        Verify that text datapoints don't accept numeric values or bools.
+        """
+        dp = self.datapoint
         text_data_formats = [
             "generic_text",
             "discrete_text",
         ]
         for data_format in text_data_formats:
-            dp.data_format = data_format
+            for test_data_value in [1, 2.2, True, False]:
+                dp.data_format = data_format
+                dp.allowed_values = [test_data_value]
+                dp.save()
+
+                test_data = {
+                    "value": json.dumps(test_data_value),
+                    "timestamp": timestamp_utc_now(),
+                }
+                serializer = DatapointValueSerializer(dp, data=test_data)
+                caught_execption = None
+                try:
+                    assert serializer.is_valid(raise_exception=True)
+                except Exception as e:
+                    caught_execption = e
+
+                assert caught_execption is not None
+                assert caught_execption.status_code == 400
+                assert "value" in caught_execption.detail
+
+            # Check that JSON encoded strings (Nones are valid too)are encoded
+            # during validation.
+            for test_data_value in ["not a number", None]:
+                dp.data_format = data_format
+                dp.allowed_values = [test_data_value]
+                dp.save()
+                test_data = {
+                    "value": json.dumps(test_data_value),
+                    "timestamp": timestamp_utc_now(),
+                }
+                serializer = DatapointValueSerializer(dp, data=test_data)
+                assert serializer.is_valid(raise_exception=True)
+                assert serializer.validated_data["value"] == test_data_value
+
+    def test_bool_values_validated(self):
+        """
+        Verify that bool datapoints only accept boolean values.
+        """
+        dp = self.datapoint
+        dp.data_format = "bool"
+        for test_data_value in [1, 2.2, "not a number", None]:
+            dp.allowed_values = [test_data_value]
             dp.save()
 
             test_data = {
-                "value": "not a number",
+                "value": json.dumps(test_data_value),
                 "timestamp": timestamp_utc_now(),
             }
             serializer = DatapointValueSerializer(dp, data=test_data)
@@ -177,7 +218,38 @@ class TestDatapointValueSerializer(TransactionTestCase):
             except Exception as e:
                 caught_execption = e
 
-            assert caught_execption is None
+            assert caught_execption is not None
+            assert caught_execption.status_code == 400
+            assert "value" in caught_execption.detail
+
+        # Check that JSON encoded bools are encoded during validation.
+        for test_data_value in [True, False]:
+            dp.allowed_values = [test_data_value]
+            dp.save()
+            test_data = {
+                "value": json.dumps(test_data_value),
+                "timestamp": timestamp_utc_now(),
+            }
+            serializer = DatapointValueSerializer(dp, data=test_data)
+            assert serializer.is_valid(raise_exception=True)
+            assert serializer.validated_data["value"] == test_data_value
+
+    def test_unknown_format_values_accept_anything(self):
+        """
+        Datapoints with unknown format should accept anything.
+        """
+        dp = self.datapoint
+        dp.data_format = "unknown"
+        dp.allowed_values = []  # Is empty to prove that it is not used.
+        dp.save()
+        for test_data_value in [1, 2.2, "not a number", None, True, False]:
+            test_data = {
+                "value": json.dumps(test_data_value),
+                "timestamp": timestamp_utc_now(),
+            }
+            serializer = DatapointValueSerializer(dp, data=test_data)
+            assert serializer.is_valid(raise_exception=True)
+            assert serializer.validated_data["value"] == test_data_value
 
     def test_value_in_min_max(self):
         """
@@ -202,7 +274,7 @@ class TestDatapointValueSerializer(TransactionTestCase):
             dp.save()
 
             test_data = {
-                "value": valid_combination["value"],
+                "value": json.dumps(valid_combination["value"]),
                 "timestamp": timestamp_utc_now(),
             }
             serializer = DatapointValueSerializer(dp, data=test_data)
@@ -229,7 +301,7 @@ class TestDatapointValueSerializer(TransactionTestCase):
             dp.save()
 
             test_data = {
-                "value": invalid_combination["value"],
+                "value": json.dumps(invalid_combination["value"]),
                 "timestamp": timestamp_utc_now(),
             }
             serializer = DatapointValueSerializer(dp, data=test_data)
@@ -288,7 +360,7 @@ class TestDatapointValueSerializer(TransactionTestCase):
             dp.save()
 
             test_data = {
-                "value": valid_combination["value"],
+                "value": json.dumps(valid_combination["value"]),
                 "timestamp": timestamp_utc_now(),
             }
 
@@ -343,7 +415,7 @@ class TestDatapointValueSerializer(TransactionTestCase):
             dp.save()
 
             test_data = {
-                "value": invalid_combination["value"],
+                "value": json.dumps(invalid_combination["value"]),
                 "timestamp": timestamp_utc_now(),
             }
             serializer = DatapointValueSerializer(dp, data=test_data)
@@ -365,7 +437,6 @@ class TestDatapointValueSerializer(TransactionTestCase):
             assert caught_execption.status_code == 400
             assert "value" in caught_execption.detail
 
-
     def test_timestamp_validated(self):
         """
         Check that the serialzer doesn't accept unresonable low or high
@@ -380,7 +451,7 @@ class TestDatapointValueSerializer(TransactionTestCase):
         for timestamp in wrong_timestamps:
 
             test_data = {
-                "value": None,
+                "value": json.dumps(None),
                 "timestamp": timestamp,
             }
 
@@ -559,7 +630,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
                 {
                     "from_timestamp": None,
                     "to_timestamp": timestamp_utc_now() + 1000,
-                    "value": "not a number"
+                    "value": json.dumps("not a number")
                 }
             ],
             "timestamp": timestamp_utc_now(),
@@ -640,7 +711,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
             "schedule": [
                 {
                     "to_timestamp": timestamp_utc_now() + 1000,
-                    "value": "not a number",
+                    "value": json.dumps("not a number"),
                 }
             ],
             "timestamp": timestamp_utc_now(),
@@ -663,7 +734,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
             "schedule": [
                 {
                     "from_timestamp": None,
-                    "value": "not a number",
+                    "value": json.dumps("not a number"),
                 }
             ],
             "timestamp": timestamp_utc_now(),
@@ -713,7 +784,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
         #         {
         #             "from_timestamp": None,
         #             "to_timestamp": timestamp_utc_now() + 1000,
-        #             "value": "not a number",
+        #             "value": json.dumps("not a number"),
         #             "not_expected_field": "Should fail"
         #         }
         #     ],
@@ -753,7 +824,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
                     {
                         "from_timestamp": None,
                         "to_timestamp": timestamp_utc_now() + 1000,
-                        "value": "not a number"
+                        "value": json.dumps("not a number")
                     }
                 ],
                 "timestamp": timestamp_utc_now(),
@@ -785,7 +856,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
                     {
                         "from_timestamp": None,
                         "to_timestamp": timestamp_utc_now() + 1000,
-                        "value": "not a number"
+                        "value": json.dumps("not a number")
                     }
                 ],
                 "timestamp": timestamp_utc_now(),
@@ -826,7 +897,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
                     {
                         "from_timestamp": None,
                         "to_timestamp": timestamp_utc_now() + 1000,
-                        "value": valid_combination["value"]
+                        "value": json.dumps(valid_combination["value"])
                     }
                 ],
                 "timestamp": timestamp_utc_now(),
@@ -858,7 +929,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
                     {
                         "from_timestamp": None,
                         "to_timestamp": timestamp_utc_now() + 1000,
-                        "value": invalid_combination["value"]
+                        "value": json.dumps(invalid_combination["value"])
                     },
                 ],
                 "timestamp": timestamp_utc_now(),
@@ -924,7 +995,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
                     {
                         "from_timestamp": None,
                         "to_timestamp": timestamp_utc_now() + 1000,
-                        "value": valid_combination["value"]
+                        "value": json.dumps(valid_combination["value"])
                     },
                 ],
                 "timestamp": timestamp_utc_now(),
@@ -984,7 +1055,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
                     {
                         "from_timestamp": None,
                         "to_timestamp": timestamp_utc_now() + 1000,
-                        "value": valid_combination["value"]
+                        "value": json.dumps(valid_combination["value"])
                     },
                 ],
                 "timestamp": timestamp_utc_now(),
@@ -1024,7 +1095,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
                 {
                     "from_timestamp": timestamp_utc_now(),
                     "to_timestamp": timestamp_utc_now() - 1000,
-                    "value": "not a number"
+                    "value": json.dumps("not a number")
                 }
             ],
             "timestamp": timestamp_utc_now(),
@@ -1056,7 +1127,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
                 {
                     "from_timestamp": None,
                     "to_timestamp": "not 1564489613491",
-                    "value": 'not a number'
+                    "value": json.dumps('not a number')
                 }
             ],
             "timestamp": timestamp_utc_now(),
@@ -1079,7 +1150,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
                 {
                     "from_timestamp": "not 1564489613491",
                     "to_timestamp": None,
-                    "value": "not a number"
+                    "value": json.dumps("not a number")
                 }
             ],
             "timestamp": timestamp_utc_now(),
@@ -1112,7 +1183,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
                 {
                     "from_timestamp": None,
                     "to_timestamp": round(timestamp_utc_now() / 1000),
-                    "value": "not a number"
+                    "value": json.dumps("not a number")
                 }
             ],
             "timestamp": timestamp_utc_now(),
@@ -1135,7 +1206,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
                 {
                     "from_timestamp": round(timestamp_utc_now() / 1000),
                     "to_timestamp": None,
-                    "value": "not a number"
+                    "value": json.dumps("not a number")
                 }
             ],
             "timestamp": timestamp_utc_now(),
@@ -1159,7 +1230,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
                 {
                     "from_timestamp": None,
                     "to_timestamp": round(timestamp_utc_now() * 1000),
-                    "value": "not a number'"
+                    "value": json.dumps("not a number'")
                 }
             ],
             "timestamp": timestamp_utc_now(),
@@ -1182,7 +1253,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
                 {
                     "from_timestamp": round(timestamp_utc_now() * 1000),
                     "to_timestamp": None,
-                    "value": "not a number"
+                    "value": json.dumps("not a number")
                 }
             ],
             "timestamp": timestamp_utc_now(),
@@ -1264,14 +1335,14 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
                 {
                     "from_timestamp": None,
                     "to_timestamp": timestamp_utc_now() + 1000,
-                    'preferred_value': 21,
+                    'preferred_value': json.dumps(21),
                     'acceptable_values': [20.5, 21, 21.5],
 
                 },
                 {
                     "from_timestamp": timestamp_utc_now() + 1000,
                     "to_timestamp": None,
-                    'preferred_value': None,
+                    'preferred_value': json.dumps(None),
                     'acceptable_values': [None]
                 }
             ],
@@ -1372,7 +1443,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
                 {
                     "from_timestamp": None,
                     "to_timestamp": timestamp_utc_now() + 1000,
-                    'preferred_value': 'not a number'
+                    'preferred_value': json.dumps('not a number')
                 },
             ],
             "timestamp": timestamp_utc_now(),
@@ -1385,7 +1456,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
         #
         # # This is also ok.
         # test_data = {
-        #     "setpoint": None,
+        #     "setpoint": json.dumps(None),
         #     "timestamp": timestamp_utc_now(),
         # }
         # serializer = DatapointSetpointSerializer(dp, data=test_data)
@@ -1483,7 +1554,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
         setpoint_all_fields = {
             "from_timestamp": None,
             "to_timestamp": timestamp_utc_now() + 1000,
-            "preferred_value": 21,
+            "preferred_value": json.dumps(21),
             "acceptable_values": [20.5, 21, 21.5],
             "min_value": 20.5,
             "max_value": 21.5,
@@ -1604,7 +1675,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
         setpoint_all_fields = {
             "from_timestamp": None,
             "to_timestamp": timestamp_utc_now() + 1000,
-            "preferred_value": "not a number",
+            "preferred_value": json.dumps("not a number"),
             "acceptable_values": ["not a number"],
             "min_value": 20.5,
             "max_value": 21.5,
@@ -1703,7 +1774,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
                         "from_timestamp": None,
                         "to_timestamp": timestamp_utc_now() + 1000,
                         "preferred_value":
-                            valid_combination["preferred_value"],
+                            json.dumps(valid_combination["preferred_value"]),
                         "min_value": None,
                         "max_value": None
                     }
@@ -1738,7 +1809,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
                         "from_timestamp": None,
                         "to_timestamp": timestamp_utc_now() + 1000,
                         "preferred_value":
-                            invalid_combination["preferred_value"],
+                            json.dumps(invalid_combination["preferred_value"]),
                         "min_value": None,
                         "max_value": None
                     },
@@ -1805,7 +1876,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
                         "from_timestamp": None,
                         "to_timestamp": timestamp_utc_now() + 1000,
                         "preferred_value":
-                            valid_combination["preferred_value"],
+                            json.dumps(valid_combination["preferred_value"]),
                         "acceptable_values":
                             [valid_combination["preferred_value"]]
                     }
@@ -1868,7 +1939,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
                         "from_timestamp": None,
                         "to_timestamp": timestamp_utc_now() + 1000,
                         "preferred_value":
-                            invalid_combination["preferred_value"],
+                            json.dumps(invalid_combination["preferred_value"]),
                         "acceptable_values":
                             [invalid_combination["preferred_value"]]
                     }
@@ -1909,7 +1980,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
                 {
                     "from_timestamp": timestamp_utc_now(),
                     "to_timestamp": timestamp_utc_now() - 1000,
-                    "preferred_value": "not a number"
+                    "preferred_value": json.dumps("not a number")
                 },
             ],
             "timestamp": timestamp_utc_now(),
@@ -1940,7 +2011,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
                 {
                     "from_timestamp": None,
                     "to_timestamp": "not 1564489613491",
-                    "preferred_value": "not a number"
+                    "preferred_value": json.dumps("not a number")
                 }
             ],
             "timestamp": timestamp_utc_now(),
@@ -1995,7 +2066,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
                 {
                     "from_timestamp": None,
                     "to_timestamp": round(timestamp_utc_now() / 1000),
-                    "preferred_value": "not a number"
+                    "preferred_value": json.dumps("not a number")
                 }
             ],
             "timestamp": timestamp_utc_now(),
@@ -2018,7 +2089,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
                 {
                     "from_timestamp": round(timestamp_utc_now() / 1000),
                     "to_timestamp": None,
-                    "preferred_value": "not a number"
+                    "preferred_value": json.dumps("not a number")
                 }
             ],
             "timestamp": timestamp_utc_now(),
@@ -2042,7 +2113,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
                 {
                     "from_timestamp": None,
                     "to_timestamp": round(timestamp_utc_now() * 1000),
-                    "preferred_value": "not a number"
+                    "preferred_value": json.dumps("not a number")
                 }
             ],
             "timestamp": timestamp_utc_now(),
@@ -2065,7 +2136,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
                 {
                     "from_timestamp": round(timestamp_utc_now() * 1000),
                     "to_timestamp": None,
-                    "preferred_value": "not a number"
+                    "preferred_value": json.dumps("not a number")
                 }
             ],
             "timestamp": timestamp_utc_now(),

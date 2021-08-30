@@ -70,12 +70,16 @@ class DatapointTemplate(models.Model):
     #               and min value, that can take any value in between.
     #   discrete: The value of the datapoint can take one value of limited set
     #             of possible values.
+    #   bool: A bool, i.e. only True or False.
+    #   unknown: Unknown format. No checks applied.
     data_format_choices = [
         ("generic_numeric", "Generic Numeric"),
         ("continuous_numeric", "Continuous Numeric"),
         ("discrete_numeric", "Discrete Numeric"),
         ("generic_text", "Generic Text"),
         ("discrete_text", "Discrete Text"),
+        ("bool", "Boolean"),
+        ("unknown", "Unknown"),
     ]
     # Use generic_text as default as it imposes no constraints on the datapoint
     # apart from that the value can be stored as string, which should always
@@ -83,7 +87,7 @@ class DatapointTemplate(models.Model):
     data_format = models.CharField(
         max_length=18,
         choices=data_format_choices,
-        default="generic_text",
+        default="unknown",
         help_text=(
             "Format of the datapoint value. Additionally defines which meta"
             "data is available for it. See documentation in code for details."

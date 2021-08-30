@@ -13,7 +13,7 @@ try:
     # Define a Integer field that is also of format int64 in OpenAPI schema.
     from drf_spectacular.types import OpenApiTypes
     from drf_spectacular.utils import extend_schema_field
-    
+
     @extend_schema_field(OpenApiTypes.INT64)
     class Int64Field(serializers.IntegerField):
         pass
@@ -21,7 +21,7 @@ except ModuleNotFoundError:
     # Fallback to normal int field if drf_spectacular is not installed.
     class Int64Field(serializers.IntegerField):
         pass
-     
+
 
 class GenericValidators():
     """
@@ -51,18 +51,24 @@ class GenericValidators():
     @staticmethod
     def validate_value(datapoint, value):
 
+        # We expect all values to be encoded as JSON strings.
+        # That way we always send a string over REST API which is favourable
+        # as OpenAPI does not support dynamic types.
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError:
+            raise serializers.ValidationError(
+                "Value (%s) cannot be parsed as JSON." % value
+            )
+
         if "_numeric" in datapoint.data_format:
             # None is also a valid value for a Django float field, also for
             # BEMCom values.
-            if value is not None:
-                try:
-                    value = float(value)
-                except ValueError:
-                    raise serializers.ValidationError(
-                        "Value (%s) for numeric datapoint cannot be parsed to"
-                        " float." % value
-                    )
-
+            if type(value) not in [float, int, type(None)]:
+                raise serializers.ValidationError(
+                    "Value (%s) for numeric datapoint cannot be parsed to"
+                    " float or int." % value
+                )
         if "continuous_numeric" in datapoint.data_format:
             if datapoint.min_value is not None and value is not None:
                 if value < datapoint.min_value:
@@ -78,6 +84,18 @@ class GenericValidators():
                         "maximum allowed value (%s)." %
                         (value, datapoint.max_value)
                     )
+        if "_text" in datapoint.data_format:
+            if type(value) not in [str, type(None)]:
+                raise serializers.ValidationError(
+                    "Value (%s) for text datapoint cannot be parsed to"
+                    " str." % value
+                )
+        if "bool" in datapoint.data_format:
+            if type(value) not in [bool]:
+                raise serializers.ValidationError(
+                    "Value (%s) for boolean datapoint cannot be parsed to"
+                    " bool." % value
+                )
         if "discrete_" in datapoint.data_format:
             # Could be None or emptry string, both should be handled no values
             # allowed.
@@ -140,6 +158,7 @@ class GenericValidators():
                 json.dumps(schedule)
             )
 
+        validated_schedule_items = []
         for schedule_item in schedule:
             if not isinstance(schedule_item, dict):
                 raise serializers.ValidationError(
@@ -175,7 +194,9 @@ class GenericValidators():
             si_from_ts = schedule_item["from_timestamp"]
             si_to_ts = schedule_item["to_timestamp"]
             try:
-                si_value = self.validate_value(datapoint, si_value)
+                schedule_item["value"] = self.validate_value(
+                    datapoint, si_value
+                )
             except serializers.ValidationError as ve:
                 raise serializers.ValidationError(
                     "Validation of value of Schedule Item (%s) failed. The "
@@ -191,7 +212,9 @@ class GenericValidators():
                         json.dumps(schedule_item)
                     )
             try:
-                si_from_ts = self.validate_timestamp(datapoint, si_from_ts)
+                schedule_item["from_timestamp"] = self.validate_timestamp(
+                    datapoint, si_from_ts
+                )
             except serializers.ValidationError as ve:
                 raise serializers.ValidationError(
                     "Validation of from_timestamp of Schedule Item (%s) "
@@ -200,14 +223,17 @@ class GenericValidators():
                 )
 
             try:
-                si_to_ts = self.validate_timestamp(datapoint, si_to_ts)
+                schedule_item["to_timestamp"] = self.validate_timestamp(
+                    datapoint, si_to_ts
+                )
             except serializers.ValidationError as ve:
                 raise serializers.ValidationError(
                     "Validation of to_timestamp of Schedule Item (%s) "
                     "failed. The error was: %s" %
                     (json.dumps(schedule_item), str(ve.detail))
                 )
-        return schedule
+            validated_schedule_items.append(schedule_item)
+        return validated_schedule_items
 
     def validate_setpoint(self, datapoint, setpoint):
         # None is ok but pointless to check further.
@@ -220,6 +246,7 @@ class GenericValidators():
                 json.dumps(setpoint)
             )
 
+        validated_setpoint_items = []
         for setpoint_item in setpoint:
             if not isinstance(setpoint_item, dict):
                 raise serializers.ValidationError(
@@ -283,7 +310,9 @@ class GenericValidators():
             si_from_ts = setpoint_item["from_timestamp"]
             si_to_ts = setpoint_item["to_timestamp"]
             try:
-                si_pre_value = self.validate_value(datapoint, si_pre_value)
+                setpoint_item["preferred_value"] = self.validate_value(
+                    datapoint, si_pre_value
+                )
             except serializers.ValidationError as ve:
                 raise serializers.ValidationError(
                     "Validation of preferred_value of Setpoint Item (%s) "
@@ -299,7 +328,9 @@ class GenericValidators():
                         json.dumps(setpoint_item)
                     )
             try:
-                si_from_ts = self.validate_timestamp(datapoint, si_from_ts)
+                setpoint_item["from_timestamp"] = self.validate_timestamp(
+                    datapoint, si_from_ts
+                )
             except serializers.ValidationError as ve:
                 raise serializers.ValidationError(
                     "Validation of from_timestamp of Setpoint Item (%s) "
@@ -308,14 +339,16 @@ class GenericValidators():
                 )
 
             try:
-                si_to_ts = self.validate_timestamp(datapoint, si_to_ts)
+                setpoint_item["to_timestamp"] = self.validate_timestamp(
+                    datapoint, si_to_ts
+                )
             except serializers.ValidationError as ve:
                 raise serializers.ValidationError(
                     "Validation of to_timestamp of Setpoint Item (%s) "
                     "failed. The error was: %s" %
                     (json.dumps(setpoint_item), str(ve.detail))
                 )
-
+            validated_setpoint_items.append(setpoint_item)
         return setpoint
 
 
@@ -364,7 +397,7 @@ class DatapointValueSerializer(serializers.Serializer):
     # an API user.
     __doc__ = None
     #
-    value = serializers.CharField(
+    value = serializers.JSONField(
         allow_null=True,
         help_text=DatapointValueTemplate.value.field.help_text,
     )
@@ -375,7 +408,7 @@ class DatapointValueSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         fields_values = {}
-        fields_values["value"] = instance.value
+        fields_values["value"] = json.dumps(instance.value)
         # Return datetime in ms.
         if instance.timestamp is not None:
             timestamp = datetime.timestamp(instance.timestamp)
@@ -418,7 +451,7 @@ class DatapointScheduleItemSerializer(serializers.Serializer):
             "a new schedule is received."
         ),
     )
-    value = serializers.CharField(
+    value = serializers.JSONField(
         allow_null=True,
         help_text=(
             "The value that should be sent to the actuator datapoint.\n"
@@ -433,6 +466,7 @@ class DatapointScheduleItemSerializer(serializers.Serializer):
             "discrete."
         )
     )
+
 
 class DatapointScheduleSerializer(serializers.Serializer):
     """
@@ -460,6 +494,8 @@ class DatapointScheduleSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         fields_values = {}
+        for schedule_item in instance.schedule:
+            schedule_item["value"] = json.dumps(schedule_item["value"])
         fields_values["schedule"] = instance.schedule
         # Return datetime in ms.
         if instance.timestamp is not None:
@@ -502,7 +538,7 @@ class DatapointSetpointItemSerializer(serializers.Serializer):
             "a new setpoint is received."
         ),
     )
-    preferred_value = serializers.CharField(
+    preferred_value = serializers.JSONField(
         allow_null=True,
         help_text=(
             "Specifies the preferred setpoint of the user. This value should "
@@ -519,7 +555,7 @@ class DatapointSetpointItemSerializer(serializers.Serializer):
         ),
     )
     acceptable_values = serializers.ListField(
-        child=serializers.CharField(
+        child=serializers.JSONField(
             allow_null=True
         ),
         allow_null=True,
@@ -579,6 +615,10 @@ class DatapointSetpointSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         fields_values = {}
+        for setpoint_item in instance.setpoint:
+            setpoint_item["preferred_value"] = json.dumps(
+                setpoint_item["preferred_value"]
+            )
         fields_values["setpoint"] = instance.setpoint
         # Return datetime in ms.
         if instance.timestamp is not None:

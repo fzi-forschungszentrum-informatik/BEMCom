@@ -170,6 +170,7 @@ class DatapointScheduleViewSet(DatapointScheduleViewSetTemplate):
         serializer = self.serializer_class(datapoint, data=request.data)
         serializer.is_valid(raise_exception=True)
         validated_data = serializer.validated_data
+        print(validated_data)
 
         # Send the message to the MQTT broker.
         mqtt_topic = datapoint.get_mqtt_topics()["schedule"]

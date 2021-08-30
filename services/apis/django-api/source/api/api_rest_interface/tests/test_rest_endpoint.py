@@ -133,8 +133,9 @@ class TestRESTEndpoint(TestCase):
         Request the latest datapoint value msg and check that all expected
         fields are delivered.
         """
+        test_value = "last_value!"
         expected_data = {
-            "value": "last_value!",
+            "value": json.dumps(test_value),
             "timestamp": 1585092224000,
         }
 
@@ -142,7 +143,7 @@ class TestRESTEndpoint(TestCase):
         dp.save()
         dp_value = DatapointValue(
             datapoint = dp,
-            value=expected_data["value"],
+            value=test_value,
             timestamp=datetime_from_timestamp(expected_data["timestamp"]),
         )
         dp_value.save()
@@ -170,7 +171,7 @@ class TestRESTEndpoint(TestCase):
         # Now put an update for the datapoint and check that the put was
         # denied as expected.
         update_msg = {
-            "value": "last_value!",
+            "value": json.dumps("last_value!"),
             "timestamp": 1585092224000,
         }
         request = self.client.post(
@@ -185,7 +186,7 @@ class TestRESTEndpoint(TestCase):
 
     def test_post_datapoint_value_detail_for_actuator(self):
         """
-        Write (PUT) a value message, that should trigger that the corresponding
+        Write (POST) a value message, that should trigger that the corresponding
         message is sent to the message broker and after that also stored in the
         database, from which it should be readable as usual.
 
@@ -213,6 +214,10 @@ class TestRESTEndpoint(TestCase):
         # Now put an update for the datapoint and check that the put was
         # successful.
         expected_msg = {
+            "value": json.dumps("updated_value!"),
+            "timestamp": 1585092224000,
+        }
+        expected_msg_mqtt = {
             "value": "updated_value!",
             "timestamp": 1585092224000,
         }
@@ -239,7 +244,7 @@ class TestRESTEndpoint(TestCase):
 
         # Now that we know the message has been published on the broker,
         # verify it holds the expected information.
-        assert self.mqtt_client.userdata[dp_mqtt_value_topic] == expected_msg
+        assert self.mqtt_client.userdata[dp_mqtt_value_topic] == expected_msg_mqtt
 
         # After the MQTT message has now arrived the updated value should now
         # be available on the REST interface. As above this might happen async,
@@ -247,7 +252,7 @@ class TestRESTEndpoint(TestCase):
         waited_seconds = 0
         while True:
             dp.refresh_from_db()
-            if dp.last_value == expected_msg["value"]:
+            if dp.last_value == expected_msg_mqtt["value"]:
                 break
 
             time.sleep(0.005)
@@ -278,12 +283,12 @@ class TestRESTEndpoint(TestCase):
                     {
                         'from_timestamp': None,
                         'to_timestamp': 1564489613491,
-                        'value': "21"
+                        'value': json.dumps(21)
                     },
                     {
                         'from_timestamp': 1564489613491,
                         'to_timestamp': None,
-                        'value': None
+                        'value': json.dumps(None)
                     }
                 ]
         }
@@ -299,17 +304,32 @@ class TestRESTEndpoint(TestCase):
         """
         Check that the schedule of an actuator is returend as expected.
         """
-        expected_data = {
+        test_data = {
             "schedule": [
                 {
                     'from_timestamp': None,
                     'to_timestamp': 1564489613491,
-                    'value': "21"
+                    'value': 21
                 },
                 {
                     'from_timestamp': 1564489613491,
                     'to_timestamp': None,
                     'value': None
+                }
+            ],
+            "timestamp": datetime_from_timestamp(1564489613491),
+        }
+        expected_data = {
+            "schedule": [
+                {
+                    'from_timestamp': None,
+                    'to_timestamp': 1564489613491,
+                    'value': json.dumps(21)
+                },
+                {
+                    'from_timestamp': 1564489613491,
+                    'to_timestamp': None,
+                    'value': json.dumps(None)
                 }
             ],
             "timestamp": 1564489613491,
@@ -320,8 +340,8 @@ class TestRESTEndpoint(TestCase):
 
         dp_schedule = DatapointSchedule(
             datapoint = dp,
-            schedule=expected_data["schedule"],
-            timestamp=datetime_from_timestamp(expected_data["timestamp"]),
+            schedule=test_data["schedule"],
+            timestamp=test_data["timestamp"],
         )
         dp_schedule.save()
 
@@ -336,7 +356,7 @@ class TestRESTEndpoint(TestCase):
 
     def test_post_datapoint_schedule_detail_actuator(self):
         """
-        Write (PUT) a schedule message, that should trigger that the
+        Write (POST) a schedule message, that should trigger that the
         corresponding message is sent to the message broker and after that also
         stored in the database, from which it should be readable as usual.
 
@@ -369,7 +389,23 @@ class TestRESTEndpoint(TestCase):
                     {
                         'from_timestamp': None,
                         'to_timestamp': 1564489613491,
-                        'value': "21"
+                        'value': json.dumps(21)
+                    },
+                    {
+                        'from_timestamp': 1564489613491,
+                        'to_timestamp': None,
+                        'value': json.dumps(None)
+                    }
+                ],
+            "timestamp": 1585092224000,
+        }
+        expected_msg_mqtt = {
+            "schedule":
+                [
+                    {
+                        'from_timestamp': None,
+                        'to_timestamp': 1564489613491,
+                        'value': 21
                     },
                     {
                         'from_timestamp': 1564489613491,
@@ -403,7 +439,7 @@ class TestRESTEndpoint(TestCase):
         # Now that we know the message has been published on the broker,
         # verify it holds the expected information.
         received_msg = self.mqtt_client.userdata[dp_mqtt_schedule_topic]
-        assert received_msg == expected_msg
+        assert received_msg == expected_msg_mqtt
 
         # After the MQTT message has now arrived the updated value should now
         # be available on the REST interface. As above this might happen async,
@@ -443,7 +479,7 @@ class TestRESTEndpoint(TestCase):
                     {
                         'from_timestamp': None,
                         'to_timestamp': 1564489613491,
-                        'preferred_value': "21",
+                        'preferred_value': json.dumps(21),
                     },
                 ]
         }
@@ -459,17 +495,32 @@ class TestRESTEndpoint(TestCase):
         """
         Check that the setpoint of an actuator is returend as expected.
         """
-        expected_data = {
+        test_data = {
             "setpoint": [
                 {
                     'from_timestamp': None,
                     'to_timestamp': 1564489613491,
-                    'preferred_value': "21",
+                    'preferred_value': 21,
                 },
                 {
                     'from_timestamp': 1564489613491,
                     'to_timestamp': None,
                     'preferred_value': None,
+                }
+            ],
+            "timestamp": datetime_from_timestamp(1564489613491),
+        }
+        expected_data = {
+            "setpoint": [
+                {
+                    'from_timestamp': None,
+                    'to_timestamp': 1564489613491,
+                    'preferred_value': json.dumps(21),
+                },
+                {
+                    'from_timestamp': 1564489613491,
+                    'to_timestamp': None,
+                    'preferred_value': json.dumps(None),
                 }
             ],
             "timestamp": 1564489613491,
@@ -480,8 +531,8 @@ class TestRESTEndpoint(TestCase):
 
         dp_setpoint = DatapointSetpoint(
             datapoint = dp,
-            setpoint=expected_data["setpoint"],
-            timestamp=datetime_from_timestamp(expected_data["timestamp"]),
+            setpoint=test_data["setpoint"],
+            timestamp=test_data["timestamp"],
         )
         dp_setpoint.save()
 
@@ -496,7 +547,7 @@ class TestRESTEndpoint(TestCase):
 
     def test_post_datapoint_setpoint_detail_for_actuator(self):
         """
-        Write (PUT) a setpoint message, that should trigger that the
+        Write (POST) a setpoint message, that should trigger that the
         corresponding message is sent to the message broker and after that also
         stored in the database, from which it should be readable as usual.
 
@@ -529,7 +580,18 @@ class TestRESTEndpoint(TestCase):
                     {
                         'from_timestamp': None,
                         'to_timestamp': 1564489613491,
-                        'preferred_value': "21",
+                        'preferred_value': json.dumps(21),
+                    },
+                ],
+            "timestamp": 1585092224000,
+        }
+        expected_msg_mqtt = {
+            "setpoint":
+                [
+                    {
+                        'from_timestamp': None,
+                        'to_timestamp': 1564489613491,
+                        'preferred_value': 21,
                     },
                 ],
             "timestamp": 1585092224000,
@@ -558,7 +620,7 @@ class TestRESTEndpoint(TestCase):
         # Now that we know the message has been published on the broker,
         # verify it holds the expected information.
         received_msg = self.mqtt_client.userdata[dp_mqtt_setpoint_topic]
-        assert received_msg == expected_msg
+        assert received_msg == expected_msg_mqtt
 
         # After the MQTT message has now arrived the updated value should now
         # be available on the REST interface. As above this might happen async,

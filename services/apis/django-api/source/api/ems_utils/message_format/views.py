@@ -217,7 +217,7 @@ class ViewSetWithDatapointFK(GenericViewSet):
     datapoint_model = None
     queryset = None
     serializer_class = None
-    create_for_actuators_only = False
+    gbb = False
     filter_backends = (filters.DjangoFilterBackend,)
 
     def list(self, request, dp_id):
@@ -281,6 +281,33 @@ class ViewSetWithDatapointFK(GenericViewSet):
             raise ValidationError(
                 "This message can only be written for an actuator datapoint."
             )
+        object, created = self.model.objects.get_or_create(
+            datapoint=datapoint, timestamp=dt
+        )
+        for field in validated_data:
+            if field == "timestamp":
+                continue
+            setattr(object, field, validated_data[field])
+        object.save()
+        return Response(validated_data, status=status.HTTP_201_CREATED)
+
+    def update_many(self, request, dp_id):
+        datapoint = get_object_or_404(self.datapoint_model, id=dp_id)
+        if self.create_for_actuators_only and datapoint.type != "actuator":
+            raise ValidationError(
+                "This message can only be written for an actuator datapoint."
+            )
+
+        # Returns HTTP 400 (by exception) if sent data is not valid.
+        serializer = self.serializer_class(
+            datapoint, data=request.data, many=True
+        )
+        serializer.is_valid(raise_exception=True)
+        validated_data = serializer.validated_data
+
+
+        dt = datetime_from_timestamp(validated_data["timestamp"])
+
         object, created = self.model.objects.get_or_create(
             datapoint=datapoint, timestamp=dt
         )
