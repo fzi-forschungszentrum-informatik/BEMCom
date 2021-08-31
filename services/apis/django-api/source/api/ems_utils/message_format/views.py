@@ -1,3 +1,6 @@
+from concurrent.futures import ThreadPoolExecutor
+
+from django.conf import settings
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
@@ -15,7 +18,7 @@ from .serializers import DatapointScheduleSerializer
 from .serializers import DatapointSetpointSerializer
 from .serializers import PutMsgSummary
 
-from drf_spectacular.utils import extend_schema
+
 
 # TODO: Would be nice to have more details about the possible errors.
 # TODO This also overrides the default 200/201 responses.
@@ -296,6 +299,40 @@ class ViewSetWithDatapointFK(GenericViewSet):
         else:
             return Response(validated_data, status=status.HTTP_200_OK)
 
+    def _update_many_worker(self, work_package):
+        """
+        A worker method that upserts a single msg and that can be
+        run in parallel in a thread.
+
+        Arguments:
+        ----------
+        work_package : dict
+            containing the message and the datapoint.
+
+        Returns:
+        --------
+        msgs_created : int
+            The number of messages created in DB based on the work package.
+        msgs_updated : int
+            The number of messages updated in DB based on the work package.
+        """
+        datapoint = work_package["datapoint"]
+        msg = work_package["msg"]
+        dt = datetime_from_timestamp(msg["timestamp"])
+        object, created = self.model.objects.get_or_create(
+            datapoint=datapoint, timestamp=dt
+        )
+        for field in msg:
+            if field == "timestamp":
+                continue
+            setattr(object, field, msg[field])
+        object.save()
+
+        if created:
+            return 1, 0
+        else:
+            return 0, 1
+
     @extend_schema(
         responses=PutMsgSummary,
     )
@@ -314,23 +351,27 @@ class ViewSetWithDatapointFK(GenericViewSet):
         )
         serializer.is_valid(raise_exception=True)
         validated_data = serializer.validated_data
-        msgs_created = 0
-        msgs_updated = 0
+        work_packages = []
+        for msg in validated_data:
+            work_packages.append({"msg": msg, "datapoint": datapoint})
 
-        for dataset in validated_data:
-            dt = datetime_from_timestamp(dataset["timestamp"])
-            object, created = self.model.objects.get_or_create(
-                datapoint=datapoint, timestamp=dt
-            )
-            for field in dataset:
-                if field == "timestamp":
-                    continue
-                setattr(object, field, dataset[field])
-            object.save()
-            if created:
-                msgs_created += 1
-            else:
-                msgs_updated += 1
+
+        # We want to write the msgs in parallel for better performance.
+        # But only if the backend is not SQlite as the latter does not
+        # allow parallel access.
+        db_engine = settings.DATABASES["default"]["ENGINE"]
+        if db_engine == 'django.db.backends.sqlite3':
+            n_threads = 1
+        else:
+            n_threads = 16
+        with ThreadPoolExecutor(max_workers=n_threads) as executor:
+            ex_returns = executor.map(self._update_many_worker, work_packages)
+
+        # Count the number of created and updated messages.
+        msg_stats = list(zip(*ex_returns))
+        msgs_created = sum(msg_stats[0])
+        msgs_updated = sum(msg_stats[1])
+
         put_msg_summary = PutMsgSummary().to_representation(
             instance={
                 "msgs_created": msgs_created,
