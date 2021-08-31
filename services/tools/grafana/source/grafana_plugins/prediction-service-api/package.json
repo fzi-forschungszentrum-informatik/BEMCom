@@ -1,6 +1,6 @@
 {
   "name": "Prediction-service-api",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "A custom ds plugin to ingerate the Rest API of our stochastic prediction services.",
   "scripts": {
     "build": "grafana-toolkit plugin:build",

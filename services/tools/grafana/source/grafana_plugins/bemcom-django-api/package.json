@@ -1,6 +1,6 @@
 {
   "name": "BEMCom-Django-API",
-  "version": "0.1.2",
+  "version": "0.2.1",
   "description": "A custom ds plugin for to ingerate the Rest API of BEMComs Django API service.",
   "scripts": {
     "build": "grafana-toolkit plugin:build",

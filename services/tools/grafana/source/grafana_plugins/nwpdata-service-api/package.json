@@ -1,6 +1,6 @@
 {
   "name": "Nwpdata-service-api",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "A custom ds plugin to access numerical weather predication data.",
   "scripts": {
     "build": "grafana-toolkit plugin:build",
