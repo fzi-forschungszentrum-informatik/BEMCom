@@ -9,9 +9,10 @@ from api_main.models.datapoint import DatapointSetpoint
 from api_main.models.datapoint import DatapointSchedule
 from ems_utils.timestamp import datetime_to_pretty_str
 from api_main.connector_mqtt_integration import ConnectorMQTTIntegration
+from .connector_admin import AdminWithoutListsOnDelete
 
 @admin.register(Datapoint)
-class DatapointAdmin(admin.ModelAdmin):
+class DatapointAdmin(AdminWithoutListsOnDelete):
     """
     Admin model instance for Datapoints, that also displays fields of the
     addition models.
@@ -145,19 +146,19 @@ class DatapointAdmin(admin.ModelAdmin):
         """
         value = str(obj.example_value)
         truncation_length = 100
-        if value is not None and len(value) >= truncation_length: 
+        if value is not None and len(value) >= truncation_length:
             value = value[:truncation_length] + " [truncated]"
         return value
     example_value_truncated.admin_order_field = "example_value"
     example_value_truncated.short_description = "example_value"
-    
+
     def last_value_truncated(self, obj):
         """
         Return a possible truncated value if the example value is very long.
         """
         value = str(obj.last_value)
         truncation_length = 100
-        if value is not None and len(value) >= truncation_length: 
+        if value is not None and len(value) >= truncation_length:
             value = value[:truncation_length] + " [truncated]"
         return value
     last_value_truncated.admin_order_field = "last_value"
@@ -371,7 +372,7 @@ class DatapointAdmin(admin.ModelAdmin):
 
 
 @admin.register(DatapointValue)
-class DatapointValueAdmin(admin.ModelAdmin):
+class DatapointValueAdmin(AdminWithoutListsOnDelete):
 
     list_display = (
         "id",
@@ -386,7 +387,7 @@ class DatapointValueAdmin(admin.ModelAdmin):
         "id",
     )
     exclude = (
-        "_value_float", 
+        "_value_float",
         "_value_bool",
     )
 
@@ -403,7 +404,7 @@ class DatapointValueAdmin(admin.ModelAdmin):
 
 
 @admin.register(DatapointSetpoint)
-class DatapointSetpointAdmin(admin.ModelAdmin):
+class DatapointSetpointAdmin(AdminWithoutListsOnDelete):
 
     list_display = (
         "id",
@@ -430,7 +431,7 @@ class DatapointSetpointAdmin(admin.ModelAdmin):
     timestamp_pretty.short_description = "Timestamp"
 
 @admin.register(DatapointSchedule)
-class DatapointScheduleAdmin(admin.ModelAdmin):
+class DatapointScheduleAdmin(AdminWithoutListsOnDelete):
 
     list_display = (
         "id",

@@ -169,6 +169,10 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# The default value (1000) prevents us from deleting larger number of items
+# with Django Admin. See also:
+# https://docs.djangoproject.com/en/3.1/ref/settings/#data-upload-max-number-fields
+DATA_UPLOAD_MAX_NUMBER_FIELDS = None
 
 # Internationalization
 # https://docs.djangoproject.com/en/3.1/topics/i18n/
