@@ -49,7 +49,10 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     return value.toString() + ' ' + newType;
   }
 
-  translateOffset(offset: string) {
+  translateOffset(offset: string | null) {
+    if (offset == null) {
+      return '0 seconds';
+    }
     // translate the grafana typical notation of the interval ('1s'. '2h', ...)
     // to time-bucket like notation ('1 days', '30 seconds')
     const offsetParts = offset.split(' ');
@@ -58,8 +61,6 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     }
     const value = parseFloat(offsetParts[0]);
     const type = offsetParts[1];
-    console.log('value: ', value);
-    console.log('type:', type);
 
     let newType = '';
     switch (true) {
@@ -113,11 +114,9 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     const interval: string = query.interval;
     const offset: string = query.offset;
     const offsetParam = this.translateOffset(offset);
-    console.log('offsetParam: ', offsetParam);
 
     const useIntervalAndOffset: boolean = query.useIntervalAndOffset;
     let params: Object;
-    console.log('useIntervalAndOffset:', useIntervalAndOffset);
     if (useIntervalAndOffset) {
       params = {
         timestamp__gte: query.from,
@@ -148,7 +147,6 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   }
 
   async query(options: DataQueryRequest<MyQuery>): Promise<DataQueryResponse> {
-    console.log('query options: ', options);
     const { range } = options;
     const { interval } = options; //string
     const from = range!.from.valueOf();
@@ -157,7 +155,6 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     // translate grafana interval string to time bucket like interval string
     // see https://docs.timescale.com/api/latest/hyperfunctions/time_bucket/#sample-usage
     let intervalParam = this.translateInterval(interval);
-    console.log('intervalParam:', intervalParam);
 
     let targets = options.targets;
     targets.forEach(target => {

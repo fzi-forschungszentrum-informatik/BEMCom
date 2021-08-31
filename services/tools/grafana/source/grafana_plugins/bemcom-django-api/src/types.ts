@@ -9,7 +9,7 @@ export interface MyQuery extends DataQuery {
   scalingFactor: number;
 
   interval?: string;
-  offset: string;
+  offset?: string;
   useIntervalAndOffset?: boolean;
 
   nQueries: number;
