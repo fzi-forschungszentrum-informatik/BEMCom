@@ -26,13 +26,13 @@ urlpatterns = [
         DatapointValueViewSet.as_view({
             "get": "list",
             "post": "create",
+            "put": "update_many",
         })
     ),
     path(
         "datapoint/<int:dp_id>/value/<int:timestamp>/",
         DatapointValueViewSet.as_view({
             "get": "retrieve",
-            "put": "update",
             "delete": "destroy",
         })
     ),
@@ -41,13 +41,13 @@ urlpatterns = [
         DatapointScheduleViewSet.as_view({
             "get": "list",
             "post": "create",
+            "put": "update_many",
         })
     ),
     path(
         "datapoint/<int:dp_id>/schedule/<int:timestamp>/",
         DatapointScheduleViewSet.as_view({
             "get": "retrieve",
-            "put": "update",
             "delete": "destroy",
         })
     ),
@@ -56,13 +56,13 @@ urlpatterns = [
         DatapointSetpointViewSet.as_view({
             "get": "list",
             "post": "create",
+            "put": "update_many",
         })
     ),
     path(
         "datapoint/<int:dp_id>/setpoint/<int:timestamp>/",
         DatapointSetpointViewSet.as_view({
             "get": "retrieve",
-            "put": "update",
             "delete": "destroy",
         })
     ),

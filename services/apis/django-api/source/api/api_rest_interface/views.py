@@ -19,9 +19,12 @@ from api_main.models.datapoint import DatapointSchedule
 from api_main.models.datapoint import DatapointSetpoint
 from api_main.connector_mqtt_integration import ConnectorMQTTIntegration
 from ems_utils.message_format.views import DatapointViewSetTemplate
-from ems_utils.message_format.views import DatapointValueViewSetTemplate
-from ems_utils.message_format.views import DatapointScheduleViewSetTemplate
-from ems_utils.message_format.views import DatapointSetpointViewSetTemplate
+from ems_utils.message_format.views import ViewSetWithDatapointFK
+
+from ems_utils.message_format.serializers import DatapointValueSerializer
+from ems_utils.message_format.serializers import DatapointScheduleSerializer
+from ems_utils.message_format.serializers import DatapointSetpointSerializer
+from ems_utils.message_format.serializers import PutMsgSummary
 from .serializers import DatapointSerializer
 from .filters import DatapointFilter, DatapointValueFilter
 from .filters import DatapointSetpointFilter, DatapointScheduleFilter
@@ -115,18 +118,21 @@ class DatapointViewSet(DatapointViewSetTemplate):
             return super().update_many(request)
     update_many.__doc__ = __doc__ + "<br><br>" + update_many.__doc__.strip()
 
-class DatapointValueViewSet(DatapointValueViewSetTemplate):
+class DatapointValueViewSet(ViewSetWithDatapointFK):
     __doc__ = DatapointValue.__doc__.strip()
     model = DatapointValue
     datapoint_model = Datapoint
     queryset = DatapointValue.objects.all()
+    serializer_class = DatapointValueSerializer
     create_for_actuators_only = True
     filterset_class = DatapointValueFilter
 
     def create(self, request, dp_id):
         """
-        Don't write to DB, this is done automatically once the message is
-        received back from the message broker. Instead just publish the msg.
+        This publishes the posted value message on the BEMCom internal
+        message broker. The message will also be written to the API
+        database, but only once the message has been received back from
+        the message broker by the API.
         """
         datapoint = get_object_or_404(self.datapoint_model, id=dp_id)
         if self.create_for_actuators_only and datapoint.type != "actuator":
@@ -148,17 +154,29 @@ class DatapointValueViewSet(DatapointValueViewSetTemplate):
         )
         return Response(validated_data, status=status.HTTP_201_CREATED)
 
-class DatapointScheduleViewSet(DatapointScheduleViewSetTemplate):
+    @extend_schema(
+        request=serializer_class(DatapointValue, many=True),
+        responses=PutMsgSummary,
+        parameters=[],
+    )
+    def update_many(self, *args, **kwargs):
+        return super().update_many(*args, **kwargs)
+
+class DatapointScheduleViewSet(ViewSetWithDatapointFK):
     __doc__ = DatapointSchedule.__doc__.strip()
     model = DatapointSchedule
     datapoint_model = Datapoint
     queryset = DatapointSchedule.objects.all()
+    serializer_class = DatapointScheduleSerializer
     create_for_actuators_only = True
+    filterset_class = DatapointScheduleFilter
 
     def create(self, request, dp_id):
         """
-        Don't write to DB, this is done automatically once the message is
-        received back from the message broker. Instead just publish the msg.
+        This publishes the posted schedule message on the BEMCom internal
+        message broker. The message will also be written to the API
+        database, but only once the message has been received back from
+        the message broker by the API.
         """
         datapoint = get_object_or_404(self.datapoint_model, id=dp_id)
         if self.create_for_actuators_only and datapoint.type != "actuator":
@@ -182,17 +200,30 @@ class DatapointScheduleViewSet(DatapointScheduleViewSetTemplate):
         )
         return Response(validated_data, status=status.HTTP_201_CREATED)
 
-class DatapointSetpointViewSet(DatapointSetpointViewSetTemplate):
+    # This lives here to make the schema correct.
+    @extend_schema(
+        request=serializer_class(DatapointSchedule, many=True),
+        responses=PutMsgSummary,
+        parameters=[],
+    )
+    def update_many(self, *args, **kwargs):
+        return super().update_many(*args, **kwargs)
+
+class DatapointSetpointViewSet(ViewSetWithDatapointFK):
     __doc__ = DatapointSetpoint.__doc__.strip()
     model = DatapointSetpoint
     datapoint_model = Datapoint
     queryset = DatapointSetpoint.objects.all()
+    serializer_class = DatapointSetpointSerializer
     create_for_actuators_only = True
+    filterset_class = DatapointSetpointFilter
 
     def create(self, request, dp_id):
         """
-        Don't write to DB, this is done automatically once the message is
-        received back from the message broker. Instead just publish the msg.
+        This publishes the posted setpoint message on the BEMCom internal
+        message broker. The message will also be written to the API
+        database, but only once the message has been received back from
+        the message broker by the API.
         """
         datapoint = get_object_or_404(self.datapoint_model, id=dp_id)
         if self.create_for_actuators_only and datapoint.type != "actuator":
@@ -214,3 +245,12 @@ class DatapointSetpointViewSet(DatapointSetpointViewSetTemplate):
             retain=True,
         )
         return Response(validated_data, status=status.HTTP_201_CREATED)
+
+        # This lives here to make the schema correct.
+        @extend_schema(
+            request=serializer_class(DatapointSetpoint, many=True),
+            responses=PutMsgSummary,
+            parameters=[],
+        )
+        def update_many(self, *args, **kwargs):
+            return super().update_many(*args, **kwargs)

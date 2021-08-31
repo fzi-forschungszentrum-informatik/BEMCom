@@ -8,6 +8,8 @@ from ems_utils.message_format.models import DatapointSetpointTemplate
 from ems_utils.message_format.models import DatapointScheduleTemplate
 from ems_utils.timestamp import datetime_from_timestamp, timestamp_utc_now
 
+from drf_spectacular.utils import extend_schema_serializer, OpenApiExample
+
 
 try:
     # Define a Integer field that is also of format int64 in OpenAPI schema.
@@ -397,7 +399,7 @@ class DatapointValueSerializer(serializers.Serializer):
     # an API user.
     __doc__ = None
     #
-    value = serializers.JSONField(
+    value = serializers.CharField(
         allow_null=True,
         help_text=DatapointValueTemplate.value.field.help_text,
     )
@@ -451,7 +453,7 @@ class DatapointScheduleItemSerializer(serializers.Serializer):
             "a new schedule is received."
         ),
     )
-    value = serializers.JSONField(
+    value = serializers.CharField(
         allow_null=True,
         help_text=(
             "The value that should be sent to the actuator datapoint.\n"
@@ -538,7 +540,7 @@ class DatapointSetpointItemSerializer(serializers.Serializer):
             "a new setpoint is received."
         ),
     )
-    preferred_value = serializers.JSONField(
+    preferred_value = serializers.CharField(
         allow_null=True,
         help_text=(
             "Specifies the preferred setpoint of the user. This value should "
@@ -555,8 +557,9 @@ class DatapointSetpointItemSerializer(serializers.Serializer):
         ),
     )
     acceptable_values = serializers.ListField(
-        child=serializers.JSONField(
-            allow_null=True
+        child=serializers.CharField(
+            allow_null=True,
+            allow_blank=True,
         ),
         allow_null=True,
         required=False,
@@ -638,3 +641,33 @@ class DatapointSetpointSerializer(serializers.Serializer):
         datapoint = self.instance
         gv = GenericValidators()
         return gv.validate_setpoint(datapoint, value)
+
+
+@extend_schema_serializer(
+    examples = [
+        OpenApiExample (
+            "Put msg summary example",
+            response_only=True,
+            value={
+                "msgs_created": 10,
+                "msgs_updated": 1
+            }
+        )
+    ]
+)
+class PutMsgSummary(serializers.Serializer):
+    """
+    A response that contains a summary of the PUT operations outcome.
+    """
+    msgs_created = serializers.IntegerField(
+        required=True,
+        help_text=(
+            "Specifies how many messages have been created."
+        ),
+    )
+    msgs_updated = serializers.IntegerField(
+        required=True,
+        help_text=(
+            "Specifies how many messages have been updated."
+        ),
+    )

@@ -13,7 +13,9 @@ from .serializers import DatapointSerializer
 from .serializers import DatapointValueSerializer
 from .serializers import DatapointScheduleSerializer
 from .serializers import DatapointSetpointSerializer
+from .serializers import PutMsgSummary
 
+from drf_spectacular.utils import extend_schema
 
 # TODO: Would be nice to have more details about the possible errors.
 # TODO This also overrides the default 200/201 responses.
@@ -206,9 +208,10 @@ class ViewSetWithDatapointFK(GenericViewSet):
     serializer_class : DRF serializier class.
         The serializer used to pack/unpack the objects into JSON.
     create_for_actuators_only : bool, default False
-        If True allows create or update operations for actuator datapoints.
+        If True allows create operations for actuator datapoints.
         This makes sense as there are no schedules or setpoints for sensor
-        datapoints by definition.
+        datapoints by definition and value messages can only be posted to
+        actuator datapoints too.
     filter_backends : List of filter backends.
         You should not need to change this. See also:
         https://www.django-rest-framework.org/api-guide/filtering/
@@ -217,7 +220,6 @@ class ViewSetWithDatapointFK(GenericViewSet):
     datapoint_model = None
     queryset = None
     serializer_class = None
-    gbb = False
     filter_backends = (filters.DjangoFilterBackend,)
 
     def list(self, request, dp_id):
@@ -268,6 +270,11 @@ class ViewSetWithDatapointFK(GenericViewSet):
         return Response(validated_data, status=status.HTTP_201_CREATED)
 
     def update(self, request, dp_id, timestamp=None):
+        """
+        Places one message in the database. This is an upsert operation,
+        i.e. the message will be created if no message exists for the distinct
+        combination of datapoint and timestamp and updated otherwise.
+        """
         datapoint = get_object_or_404(self.datapoint_model, id=dp_id)
 
         # Returns HTTP 400 (by exception) if sent data is not valid.
@@ -275,12 +282,7 @@ class ViewSetWithDatapointFK(GenericViewSet):
         serializer.is_valid(raise_exception=True)
         validated_data = serializer.validated_data
 
-
         dt = datetime_from_timestamp(validated_data["timestamp"])
-        if self.create_for_actuators_only and datapoint.type != "actuator":
-            raise ValidationError(
-                "This message can only be written for an actuator datapoint."
-            )
         object, created = self.model.objects.get_or_create(
             datapoint=datapoint, timestamp=dt
         )
@@ -289,14 +291,22 @@ class ViewSetWithDatapointFK(GenericViewSet):
                 continue
             setattr(object, field, validated_data[field])
         object.save()
-        return Response(validated_data, status=status.HTTP_201_CREATED)
+        if created:
+            return Response(validated_data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(validated_data, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        responses=PutMsgSummary,
+    )
     def update_many(self, request, dp_id):
+        """
+        Places one or more messages in the database. This is an upsert
+        operation, i.e. the message will be created if no message exists for
+        the distinct combination of datapoint and timestamp and updated
+        otherwise.
+        """
         datapoint = get_object_or_404(self.datapoint_model, id=dp_id)
-        if self.create_for_actuators_only and datapoint.type != "actuator":
-            raise ValidationError(
-                "This message can only be written for an actuator datapoint."
-            )
 
         # Returns HTTP 400 (by exception) if sent data is not valid.
         serializer = self.serializer_class(
@@ -304,19 +314,30 @@ class ViewSetWithDatapointFK(GenericViewSet):
         )
         serializer.is_valid(raise_exception=True)
         validated_data = serializer.validated_data
+        msgs_created = 0
+        msgs_updated = 0
 
-
-        dt = datetime_from_timestamp(validated_data["timestamp"])
-
-        object, created = self.model.objects.get_or_create(
-            datapoint=datapoint, timestamp=dt
+        for dataset in validated_data:
+            dt = datetime_from_timestamp(dataset["timestamp"])
+            object, created = self.model.objects.get_or_create(
+                datapoint=datapoint, timestamp=dt
+            )
+            for field in dataset:
+                if field == "timestamp":
+                    continue
+                setattr(object, field, dataset[field])
+            object.save()
+            if created:
+                msgs_created += 1
+            else:
+                msgs_updated += 1
+        put_msg_summary = PutMsgSummary().to_representation(
+            instance={
+                "msgs_created": msgs_created,
+                "msgs_updated": msgs_updated
+            }
         )
-        for field in validated_data:
-            if field == "timestamp":
-                continue
-            setattr(object, field, validated_data[field])
-        object.save()
-        return Response(validated_data, status=status.HTTP_201_CREATED)
+        return Response(put_msg_summary, status=status.HTTP_200_OK)
 
     def destroy(self, request, dp_id, timestamp=None):
         datapoint = get_object_or_404(self.datapoint_model, id=dp_id)
@@ -325,9 +346,12 @@ class ViewSetWithDatapointFK(GenericViewSet):
             self.model, datapoint=datapoint, timestamp=dt
         )
         object.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(validated_data, status=status.HTTP_204_NO_CONTENT)
 
-
+# XXX:
+# Seems like we do not use these three subclasses any more as we need the
+# serializer_class is required while actually defining the views to extend
+# the schema documentation.
 class DatapointValueViewSetTemplate(ViewSetWithDatapointFK):
     """
     Generic code to interact with DatapointValue objects.
@@ -345,6 +369,7 @@ class DatapointScheduleViewSetTemplate(ViewSetWithDatapointFK):
     with appropriate values.
     """
     serializer_class = DatapointScheduleSerializer
+
 
 class DatapointSetpointViewSetTemplate(ViewSetWithDatapointFK):
     """
