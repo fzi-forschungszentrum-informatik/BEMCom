@@ -144,7 +144,7 @@ class TestRESTEndpoint(TestCase):
         dp_value = DatapointValue(
             datapoint = dp,
             value=test_value,
-            timestamp=datetime_from_timestamp(expected_data["timestamp"]),
+            time=datetime_from_timestamp(expected_data["timestamp"]),
         )
         dp_value.save()
 
@@ -341,7 +341,7 @@ class TestRESTEndpoint(TestCase):
         dp_schedule = DatapointSchedule(
             datapoint = dp,
             schedule=test_data["schedule"],
-            timestamp=test_data["timestamp"],
+            time=test_data["timestamp"],
         )
         dp_schedule.save()
 
@@ -532,7 +532,7 @@ class TestRESTEndpoint(TestCase):
         dp_setpoint = DatapointSetpoint(
             datapoint = dp,
             setpoint=test_data["setpoint"],
-            timestamp=test_data["timestamp"],
+            time=test_data["timestamp"],
         )
         dp_setpoint.save()
 

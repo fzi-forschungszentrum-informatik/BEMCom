@@ -405,15 +405,15 @@ class DatapointValueSerializer(serializers.Serializer):
     )
     timestamp = Int64Field(
         allow_null=False,
-        help_text=DatapointValueTemplate.timestamp.field.help_text,
+        help_text=DatapointValueTemplate.time.field.help_text,
     )
 
     def to_representation(self, instance):
         fields_values = {}
         fields_values["value"] = json.dumps(instance.value)
         # Return datetime in ms.
-        if instance.timestamp is not None:
-            timestamp = datetime.timestamp(instance.timestamp)
+        if instance.time is not None:
+            timestamp = datetime.timestamp(instance.time)
             timestamp_ms = round(timestamp * 1000)
             fields_values["timestamp"] = timestamp_ms
         else:
@@ -491,7 +491,7 @@ class DatapointScheduleSerializer(serializers.Serializer):
     )
     timestamp = Int64Field(
         allow_null=False,
-        help_text=DatapointScheduleTemplate.timestamp.field.help_text,
+        help_text=DatapointScheduleTemplate.time.field.help_text,
     )
 
     def to_representation(self, instance):
@@ -500,8 +500,8 @@ class DatapointScheduleSerializer(serializers.Serializer):
             schedule_item["value"] = json.dumps(schedule_item["value"])
         fields_values["schedule"] = instance.schedule
         # Return datetime in ms.
-        if instance.timestamp is not None:
-            timestamp = datetime.timestamp(instance.timestamp)
+        if instance.time is not None:
+            timestamp = datetime.timestamp(instance.time)
             timestamp_ms = round(timestamp * 1000)
             fields_values["timestamp"] = timestamp_ms
         else:
@@ -613,7 +613,7 @@ class DatapointSetpointSerializer(serializers.Serializer):
     )
     timestamp = Int64Field(
         allow_null=False,
-        help_text=DatapointSetpointTemplate.timestamp.field.help_text,
+        help_text=DatapointSetpointTemplate.time.field.help_text,
     )
 
     def to_representation(self, instance):
@@ -624,8 +624,8 @@ class DatapointSetpointSerializer(serializers.Serializer):
             )
         fields_values["setpoint"] = instance.setpoint
         # Return datetime in ms.
-        if instance.timestamp is not None:
-            timestamp = datetime.timestamp(instance.timestamp)
+        if instance.time is not None:
+            timestamp = datetime.timestamp(instance.time)
             timestamp_ms = round(timestamp * 1000)
             fields_values["timestamp"] = timestamp_ms
         else:

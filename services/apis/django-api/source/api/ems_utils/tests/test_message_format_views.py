@@ -106,7 +106,7 @@ class TestViewSetWithDatapointFK(TransactionTestCase):
         for ts, v in test_values:
             ts_as_dt = datetime_from_timestamp(ts)
             dpv = self.DatapointValue.objects.get(
-                datapoint=dp_id, timestamp=ts_as_dt
+                datapoint=dp_id, time=ts_as_dt
             )
             assert dpv.value == v
 
@@ -134,7 +134,7 @@ class TestViewSetWithDatapointFK(TransactionTestCase):
         for ts, v in test_values:
             ts_as_dt = datetime_from_timestamp(ts)
             dpv = self.DatapointValue.objects.get(
-                datapoint=dp_id, timestamp=ts_as_dt
+                datapoint=dp_id, time=ts_as_dt
             )
             assert dpv.value == v
 

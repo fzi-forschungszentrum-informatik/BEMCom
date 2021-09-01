@@ -233,7 +233,59 @@ class DatapointTemplate(models.Model):
             return str(self.id)
 
 
-class DatapointValueTemplate(models.Model):
+class TimescaleModel(models.Model):
+    """
+    A helper class for using Timescale within Django, has the TimescaleManager and
+    TimescaleDateTimeField already present. This is an abstract class it should
+    be inheritted by another class for use.
+    """
+
+    class Meta:
+        abstract = True
+
+    # time = TimescaleDateTimeField(interval="1 day")
+    #
+    # objects = models.Manager()
+    # timescale = TimescaleManager()
+
+    time = models.DateTimeField(
+        null=False,
+        blank=False,
+        default=None,
+        help_text=(
+            "For sensor datapoints: The time the value was "
+            "received by the connector.\n"
+            "For actuator datapoints: The time the message was "
+            "created by the external entity.\n"
+            "Both in milliseconds since 1970-01-01 UTC."
+        )
+    )
+    # TimescaleDB absolutely requires that the timestamp field is
+    # called time. On the other hand a lot of code here expects that the
+    # timestamp field is called timestamp. Hence this workaround.
+    # def __getattribute__(self, attr):
+    #     if attr == "timestamp":
+    #         print("timestamp" % self.time)
+    #         return self.time
+    #     else:
+    #         return super().__getattr__(attr)
+    # def __setattr__(self, name, value):
+    #     if name == "timestamp":
+    #         self.time = value
+    #     else:
+    #         super().__setattr__(name, value)
+    # @property
+    # def timestamp(self):
+    #     return self.time
+    #
+    # @timestamp.setter
+    # def timestamp(self, value):
+    #     self.time = value
+
+
+
+
+class DatapointValueTemplate(TimescaleModel):
     """
     Represents a value of a Datapoint.
 
@@ -250,7 +302,7 @@ class DatapointValueTemplate(models.Model):
         abstract = True
         constraints = [
             models.UniqueConstraint(
-                fields=['datapoint', 'timestamp'],
+                fields=['datapoint', 'time'],
                 name='Value msg unique for timestamp',
             ),
         ]
@@ -291,18 +343,7 @@ class DatapointValueTemplate(models.Model):
             "to store boolean values more efficiently."
         )
     )
-    timestamp = models.DateTimeField(
-        null=False,
-        blank=False,
-        default=None,
-        help_text=(
-            "For sensor datapoints: The time the value was "
-            "received by the connector.\n"
-            "For actuator datapoints: The time the message was "
-            "created by the external entity.\n"
-            "Both in milliseconds since 1970-01-01 UTC."
-        )
-    )
+
 
     def save(self, *args, **kwargs):
         """
@@ -335,15 +376,15 @@ class DatapointValueTemplate(models.Model):
         self._value_float = None
 
         # A message without a timestamp cannot be latest.
-        if self.timestamp is None:
+        if self.time is None:
             return
 
         self.datapoint.refresh_from_db()
         existing_ts = self.datapoint.last_value_timestamp
 
-        if existing_ts is None or existing_ts <= self.timestamp:
+        if existing_ts is None or existing_ts <= self.time:
             self.datapoint.last_value = self.value
-            self.datapoint.last_value_timestamp = self.timestamp
+            self.datapoint.last_value_timestamp = self.time
             self.datapoint.save(
                 update_fields=[
                     "last_value",
@@ -363,7 +404,7 @@ class DatapointValueTemplate(models.Model):
         return instance
 
 
-class DatapointScheduleTemplate(models.Model):
+class DatapointScheduleTemplate(TimescaleModel):
     """
     The schedule is a list of actuator values computed by an optimization
     algorithm that should be executed on the specified actuator datapoint
@@ -375,7 +416,7 @@ class DatapointScheduleTemplate(models.Model):
         abstract = True
         constraints = [
             models.UniqueConstraint(
-                fields=['datapoint', 'timestamp'],
+                fields=['datapoint', 'time'],
                 name='Schedule msg unique for timestamp',
             ),
         ]
@@ -395,15 +436,6 @@ class DatapointScheduleTemplate(models.Model):
             "A JSON array holding zero or more DatapointScheduleItems."
         )
     )
-    timestamp = models.DateTimeField(
-        null=False,
-        blank=False,
-        default=None,
-        help_text=(
-            "The time the message was created by the external entity in "
-            "milliseconds since 1970-01-01 UTC."
-        )
-    )
 
     def save(self, *args, **kwargs):
         """
@@ -414,15 +446,15 @@ class DatapointScheduleTemplate(models.Model):
         super().save(*args, **kwargs)
 
         # A message without a timestamp cannot be latest.
-        if self.timestamp is None:
+        if self.time is None:
             return
 
         self.datapoint.refresh_from_db()
         existing_ts = self.datapoint.last_schedule_timestamp
 
-        if existing_ts is None or existing_ts <= self.timestamp:
+        if existing_ts is None or existing_ts <= self.time:
             self.datapoint.last_schedule = self.schedule
-            self.datapoint.last_schedule_timestamp = self.timestamp
+            self.datapoint.last_schedule_timestamp = self.time
             self.datapoint.save(
                 update_fields=[
                     "last_schedule",
@@ -431,7 +463,7 @@ class DatapointScheduleTemplate(models.Model):
             )
 
 
-class DatapointSetpointTemplate(models.Model):
+class DatapointSetpointTemplate(TimescaleModel):
     """
     The setpoint specifies the demand of the users of the system. The setpoint
     must hold a preferred_value which is the value the user would appreciate
@@ -445,7 +477,7 @@ class DatapointSetpointTemplate(models.Model):
         abstract = True
         constraints = [
             models.UniqueConstraint(
-                fields=['datapoint', 'timestamp'],
+                fields=['datapoint', 'time'],
                 name='Setpoint msg unique for timestamp',
             ),
         ]
@@ -465,15 +497,6 @@ class DatapointSetpointTemplate(models.Model):
             "A JSON array holding zero or more DatapointSetpointItems."
         )
     )
-    timestamp = models.DateTimeField(
-        null=True,
-        blank=True,
-        default=None,
-        help_text=(
-            "The time the message was created by the external entity in "
-            "milliseconds since 1970-01-01 UTC."
-        )
-    )
 
     def save(self, *args, **kwargs):
         """
@@ -484,15 +507,15 @@ class DatapointSetpointTemplate(models.Model):
         super().save(*args, **kwargs)
 
         # A message without a timestamp cannot be latest.
-        if self.timestamp is None:
+        if self.time is None:
             return
 
         self.datapoint.refresh_from_db()
         existing_ts = self.datapoint.last_setpoint_timestamp
 
-        if existing_ts is None or existing_ts <= self.timestamp:
+        if existing_ts is None or existing_ts <= self.time:
             self.datapoint.last_setpoint = self.setpoint
-            self.datapoint.last_setpoint_timestamp = self.timestamp
+            self.datapoint.last_setpoint_timestamp = self.time
             self.datapoint.save(
                 update_fields=[
                     "last_setpoint",

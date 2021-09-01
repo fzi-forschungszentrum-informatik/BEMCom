@@ -80,7 +80,7 @@ class ConnectorMQTTIntegration():
                 "N_CMI_WRITE_THREADS must be int larger then zero as we need "
                 "at least one thread to write the MQTT messages to DB."
             )
-        
+
         # Locks and queue for the message_handle_worker threads.
         self.message_queue = []
         self.message_queue_lock = Lock()
@@ -473,13 +473,13 @@ class ConnectorMQTTIntegration():
                         try:
                             DatapointValue(
                                 datapoint=datapoint,
-                                timestamp=timestamp,
+                                time=timestamp,
                                 value=payload["value"],
                             ).save()
                         except IntegrityError:
                             dp_value = DatapointValue.objects.get(
                                 datapoint=datapoint,
-                                timestamp=timestamp,
+                                time=timestamp,
                             )
                             dp_value.value = payload["value"]
                             dp_value.save()
@@ -518,13 +518,13 @@ class ConnectorMQTTIntegration():
                         try:
                             DatapointSchedule(
                                 datapoint=datapoint,
-                                timestamp=timestamp,
+                                time=timestamp,
                                 schedule=payload["schedule"],
                             ).save()
                         except IntegrityError:
                             dp_schedule = DatapointSchedule.objects.get(
                                 datapoint=datapoint,
-                                timestamp=timestamp,
+                                time=timestamp,
                             )
                             dp_schedule.schedule = payload["schedule"]
                             dp_schedule.save()
@@ -560,13 +560,13 @@ class ConnectorMQTTIntegration():
                         try:
                             DatapointSetpoint(
                                 datapoint=datapoint,
-                                timestamp=timestamp,
+                                time=timestamp,
                                 setpoint=payload["setpoint"],
                             ).save()
                         except IntegrityError:
                             dp_setpoint = DatapointSetpoint.objects.get(
                                 datapoint=datapoint,
-                                timestamp=timestamp,
+                                time=timestamp,
                             )
                             dp_setpoint.setpoint = payload["setpoint"]
                             dp_setpoint.save()

@@ -236,7 +236,7 @@ class ViewSetWithDatapointFK(GenericViewSet):
         datapoint = get_object_or_404(self.datapoint_model, id=dp_id)
         dt = datetime_from_timestamp(timestamp)
         object = get_object_or_404(
-            self.queryset, datapoint=datapoint, timestamp=dt
+            self.queryset, datapoint=datapoint, time=dt
         )
         serializer = self.serializer_class(object)
         return Response(serializer.data)
@@ -255,7 +255,7 @@ class ViewSetWithDatapointFK(GenericViewSet):
                 "This message can only be written for an actuator datapoint."
             )
         object, created = self.model.objects.get_or_create(
-            datapoint=datapoint, timestamp=dt
+            datapoint=datapoint, time=dt
         )
         if not created:
             raise ValidationError({
@@ -287,7 +287,7 @@ class ViewSetWithDatapointFK(GenericViewSet):
 
         dt = datetime_from_timestamp(validated_data["timestamp"])
         object, created = self.model.objects.get_or_create(
-            datapoint=datapoint, timestamp=dt
+            datapoint=datapoint, time=dt
         )
         for field in validated_data:
             if field == "timestamp":
@@ -320,7 +320,7 @@ class ViewSetWithDatapointFK(GenericViewSet):
         msg = work_package["msg"]
         dt = datetime_from_timestamp(msg["timestamp"])
         object, created = self.model.objects.get_or_create(
-            datapoint=datapoint, timestamp=dt
+            datapoint=datapoint, time=dt
         )
         for field in msg:
             if field == "timestamp":
@@ -395,7 +395,7 @@ class ViewSetWithDatapointFK(GenericViewSet):
         datapoint = get_object_or_404(self.datapoint_model, id=dp_id)
         dt = datetime_from_timestamp(timestamp)
         object = get_object_or_404(
-            self.model, datapoint=datapoint, timestamp=dt
+            self.model, datapoint=datapoint, time=dt
         )
         object.delete()
         return Response(validated_data, status=status.HTTP_204_NO_CONTENT)

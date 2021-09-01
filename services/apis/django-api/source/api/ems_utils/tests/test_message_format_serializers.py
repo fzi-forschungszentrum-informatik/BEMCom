@@ -49,7 +49,7 @@ class TestDatapointValueSerializer(TransactionTestCase):
         # Here are the default field values:
         cls.default_field_values = {
             "datapoint": cls.datapoint,
-            "timestamp": datetime_from_timestamp(1612860152000),
+            "time": datetime_from_timestamp(1612860152000),
         }
 
     @classmethod
@@ -78,7 +78,7 @@ class TestDatapointValueSerializer(TransactionTestCase):
             field_values = self.default_field_values.copy()
             field_values.update({
                 "value": test_value,
-                "timestamp": datetime_from_timestamp(expected_data["timestamp"])
+                "time": datetime_from_timestamp(expected_data["timestamp"])
             })
             dp_value = self.DatapointValue.objects.create(**field_values)
 
@@ -537,7 +537,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
         field_values = self.default_field_values.copy()
         field_values.update({
             "schedule": expected_data["schedule"],
-            "timestamp": datetime_from_timestamp(expected_data["timestamp"])
+            "time": datetime_from_timestamp(expected_data["timestamp"])
         })
         dp_schedule = self.DatapointSchedule.objects.create(**field_values)
 
@@ -1352,7 +1352,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
         field_values = self.default_field_values.copy()
         field_values.update({
             "setpoint": expected_data["setpoint"],
-            "timestamp": datetime_from_timestamp(expected_data["timestamp"])
+            "time": datetime_from_timestamp(expected_data["timestamp"])
         })
         dp_schedule = self.DatapointSetpoint.objects.create(**field_values)
 

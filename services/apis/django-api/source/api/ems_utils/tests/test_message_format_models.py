@@ -334,7 +334,7 @@ class TestDatapointValue(TransactionTestCase):
         # Here are the default field values:
         cls.default_field_values = {
             "datapoint": cls.datapoint,
-            "timestamp": datetime_from_timestamp(1612860152000)
+            "time": datetime_from_timestamp(1612860152000)
         }
 
     @classmethod
@@ -391,7 +391,7 @@ class TestDatapointValue(TransactionTestCase):
 
         ts = 1596240000000
         ts_datetime = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update({"timestamp": ts_datetime})
+        field_values.update({"time":ts_datetime})
 
         self.generic_field_value_test(field_values=field_values)
 
@@ -410,7 +410,7 @@ class TestDatapointValue(TransactionTestCase):
         ts = 1596240000000
         expected_timestamp = datetime_from_timestamp(ts, tz_aware=True)
         field_values.update(
-            {"value": expected_value, "timestamp": expected_timestamp}
+            {"value": expected_value, "time":expected_timestamp}
         )
 
         self.generic_field_value_test(field_values=field_values)
@@ -440,7 +440,7 @@ class TestDatapointValue(TransactionTestCase):
         ts = 1200000000000
         older_timestamp = datetime_from_timestamp(ts, tz_aware=True)
         field_values.update(
-            {"value": older_value, "timestamp": older_timestamp}
+            {"value": older_value, "time":older_timestamp}
         )
 
         self.generic_field_value_test(field_values=field_values)
@@ -625,7 +625,7 @@ class TestDatapointSchedule(TransactionTestCase):
         # Here are the default field values:
         cls.default_field_values = {
             "datapoint": cls.datapoint,
-            "timestamp": datetime_from_timestamp(1612860152000),
+            "time": datetime_from_timestamp(1612860152000),
             "schedule": [],
         }
 
@@ -695,7 +695,7 @@ class TestDatapointSchedule(TransactionTestCase):
 
         ts = 1596240000000
         ts_datetime = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update({"timestamp": ts_datetime})
+        field_values.update({"time":ts_datetime})
 
         self.generic_field_value_test(field_values=field_values)
 
@@ -725,7 +725,7 @@ class TestDatapointSchedule(TransactionTestCase):
         ts = 1596230000001
         expected_timestamp = datetime_from_timestamp(ts, tz_aware=True)
         field_values.update(
-            {"schedule": expected_schedule, "timestamp": expected_timestamp}
+            {"schedule": expected_schedule, "time":expected_timestamp}
         )
 
         self.generic_field_value_test(field_values=field_values)
@@ -766,7 +766,7 @@ class TestDatapointSchedule(TransactionTestCase):
         ts = 1200000000000
         older_timestamp = datetime_from_timestamp(ts, tz_aware=True)
         field_values.update(
-            {"schedule": older_schedule, "timestamp": older_timestamp}
+            {"schedule": older_schedule, "time":older_timestamp}
         )
 
         self.generic_field_value_test(field_values=field_values)
@@ -810,7 +810,7 @@ class TestDatapointSetpoint(TransactionTestCase):
         # Here are the default field values:
         cls.default_field_values = {
             "datapoint": cls.datapoint,
-            "timestamp": datetime_from_timestamp(1612860152000),
+            "time": datetime_from_timestamp(1612860152000),
             "setpoint": [],
         }
 
@@ -880,7 +880,7 @@ class TestDatapointSetpoint(TransactionTestCase):
 
         ts = 1596240000000
         ts_datetime = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update({"timestamp": ts_datetime})
+        field_values.update({"time":ts_datetime})
 
         self.generic_field_value_test(field_values=field_values)
 
@@ -910,7 +910,7 @@ class TestDatapointSetpoint(TransactionTestCase):
         ts = 1596220000001
         expected_timestamp = datetime_from_timestamp(ts, tz_aware=True)
         field_values.update(
-            {"setpoint": expected_setpoint, "timestamp": expected_timestamp}
+            {"setpoint": expected_setpoint, "time":expected_timestamp}
         )
 
         self.generic_field_value_test(field_values=field_values)
@@ -951,7 +951,7 @@ class TestDatapointSetpoint(TransactionTestCase):
         ts = 1200000000000
         older_timestamp = datetime_from_timestamp(ts, tz_aware=True)
         field_values.update(
-            {"setpoint": older_setpoint, "timestamp": older_timestamp}
+            {"setpoint": older_setpoint, "time":older_timestamp}
         )
 
         self.generic_field_value_test(field_values=field_values)
