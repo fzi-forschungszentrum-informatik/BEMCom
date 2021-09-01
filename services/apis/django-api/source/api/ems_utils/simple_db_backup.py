@@ -202,10 +202,234 @@ def backup_datapoint_messages(args, auth, datapoint_ids):
     # 8 Processes seems to be good compromise for decent download rates.
     pool = Pool(processes=8)
     for _ in tqdm(
-        pool.imap(load_datapoint_message, chunk_vars), total=chunks_to_load
+        pool.imap_unordered(load_datapoint_message, chunk_vars),
+        total=chunks_to_load
     ):
         pass
     logger.info("Finished loading %s chunks.", chunks_to_load)
+
+def restore_datapoint_metadata(args, auth):
+    """
+    Fetches the metadata of all datapoints from file and tries to restore it.
+
+    By design it is only possible to restore metadata to datapoints which
+    have already been created as a cause of the corresponding message by
+    a connector (else we would have datapoints which are detached from the
+    connectors, that seems to exist but for which no connector receives and
+    sends messages). As we do not know the IDs of the datapoints we want to
+    restore in the DB this function restores the datapoints one after the
+    other.
+    For every datapoint for which has registered by a connector already sending
+    a put message with the metadata of the datapoint should return 200 message
+    also containing the ID of the corresponding entry in the DB. It is only
+    for those datapoints possible to replay the datapoint value, setpoint and
+    schedule messages as we don't have a datapoint ID (in the database) to
+    PUT to.
+
+    Arguments:
+    ----------
+    args : argparse.Namespace
+        As defined at the end of the script.
+    auth : requests.auth object
+        The auth object that is used during the request.
+
+    Returns:
+    --------
+    dp_id_mapping : dict
+        A dict mapping from the datapoint IDs in the backup files to the
+        IDs of the corresponding datapoints in the DB.
+    """
+    all_datapoint_metadata_fnps = args.data_directory.glob(
+        "datapoint_metadata_*.json.bz2"
+    )
+    latest_datapoint_metadata_fnp =  sorted(all_datapoint_metadata_fnps)[-1]
+    logger.info(
+        "Loading datapoint metadata from: %s",
+        latest_datapoint_metadata_fnp
+    )
+    with bz2.open(latest_datapoint_metadata_fnp, "rb") as f:
+        datapoint_metadata_str = f.read().decode()
+        all_datapoint_metadata = json.loads(datapoint_metadata_str)
+    all_datapoint_metadata.sort(key=lambda k: k['id'])
+
+    # First print out all connectors, that must be created by the
+    # user manually before we can proceed.
+    all_connectors = {dp["connector"] for dp in all_datapoint_metadata}
+    print(
+        "\n"
+        "Please ensure that the following connectors have been created in "
+        "the BEMCom Admin page and work correctly (Datapoints are available):"
+    )
+    for connector_name in sorted(all_connectors):
+        print("-> ", connector_name)
+    print("")
+    if not args.yes:
+        choice = input("Proceed? [y/n] ")
+        if choice != "y":
+            logger.info("Aborting restore by user request.")
+            exit(0)
+
+    # Updates the datapoint metadata in the API and find the datapoint id
+    # used by the API, which we need later to push in the value, setpoint
+    # and schedule messages.
+    # This could also be done with a single PUT call, but it seems
+    # safer this way.
+    dp_metadata_url = args.target_url + "/datapoint/"
+    dp_id_mapping = {} # Maps from ids of files to API ids.
+    for datapoint_metadata in all_datapoint_metadata:
+        dp_id_file = datapoint_metadata["id"]
+        response = requests.put(
+            dp_metadata_url, auth=auth, json=[datapoint_metadata]
+        )
+        if response.status_code != 200:
+            logger.warning(
+                "Error for datapint %s: %s", dp_id_file, response.json()
+            )
+            break # TODO Remove
+            continue
+
+
+        dp_id_api = response.json()[0]["id"]
+        dp_id_mapping[dp_id_file] = dp_id_api
+    logger.info(
+        "Restored metadata for %s of %s datapoints.",
+        len(dp_id_mapping),
+        len(all_datapoint_metadata)
+    )
+    return dp_id_mapping
+
+def write_datapoint_message(cv):
+    """
+    The worker that decompresses the datapoint messages for one
+    day and triggers writing to DB by calling the PUT method.
+
+    Arguments:
+    ----------
+    cv : dict
+        The chunk_var dict containing all relevant information required to load
+        data for one datapoint_id, message_type and date.
+        As defined in restore_datapoint_messages.
+    """
+    logger.debug("Opening datapoint data file: %s", cv["chunk_fnp"])
+    with bz2.open(cv["chunk_fnp"], "rb") as f:
+        datapoint_data_str = f.read().decode()
+        datapoint_data = json.loads(datapoint_data_str)
+
+    # Skip empty datapoint_data, this happens if no data has been available
+    # for that datapoint and data. But no need to restore nothing, wright?
+    if not datapoint_data:
+        # This is similar to the output of response.json() below.
+        {'msgs_created': 0, 'msgs_updated': 0}
+
+    # Try to parse data, i.e. bools and floats to allow storing them
+    # not as strings. New versions of the database should have generated
+    # the data correctly wright away, but this is a backfix for older data.
+    for msg in datapoint_data:
+        if "value" in msg:
+            if  msg["value"] in [None, "null"]:
+                value_native = None
+            elif msg["value"] in ["True", "true", "TRUE", True]:
+                value_native = True
+            elif msg["value"] in ["False", "false", "FALSE", False]:
+                value_native = False
+            else:
+                try:
+                    value_native = float(msg["value"])
+                except ValueError:
+                    # This must be a string then, as BEMCOM only knows the
+                    # datatypes string, bool and float.
+                    value_native = msg["value"]
+            msg["value"] = json.dumps(value_native)
+    logger.debug("Pushing datapoint data to: %s", cv["dp_data_url"])
+    response = requests.put(
+        cv["dp_data_url"], auth=cv["auth"], json=datapoint_data
+    )
+    # Verify that the request returned OK.
+    if response.status_code != 200:
+        logger.error("Request failed: %s", response)
+        raise RuntimeError(
+            "Could not write datapoint data to url: %s" % cv["dp_data_url"]
+        )
+
+    return response.json()
+
+def restore_datapoint_messages(args, auth, dp_id_mapping):
+    """
+    Restore the value/setpoint/schedule messages for the requested dates.
+
+    Arguments:
+    ----------
+    args : argparse.Namespace
+        As defined at the end of the script.
+    auth : requests.auth object
+        The auth object that is used during the request.
+    dp_id_mapping : dict
+        A dict mapping from the datapoint IDs in the backup files to the
+        IDs of the corresponding datapoints in the DB.
+    """
+    if not args.yes:
+        choice = input(
+            "\nWould you like to restore value/setpoint/schedule messages "
+            "for %s datapoints?\n[y/n] " % len(dp_id_mapping)
+        )
+        if choice != "y":
+            logger.info("Aborting restore by user request.")
+            exit(0)
+    else:
+        logger.info(
+            "Restoring value/setpoint/schedule messages for %s datapoints",
+            len(dp_id_mapping)
+        )
+
+    # Find all chunks relevant for the selected dates and datapoints.
+    # Iterate over dates first as this supports the way the data is stored
+    # in tables in timescaleDB.
+    chunk_vars = []
+    date = args.start_date
+    while date <= args.end_date:
+        out_directory = args.data_directory / str(date)
+        for dp_id_file in dp_id_mapping:
+            for message_type in ["value", "setpoint", "schedule"]:
+                # Compute filenames and full filename incl. path.
+                # Also check whether file exists, as for some datapoints
+                # not the full history may exist (e.g. datapoint added later).
+                chunk_fn = (
+                    "dpdata_{}_{}_{}.json.bz2"
+                    .format(dp_id_file, date, message_type)
+                )
+                chunk_fnp = out_directory / chunk_fn
+                if chunk_fnp.is_file():
+                    dp_data_url = args.target_url
+                    dp_data_url += "/datapoint/{}/{}/"
+                    dp_data_url = dp_data_url.format(dp_id_file, message_type)
+                    chunk_var = {
+                        "chunk_fnp": chunk_fnp,
+                        "dp_data_url": dp_data_url,
+                        "auth": auth,
+
+                    }
+                    chunk_vars.append(chunk_var)
+        date += timedelta(days=1)
+
+    logger.info("Starting to process %s chunks", len(chunk_vars))
+    # Django-API (CPU processing) is the main bottleneck here, there is
+    # hence no point in parallelizing more.
+    pool = Pool(processes=2)
+    msgs_created_total = 0
+    msgs_updated_total = 0
+    for msg_stats in tqdm(
+        pool.imap_unordered(write_datapoint_message, chunk_vars),
+        total=len(chunk_vars)
+    ):
+        msgs_created_total += msg_stats["msgs_created"]
+        msgs_updated_total += msg_stats["msgs_updated"]
+
+    logger.info("Finished loading %s chunks.", len(chunk_vars))
+    logger.info(
+        "Created %s and updated %s messages in total.",
+        msgs_created_total,
+        msgs_updated_total
+    )
 
 def main(args):
     """
@@ -217,6 +441,7 @@ def main(args):
         As defined at the end of the script.
     """
     logger.info("Starting Simple DB Backup script.")
+    logger.info("Start date: %s End date: %s", args.start_date, args.end_date)
 
     args.data_directory = args.data_directory.absolute()
     logger.info("Checking data directory exists: %s", args.data_directory)
@@ -241,7 +466,11 @@ def main(args):
         auth = None
 
     if args.restore:
-        raise NotImplementedError("Cannot restore yet.")
+        dp_id_mapping = restore_datapoint_metadata(args=args, auth=auth)
+        restore_datapoint_messages(
+           args=args, auth=auth, dp_id_mapping=dp_id_mapping
+        )
+
     if args.backup:
         datapoint_ids = backup_datapoint_metadata(args=args, auth=auth)
         backup_datapoint_messages(
@@ -322,6 +551,16 @@ if __name__ == "__main__":
         help=(
             "Path to directoy where backed up data is stored and resored data"
             "is loaded from. This directory must exist."
+        )
+    )
+    parser.add_argument(
+        "-y",
+        "--yes",
+        action="store_true",
+        help=(
+            "Always answer yes while restoring. This is fine if one has"
+            "has ensured that connectors and datapoints exist before running "
+            "the script."
         )
     )
     args = parser.parse_args()

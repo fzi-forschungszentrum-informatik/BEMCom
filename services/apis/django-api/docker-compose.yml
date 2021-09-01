@@ -1,5 +1,10 @@
 version: '3'
 
+# Use these volumes for development only.
+volumes:
+    django-api-devl-db-pgdata:
+        name: django-api-devl-db-pgdata
+
 services:
 
     django-api:
@@ -34,3 +39,16 @@ services:
         user: "${USER_ID}:${GROUP_ID}"
         ports:
             - "1883:1883"
+
+    django-api-devl-db:
+        container_name: "django-api-devl-db"
+        image: postgres:13
+        restart: always
+        ports:
+            - "5432:5432"
+        volumes:
+            - "django-api-devl-db-pgdata:/var/lib/postgresql/data"
+        environment:
+            - "POSTGRES_USER=bemcom"
+            - "POSTGRES_PASSWORD=bemcom"
+            - "POSTGRES_DB=bemcom"

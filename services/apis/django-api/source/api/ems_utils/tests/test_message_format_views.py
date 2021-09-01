@@ -137,3 +137,23 @@ class TestViewSetWithDatapointFK(TransactionTestCase):
                 datapoint=dp_id, timestamp=ts_as_dt
             )
             assert dpv.value == v
+
+    def test_update_many_writes_to_db_empty(self):
+        """
+        Verify that update_many also behaves OK if no data is provided.
+        This seems to have crashed the function sometime ago.
+        """
+        dp_id = self.datapoint.id
+        test_values = []
+
+        test_data = []
+        factory = RequestFactory()
+        request = factory.put("/datapoint/1/value/")
+        request.data = test_data
+
+        response = self.DatapointValueViewSet().update_many(
+            request, dp_id=dp_id
+        )
+        assert response.status_code == 200
+        assert response.data["msgs_created"] == 0
+        assert response.data["msgs_updated"] == 0

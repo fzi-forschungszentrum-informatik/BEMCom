@@ -351,6 +351,17 @@ class ViewSetWithDatapointFK(GenericViewSet):
         )
         serializer.is_valid(raise_exception=True)
         validated_data = serializer.validated_data
+
+        # Capute the corner case if someone adds an empty message.
+        if not validated_data:
+            put_msg_summary = PutMsgSummary().to_representation(
+                instance={
+                    "msgs_created": 0,
+                    "msgs_updated": 0
+                }
+            )
+            return Response(put_msg_summary, status=status.HTTP_200_OK)
+
         work_packages = []
         for msg in validated_data:
             work_packages.append({"msg": msg, "datapoint": datapoint})
