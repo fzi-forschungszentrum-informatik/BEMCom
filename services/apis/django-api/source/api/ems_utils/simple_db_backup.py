@@ -252,14 +252,23 @@ def restore_datapoint_metadata(args, auth):
         all_datapoint_metadata = json.loads(datapoint_metadata_str)
     all_datapoint_metadata.sort(key=lambda k: k['id'])
 
-    # First print out all connectors, that must be created by the
-    # user manually before we can proceed.
-    all_connectors = {dp["connector"] for dp in all_datapoint_metadata}
-    print(
-        "\n"
-        "Please ensure that the following connectors have been created in "
-        "the BEMCom Admin page and work correctly (Datapoints are available):"
-    )
+    if not args.force_datapoint_creation:
+        # First print out all connectors, that must be created by the
+        # user manually before we can proceed.
+        print(
+            "\n"
+            "Please ensure that the following connectors have been "
+            "created in the BEMCom Admin page and work correctly "
+            "(Datapoints are available):"
+        )
+    else:
+        print(
+            "\n"
+            "The following connectors will be created if they don not "
+            "exist already. Missing datapoints will be created too."
+        )
+
+    all_connectors = {dp["connector"]["name"] for dp in all_datapoint_metadata}
     for connector_name in sorted(all_connectors):
         print("-> ", connector_name)
     print("")
@@ -278,16 +287,26 @@ def restore_datapoint_metadata(args, auth):
     dp_id_mapping = {} # Maps from ids of files to API ids.
     for datapoint_metadata in all_datapoint_metadata:
         dp_id_file = datapoint_metadata["id"]
-        response = requests.put(
-            dp_metadata_url, auth=auth, json=[datapoint_metadata]
-        )
-        if response.status_code != 200:
-            logger.warning(
-                "Error for datapint %s: %s", dp_id_file, response.json()
-            )
-            break # TODO Remove
-            continue
+        datapoint_created = False
 
+        if args.force_datapoint_creation:
+            response = requests.post(
+                dp_metadata_url, auth=auth, json=[datapoint_metadata]
+            )
+            if response.status_code == 201:
+                datapoint_created = True
+
+        # Also trigger update if datapoint could not be created,
+        # e.g. as it exists already.
+        if not datapoint_created:
+            response = requests.put(
+                dp_metadata_url, auth=auth, json=[datapoint_metadata]
+            )
+            if response.status_code != 200:
+                logger.warning(
+                    "Error for datapint %s: %s", dp_id_file, response.json()
+                )
+                continue
 
         dp_id_api = response.json()[0]["id"]
         dp_id_mapping[dp_id_file] = dp_id_api
@@ -561,6 +580,18 @@ if __name__ == "__main__":
             "Always answer yes while restoring. This is fine if one has"
             "has ensured that connectors and datapoints exist before running "
             "the script."
+        )
+    )
+    parser.add_argument(
+        "-f",
+        "--force-datapoint-creation",
+        action="store_true",
+        help=(
+            "Force creation of datapoints and connectors. This is potentially"
+            "dangerous. You might end up with datapoints about which the "
+            "corresponding connector doesn't know. These datapoints will "
+            "not receive data or nor will it be possible to send value "
+            "messages to actuator datapoints."
         )
     )
     args = parser.parse_args()
