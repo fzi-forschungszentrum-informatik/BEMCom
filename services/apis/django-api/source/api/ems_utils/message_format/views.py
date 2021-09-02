@@ -93,7 +93,6 @@ class DatapointViewSetTemplate(GenericViewSet):
         return Response(serializer.data)
     list.__doc__ = __doc__ + "<br><br>" + list.__doc__.strip()
 
-
     def create(self, request):
         """
         This method allows to create a single datapoint which does not exist
@@ -102,8 +101,8 @@ class DatapointViewSetTemplate(GenericViewSet):
         data = request.data
         serializer = self.serializer_class(data=data)
         serializer.is_valid(raise_exception=True)
-        # Not that the valid data will not contain many of the relevant
-        # fields for quering a unique datatpoin.
+        # Note that the valid data will not contain many of the relevant
+        # fields for querying a unique datapoint.
         vd = serializer.validated_data
 
         q = {k: data[k] for k in self.unique_together_fields if k in data}

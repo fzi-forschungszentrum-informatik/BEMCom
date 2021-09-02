@@ -35,7 +35,6 @@ class Datapoint(DatapointTemplate):
     connector = models.ForeignKey(
         Connector,
         on_delete=models.CASCADE,
-        editable=False,
     )
     is_active = models.BooleanField(
         default=False,
@@ -46,7 +45,6 @@ class Datapoint(DatapointTemplate):
     # This must be unlimeted to prevent errors from cut away keys while
     # using the datapoint map by the connector.
     key_in_connector = models.TextField(
-        editable=False,
         help_text=(
             "Internal key used by the connector to identify the datapoint "
             "in the incoming/outgoing data streams."
@@ -55,7 +53,6 @@ class Datapoint(DatapointTemplate):
     # This exists, but it should not be editable and update help text.
     type = models.CharField(
         max_length=8,
-        editable=False,
         default=None,
         help_text=(
             "Datapoint type, can be ether sensor or actuator. Is defined by "

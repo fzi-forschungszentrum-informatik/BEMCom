@@ -59,11 +59,93 @@ class DatapointViewSet(DatapointViewSetTemplate):
         return Response(serializer.data)
     list.__doc__ = DatapointViewSetTemplate.list.__doc__
 
+    # This extends the generic version from ems_utils such that connectors
+    # are generated automatically too.
+    @extend_schema(
+        request=serializer_class(Datapoint, many=True),
+        ##
+        ## This might help with the broken schema but will introduce some
+        ## query parameters which do not make much sense here.
+        ##
+        #responses=serializer_class(Datapoint, many=True),
+        parameters=[],
+    )
     def create(self, request):
-        raise NotImplementedError(
-            "It is not possible to manually create datapoints. Only "
-            "connectors can define new Datapoints."
-        )
+        """
+        This method allows to create a single datapoint which does not exist
+        yet.
+
+        Please note: This endpoint is only used for replaying backups.
+        Usually, datapoints are created by connector messages. Hence
+        this adding datapoints this way may lead to orphaned datapoints
+        which are unknown to connectors and will receive no data.
+        """
+        serializer = self.serializer_class(data=request.data, many=True)
+        serializer.is_valid(raise_exception=True)
+        vd = serializer.validated_data
+
+        errors = []
+        new_datapoints = []
+        new_connectors = []
+        for data in vd:
+            cn_qs = Connector.objects.filter(name=data["connector"]["name"])
+            if cn_qs.count() == 0:
+                connector = Connector(name=data["connector"]["name"])
+                # Need to save here for next iteration.
+                connector.save()
+                data["connector"] = connector
+                new_connectors.append(connector)
+            if cn_qs.count() == 1:
+                data["connector"] = cn_qs[0]
+            # This should not be possible, but better save..
+            else:
+                errors.append({
+                    "connector": (
+                        "Multiple connectors found matching name: %s."
+                        % data["connector"]
+                    )
+                })
+                continue
+
+            q = {k: data[k] for k in self.unique_together_fields if k in data}
+            dp_qs = self.datapoint_model.objects.filter(**q)
+            if dp_qs.count() == 1:
+                errors.append({
+                    "datapoint": "Datapoint exists already: %s." % q
+                })
+                continue
+            elif dp_qs.count() > 1:
+                errors.append({
+                    "datapoint": "Multiple datapoints found matching query: %s." % q
+                })
+                continue
+            else:
+                # Create new datapoint as intended
+                datapoint = Datapoint(**data)
+                new_datapoints.append(datapoint)
+
+                # Need to save here for next iteration.
+                datapoint.save()
+
+                # Keeps errors and input data lists aligned.
+                errors.append({})
+
+
+        # All or nothing, either all has gone through or we delete everything.
+        # TODO Also create test for the nothing case.
+        if any(errors):
+            raise ValidationError(errors)
+
+            for datapoint in new_datapoints:
+                datapoint.delete()
+            for connector in new_connectors:
+                connector.delete()
+
+        # Return datapoint also with auto generated data like id.
+        serializer = self.serializer_class(new_datapoints, many=True)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    create.__doc__ = __doc__ + "<br><br>" + create.__doc__.strip()
 
 
     @extend_schema(
@@ -72,7 +154,7 @@ class DatapointViewSet(DatapointViewSetTemplate):
         ## This might help with the broken schema but will introduce some
         ## query parameters which do not make much sense here.
         ##
-        # responses=serializer_class(Datapoint, many=True),
+        #responses=serializer_class(Datapoint, many=True),
         parameters=[],
     )
     def update_many(self, request):
@@ -86,13 +168,14 @@ class DatapointViewSet(DatapointViewSetTemplate):
         # that we receive a list of objects as expected.
         serializer = self.serializer_class(data=request.data, many=True)
         serializer.is_valid(raise_exception=True)
+        vd = serializer.validated_data
 
+        # The main point here is the ensure that no datapoints are updated
+        # for which no connecetor exsits yet.
         errors = []
-        for data in request.data:
-            if not "connector" in data:
-                errors.append({})
-                continue
-            cn_qs = Connector.objects.filter(name=data["connector"])
+        datapoints = []
+        for data in vd:
+            cn_qs = Connector.objects.filter(name=data["connector"]["name"])
             if cn_qs.count() == 0:
                 errors.append({
                     "connector": (
@@ -100,6 +183,7 @@ class DatapointViewSet(DatapointViewSetTemplate):
                         % data["connector"]
                     )
                 })
+                continue
             # This should not be possible, but better save..
             elif cn_qs.count() > 1:
                 errors.append({
@@ -108,14 +192,42 @@ class DatapointViewSet(DatapointViewSetTemplate):
                         % data["connector"]
                     )
                 })
+                continue
+            else:
+                data["connector"] = cn_qs[0]
+
+            q = {k: data[k] for k in self.unique_together_fields if k in data}
+            dp_qs = self.datapoint_model.objects.filter(**q)
+            if dp_qs.count() == 0:
+                errors.append({
+                    "datapoint": "No datapoint found matching query: %s." % q
+                })
+                continue
+            elif dp_qs.count() > 1:
+                errors.append({
+                    "datapoint": "Multiple datapoints found matching query: %s." % q
+                })
+                continue
             else:
                 errors.append({})
-                data["connector"] = cn_qs[0].id
+                datapoint = dp_qs[0]
+                datapoints.append(datapoint)
+                for field in data:
+                    setattr(datapoint, field, data[field])
+                # Now save required here. The worst case szenario is that
+                # duplicate entries will be overwritten.
 
+        # All or nothing, either all has gone through or we save nothing.
+        # TODO Also create test for the nothing case.
         if any(errors):
             raise ValidationError(errors)
-        else:
-            return super().update_many(request)
+        for datapoint in datapoints:
+            datapoint.save()
+
+        # Return datapoint also with auto generated data like id.
+        serializer = self.serializer_class(datapoints, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     update_many.__doc__ = __doc__ + "<br><br>" + update_many.__doc__.strip()
 
 class DatapointValueViewSet(ViewSetWithDatapointFK):
