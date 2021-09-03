@@ -264,7 +264,7 @@ def restore_datapoint_metadata(args, auth):
     else:
         print(
             "\n"
-            "The following connectors will be created if they don not "
+            "The following connectors will be created if they do not "
             "exist already. Missing datapoints will be created too."
         )
 
@@ -272,6 +272,7 @@ def restore_datapoint_metadata(args, auth):
     for connector_name in sorted(all_connectors):
         print("-> ", connector_name)
     print("")
+    logger.info("Uploading datapoint metadata.")
     if not args.yes:
         choice = input("Proceed? [y/n] ")
         if choice != "y":
@@ -285,7 +286,7 @@ def restore_datapoint_metadata(args, auth):
     # safer this way.
     dp_metadata_url = args.target_url + "/datapoint/"
     dp_id_mapping = {} # Maps from ids of files to API ids.
-    for datapoint_metadata in all_datapoint_metadata:
+    for datapoint_metadata in tqdm(all_datapoint_metadata):
         dp_id_file = datapoint_metadata["id"]
         datapoint_created = False
 
@@ -295,6 +296,13 @@ def restore_datapoint_metadata(args, auth):
             )
             if response.status_code == 201:
                 datapoint_created = True
+            else:
+                logger.info(
+                    "Could not create datapoint %s: %s",
+                    dp_id_file,
+                    response.json()
+                )
+                continue
 
         # Also trigger update if datapoint could not be created,
         # e.g. as it exists already.
@@ -310,6 +318,7 @@ def restore_datapoint_metadata(args, auth):
 
         dp_id_api = response.json()[0]["id"]
         dp_id_mapping[dp_id_file] = dp_id_api
+
     logger.info(
         "Restored metadata for %s of %s datapoints.",
         len(dp_id_mapping),
@@ -418,9 +427,10 @@ def restore_datapoint_messages(args, auth, dp_id_mapping):
                 )
                 chunk_fnp = out_directory / chunk_fn
                 if chunk_fnp.is_file():
+                    dp_id_api = dp_id_mapping[dp_id_file]
                     dp_data_url = args.target_url
                     dp_data_url += "/datapoint/{}/{}/"
-                    dp_data_url = dp_data_url.format(dp_id_file, message_type)
+                    dp_data_url = dp_data_url.format(dp_id_api, message_type)
                     chunk_var = {
                         "chunk_fnp": chunk_fnp,
                         "dp_data_url": dp_data_url,
