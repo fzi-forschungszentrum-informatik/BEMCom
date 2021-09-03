@@ -317,15 +317,11 @@ class ViewSetWithDatapointFK(GenericViewSet):
         """
         datapoint = work_package["datapoint"]
         msg = work_package["msg"]
-        dt = datetime_from_timestamp(msg["timestamp"])
-        object, created = self.model.objects.get_or_create(
-            datapoint=datapoint, time=dt
+        time = datetime_from_timestamp(msg["timestamp"])
+        del msg["timestamp"]
+        object, created = self.model.objects.update_or_create(
+            datapoint=datapoint, time=time, defaults=msg
         )
-        for field in msg:
-            if field == "timestamp":
-                continue
-            setattr(object, field, msg[field])
-        object.save()
 
         if created:
             return 1, 0
