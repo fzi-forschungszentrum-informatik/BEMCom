@@ -298,36 +298,6 @@ class ViewSetWithDatapointFK(GenericViewSet):
         else:
             return Response(validated_data, status=status.HTTP_200_OK)
 
-    def _update_many_worker(self, work_package):
-        """
-        A worker method that upserts a single msg and that can be
-        run in parallel in a thread.
-
-        Arguments:
-        ----------
-        work_package : dict
-            containing the message and the datapoint.
-
-        Returns:
-        --------
-        msgs_created : int
-            The number of messages created in DB based on the work package.
-        msgs_updated : int
-            The number of messages updated in DB based on the work package.
-        """
-        datapoint = work_package["datapoint"]
-        msg = work_package["msg"]
-        time = datetime_from_timestamp(msg["timestamp"])
-        del msg["timestamp"]
-        object, created = self.model.objects.update_or_create(
-            datapoint=datapoint, time=time, defaults=msg
-        )
-
-        if created:
-            return 1, 0
-        else:
-            return 0, 1
-
     @extend_schema(
         responses=PutMsgSummary,
     )
@@ -347,7 +317,7 @@ class ViewSetWithDatapointFK(GenericViewSet):
         serializer.is_valid(raise_exception=True)
         validated_data = serializer.validated_data
 
-        # Capute the corner case if someone adds an empty message.
+        # Capture the corner case if someone adds an empty message.
         if not validated_data:
             put_msg_summary = PutMsgSummary().to_representation(
                 instance={
@@ -357,31 +327,20 @@ class ViewSetWithDatapointFK(GenericViewSet):
             )
             return Response(put_msg_summary, status=status.HTTP_200_OK)
 
-        work_packages = []
+        msgs = []
         for msg in validated_data:
-            work_packages.append({"msg": msg, "datapoint": datapoint})
+            msg["datapoint"] = datapoint
+            msg["time"] = datetime_from_timestamp(msg.pop("timestamp"))
+            msgs.append(msg)
 
-
-        # We want to write the msgs in parallel for better performance.
-        # But only if the backend is not SQlite as the latter does not
-        # allow parallel access.
-        db_engine = settings.DATABASES["default"]["ENGINE"]
-        if db_engine == 'django.db.backends.sqlite3':
-            n_threads = 1
-        else:
-            n_threads = 16
-        with ThreadPoolExecutor(max_workers=n_threads) as executor:
-            ex_returns = executor.map(self._update_many_worker, work_packages)
-
-        # Count the number of created and updated messages.
-        msg_stats = list(zip(*ex_returns))
-        msgs_created = sum(msg_stats[0])
-        msgs_updated = sum(msg_stats[1])
+        msg_stats = self.model.bulk_update_or_create(
+            model=self.model, msgs=msgs
+        )
 
         put_msg_summary = PutMsgSummary().to_representation(
             instance={
-                "msgs_created": msgs_created,
-                "msgs_updated": msgs_updated
+                "msgs_created": msg_stats[0],
+                "msgs_updated": msg_stats[1]
             }
         )
         return Response(put_msg_summary, status=status.HTTP_200_OK)

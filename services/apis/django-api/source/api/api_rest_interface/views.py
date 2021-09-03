@@ -266,6 +266,7 @@ class DatapointValueViewSet(ViewSetWithDatapointFK):
         )
         return Response(validated_data, status=status.HTTP_201_CREATED)
 
+    # This lives here to make the schema correct.
     @extend_schema(
         request=serializer_class(DatapointValue, many=True),
         responses=PutMsgSummary,

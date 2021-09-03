@@ -1,5 +1,4 @@
 from django.db import models
-from bulk_update_or_create import BulkUpdateOrCreateQuerySet
 
 class DatapointTemplate(models.Model):
     """
@@ -282,30 +281,88 @@ class TimescaleModel(models.Model):
     # def timestamp(self, value):
     #     self.time = value
 
-    def bulk_update_or_create(self, msgs):
-        # This does not work. One needs to fetch the elements which are
-        # updated first.
-        # self.objects.bulk_update(items)
-        # self.objects.bulk_create(items, ignore_conflicts=False)
+    @staticmethod
+    def bulk_update_or_create(model, msgs):
+        """
+        Create or update value/setpoint/schedule messages efficiently in bulks.
 
-        msgs_created = 0
+        This will not send any signals nor update the last_* values in
+        datapoint. This seems not to be an issue as this function will likely
+        be used only to restore backups.
+
+        Arguments:
+        ----------
+        model : django Model
+            The model for which the data should be written to.
+        msgs : list of dict
+            Each dict containting the fields (as keys) and desired values
+            that should be stored for one object in the DB.
+
+        Returns:
+        --------
+        msgs_created : int
+            The number of messages that have been created.
+        msgs_updated : int
+            The number of messages that have been updated.
+        """
+        # Start with searching for msgs that exist already with the same
+        # combination of timestamp and datapoint in the database.
+        # These messages will be updated.
+        msgs_by_datapoint = {}
+        msgs_to_create = []
         msgs_updated = 0
-
-        # This method works only for initialized instances.
-        model = type(self)
         for msg in msgs:
-            datapoint = msg.pop("datapoint")
-            time = msg.pop("time")
-            _, created = model.objects.update_or_create(
-                datapoint=datapoint, time=time, defaults=msg
+            datapoint = msg["datapoint"]
+            if datapoint not in msgs_by_datapoint:
+                msgs_by_datapoint[datapoint] = []
+            msgs_by_datapoint[datapoint].append(msg)
+        for datapoint in msgs_by_datapoint:
+            msgs_current_dp = msgs_by_datapoint[datapoint]
+            msgs_c_dp_by_time = {msg["time"]: msg for msg in msgs_current_dp}
+            existing_msg_objects = model.objects.filter(
+                time__in=msgs_c_dp_by_time.keys()
             )
-            if created:
-                msgs_created +=1
-            else:
-                msgs_updated += 1
+
+            # Now start with updating the existing messages by updating
+            # the corresponding fields.
+            fields_to_update = set()
+            for existing_msg_object in existing_msg_objects:
+                # The messages remaining in msgs_c_dp_by_time after the loop
+                # are those we need to create.
+                new_msg = msgs_c_dp_by_time.pop(existing_msg_object.time)
+                for field in new_msg:
+                    if field == "datapoint" or field == "time":
+                        # These have been used to find the message and must thus
+                        # not be updated.
+                        continue
+                    fields_to_update.add(field)
+                    setattr(existing_msg_object, field, new_msg[field])
+
+            # Without this if we will get an error like this downstream:
+            # ValueError: Field names must be given to bulk_update().
+            if existing_msg_objects:
+                # Now let's push those updates back to DB. Use bulks of 1000
+                # to prevent the SQL query from becoming too large. See:
+                # https://docs.djangoproject.com/en/3.1/ref/models/querysets/#bulk-update
+                model.objects.bulk_update(
+                    objs=existing_msg_objects,
+                    fields=fields_to_update,
+                    batch_size=1000,
+                )
+                msgs_updated += len(existing_msg_objects)
+
+            msgs_to_create.extend(msgs_c_dp_by_time.values())
+
+        # Now that we have updated the existing messages and know which ones
+        # are left to create let's to this too.
+        objs_to_create = [model(**msg) for msg in msgs_to_create]
+        model.objects.bulk_create(
+            objs=objs_to_create,
+            batch_size=1000,
+        )
+        msgs_created = len(objs_to_create)
 
         return msgs_created, msgs_updated
-
 
 
 class DatapointValueTemplate(TimescaleModel):
@@ -425,6 +482,41 @@ class DatapointValueTemplate(TimescaleModel):
             instance.value = instance._value_bool
             instance._value_bool = None
         return instance
+
+    @staticmethod
+    def bulk_update_or_create(model, msgs):
+        """
+        Extend the version of TimescaleModel with special handling for the
+        float and bool hidden fields.
+
+        Arguments:
+        ----------
+        model : django Model
+            The model for which the data should be written to.
+        msgs : list of dict
+            Each dict containting the fields (as keys) and desired values
+            that should be stored for one object in the DB.
+
+        Returns:
+        --------
+        msgs_created : int
+            The number of messages that have been created.
+        msgs_updated : int
+            The number of messages that have been updated.
+        """
+        for msg in msgs:
+            original_value = msg["value"]
+            msg["value"] = None
+
+            if isinstance(original_value, bool):
+                msg["_value_bool"] = original_value
+            elif original_value is not None:
+                try:
+                    msg["_value_float"] = float(original_value)
+                except ValueError:
+                    msg["value"] = original_value
+
+        return TimescaleModel.bulk_update_or_create(model=model, msgs=msgs)
 
 
 class DatapointScheduleTemplate(TimescaleModel):

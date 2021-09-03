@@ -374,7 +374,9 @@ def write_datapoint_message(cv):
     )
     # Verify that the request returned OK.
     if response.status_code != 200:
-        logger.error("Request failed: %s", response)
+        logger.error(
+            "Request failed (%s): %s", response.status_code, response.json()
+        )
         raise RuntimeError(
             "Could not write datapoint data to url: %s" % cv["dp_data_url"]
         )

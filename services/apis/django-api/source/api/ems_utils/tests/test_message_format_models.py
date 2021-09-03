@@ -2,6 +2,7 @@ import pytz
 import json
 from datetime import datetime
 
+from django.conf import settings
 from django.db import connection, connections, models
 from django.test import TransactionTestCase
 from django.db.utils import IntegrityError
@@ -639,7 +640,10 @@ class TestDatapointValue(TransactionTestCase):
             }
         ]
 
-        msg_stats = dp_value.bulk_update_or_create(msgs=test_msgs)
+        msg_stats = self.DatapointValue.bulk_update_or_create(
+            model=self.DatapointValue,
+            msgs=test_msgs
+        )
 
         expected_msgs_created = 2
         actual_msgs_created = msg_stats[0]
@@ -648,39 +652,49 @@ class TestDatapointValue(TransactionTestCase):
         actual_msgs_updated = msg_stats[1]
         assert actual_msgs_updated == expected_msgs_updated
 
+        # Apparently SQlite has issues storing timezone for datetimes, while
+        # tests fails for PostgreSQL if timezones are not provided like
+        # pytz.utc. Maybe this is just because of the hacky style of
+        # reading data directly and raw from DB
+        db_engine = settings.DATABASES["default"]["ENGINE"]
+        if db_engine == 'django.db.backends.sqlite3':
+            dt_kwargs = {}
+        else:
+            dt_kwargs = {"tzinfo": pytz.utc}
+
         # That is "datapoint", "time", "value", "_value_float", "_value_bool"
         all_expected_values = [
             (
                 self.datapoint.id,
-                datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+                datetime(2021, 1, 1, 12, 0, 0, **dt_kwargs),
                 None,
                 32.0,
                 None,
             ),
             (
                 self.datapoint2.id,
-                datetime(2021, 1, 1, 12, 30, 0, tzinfo=pytz.utc),
+                datetime(2021, 1, 1, 12, 30, 0, **dt_kwargs),
                 None,
                 None,
                 True,
             ),
             (
                 self.datapoint.id,
-                datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
+                datetime(2021, 1, 1, 13, 0, 0, **dt_kwargs),
                 None,
                 None,
                 None,
             ),
             (
                 self.datapoint.id,
-                datetime(2021, 1, 1, 14, 0, 0, tzinfo=pytz.utc),
+                datetime(2021, 1, 1, 14, 0, 0, **dt_kwargs),
                 None,
                 None,
                 True,
             ),
             (
                 self.datapoint.id,
-                datetime(2021, 1, 1, 15, 0, 0, tzinfo=pytz.utc),
+                datetime(2021, 1, 1, 15, 0, 0, **dt_kwargs),
                 json.dumps("a string"),
                 None,
                 None,
@@ -932,7 +946,10 @@ class TestDatapointSchedule(TransactionTestCase):
             },
         ]
 
-        msg_stats = dp_schedule.bulk_update_or_create(msgs=test_msgs)
+        msg_stats = self.DatapointSchedule.bulk_update_or_create(
+            model=self.DatapointSchedule,
+            msgs=test_msgs
+        )
 
         expected_msgs_created = 1
         actual_msgs_created = msg_stats[0]
@@ -941,21 +958,31 @@ class TestDatapointSchedule(TransactionTestCase):
         actual_msgs_updated = msg_stats[1]
         assert actual_msgs_updated == expected_msgs_updated
 
-        # That is "datapoint", "time", "value", "_value_float", "_value_bool"
+        # Apparently SQlite has issues storing timezone for datetimes, while
+        # tests fails for PostgreSQL if timezones are not provided like
+        # pytz.utc. Maybe this is just because of the hacky style of
+        # reading data directly and raw from DB
+        db_engine = settings.DATABASES["default"]["ENGINE"]
+        if db_engine == 'django.db.backends.sqlite3':
+            dt_kwargs = {}
+        else:
+            dt_kwargs = {"tzinfo": pytz.utc}
+
+        # That is "datapoint", "time", "schedule"
         all_expected_schedules = [
             (
                 self.datapoint.id,
-                datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+                datetime(2021, 1, 1, 12, 0, 0, **dt_kwargs),
                 json.dumps([]),
             ),
             (
                 self.datapoint.id,
-                datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
+                datetime(2021, 1, 1, 13, 0, 0, **dt_kwargs),
                 json.dumps([]),
             ),
             (
                 self.datapoint.id,
-                datetime(2021, 1, 1, 14, 0, 0, tzinfo=pytz.utc),
+                datetime(2021, 1, 1, 14, 0, 0, **dt_kwargs),
                 json.dumps([]),
             ),
         ]
@@ -1209,7 +1236,10 @@ class TestDatapointSetpoint(TransactionTestCase):
             }
         ]
 
-        msg_stats = dp_setpoint.bulk_update_or_create(msgs=test_msgs)
+        msg_stats = self.DatapointSetpoint.bulk_update_or_create(
+            model=self.DatapointSetpoint,
+            msgs=test_msgs
+        )
 
         expected_msgs_created = 2
         actual_msgs_created = msg_stats[0]
@@ -1218,26 +1248,36 @@ class TestDatapointSetpoint(TransactionTestCase):
         actual_msgs_updated = msg_stats[1]
         assert actual_msgs_updated == expected_msgs_updated
 
-        # That is "datapoint", "time", "value", "_value_float", "_value_bool"
+        # Apparently SQlite has issues storing timezone for datetimes, while
+        # tests fails for PostgreSQL if timezones are not provided like
+        # pytz.utc. Maybe this is just because of the hacky style of
+        # reading data directly and raw from DB
+        db_engine = settings.DATABASES["default"]["ENGINE"]
+        if db_engine == 'django.db.backends.sqlite3':
+            dt_kwargs = {}
+        else:
+            dt_kwargs = {"tzinfo": pytz.utc}
+
+        # That is "datapoint", "setpoint"
         all_expected_setpoints = [
             (
                 self.datapoint.id,
-                datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+                datetime(2021, 1, 1, 12, 0, 0, **dt_kwargs),
                 json.dumps([]),
             ),
             (
                 self.datapoint.id,
-                datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
+                datetime(2021, 1, 1, 13, 0, 0, **dt_kwargs),
                 json.dumps([]),
             ),
             (
                 self.datapoint.id,
-                datetime(2021, 1, 1, 14, 0, 0, tzinfo=pytz.utc),
+                datetime(2021, 1, 1, 14, 0, 0, **dt_kwargs),
                 json.dumps([]),
             ),
             (
                 self.datapoint.id,
-                datetime(2021, 1, 1, 15, 0, 0, tzinfo=pytz.utc),
+                datetime(2021, 1, 1, 15, 0, 0, **dt_kwargs),
                 json.dumps([]),
             ),
         ]

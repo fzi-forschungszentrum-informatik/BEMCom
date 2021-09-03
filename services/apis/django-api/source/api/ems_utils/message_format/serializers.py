@@ -89,14 +89,12 @@ class GenericValidators():
         if "_text" in datapoint.data_format:
             if type(value) not in [str, type(None)]:
                 raise serializers.ValidationError(
-                    "Value (%s) for text datapoint cannot be parsed to"
-                    " str." % value
+                    "Value (%s) for text datapoint is no string." % value
                 )
         if "bool" in datapoint.data_format:
             if type(value) not in [bool]:
                 raise serializers.ValidationError(
-                    "Value (%s) for boolean datapoint cannot be parsed to"
-                    " bool." % value
+                    "Value (%s) for boolean datapoint is no bool."  % value
                 )
         if "discrete_" in datapoint.data_format:
             # Could be None or emptry string, both should be handled no values
