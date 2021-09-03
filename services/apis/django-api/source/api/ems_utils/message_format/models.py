@@ -288,14 +288,25 @@ class TimescaleModel(models.Model):
         # self.objects.bulk_update(items)
         # self.objects.bulk_create(items, ignore_conflicts=False)
 
+        msgs_created = 0
+        msgs_updated = 0
+
         # This method works only for initialized instances.
         model = type(self)
         for msg in msgs:
             datapoint = msg.pop("datapoint")
             time = msg.pop("time")
-            model.objects.update_or_create(
+            _, created = model.objects.update_or_create(
                 datapoint=datapoint, time=time, defaults=msg
             )
+            if created:
+                msgs_created +=1
+            else:
+                msgs_updated += 1
+
+        return msgs_created, msgs_updated
+
+
 
 class DatapointValueTemplate(TimescaleModel):
     """

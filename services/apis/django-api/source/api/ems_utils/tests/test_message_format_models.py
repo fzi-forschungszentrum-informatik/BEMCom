@@ -334,6 +334,8 @@ class TestDatapointValue(TransactionTestCase):
         #  Create a dummy datapoint to be used as foreign key for the msgs.
         cls.datapoint = cls.Datapoint(type="sensor")
         cls.datapoint.save()
+        cls.datapoint2 = cls.Datapoint(type="sensor")
+        cls.datapoint2.save()
 
         # Here are the default field values:
         cls.default_field_values = {
@@ -584,6 +586,12 @@ class TestDatapointValue(TransactionTestCase):
         data in the DB.
         """
         # These are the Datapoints Msgs that should be updated.
+        # We want to have here at least two value msgs from the same datapoint
+        # to show that matching and updating msgs works even if several msgs
+        # are involved (the matching part). We also want to have msgs from
+        # at least to distinct datapoints as we expect the bulk_update_or_create
+        # method to distinguish the msgs by datapoints while fetching msgs
+        # for updating
         dp_value = self.DatapointValue(
             datapoint=self.datapoint,
             time=datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
@@ -596,12 +604,23 @@ class TestDatapointValue(TransactionTestCase):
             value=42,
         )
         dp_value2.save()
+        dp_value3 = self.DatapointValue(
+            datapoint=self.datapoint2,
+            time=datetime(2021, 1, 1, 12, 30, 0, tzinfo=pytz.utc),
+            value=False,
+        )
+        dp_value3.save()
 
         test_msgs = [
             {
                 "datapoint": self.datapoint,
                 "time": datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
                 "value": 32.0,
+            },
+            {
+                "datapoint": self.datapoint2,
+                "time": datetime(2021, 1, 1, 12, 30, 0, tzinfo=pytz.utc),
+                "value": True,
             },
             {
                 "datapoint": self.datapoint,
@@ -620,7 +639,14 @@ class TestDatapointValue(TransactionTestCase):
             }
         ]
 
-        dp_value.bulk_update_or_create(msgs=test_msgs)
+        msg_stats = dp_value.bulk_update_or_create(msgs=test_msgs)
+
+        expected_msgs_created = 2
+        actual_msgs_created = msg_stats[0]
+        assert actual_msgs_created == expected_msgs_created
+        expected_msgs_updated = 3
+        actual_msgs_updated = msg_stats[1]
+        assert actual_msgs_updated == expected_msgs_updated
 
         # That is "datapoint", "time", "value", "_value_float", "_value_bool"
         all_expected_values = [
@@ -630,6 +656,13 @@ class TestDatapointValue(TransactionTestCase):
                 None,
                 32.0,
                 None,
+            ),
+            (
+                self.datapoint2.id,
+                datetime(2021, 1, 1, 12, 30, 0, tzinfo=pytz.utc),
+                None,
+                None,
+                True,
             ),
             (
                 self.datapoint.id,
@@ -897,14 +930,16 @@ class TestDatapointSchedule(TransactionTestCase):
                 "time": datetime(2021, 1, 1, 14, 0, 0, tzinfo=pytz.utc),
                 "schedule": [],
             },
-            {
-                "datapoint": self.datapoint,
-                "time": datetime(2021, 1, 1, 15, 0, 0, tzinfo=pytz.utc),
-                "schedule": [],
-            }
         ]
 
-        dp_schedule.bulk_update_or_create(msgs=test_msgs)
+        msg_stats = dp_schedule.bulk_update_or_create(msgs=test_msgs)
+
+        expected_msgs_created = 1
+        actual_msgs_created = msg_stats[0]
+        assert actual_msgs_created == expected_msgs_created
+        expected_msgs_updated = 2
+        actual_msgs_updated = msg_stats[1]
+        assert actual_msgs_updated == expected_msgs_updated
 
         # That is "datapoint", "time", "value", "_value_float", "_value_bool"
         all_expected_schedules = [
@@ -921,11 +956,6 @@ class TestDatapointSchedule(TransactionTestCase):
             (
                 self.datapoint.id,
                 datetime(2021, 1, 1, 14, 0, 0, tzinfo=pytz.utc),
-                json.dumps([]),
-            ),
-            (
-                self.datapoint.id,
-                datetime(2021, 1, 1, 15, 0, 0, tzinfo=pytz.utc),
                 json.dumps([]),
             ),
         ]
@@ -1179,7 +1209,14 @@ class TestDatapointSetpoint(TransactionTestCase):
             }
         ]
 
-        dp_setpoint.bulk_update_or_create(msgs=test_msgs)
+        msg_stats = dp_setpoint.bulk_update_or_create(msgs=test_msgs)
+
+        expected_msgs_created = 2
+        actual_msgs_created = msg_stats[0]
+        assert actual_msgs_created == expected_msgs_created
+        expected_msgs_updated = 2
+        actual_msgs_updated = msg_stats[1]
+        assert actual_msgs_updated == expected_msgs_updated
 
         # That is "datapoint", "time", "value", "_value_float", "_value_bool"
         all_expected_setpoints = [
