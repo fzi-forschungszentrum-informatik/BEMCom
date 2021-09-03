@@ -1,5 +1,5 @@
 from django.db import models
-
+from bulk_update_or_create import BulkUpdateOrCreateQuerySet
 
 class DatapointTemplate(models.Model):
     """
@@ -282,8 +282,20 @@ class TimescaleModel(models.Model):
     # def timestamp(self, value):
     #     self.time = value
 
+    def bulk_update_or_create(self, msgs):
+        # This does not work. One needs to fetch the elements which are
+        # updated first.
+        # self.objects.bulk_update(items)
+        # self.objects.bulk_create(items, ignore_conflicts=False)
 
-
+        # This method works only for initialized instances.
+        model = type(self)
+        for msg in msgs:
+            datapoint = msg.pop("datapoint")
+            time = msg.pop("time")
+            model.objects.update_or_create(
+                datapoint=datapoint, time=time, defaults=msg
+            )
 
 class DatapointValueTemplate(TimescaleModel):
     """

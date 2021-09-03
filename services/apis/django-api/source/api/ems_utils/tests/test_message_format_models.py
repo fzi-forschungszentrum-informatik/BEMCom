@@ -1,3 +1,7 @@
+import pytz
+import json
+from datetime import datetime
+
 from django.db import connection, connections, models
 from django.test import TransactionTestCase
 from django.db.utils import IntegrityError
@@ -529,39 +533,7 @@ class TestDatapointValue(TransactionTestCase):
         actual_value = dp_value.value
         assert actual_value == expected_value
 
-    def test_save_will_store_float_on_value_float_field(self):
-        """
-        There is an automatic mechanism that stores floats and bool values
-        not as strings but as floats/bools to save storage space.
-        Verify that the float ends up in the intended table column and
-        that all other fields are empty as expected.
-        """
-        field_values = self.default_field_values.copy()
-        dp_value = self.DatapointValue.objects.create(**field_values)
-        dp_value.save()
-
-        dp_value.value = 1
-        dp_value.save()
-
-        row = self.get_raw_values_from_db(dp_value_id=dp_value.id)
-        actual_value, actual_value_float, actual_value_bool = row
-
-        expected_value = None
-        expected_value_float = 1
-        expected_value_bool = None
-
-        assert actual_value == expected_value
-        assert actual_value_float == expected_value_float
-        assert actual_value_bool == expected_value_bool
-
-        # Finally also validate that the data can be fetched back from the
-        # the value field.
-        dp_value.refresh_from_db()
-        expected_value = 1
-        actual_value = dp_value.value
-        assert actual_value == expected_value
-
-    def test_save_will_store_float_on_value_float_field(self):
+    def test_save_will_store_bool_on_value_bool_field(self):
         """
         There is an automatic mechanism that stores floats and bool values
         not as strings but as floats/bools to save storage space.
@@ -592,6 +564,105 @@ class TestDatapointValue(TransactionTestCase):
         expected_value = True
         actual_value = dp_value.value
         assert actual_value == expected_value
+
+    def get_raw_values_from_db_by_time_and_dp(self, dp_id, time):
+        """
+        A utility function that fetches the raw data from the DB.
+        """
+        query = (
+            'SELECT "datapoint_id", "time", "value", "_value_float", "_value_bool"'
+            'FROM "{table_name}" WHERE datapoint_id = %s AND time = %s'
+        ).format(table_name = self.DatapointValue.objects.model._meta.db_table)
+        with connection.cursor() as cursor:
+            cursor.execute(query, [dp_id, time])
+            row = cursor.fetchone()
+        return row
+
+    def test_bulk_update_or_create_stores_in_db(self):
+        """
+        Verify that bulk_update_or_create is able to create and update
+        data in the DB.
+        """
+        # These are the Datapoints Msgs that should be updated.
+        dp_value = self.DatapointValue(
+            datapoint=self.datapoint,
+            time=datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+            value=31.0,
+        )
+        dp_value.save()
+        dp_value2 = self.DatapointValue(
+            datapoint=self.datapoint,
+            time=datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
+            value=42,
+        )
+        dp_value2.save()
+
+        test_msgs = [
+            {
+                "datapoint": self.datapoint,
+                "time": datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+                "value": 32.0,
+            },
+            {
+                "datapoint": self.datapoint,
+                "time": datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
+                "value": None,
+            },
+            {
+                "datapoint": self.datapoint,
+                "time": datetime(2021, 1, 1, 14, 0, 0, tzinfo=pytz.utc),
+                "value": True,
+            },
+            {
+                "datapoint": self.datapoint,
+                "time": datetime(2021, 1, 1, 15, 0, 0, tzinfo=pytz.utc),
+                "value": "a string",
+            }
+        ]
+
+        dp_value.bulk_update_or_create(msgs=test_msgs)
+
+        # That is "datapoint", "time", "value", "_value_float", "_value_bool"
+        all_expected_values = [
+            (
+                self.datapoint.id,
+                datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+                None,
+                32.0,
+                None,
+            ),
+            (
+                self.datapoint.id,
+                datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
+                None,
+                None,
+                None,
+            ),
+            (
+                self.datapoint.id,
+                datetime(2021, 1, 1, 14, 0, 0, tzinfo=pytz.utc),
+                None,
+                None,
+                True,
+            ),
+            (
+                self.datapoint.id,
+                datetime(2021, 1, 1, 15, 0, 0, tzinfo=pytz.utc),
+                json.dumps("a string"),
+                None,
+                None,
+            ),
+        ]
+        all_actual_values = []
+        for expected_value in all_expected_values:
+            actual_values = self.get_raw_values_from_db_by_time_and_dp(
+                dp_id=expected_value[0],
+                time=expected_value[1],
+            )
+            all_actual_values.append(actual_values)
+
+        assert all_actual_values == all_expected_values
+
 
 class TestDatapointSchedule(TransactionTestCase):
 
@@ -777,6 +848,97 @@ class TestDatapointSchedule(TransactionTestCase):
         self.assertEqual(actual_schedule, expected_schedule)
         self.assertEqual(actual_timestamp, expected_timestamp)
 
+    def get_raw_values_from_db_by_time_and_dp(self, dp_id, time):
+        """
+        A utility function that fetches the raw data from the DB.
+        """
+        query = (
+            'SELECT "datapoint_id", "time", "schedule"'
+            'FROM "{table_name}" WHERE datapoint_id = %s AND time = %s'
+        ).format(table_name = self.DatapointSchedule.objects.model._meta.db_table)
+        with connection.cursor() as cursor:
+            cursor.execute(query, [dp_id, time])
+            row = cursor.fetchone()
+        return row
+
+    def test_bulk_update_or_create_stores_in_db(self):
+        """
+        Verify that bulk_update_or_create is able to create and update
+        data in the DB.
+        """
+        # These are the Datapoints Msgs that should be updated.
+        dp_schedule = self.DatapointSchedule(
+            datapoint=self.datapoint,
+            time=datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+            schedule=[{"test": 1}],
+        )
+        dp_schedule.save()
+
+        dp_schedule2 = self.DatapointSchedule(
+            datapoint=self.datapoint,
+            time=datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
+            schedule=[{"test": 2}],
+        )
+        dp_schedule2.save()
+
+        test_msgs = [
+            {
+                "datapoint": self.datapoint,
+                "time": datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+                "schedule": [],
+            },
+            {
+                "datapoint": self.datapoint,
+                "time": datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
+                "schedule": [],
+            },
+            {
+                "datapoint": self.datapoint,
+                "time": datetime(2021, 1, 1, 14, 0, 0, tzinfo=pytz.utc),
+                "schedule": [],
+            },
+            {
+                "datapoint": self.datapoint,
+                "time": datetime(2021, 1, 1, 15, 0, 0, tzinfo=pytz.utc),
+                "schedule": [],
+            }
+        ]
+
+        dp_schedule.bulk_update_or_create(msgs=test_msgs)
+
+        # That is "datapoint", "time", "value", "_value_float", "_value_bool"
+        all_expected_schedules = [
+            (
+                self.datapoint.id,
+                datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+                json.dumps([]),
+            ),
+            (
+                self.datapoint.id,
+                datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
+                json.dumps([]),
+            ),
+            (
+                self.datapoint.id,
+                datetime(2021, 1, 1, 14, 0, 0, tzinfo=pytz.utc),
+                json.dumps([]),
+            ),
+            (
+                self.datapoint.id,
+                datetime(2021, 1, 1, 15, 0, 0, tzinfo=pytz.utc),
+                json.dumps([]),
+            ),
+        ]
+        all_actual_schedules = []
+        for expected_schedule in all_expected_schedules:
+            actual_schedule = self.get_raw_values_from_db_by_time_and_dp(
+                dp_id=expected_schedule[0],
+                time=expected_schedule[1],
+            )
+            all_actual_schedules.append(actual_schedule)
+
+        assert all_actual_schedules == all_expected_schedules
+
 
 class TestDatapointSetpoint(TransactionTestCase):
 
@@ -961,3 +1123,93 @@ class TestDatapointSetpoint(TransactionTestCase):
 
         self.assertEqual(actual_setpoint, expected_setpoint)
         self.assertEqual(actual_timestamp, expected_timestamp)
+
+    def get_raw_values_from_db_by_time_and_dp(self, dp_id, time):
+        """
+        A utility function that fetches the raw data from the DB.
+        """
+        query = (
+            'SELECT "datapoint_id", "time", "setpoint"'
+            'FROM "{table_name}" WHERE datapoint_id = %s AND time = %s'
+        ).format(table_name = self.DatapointSetpoint.objects.model._meta.db_table)
+        with connection.cursor() as cursor:
+            cursor.execute(query, [dp_id, time])
+            row = cursor.fetchone()
+        return row
+
+    def test_bulk_update_or_create_stores_in_db(self):
+        """
+        Verify that bulk_update_or_create is able to create and update
+        data in the DB.
+        """
+        # These are the Datapoints Msgs that should be updated.
+        dp_setpoint = self.DatapointSetpoint(
+            datapoint=self.datapoint,
+            time=datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+            setpoint=[{"test": 1}],
+        )
+        dp_setpoint.save()
+        dp_setpoint2 = self.DatapointSetpoint(
+            datapoint=self.datapoint,
+            time=datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
+            setpoint=[{"test": 2}],
+        )
+        dp_setpoint2.save()
+
+        test_msgs = [
+            {
+                "datapoint": self.datapoint,
+                "time": datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+                "setpoint": [],
+            },
+            {
+                "datapoint": self.datapoint,
+                "time": datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
+                "setpoint": [],
+            },
+            {
+                "datapoint": self.datapoint,
+                "time": datetime(2021, 1, 1, 14, 0, 0, tzinfo=pytz.utc),
+                "setpoint": [],
+            },
+            {
+                "datapoint": self.datapoint,
+                "time": datetime(2021, 1, 1, 15, 0, 0, tzinfo=pytz.utc),
+                "setpoint": [],
+            }
+        ]
+
+        dp_setpoint.bulk_update_or_create(msgs=test_msgs)
+
+        # That is "datapoint", "time", "value", "_value_float", "_value_bool"
+        all_expected_setpoints = [
+            (
+                self.datapoint.id,
+                datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+                json.dumps([]),
+            ),
+            (
+                self.datapoint.id,
+                datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
+                json.dumps([]),
+            ),
+            (
+                self.datapoint.id,
+                datetime(2021, 1, 1, 14, 0, 0, tzinfo=pytz.utc),
+                json.dumps([]),
+            ),
+            (
+                self.datapoint.id,
+                datetime(2021, 1, 1, 15, 0, 0, tzinfo=pytz.utc),
+                json.dumps([]),
+            ),
+        ]
+        all_actual_setpoints = []
+        for expected_setpoint in all_expected_setpoints:
+            actual_setpoint = self.get_raw_values_from_db_by_time_and_dp(
+                dp_id=expected_setpoint[0],
+                time=expected_setpoint[1],
+            )
+            all_actual_setpoints.append(actual_setpoint)
+
+        assert all_actual_setpoints == all_expected_setpoints
