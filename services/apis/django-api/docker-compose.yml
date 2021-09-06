@@ -42,7 +42,7 @@ services:
 
     django-api-devl-db:
         container_name: "django-api-devl-db"
-        image: postgres:13
+        image: timescale/timescaledb:2.4.1-pg13
         restart: always
         ports:
             - "5432:5432"

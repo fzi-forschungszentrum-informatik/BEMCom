@@ -395,11 +395,11 @@ class DatapointValueAdmin(AdminWithoutListsOnDelete):
         """
         Displays a prettier timestamp format.
         """
-        ts = obj.timestamp
+        ts = obj.time
         if ts is None:
             return "-"
         return datetime_to_pretty_str(ts)
-    timestamp_pretty.admin_order_field = "timestamp"
+    timestamp_pretty.admin_order_field = "time"
     timestamp_pretty.short_description = "Timestamp"
 
 
@@ -423,11 +423,11 @@ class DatapointSetpointAdmin(AdminWithoutListsOnDelete):
         """
         Displays a prettier timestamp format.
         """
-        ts = obj.timestamp
+        ts = obj.time
         if ts is None:
             return "-"
         return datetime_to_pretty_str(ts)
-    timestamp_pretty.admin_order_field = "timestamp"
+    timestamp_pretty.admin_order_field = "time"
     timestamp_pretty.short_description = "Timestamp"
 
 @admin.register(DatapointSchedule)
@@ -450,9 +450,9 @@ class DatapointScheduleAdmin(AdminWithoutListsOnDelete):
         """
         Displays a prettier timestamp format.
         """
-        ts = obj.timestamp
+        ts = obj.time
         if ts is None:
             return "-"
         return datetime_to_pretty_str(ts)
-    timestamp_pretty.admin_order_field = "timestamp"
+    timestamp_pretty.admin_order_field = "time"
     timestamp_pretty.short_description = "Timestamp"

@@ -1,4 +1,7 @@
 from django.db import models
+from timescale.db.models.managers import TimescaleManager
+from timescale.db.models.fields import TimescaleDateTimeField
+
 
 class DatapointTemplate(models.Model):
     """
@@ -242,12 +245,11 @@ class TimescaleModel(models.Model):
     class Meta:
         abstract = True
 
-    # time = TimescaleDateTimeField(interval="1 day")
-    #
-    # objects = models.Manager()
-    # timescale = TimescaleManager()
+    objects = models.Manager()
+    timescale = TimescaleManager()
 
-    time = models.DateTimeField(
+    time = TimescaleDateTimeField(
+        interval="1 day",
         null=False,
         blank=False,
         default=None,
