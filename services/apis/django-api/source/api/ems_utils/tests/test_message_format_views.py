@@ -139,7 +139,7 @@ class TestViewSetWithDatapointFK(TransactionTestCase):
             model = DatapointValue
             datapoint_model = Datapoint
             serializer_class = DatapointValueSerializer
-            queryset = DatapointValue.objects.all()
+            queryset = DatapointValue.timescale.all()
             create_for_actuators_only = True
 
         cls.Datapoint = Datapoint

@@ -57,7 +57,7 @@ class DatapointValueFilter(TimestampFilter):
     """
     Allows selecting values by timestamp ranges.
     """
-    frequency = CharFilter(
+    interval = CharFilter(
         method="apply_timebucket",
     )
 

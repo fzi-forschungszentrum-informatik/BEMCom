@@ -234,9 +234,9 @@ class ViewSetWithDatapointFK(GenericViewSet):
         queryset = self.filter_queryset(queryset)
 
         """
-        Usually objects would be a normal Django queryset.
-        However, if we applied time_bucket, it will be TimescaleQuerySet,
-        that looks something like this:
+        Usually queryset would be a normal Django queryset (containing object
+        instances). However, if we applied time_bucket, the contents of the
+        queryset will be dicts that look something like:
         [
             {
                 'bucket': datetime.datetime(2021, 7, 9, 13, 30, tzinfo=<UTC>),
@@ -244,11 +244,26 @@ class ViewSetWithDatapointFK(GenericViewSet):
             },
             ...
         ]
-        Note that the items are in fact dicts (contrary to object instances
-        for normal querysets). Hence here some workaround that transforms
-        the TimescaleQuerySet such that it works with the serializer.
+        Hence here some workaround that transforms the queryset such that
+        it works with the serializer. We identify time bucket querysets by
+        inspecting the query, which looks something like this if a
+        time bucket is requested:
+        (
+        'SELECT time_bucket(%s, "api_main_datapointvalue"."time") AS "bucket",
+        AVG("api_main_datapointvalue"."_value_float") AS "_value_float__avg"
+        FROM "api_main_datapointvalue"
+        WHERE ("api_main_datapointvalue"."datapoint_id" = %s
+        AND "api_main_datapointvalue"."time" >= %s
+        AND "api_main_datapointvalue"."time" <= %s)
+        GROUP BY time_bucket(%s, "api_main_datapointvalue"."time")
+        ORDER BY "bucket" DESC',
+        ('15 minutes', 47, datetime.datetime(2021, 7, 1, 0, 0,
+        tzinfo=datetime.timezone.utc),
+        datetime.datetime(2021, 7, 9, 14, 0, tzinfo=datetime.timezone.utc),
+        '15 minutes')
+        )
         """
-        if isinstance(queryset, TimescaleQuerySet):
+        if "time_bucket" in queryset.query.sql_with_params()[0]:
             patched_queryset = []
             # Wrong values for the frequency parameter will only be raised
             # here as the iteration triggers the query to be executed.
