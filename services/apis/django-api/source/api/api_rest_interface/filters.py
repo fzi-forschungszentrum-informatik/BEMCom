@@ -14,7 +14,10 @@ class DatapointFilter(FilterSet):
     class Meta:
         model = Datapoint
         fields = {
+            "connector__name": ["exact", "icontains"],
+            "key_in_connector": ["exact", "icontains"],
             "short_name": ["exact", "icontains"],
+            "description": ["exact", "icontains"],
             "type": ["exact"],
             "data_format": ["exact", "icontains"],
             "unit": ["exact", "icontains"],
@@ -23,22 +26,22 @@ class DatapointFilter(FilterSet):
 
 class TimestampFilter(FilterSet):
     timestamp__gte = NumberFilter(
-        field_name="timestamp__gte",
+        field_name="time__gte",
         lookup_expr="gte",
         method="filter_timestamp",
     )
     timestamp__gt = NumberFilter(
-        field_name="timestamp__gt",
+        field_name="time__gt",
         lookup_expr="gt",
         method="filter_timestamp",
     )
     timestamp__lte = NumberFilter(
-        field_name="timestamp__lte",
+        field_name="time__lte",
         lookup_expr="lte",
         method="filter_timestamp",
     )
     timestamp__lt = NumberFilter(
-        field_name="timestamp__lt",
+        field_name="time__lt",
         lookup_expr="lt",
         method="filter_timestamp",
     )
