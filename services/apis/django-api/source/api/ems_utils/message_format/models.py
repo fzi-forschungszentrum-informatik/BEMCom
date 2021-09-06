@@ -322,6 +322,7 @@ class TimescaleModel(models.Model):
             msgs_current_dp = msgs_by_datapoint[datapoint]
             msgs_c_dp_by_time = {msg["time"]: msg for msg in msgs_current_dp}
             existing_msg_objects = model.objects.filter(
+                datapoint=datapoint,
                 time__in=msgs_c_dp_by_time.keys()
             )
 

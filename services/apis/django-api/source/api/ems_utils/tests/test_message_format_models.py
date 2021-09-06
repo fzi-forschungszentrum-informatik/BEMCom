@@ -620,6 +620,11 @@ class TestDatapointValue(TransactionTestCase):
             },
             {
                 "datapoint": self.datapoint2,
+                "time": datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+                "value": "A msg at the exact same time as for dp1",
+            },
+            {
+                "datapoint": self.datapoint2,
                 "time": datetime(2021, 1, 1, 12, 30, 0, tzinfo=pytz.utc),
                 "value": True,
             },
@@ -627,6 +632,11 @@ class TestDatapointValue(TransactionTestCase):
                 "datapoint": self.datapoint,
                 "time": datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
                 "value": None,
+            },
+            {
+                "datapoint": self.datapoint2,
+                "time": datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
+                "value": "A msg at the exact same time as for dp1",
             },
             {
                 "datapoint": self.datapoint,
@@ -645,7 +655,7 @@ class TestDatapointValue(TransactionTestCase):
             msgs=test_msgs
         )
 
-        expected_msgs_created = 2
+        expected_msgs_created = 4
         actual_msgs_created = msg_stats[0]
         assert actual_msgs_created == expected_msgs_created
         expected_msgs_updated = 3
@@ -673,10 +683,24 @@ class TestDatapointValue(TransactionTestCase):
             ),
             (
                 self.datapoint2.id,
+                datetime(2021, 1, 1, 12, 0, 0, **dt_kwargs),
+                json.dumps("A msg at the exact same time as for dp1"),
+                None,
+                None,
+            ),
+            (
+                self.datapoint2.id,
                 datetime(2021, 1, 1, 12, 30, 0, **dt_kwargs),
                 None,
                 None,
                 True,
+            ),
+            (
+                self.datapoint2.id,
+                datetime(2021, 1, 1, 13, 0, 0, **dt_kwargs),
+                json.dumps("A msg at the exact same time as for dp1"),
+                None,
+                None,
             ),
             (
                 self.datapoint.id,
@@ -739,6 +763,8 @@ class TestDatapointSchedule(TransactionTestCase):
         #  Create a dummy datapoint to be used as foreign key for the msgs.
         cls.datapoint = cls.Datapoint(type="sensor")
         cls.datapoint.save()
+        cls.datapoint2 = cls.Datapoint(type="sensor")
+        cls.datapoint2.save()
 
         # Here are the default field values:
         cls.default_field_values = {
@@ -935,9 +961,19 @@ class TestDatapointSchedule(TransactionTestCase):
                 "schedule": [],
             },
             {
+                "datapoint": self.datapoint2,
+                "time": datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+                "schedule": "A msg at the exact same time as for dp1",
+            },
+            {
                 "datapoint": self.datapoint,
                 "time": datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
                 "schedule": [],
+            },
+            {
+                "datapoint": self.datapoint2,
+                "time": datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
+                "schedule": "A msg at the exact same time as for dp1",
             },
             {
                 "datapoint": self.datapoint,
@@ -951,7 +987,7 @@ class TestDatapointSchedule(TransactionTestCase):
             msgs=test_msgs
         )
 
-        expected_msgs_created = 1
+        expected_msgs_created = 3
         actual_msgs_created = msg_stats[0]
         assert actual_msgs_created == expected_msgs_created
         expected_msgs_updated = 2
@@ -976,15 +1012,26 @@ class TestDatapointSchedule(TransactionTestCase):
                 json.dumps([]),
             ),
             (
+                self.datapoint2.id,
+                datetime(2021, 1, 1, 12, 0, 0, **dt_kwargs),
+                json.dumps("A msg at the exact same time as for dp1"),
+            ),
+            (
                 self.datapoint.id,
                 datetime(2021, 1, 1, 13, 0, 0, **dt_kwargs),
                 json.dumps([]),
+            ),
+            (
+                self.datapoint2.id,
+                datetime(2021, 1, 1, 13, 0, 0, **dt_kwargs),
+                json.dumps("A msg at the exact same time as for dp1"),
             ),
             (
                 self.datapoint.id,
                 datetime(2021, 1, 1, 14, 0, 0, **dt_kwargs),
                 json.dumps([]),
             ),
+
         ]
         all_actual_schedules = []
         for expected_schedule in all_expected_schedules:
@@ -1025,6 +1072,8 @@ class TestDatapointSetpoint(TransactionTestCase):
         #  Create a dummy datapoint to be used as foreign key for the msgs.
         cls.datapoint = cls.Datapoint(type="sensor")
         cls.datapoint.save()
+        cls.datapoint2 = cls.Datapoint(type="sensor")
+        cls.datapoint2.save()
 
         # Here are the default field values:
         cls.default_field_values = {
@@ -1220,6 +1269,11 @@ class TestDatapointSetpoint(TransactionTestCase):
                 "setpoint": [],
             },
             {
+                "datapoint": self.datapoint2,
+                "time": datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+                "setpoint": "A msg at the exact same time as for dp1",
+            },
+            {
                 "datapoint": self.datapoint,
                 "time": datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
                 "setpoint": [],
@@ -1241,7 +1295,7 @@ class TestDatapointSetpoint(TransactionTestCase):
             msgs=test_msgs
         )
 
-        expected_msgs_created = 2
+        expected_msgs_created = 3
         actual_msgs_created = msg_stats[0]
         assert actual_msgs_created == expected_msgs_created
         expected_msgs_updated = 2
@@ -1264,6 +1318,11 @@ class TestDatapointSetpoint(TransactionTestCase):
                 self.datapoint.id,
                 datetime(2021, 1, 1, 12, 0, 0, **dt_kwargs),
                 json.dumps([]),
+            ),
+            (
+                self.datapoint2.id,
+                datetime(2021, 1, 1, 12, 0, 0, **dt_kwargs),
+                json.dumps("A msg at the exact same time as for dp1"),
             ),
             (
                 self.datapoint.id,
