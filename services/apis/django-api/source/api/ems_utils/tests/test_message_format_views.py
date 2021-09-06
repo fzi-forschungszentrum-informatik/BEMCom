@@ -1,7 +1,10 @@
 import json
 import logging
+from unittest.mock import MagicMock
+from datetime import datetime, timezone
 
 import pytest
+from django.conf import settings
 from django.db import connection, models
 from django.test import TransactionTestCase, RequestFactory
 from rest_framework.exceptions import ValidationError
@@ -136,6 +139,7 @@ class TestViewSetWithDatapointFK(TransactionTestCase):
             model = DatapointValue
             datapoint_model = Datapoint
             serializer_class = DatapointValueSerializer
+            queryset = DatapointValue.objects.all()
             create_for_actuators_only = True
 
         cls.Datapoint = Datapoint
@@ -167,6 +171,156 @@ class TestViewSetWithDatapointFK(TransactionTestCase):
         Remove the dummy datapoint, so next test starts with empty tables.
         """
         self.DatapointValue.objects.all().delete()
+
+    def test_list_returns_db_values(self):
+        """
+        Basic test for list, verifies that the expected values are extracted
+        from DB.
+        """
+        dp_id = self.datapoint.id
+        test_values = [
+            (datetime(2021, 9, 6, 15, 0, 0, tzinfo=timezone.utc), 1.0),
+            (datetime(2021, 9, 6, 15, 7, 30, tzinfo=timezone.utc), 2.0),
+            (datetime(2021, 9, 6, 15, 14, 59, tzinfo=timezone.utc), 3.0),
+            (datetime(2021, 9, 6, 15, 15, 0, tzinfo=timezone.utc), 4.0),
+            (datetime(2021, 9, 6, 15, 22, 30, tzinfo=timezone.utc), 5.0),
+            (datetime(2021, 9, 6, 15, 29, 59, tzinfo=timezone.utc), 6.0),
+        ]
+        for test_time, test_value in test_values:
+            dpv = self.DatapointValue(
+                datapoint=self.datapoint,
+                time=test_time,
+                value=test_value,
+            )
+            dpv.save()
+
+        factory = RequestFactory()
+        request = factory.get("/datapoint/%s/value/" % dp_id)
+        response = self.DatapointValueViewSet(request=request).list(
+            request, dp_id=dp_id
+        )
+        actual_data = response.data
+
+        # Expecting left aligned 15 minute blocks.
+        expected_dt_1 = datetime(2021, 9, 6, 15, 0, 0, tzinfo=timezone.utc)
+        expected_dt_2 = datetime(2021, 9, 6, 15, 15, 0, tzinfo=timezone.utc)
+        expected_data = [
+            {
+                "value": json.dumps(2.0),
+                "timestamp": round(expected_dt_1.timestamp() * 1000)
+            },
+            {
+                "value": json.dumps(5.0),
+                "timestamp": round(expected_dt_2.timestamp() * 1000)
+            },
+        ]
+
+        expected_data = []
+        for test_time, test_value in test_values:
+            expected_data.append(
+                {
+                    "value": json.dumps(test_value),
+                    "timestamp": round(test_time.timestamp() * 1000)
+                }
+            )
+
+        assert response.status_code == 200
+        assert actual_data == expected_data
+
+    @pytest.mark.skipif(
+        "timescale" not in settings.DATABASES["default"]["ENGINE"],
+        reason="Requires TimescaleDB for correct execution."
+    )
+    def test_list_handles_time_buckets(self):
+        """
+        Checkt that the list method is also able to handle TimescaleQuerySets
+        as they are returned when using a filter to generate time buckets.
+        This test is necessary as TimescaleQuerySets have a slightly different
+        output then normal QuerySets.
+
+        NOTE: This test can only be executed with a TimescaleDB as Backend.
+        """
+        dp_id = self.datapoint.id
+        test_values = [
+            (datetime(2021, 9, 6, 15, 0, 0, tzinfo=timezone.utc), 1.0),
+            (datetime(2021, 9, 6, 15, 7, 30, tzinfo=timezone.utc), 2.0),
+            (datetime(2021, 9, 6, 15, 14, 59, tzinfo=timezone.utc), 3.0),
+            (datetime(2021, 9, 6, 15, 15, 0, tzinfo=timezone.utc), 4.0),
+            (datetime(2021, 9, 6, 15, 22, 30, tzinfo=timezone.utc), 5.0),
+            (datetime(2021, 9, 6, 15, 29, 59, tzinfo=timezone.utc), 6.0),
+        ]
+        for test_time, test_value in test_values:
+            dpv = self.DatapointValue(
+                datapoint=self.datapoint,
+                time=test_time,
+                value=test_value,
+            )
+            dpv.save()
+
+        factory = RequestFactory()
+        request = factory.get("/datapoint/%s/value/" % dp_id)
+
+        ts_qs = self.DatapointValue.timescale.time_bucket('time', '15 minutes')
+        ts_qs = ts_qs.annotate(value=models.Avg('_value_float'))
+        # Overload the default ordering from new to old.
+        ts_qs = ts_qs.order_by("bucket")
+        dpvs = self.DatapointValueViewSet(request=request)
+        dpvs.filter_queryset = MagicMock(return_value=ts_qs)
+
+        response = dpvs.list(
+            request, dp_id=dp_id
+        )
+        actual_data = response.data
+
+        # Expecting left aligned 15 minute blocks.
+        expected_dt_1 = datetime(2021, 9, 6, 15, 0, 0, tzinfo=timezone.utc)
+        expected_dt_2 = datetime(2021, 9, 6, 15, 15, 0, tzinfo=timezone.utc)
+        expected_data = [
+            {
+                "value": json.dumps(2.0),
+                "timestamp": round(expected_dt_1.timestamp() * 1000)
+            },
+            {
+                "value": json.dumps(5.0),
+                "timestamp": round(expected_dt_2.timestamp() * 1000)
+            },
+        ]
+
+        assert response.status_code == 200
+        assert actual_data == expected_data
+
+    @pytest.mark.skipif(
+        "timescale" not in settings.DATABASES["default"]["ENGINE"],
+        reason="Requires TimescaleDB for correct execution."
+    )
+    def test_list_handles_invalid_time_bucket_intervals(self):
+        """
+        Verify that invalid strings for the time bucket interval are caught.
+        """
+        dp_id = self.datapoint.id
+        dpv = self.DatapointValue(
+            datapoint=self.datapoint,
+            time=datetime(2021, 9, 6, 15, 0, 0, tzinfo=timezone.utc),
+            value=1.0,
+        )
+        dpv.save()
+
+        factory = RequestFactory()
+        request = factory.get("/datapoint/%s/value/" % dp_id)
+
+        # Note the 'no interval' which is not a valid PostgreSQL interval.
+        ts_qs = self.DatapointValue.timescale.time_bucket('time', 'no interval')
+        ts_qs = ts_qs.annotate(value=models.Avg('_value_float'))
+
+        dpvs = self.DatapointValueViewSet(request=request)
+        dpvs.filter_queryset = MagicMock(return_value=ts_qs)
+
+        with pytest.raises(ValidationError):
+            response = dpvs.list(
+                request, dp_id=dp_id
+            )
+
+
 
     def test_update_many_writes_to_db(self):
         """

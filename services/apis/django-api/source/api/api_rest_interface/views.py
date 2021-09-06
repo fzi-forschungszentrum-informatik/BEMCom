@@ -234,7 +234,7 @@ class DatapointValueViewSet(ViewSetWithDatapointFK):
     __doc__ = DatapointValue.__doc__.strip()
     model = DatapointValue
     datapoint_model = Datapoint
-    queryset = DatapointValue.objects.all()
+    queryset = DatapointValue.timescale.all()
     serializer_class = DatapointValueSerializer
     create_for_actuators_only = True
     filterset_class = DatapointValueFilter

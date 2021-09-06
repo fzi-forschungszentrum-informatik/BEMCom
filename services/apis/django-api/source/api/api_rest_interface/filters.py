@@ -1,4 +1,5 @@
-from django_filters import FilterSet, NumberFilter
+from django.db import models
+from django_filters import FilterSet, NumberFilter, CharFilter
 
 from api_main.models.datapoint import Datapoint
 from api_main.models.datapoint import DatapointValue
@@ -56,10 +57,33 @@ class DatapointValueFilter(TimestampFilter):
     """
     Allows selecting values by timestamp ranges.
     """
+    frequency = CharFilter(
+        method="apply_timebucket",
+    )
 
     class Meta:
         model = DatapointValue
         fields = [] # The custom methods are added automatically.
+
+    def apply_timebucket(self, queryset, _, value):
+        """
+        Applies the time bucket to compute average values over time slots.
+
+        Arguments:
+        ----------
+        queryset : TimescaleQuerySet
+            The queryset to filter.
+        value: string
+            A PostgreSQL interval string, e.g. "15 minutes"."
+
+        """
+        queryset = queryset.time_bucket("time", value)
+        queryset = queryset.annotate(value=models.Avg('_value_float'))
+        # Late first, newest item last in list. This should not cost anything
+        # extra as the timescaledb django plugin orders too, but just the other
+        # way around.
+        queryset = queryset.order_by('bucket')
+        return queryset
 
 class DatapointSetpointFilter(TimestampFilter):
     """

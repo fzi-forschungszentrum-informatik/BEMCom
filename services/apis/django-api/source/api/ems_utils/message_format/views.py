@@ -1,6 +1,7 @@
-from concurrent.futures import ThreadPoolExecutor
+import logging
 
 from django.conf import settings
+from django.db.utils import DataError
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
@@ -9,6 +10,7 @@ from rest_framework.exceptions import PermissionDenied, NotFound
 from rest_framework.viewsets import GenericViewSet
 from drf_spectacular.utils import extend_schema, inline_serializer
 from django_filters import rest_framework as filters
+from timescale.db.models.querysets import TimescaleQuerySet
 
 from ems_utils.timestamp import datetime_from_timestamp
 from .models import DatapointTemplate
@@ -18,6 +20,8 @@ from .serializers import DatapointScheduleSerializer
 from .serializers import DatapointSetpointSerializer
 from .serializers import PutMsgSummary
 
+
+logger = logging.getLogger(__name__)
 
 
 # TODO: Would be nice to have more details about the possible errors.
@@ -226,9 +230,51 @@ class ViewSetWithDatapointFK(GenericViewSet):
 
     def list(self, request, dp_id):
         datapoint = get_object_or_404(self.datapoint_model, id=dp_id)
-        objects = self.queryset.filter(datapoint=datapoint)
-        objects = self.filter_queryset(objects)
-        serializer = self.serializer_class(objects, many=True)
+        queryset = self.queryset.filter(datapoint=datapoint)
+        queryset = self.filter_queryset(queryset)
+
+        """
+        Usually objects would be a normal Django queryset.
+        However, if we applied time_bucket, it will be TimescaleQuerySet,
+        that looks something like this:
+        [
+            {
+                'bucket': datetime.datetime(2021, 7, 9, 13, 30, tzinfo=<UTC>),
+                'value': 8990758.993710691
+            },
+            ...
+        ]
+        Note that the items are in fact dicts (contrary to object instances
+        for normal querysets). Hence here some workaround that transforms
+        the TimescaleQuerySet such that it works with the serializer.
+        """
+        if isinstance(queryset, TimescaleQuerySet):
+            patched_queryset = []
+            # Wrong values for the frequency parameter will only be raised
+            # here as the iteration triggers the query to be executed.
+            try:
+                for bucket_item in queryset:
+                    patched_queryset.append(
+                        self.model(
+                            datapoint=datapoint,
+                            value=bucket_item["value"],
+                            time=bucket_item["bucket"],
+
+                        )
+                    )
+                queryset = patched_queryset
+            except DataError as ex:
+                logger.info("Caught exception: %s" % ex)
+                raise ValidationError({
+                    "frequency": [
+                        "Encountered invalid value for frequency. "
+                        "A valid value is something like this: '15 minutes' "
+                        "Check the server logs if you are absolutely sure "
+                        "that your value was valid.",
+                    ],
+                })
+
+        serializer = self.serializer_class(queryset, many=True)
         return Response(serializer.data)
 
     def retrieve(self, request, dp_id, timestamp=None):
