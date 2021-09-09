@@ -29,7 +29,7 @@ load_dotenv(find_dotenv(), verbose=False, override=True)
 
 # Load custom configuration variables from environment variable
 MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST")
-MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT"))
+MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT") or 1883)
 N_CMI_WRITE_THREADS = int(os.getenv("N_CMI_WRITE_THREADS") or 1)
 
 # Settings for connection to MQTT broker.
@@ -60,7 +60,7 @@ DEBUG = False
 if os.getenv("DJANGO_DEBUG") == "TRUE":
     DEBUG = True
 
-ALLOWED_HOSTS = [os.getenv("FQ_HOSTNAME") or "localhost"]
+ALLOWED_HOSTS = json.loads(os.getenv("DJANGO_ALLOWED_HOSTS") or '["localhost"]')
 if os.getenv("DJANGO_ADMINS"):
     ADMINS = json.loads(os.getenv("DJANGO_ADMINS"))
 
@@ -117,9 +117,16 @@ ASGI_APPLICATION = 'api_main.asgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/3.1/ref/settings/#databases
-if os.getenv("DATABASE_SETTING"):
+if os.getenv("DJANGOAPIDB_HOST"):
     DATABASES = {
-        'default': json.loads(os.getenv("DATABASE_SETTING"))
+        'default': {
+            'ENGINE': 'timescale.db.backends.postgresql',
+            'HOST': os.getenv("DJANGOAPIDB_HOST"),
+            'PORT': int(os.getenv("DJANGOAPIDB_PORT") or 5432),
+            'USER': os.getenv("DJANGOAPIDB_USER") or "bemcom",
+            'PASSWORD': os.getenv("DJANGOAPIDB_PASSWORD") or "bemcom",
+            'NAME': os.getenv("DJANGOAPIDB_DBNAME") or "bemcom",
+        }
     }
 else:
     DATABASES = {
@@ -250,5 +257,5 @@ SPECTACULAR_SETTINGS = {
     'LICENSE': {
         'name': 'Licensed under MIT',
     },
-    'VERSION': '0.4.0',
+    'VERSION': '0.5.0',
 }

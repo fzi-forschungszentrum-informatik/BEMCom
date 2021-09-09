@@ -1,1 +1,2 @@
-docker build ./source -t bemcom/django-api:0.5.0-rc-ts
+TAG=$(cat source/api/api_main/settings.py | grep "VERSION" | cut -d ":" -f 2 | tr -d \' | tr -d " " | tr -d ",")
+docker build ./source -t bemcom/django-api:$TAG
