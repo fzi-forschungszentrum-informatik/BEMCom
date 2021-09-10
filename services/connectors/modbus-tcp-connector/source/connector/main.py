@@ -377,6 +377,8 @@ class ActuatorFlow(AFTemplate):
         """
         Send message via Modbus to device.
 
+        TODO: Add scaling factors for registers.
+
         Parameters
         ----------
         datapoint_key : string.
@@ -848,7 +850,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
 
             else:
                 # Handling for read_discrete_inputs and read_coils methods,
-                # is acutally quite simple as every bit is exactly one bit
+                # is actually quite simple as every bit is exactly one bit
                 # long :)
                 for i, requested_range in enumerate(requested_ranges):
                     start = requested_range["address"]
