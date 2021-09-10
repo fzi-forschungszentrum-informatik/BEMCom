@@ -115,9 +115,11 @@ docker run --rm -v ${PWD}:/data -u "$(id -u):$(id -g)" --name django-db-backup b
 
 ### TODO
 
-* [ ] Alerting (E-Mail / Alertmanager) if operation goes wrong.
+* [ ] Alerting (E-Mail) on 500 status code.
+* [ ] Alerting (Prom AlertManager) if datapoint values have certain values or have not been updated for a certain time.
 * [ ] Document return objects and codes for errors of REST interface.
 * [ ] Add functionality to disable controllers and the history DB to support new users.
+* [ ] Add flag `CMI_ACTIVATED` and change default values for `CMI_N_WRITE_THREADS` to 1 for SQLite and 32 for Timescale.
 * [ ] Add Websocket Push Interface.
 * [ ] Fix adding Controller Admin Pages, there seems to be while defining controlled_datapoints.
 * [ ] Extend documentation:
@@ -180,9 +182,7 @@ Follow the following steps while contributing to the connector:
   DJANGO_DEBUG=FALSE docker-compose up --build
   ```
 
-  
-
-* Update the image name and tag in  [./build_docker_image.sh](./build_docker_image.sh) and [source/api/api_main/settings.py](source/api/api_main/settings.py) and execute the shell script to build an updated image.
+* Update the tag (version) in [source/api/api_main/settings.py](source/api/api_main/settings.py) and execute the shell script to build an updated image.
 
     ```bash
     # This will fail if not all tests are passed.
@@ -203,3 +203,4 @@ Follow the following steps while contributing to the connector:
 | 0.2.0 | Massive performance improvement for handling MQTT messages.<br />Extend REST Interface to allow importing Datapoint metadata from JSON.<br />Improve display of Datapoints in AdminUI. |
 | 0.4.0 | Datapoint Value and Available Datapoint messages and a can now contain any JSON data type as value. |
 | 0.5.0 | Transition to TimescaleDB. Datapoint value messages can now be resampled to intervals (operation happens in DB) with REST parameter. Restore function implemented.<br />**Note: this is a breaking update. All data must be backed up manually before upgrading to this version and restored manually afterwards.** |
+| 0.6.0 | Django-API service now exposes Prometheus metrics to support monitoring of BEMCom applications. |

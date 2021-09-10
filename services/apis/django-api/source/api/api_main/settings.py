@@ -78,12 +78,14 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'drf_spectacular',
     'django_filters',
+    'django_prometheus',
     'api_main.apps.ApiMainConfig',
     'api_admin_ui.apps.ApiAdminUiConfig',
     'api_rest_interface.apps.ApiRestInterfaceConfig',
 ]
 
 MIDDLEWARE = [
+    'django_prometheus.middleware.PrometheusBeforeMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -92,6 +94,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django_prometheus.middleware.PrometheusAfterMiddleware',
 ]
 
 ROOT_URLCONF = 'api_main.urls'
@@ -257,5 +260,5 @@ SPECTACULAR_SETTINGS = {
     'LICENSE': {
         'name': 'Licensed under MIT',
     },
-    'VERSION': '0.5.0',
+    'VERSION': '0.6.0',
 }

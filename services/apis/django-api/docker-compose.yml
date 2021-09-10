@@ -25,10 +25,13 @@ services:
             - "DJANGO_DEBUG=${DJANGO_DEBUG}"
             - "DJANGO_ADMINS=${DJANGO_ADMINS}"
             - "DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}"
-            - "FQ_HOSTNAME=${FQ_HOSTNAME}"
+            - "DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}"
             - "SSL_CERT_PEM=${SSL_CERT_PEM}"
             - "SSL_KEY_PEM=${SSL_KEY_PEM}"
-            - "DATABASE_SETTING=${DATABASE_SETTING}"
+            - "DJANGOAPIDB_HOST=${DJANGOAPIDB_HOST}"
+            - "DJANGOAPIDB_PORT=${DJANGOAPIDB_PORT}"
+            - "DJANGOAPIDB_USER=${DJANGOAPIDB_USER}"
+            - "DJANGOAPIDB_PASSWORD=${DJANGOAPIDB_PASSWORD}"
             - "N_CMI_WRITE_THREADS=${N_CMI_WRITE_THREADS}"
 
     # Allows local testing.

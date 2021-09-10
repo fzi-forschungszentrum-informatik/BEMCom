@@ -17,12 +17,6 @@
   * [ ] API
     * [ ] Django
       * [ ] Implement Websocket incl. Docs
-      * [ ] Service Documentation.
-      * [ ] Some ToDos left in Code?
-      * [ ] Move from PG to TimescaleDB?
-      * [ ] Store Bools in dedicated Field, like the Floats? (Also consider the datapoint type here?)
-      * [ ] Expose Prometheus Metrics.
-      * [ ] Remove Delete Confirmation
   * [ ] Connectors
     * [ ] REST Connector
       * [ ] Implement in Python, match the Demo Device.

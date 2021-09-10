@@ -27,6 +27,9 @@ cachetools==4.2.*
 psycopg2-binary
 django-timescaledb==0.2.10
 
+# For exposing Prometheus metrics
+django-prometheus==2.1.*
+
 # Dependencies of the backup&restore script.
 requests
 tqdm

@@ -1,4 +1,6 @@
+import sys
 import json
+import socket
 import logging
 from time import sleep
 from threading import Thread, Lock, Event
@@ -7,10 +9,11 @@ from django.conf import settings
 from django.db import IntegrityError
 from paho.mqtt.client import Client
 from cachetools.func import ttl_cache
+from prometheus_client import Counter
 
 from .models.datapoint import Datapoint, DatapointValue
-from .models.datapoint import DatapointSetpoint, DatapointSchedule
 from .models.connector import Connector, ConnectorHeartbeat, ConnectorLogEntry
+from .models.datapoint import DatapointSetpoint, DatapointSchedule
 from .models.controller import Controller, ControlledDatapoint
 from ems_utils.timestamp import datetime_from_timestamp
 
@@ -63,6 +66,21 @@ class ConnectorMQTTIntegration():
             "to the required topics and processing the retained messages. "
             "This might take a few minutes."
         )
+
+        self.prom_received_messages_from_connector_counter = Counter(
+            "bemcom_djangoapi_mqtt_messages_received_total",
+            "Total number of MQTT messages the connector_mqtt_integration "
+            "script of the BEMCom Django-API service has received (and thus "
+            "also processed.",
+            ["topic", "connector"]
+        )
+        self.prom_published_messages_to_connector_counter = Counter(
+            "bemcom_djangoapi_mqtt_messages_published_total",
+            "Total number of MQTT messages the connector_mqtt_integration "
+            "script of the BEMCom Django-API service has published",
+            ["topic", "connector"]
+        )
+
 
         # The configuration for connecting to the broker.
         connect_kwargs = {
@@ -121,7 +139,14 @@ class ConnectorMQTTIntegration():
         self.update_topics()
 
         # Initial connection to broker.
-        self.client.connect(**connect_kwargs)
+        try:
+            self.client.connect(**connect_kwargs)
+        except (socket.gaierror, OSError):
+            logger.error(
+                "Cannot connect to MQTT broker: %s. Aborting startup.",
+                connect_kwargs
+            )
+            sys.exit(1)
 
         # Start loop in background process.
         self.client.loop_start()
@@ -309,6 +334,9 @@ class ConnectorMQTTIntegration():
                 qos=2,
                 retain=True
             )
+            self.prom_published_messages_to_connector_counter.labels(
+                topic=topic, connector=connector.name
+            ).inc()
 
             logger.debug("Leaving create_and_send_datapoint_map method")
 
@@ -446,6 +474,9 @@ class ConnectorMQTTIntegration():
 
             connector, message_type = topics[msg.topic]
             payload = json.loads(msg.payload)
+            self.prom_received_messages_from_connector_counter.labels(
+                topic=msg.topic, connector=connector.name
+            ).inc()
             if message_type == "mqtt_topic_datapoint_value_message":
                 # If this message has reached that point, i.e. has had a
                 # topic entry it means that the Datapoint object must exist, as

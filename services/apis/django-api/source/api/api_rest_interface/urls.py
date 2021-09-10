@@ -3,11 +3,17 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from .views import DatapointViewSet, DatapointValueViewSet
 from .views import DatapointScheduleViewSet, DatapointSetpointViewSet
+from .views import PrometheusMetricsViewSet
 
 
 urlpatterns = [
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
     path("", SpectacularSwaggerView.as_view(url_name="schema")),
+    path(
+        "metrics/",
+        PrometheusMetricsViewSet.as_view({"get": "retrieve"}),
+        name="metrics"
+    ),
     path(
         "datapoint/",
         DatapointViewSet.as_view({

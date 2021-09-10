@@ -24,12 +24,16 @@ def clear_datapoint_map(sender, instance, **kwargs):
     # Prevents errors when the application is not running.
     if cmi is None:
         return
+    topic=instance.get_mqtt_topics()["mqtt_topic_datapoint_map"]
     cmi.client.publish(
-        topic=instance.get_mqtt_topics()["mqtt_topic_datapoint_map"],
+        topic=topic,
         payload=json.dumps({"sensor": {}, "actuator": {}}),
         qos=2,
         retain=True
     )
+    cmi.prom_published_messages_to_connector_counter.labels(
+        topic=topic, connector=sender.name
+    ).inc()
 
 
 @receiver(signals.post_save, sender=Datapoint)

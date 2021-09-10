@@ -7,10 +7,13 @@ the generic implementation in ems_utils to display in the API schema.
 """
 import json
 
-from rest_framework import status
+import prometheus_client
+from rest_framework import status, renderers
 from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet
 from rest_framework.exceptions import ValidationError
 from django.shortcuts import render, get_object_or_404
+from django.utils.encoding import smart_str
 
 from api_main.models.connector import Connector
 from api_main.models.datapoint import Datapoint
@@ -28,6 +31,7 @@ from ems_utils.message_format.serializers import PutMsgSummary
 from .serializers import DatapointSerializer
 from .filters import DatapointFilter, DatapointValueFilter
 from .filters import DatapointSetpointFilter, DatapointScheduleFilter
+from .models import Metric
 
 from drf_spectacular.utils import extend_schema, inline_serializer, extend_schema_serializer
 
@@ -230,6 +234,7 @@ class DatapointViewSet(DatapointViewSetTemplate):
 
     update_many.__doc__ = __doc__ + "<br><br>" + update_many.__doc__.strip()
 
+
 class DatapointValueViewSet(ViewSetWithDatapointFK):
     __doc__ = DatapointValue.__doc__.strip()
     model = DatapointValue
@@ -274,6 +279,7 @@ class DatapointValueViewSet(ViewSetWithDatapointFK):
     )
     def update_many(self, *args, **kwargs):
         return super().update_many(*args, **kwargs)
+
 
 class DatapointScheduleViewSet(ViewSetWithDatapointFK):
     __doc__ = DatapointSchedule.__doc__.strip()
@@ -322,6 +328,7 @@ class DatapointScheduleViewSet(ViewSetWithDatapointFK):
     def update_many(self, *args, **kwargs):
         return super().update_many(*args, **kwargs)
 
+
 class DatapointSetpointViewSet(ViewSetWithDatapointFK):
     __doc__ = DatapointSetpoint.__doc__.strip()
     model = DatapointSetpoint
@@ -367,3 +374,29 @@ class DatapointSetpointViewSet(ViewSetWithDatapointFK):
         )
         def update_many(self, *args, **kwargs):
             return super().update_many(*args, **kwargs)
+
+
+class PlainTextRenderer(renderers.BaseRenderer):
+    """
+    As seen here:
+    https://www.django-rest-framework.org/api-guide/renderers/#example
+    """
+    media_type = 'text/plain'
+    format = 'txt'
+
+    def render(self, data, media_type=None, renderer_context=None):
+        return smart_str(data, encoding=self.charset)
+
+
+class PrometheusMetricsViewSet(GenericViewSet):
+    """
+    Exposes Prometheus metrics.
+    """
+
+    renderer_classes = [PlainTextRenderer]
+    # This is required for automatic permission checking.
+    queryset = Metric.objects.all()
+
+    def retrieve(self, request):
+        metrics = prometheus_client.generate_latest()
+        return Response(metrics)
