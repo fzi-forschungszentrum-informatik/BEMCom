@@ -57,7 +57,7 @@ else:
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
-if os.getenv("DJANGO_DEBUG") == "TRUE":
+if (os.getenv("DJANGO_DEBUG") or "FALSE").lower() == "true":
     DEBUG = True
 
 ALLOWED_HOSTS = json.loads(os.getenv("DJANGO_ALLOWED_HOSTS") or '["localhost"]')
@@ -208,12 +208,12 @@ STATIC_ROOT = BASE_DIR.parent / "static"
 # Django's deployment checklist, the remaining by the check --deploy result.
 #
 # Don't activate SECURE_HSTS_SECONDS and SECURE_SSL_REDIRECT, they will break
-# the tests but don't provide anything useful as the API does not expose a non
+# the tests but don't provide anything useful as the API should not expose a non
 # SSL endpoint in production mode.
 # Don't set SESSION_COOKIE_SECURE = True as this will prevent acces via
 # plain HTTP to the Admin. While you shouldn't access the admin over
 #plain HTTP in general, it may be useful for development.
-if os.getenv("DJANGO_DEBUG") != "TRUE":
+if not DEBUG:
     CSRF_COOKIE_SECURE = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_BROWSER_XSS_FILTER = True
@@ -260,5 +260,5 @@ SPECTACULAR_SETTINGS = {
     'LICENSE': {
         'name': 'Licensed under MIT',
     },
-    'VERSION': '0.6.2',
+    'VERSION': '0.6.3',
 }
