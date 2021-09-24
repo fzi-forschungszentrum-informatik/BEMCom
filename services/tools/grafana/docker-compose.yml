@@ -8,13 +8,13 @@ services:
     restart: always
     ports:
       - 3000:3000
-    volumes:
+    #volumes:
       # production
-      - "${GRAFANA_DB_FILE:-./grafana.db}:/var/lib/grafana/grafana.db"
+      # - "${GRAFANA_DB_FILE:-./grafana.db}:/var/lib/grafana/grafana.db"
       # development:
-      # - ./source/grafana_plugins/bemcom-django-api/dist:/var/lib/grafana/plugins/bemcom-django-api
-      # - ./source/grafana_plugins/nwpdata-service-api/dist:/var/lib/grafana/plugins/nwpdata-service-api
-      # - ./source/grafana_plugins/prediction-service-api/dist:/var/lib/grafana/plugins/prediction-service-api
+      # - ./source/grafana_plugins/bemcom-django-api/dist:/var/lib/grafana-plugins/bemcom-django-api
+      # - ./source/grafana_plugins/nwpdata-service-api/dist:/var/lib/grafana-plugins/nwpdata-service-api
+      # - ./source/grafana_plugins/prediction-service-api/dist:/var/lib/grafana-plugins/prediction-service-api
     user: "${USER_ID}:${GROUP_ID}"
     environment:
       - "GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-bemcom}"

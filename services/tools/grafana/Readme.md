@@ -28,9 +28,9 @@ Please note that the prediction service and nwpdata service REST API have not be
 | Path in Container                               | Usage/Remarks                                                |
 | ----------------------------------------------- | ------------------------------------------------------------ |
 | /var/lib/grafana/grafana.db                     | Grafana SQLite database file. Store on local file system to persist grafan settings. |
-| /var/lib/grafana/plugins/bemcom-django-api      | Allows mounting in the custom plugin. Use for development only. |
-| /var/lib/grafana/plugins/nwpdata-service-api    | Allows mounting in the custom plugin. Use for development only. |
-| /var/lib/grafana/plugins/prediction-service-api | Allows mounting in the custom plugin. Use for development only. |
+| /var/lib/grafana-plugins/bemcom-django-api      | Allows mounting in the custom plugin. Use for development only. |
+| /var/lib/grafana-plugins/nwpdata-service-api    | Allows mounting in the custom plugin. Use for development only. |
+| /var/lib/grafana-plugins/prediction-service-api | Allows mounting in the custom plugin. Use for development only. |
 
 **Hint**: Add custom volumes to persist changes in Grafana.
 
