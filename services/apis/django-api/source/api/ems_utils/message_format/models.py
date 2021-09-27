@@ -35,7 +35,6 @@ class DatapointTemplate(models.Model):
         )
     )
     short_name = models.TextField(
-        max_length=30,
         null=True,  # Auto generated datapoints will be stored as null.
         default=None,
         unique=True,
