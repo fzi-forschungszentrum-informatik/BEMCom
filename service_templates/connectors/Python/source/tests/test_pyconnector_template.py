@@ -325,6 +325,29 @@ class TestSensorFlowRun(TestClassWithFixtures):
         self.sf.run_sensor_flow()
         self.sf._filter_and_publish_datapoint_values.assert_called()
 
+    def test_raw_messages_with_None_will_be_caught(self):
+        """
+        Check that receive_raw_msg has the option to drop an incoming msg,
+        by setting the payload to None.
+        """
+        self.sf.receive_raw_msg = MagicMock(
+            return_value={"payload": None}
+        )
+        self.sf.run_sensor_flow()
+        assert not self.sf.parse_raw_msg.called
+
+    def test_parsed_messages_with_None_will_be_caught(self):
+        """
+        Check that parsed_msg has the option to drop an incoming msg,
+        by setting the payload to None.
+        """
+        self.sf.parse_raw_msg = MagicMock(
+            return_value={"payload": None}
+        )
+        self.sf.run_sensor_flow()
+        assert not self.sf._flatten_parsed_msg.called
+
+
 class TestSensorFlowFlattenParsedMsg(TestClassWithFixtures):
 
     fixture_names = []

@@ -143,6 +143,15 @@ class SensorFlow():
         logger.debug("Calling receive_raw_msg with raw_data: %s", raw_data)
         msg = self.receive_raw_msg(raw_data=raw_data)
 
+        # Stop if receive_raw_msg returned a message that is not intended
+        # to be processed.
+        if msg["payload"] is None:
+            logger.debug(
+                "Stopped run_sensor_flow for msg with empty payload after "
+                "receive_raw_msg."
+            )
+            return
+
         # Add receival timestamp in milliseconds since epoch.
         # (Following the message format.)
         ts_utc_now = timestamp_utc_now()
@@ -173,6 +182,15 @@ class SensorFlow():
         # Parse raw content to dict of dict.
         logger.debug("Calling parse_raw_msg with raw_msg: %s", msg)
         msg = self.parse_raw_msg(raw_msg=msg)
+
+        # Stop if receive_raw_msg returned a message that is not intended
+        # to be processed.
+        if msg["payload"] is None:
+            logger.debug(
+                "Stopped run_sensor_flow for msg with empty payload after "
+                "parse_raw_msg."
+            )
+            return
 
         # Flatten the parsed message to a single level dict.
         logger.debug("Calling _flatten_parsed_msg with parsed_msg: %s", msg)
@@ -223,6 +241,8 @@ class SensorFlow():
             A simple solution may often be to cast the raw data to strings.
             Dict structures are fine, especially if created in this function,
             e.g. by iterating over many endpoints of one device.
+            Set the value of payload to None if run_sensor_flow should be
+            stopped for this message.
             Should be formatted like this:
                 msg = {
                     "payload": {
@@ -265,7 +285,11 @@ class SensorFlow():
         msg : dict
             The message object containing the parsed data as python dicts from
             dicts structure. All keys should be strings. All value should be
-            of type string, bool or numbers. Should be formatted like this:
+            of type string, bool or numbers.
+            Set the value of payload to None if run_sensor_flow should be
+            stopped for this message.
+            message should be stopped.
+            Should be formatted like this:
                 msg = {
                     "payload": {
                         "parsed_message": <the parsed data as object>,
