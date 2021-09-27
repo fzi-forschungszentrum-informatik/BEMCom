@@ -473,6 +473,16 @@ class ConnectorMQTTIntegration():
             topics = self.topics
 
             connector, message_type = topics[msg.topic]
+
+            # Apparently there are situations, where directly after the
+            # connector has been created, it is not existing in DB yet.
+            # Thus wait a bit and hope it appears.
+            try:
+                connector.refresh_from_db()
+            except Connector.DoesNotExist:
+                sleep(1)
+                connector.refresh_from_db()
+
             payload = json.loads(msg.payload)
             self.prom_received_messages_from_connector_counter.labels(
                 topic=msg.topic, connector=connector.name

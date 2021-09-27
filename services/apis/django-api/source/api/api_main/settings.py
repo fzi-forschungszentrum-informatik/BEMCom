@@ -260,5 +260,5 @@ SPECTACULAR_SETTINGS = {
     'LICENSE': {
         'name': 'Licensed under MIT',
     },
-    'VERSION': '0.6.3',
+    'VERSION': '0.6.4',
 }
