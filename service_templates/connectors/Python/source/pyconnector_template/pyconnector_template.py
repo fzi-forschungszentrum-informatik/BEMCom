@@ -19,7 +19,7 @@ from dotenv import load_dotenv, find_dotenv
 from .dispatch import DispatchOnce
 
 # Log everything to stdout by default, i.e. to docker container logs.
-LOGFORMAT = '%(asctime)s-%(funcName)s-%(levelname)s: %(message)s'
+LOGFORMAT = "%(asctime)s-%(funcName)s-%(levelname)s: %(message)s"
 logging.basicConfig(format=LOGFORMAT, level=logging.DEBUG)
 logger = logging.getLogger("pyconnector")
 
@@ -74,13 +74,11 @@ class MQTTHandler(logging.StreamHandler):
         }
 
         self.mqtt_client.publish(
-            payload=json.dumps(log_msg),
-            topic=self.log_topic,
-            retain=True,
+            payload=json.dumps(log_msg), topic=self.log_topic, retain=True,
         )
 
 
-class SensorFlow():
+class SensorFlow:
     """
     Bundles all functionality to handle sensor messages.
 
@@ -200,7 +198,7 @@ class SensorFlow():
         # send an update to the AdminUI.
         available_datapoints_update = {
             "actuator": {},
-            "sensor": msg["payload"]["flattened_message"]
+            "sensor": msg["payload"]["flattened_message"],
         }
         self._update_available_datapoints(
             available_datapoints=available_datapoints_update
@@ -210,7 +208,8 @@ class SensorFlow():
         # within the AdminUI.
         logger.debug(
             "Calling _filter_and_publish_datapoint_values with "
-            "flattened_msg: %s", msg
+            "flattened_msg: %s",
+            msg,
         )
         self._filter_and_publish_datapoint_values(flattened_msg=msg)
 
@@ -288,7 +287,6 @@ class SensorFlow():
             of type string, bool or numbers.
             Set the value of payload to None if run_sensor_flow should be
             stopped for this message.
-            message should be stopped.
             Should be formatted like this:
                 msg = {
                     "payload": {
@@ -419,7 +417,7 @@ class SensorFlow():
                 logger.warning(
                     "Encountered TypeError while serializing value message "
                     "for topic: %s",
-                    topic
+                    topic,
                 )
                 value_msg = {
                     "value": str(datapoint_value),
@@ -428,13 +426,11 @@ class SensorFlow():
                 payload = json.dumps(value_msg)
 
             self.mqtt_client.publish(
-                topic=topic,
-                payload=payload,
-                retain=True,
+                topic=topic, payload=payload, retain=True,
             )
 
 
-class ActuatorFlow():
+class ActuatorFlow:
     """
     Bundles all functionality to handle actuator messages.
 
@@ -508,7 +504,7 @@ class ActuatorFlow():
         raise NotImplementedError("send_command has not been implemented.")
 
 
-class Connector():
+class Connector:
     """
     The generic logic of the connector.
 
@@ -575,15 +571,15 @@ class Connector():
     """
 
     def __init__(
-            self,
-            version,
-            datapoint_map=None,
-            available_datapoints=None,
-            DeviceDispatcher=None,
-            device_dispatcher_kwargs=None,
-            MqttClient=Client,
-            heartbeat_interval=30,
-        ):
+        self,
+        version,
+        datapoint_map=None,
+        available_datapoints=None,
+        DeviceDispatcher=None,
+        device_dispatcher_kwargs=None,
+        MqttClient=Client,
+        heartbeat_interval=30,
+    ):
         """
         Parameters
         ----------
@@ -630,7 +626,7 @@ class Connector():
 
         logger.info(
             "Initiating pyconnector.Connector class for: %s",
-            self.CONNECTOR_NAME
+            self.CONNECTOR_NAME,
         )
 
         cn = self.CONNECTOR_NAME
@@ -660,8 +656,6 @@ class Connector():
         # the MQTT connection is not available yet.
         self._initial_datapoint_map = datapoint_map
         self._initial_available_datapoints = available_datapoints
-
-
 
         logger.debug("Finished Connector init.")
 
@@ -698,7 +692,7 @@ class Connector():
         logger.debug("Starting broker dispatcher with MQTT client loop.")
         broker_dispatcher = DispatchOnce(
             target_func=mqtt_worker,
-            target_kwargs={"mqtt_client": self.mqtt_client}
+            target_kwargs={"mqtt_client": self.mqtt_client},
         )
         broker_dispatcher.start()
 
@@ -709,8 +703,7 @@ class Connector():
         # Add MQTT Log handler if it isn't in there yet.
         if not any([isinstance(h, MQTTHandler) for h in logger.handlers]):
             mqtt_log_handler = MQTTHandler(
-                mqtt_client=self.mqtt_client,
-                log_topic=self.MQTT_TOPIC_LOGS,
+                mqtt_client=self.mqtt_client, log_topic=self.MQTT_TOPIC_LOGS,
             )
             logger.addHandler(mqtt_log_handler)
 
@@ -837,9 +830,7 @@ class Connector():
                 datapoint_map_json=msg.payload
             )
         else:
-            self.run_actuator_flow(
-                topic=msg.topic, value_msg_json=msg.payload
-            )
+            self.run_actuator_flow(topic=msg.topic, value_msg_json=msg.payload)
 
     def _validate_and_update_datapoint_map(self, datapoint_map_json):
         """
@@ -950,6 +941,5 @@ class Connector():
             "next_heartbeats_timestamp": ts_next,
         }
         self.mqtt_client.publish(
-            topic=self.MQTT_TOPIC_HEARTBEAT,
-            payload=json.dumps(heartbeat_msg)
+            topic=self.MQTT_TOPIC_HEARTBEAT, payload=json.dumps(heartbeat_msg)
         )
