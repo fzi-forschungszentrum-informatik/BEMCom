@@ -1,0 +1,63 @@
+# This is a template with all fields add a new service to the deployments file.
+# Remove whatever is not needed.
+---
+{{- $serviceVars := (merge .Values.??? $globalVars ) }}
+{{- with $serviceVars }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  {{ include "bemcom-app.service.fullname" . }}
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "bemcom-app.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "bemcom-app.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- toYaml .deployment.podAnnotations | nindent 8 }}
+      labels:
+        {{- include "bemcom-app.selectorLabels" . | nindent 8 }}
+    spec:
+      imagePullSecrets:
+        {{- toYaml .deployment.image.pullSecrets | nindent 8 }}
+      serviceAccountName: {{ include "bemcom-app.serviceAccountName" $ }}
+      containers:
+      - name: {{ include "bemcom-app.service.fullname" (merge . $globalVars) }}
+        image: "{{ .deployment.image.repository }}:{{ .deployment.image.tag }}"
+        imagePullPolicy: {{ .deployment.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .deployment.ports.portName }}
+          name: port-name
+        env:
+        - name: ENV_VAR
+          value: {{ .deployment.env.ENV_VAR | quote }}
+        - name: ENV_VAR_CONTAINING_JSON
+          value: {{ .deployment.env.ENV_VAR_CONTAINING_JSON | toJson | quote }}
+        envFrom:
+        - configMapRef:
+            name: {{ $fullname }}-generic-config
+        - secretRef:
+            name: {{ $fullname }}-django-api
+        - secretRef:
+            name: {{ $fullname }}-django-api-db
+        - secretRef:
+            name: {{ $fullname }}-raw-message-db
+        - secretRef:
+            name: {{ $fullname }}-grafana-tool
+        resources:
+          {{- .deployment.resources | toYaml | nindent 12 }}
+      volumes:
+      - name: pgdata
+        persistentVolumeClaim:
+          claimName: {{ include "bemcom-app.service.fullname" . }}-pgdata
+      nodeSelector:
+        {{- toYaml .deployment.nodeSelector | nindent 8 }}
+      affinity:
+        {{- toYaml .deployment.affinity | nindent 8 }}
+      tolerations:
+        {{- toYaml .deployment.tolerations | nindent 8 }}
+{{- end }}

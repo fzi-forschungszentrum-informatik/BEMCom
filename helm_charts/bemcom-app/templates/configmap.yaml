@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "bemcom-app.fullname" . }}-generic-config
+  namespace: {{ .Release.Namespace }}
+data:
+  MQTT_BROKER_HOST: "{{ include "bemcom-app.fullname" . }}-message-broker.{{ .Release.Namespace }}.svc.cluster.local"
+  MQTT_BROKER_PORT: "1883"
+  {{- if .Values.mongoRawMessageDb.enabled }}
+  SEND_RAW_MESSAGE_TO_DB: "TRUE"
+  {{- else }}
+  SEND_RAW_MESSAGE_TO_DB: "FALSE"
+  {{- end }}

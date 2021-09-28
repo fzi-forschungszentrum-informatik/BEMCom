@@ -1,0 +1,739 @@
+---
+# Source: bemcom-app/templates/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: fk-test-bemcom-app-django-api
+  namespace: flexkaelte
+data:
+  DJANGO_SUPERUSER_USERNAME: "YmVtY29tLWRqYW5nbw=="
+  DJANGO_SUPERUSER_PASSWORD: "YmVtY29tLWRqYW5nby1wYXNz"
+  DJANGO_SUPERUSER_EMAIL: "YmVtY29tQGV4YW1wbGUuY29t"
+  DJANGOAPIDB_USERNAME: "YmVtY29tLXBn"
+  DJANGOAPIDB_PASSWORD: "YmVtY29tLXBnLXBhc3M="
+---
+# Source: bemcom-app/templates/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: fk-test-bemcom-app-django-api-db
+  namespace: flexkaelte
+data:
+  POSTGRES_USER: "YmVtY29tLXBn"
+  POSTGRES_PASSWORD: "YmVtY29tLXBnLXBhc3M="
+---
+# Source: bemcom-app/templates/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: fk-test-bemcom-app-grafana-tool
+  namespace: flexkaelte
+data:
+  GF_SECURITY_ADMIN_USER: "YmVtY29tLWdm"
+  GF_SECURITY_ADMIN_PASSWORD: "YmVtY29tLWdmLXBhc3M="
+---
+# Source: bemcom-app/templates/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: fk-test-bemcom-app-mongo-raw-message-db
+  namespace: flexkaelte
+data:
+  MONGO_USERNAME: "YmVtY29tLW1vbmdv"
+  MONGO_INITDB_ROOT_USERNAME: "YmVtY29tLW1vbmdv"
+  MONGO_PASSWORD: "YmVtY29tLW1vbmdvLXBhc3M="
+  MONGO_INITDB_ROOT_PASSWORD: "YmVtY29tLW1vbmdvLXBhc3M="
+  MONGO_LOGIN_DB: "YWRtaW4="
+---
+# Source: bemcom-app/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fk-test-bemcom-app-generic-config
+  namespace: flexkaelte
+data:
+  MQTT_BROKER_HOST: "fk-test-bemcom-app-message-broker.flexkaelte.svc.cluster.local"
+  MQTT_BROKER_PORT: "1883"
+  SEND_RAW_MESSAGE_TO_DB: "TRUE"
+---
+# Source: bemcom-app/templates/volume.yaml
+# Django API DB volume.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name:  fk-test-bemcom-app-django-api-db-pgdata
+  namespace: flexkaelte
+  labels:
+    helm.sh/chart: bemcom-app-0.1.0
+    app.kubernetes.io/name: fk-test-bemcom-app
+    app.kubernetes.io/instance: fk-test-bemcom-app
+    bemcom-service-name:  fk-test-bemcom-app-django-api-db
+    app.kubernetes.io/version: "0.0.1"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    helm.sh/resource-policy: retain
+spec:
+    accessModes:
+    - ReadWriteOnce
+    resources:
+      requests:
+        storage: 800Gi
+    storageClassName: local
+---
+# Source: bemcom-app/templates/volume.yaml
+# Mongo raw message DB volume.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name:  fk-test-bemcom-app-mongo-raw-message-db-mongo-data
+  namespace: flexkaelte
+  labels:
+    helm.sh/chart: bemcom-app-0.1.0
+    app.kubernetes.io/name: fk-test-bemcom-app
+    app.kubernetes.io/instance: fk-test-bemcom-app
+    bemcom-service-name:  fk-test-bemcom-app-mongo-raw-message-db
+    app.kubernetes.io/version: "0.0.1"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    helm.sh/resource-policy: retain
+spec:
+    accessModes:
+    - ReadWriteOnce
+    resources:
+      requests:
+        storage: 100Gi
+    storageClassName: shared
+---
+# Source: bemcom-app/templates/volume.yaml
+# Grafana Tool DB volume.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name:  fk-test-bemcom-app-grafana-tool-grafana-db
+  namespace: flexkaelte
+  labels:
+    helm.sh/chart: bemcom-app-0.1.0
+    app.kubernetes.io/name: fk-test-bemcom-app
+    app.kubernetes.io/instance: fk-test-bemcom-app
+    bemcom-service-name:  fk-test-bemcom-app-grafana-tool
+    app.kubernetes.io/version: "0.0.1"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    helm.sh/resource-policy: retain
+spec:
+    accessModes:
+    - ReadWriteOnce
+    resources:
+      requests:
+        storage: 1Gi
+    storageClassName: shared
+---
+# Source: bemcom-app/templates/service.yaml
+# MQTT message broker service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: fk-test-bemcom-app-message-broker
+  namespace: flexkaelte
+  labels:
+    helm.sh/chart: bemcom-app-0.1.0
+    app.kubernetes.io/name: fk-test-bemcom-app
+    app.kubernetes.io/instance: fk-test-bemcom-app
+    bemcom-service-name:  fk-test-bemcom-app-message-broker
+    app.kubernetes.io/version: "0.0.1"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    {}
+spec:
+  type: ClusterIP
+  ports:
+  - name: mqtt-tcp
+    port: 1883
+    targetPort: mqtt-tcp
+  selector:
+    app.kubernetes.io/name: fk-test-bemcom-app
+    app.kubernetes.io/instance: fk-test-bemcom-app
+    bemcom-service-name:  fk-test-bemcom-app-message-broker
+---
+# Source: bemcom-app/templates/service.yaml
+# Django API service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: fk-test-bemcom-app-django-api
+  namespace: flexkaelte
+  labels:
+    helm.sh/chart: bemcom-app-0.1.0
+    app.kubernetes.io/name: fk-test-bemcom-app
+    app.kubernetes.io/instance: fk-test-bemcom-app
+    bemcom-service-name:  fk-test-bemcom-app-django-api
+    app.kubernetes.io/version: "0.0.1"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    {}
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+  selector:
+    app.kubernetes.io/name: fk-test-bemcom-app
+    app.kubernetes.io/instance: fk-test-bemcom-app
+    bemcom-service-name:  fk-test-bemcom-app-django-api
+---
+# Source: bemcom-app/templates/service.yaml
+# Django API DB service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: fk-test-bemcom-app-django-api-db
+  namespace: flexkaelte
+  labels:
+    helm.sh/chart: bemcom-app-0.1.0
+    app.kubernetes.io/name: fk-test-bemcom-app
+    app.kubernetes.io/instance: fk-test-bemcom-app
+    bemcom-service-name:  fk-test-bemcom-app-django-api-db
+    app.kubernetes.io/version: "0.0.1"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    {}
+spec:
+  type: ClusterIP
+  ports:
+  - name: postgres
+    port: 5432
+    targetPort: postgres
+  selector:
+    app.kubernetes.io/name: fk-test-bemcom-app
+    app.kubernetes.io/instance: fk-test-bemcom-app
+    bemcom-service-name:  fk-test-bemcom-app-django-api-db
+---
+# Source: bemcom-app/templates/service.yaml
+# Grafana tool service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: fk-test-bemcom-app-grafana-tool
+  namespace: flexkaelte
+  labels:
+    helm.sh/chart: bemcom-app-0.1.0
+    app.kubernetes.io/name: fk-test-bemcom-app
+    app.kubernetes.io/instance: fk-test-bemcom-app
+    bemcom-service-name:  fk-test-bemcom-app-grafana-tool
+    app.kubernetes.io/version: "0.0.1"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    {}
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+  selector:
+    app.kubernetes.io/name: fk-test-bemcom-app
+    app.kubernetes.io/instance: fk-test-bemcom-app
+    bemcom-service-name:  fk-test-bemcom-app-grafana-tool
+---
+# Source: bemcom-app/templates/deployment.yaml
+# MQTT message broker deployment.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  fk-test-bemcom-app-message-broker
+  namespace: flexkaelte
+  labels:
+    helm.sh/chart: bemcom-app-0.1.0
+    app.kubernetes.io/name: fk-test-bemcom-app
+    app.kubernetes.io/instance: fk-test-bemcom-app
+    bemcom-service-name:  fk-test-bemcom-app-message-broker
+    app.kubernetes.io/version: "0.0.1"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fk-test-bemcom-app
+      app.kubernetes.io/instance: fk-test-bemcom-app
+      bemcom-service-name:  fk-test-bemcom-app-message-broker
+  template:
+    metadata:
+      annotations:
+        {}
+      labels:
+        app.kubernetes.io/name: fk-test-bemcom-app
+        app.kubernetes.io/instance: fk-test-bemcom-app
+        bemcom-service-name:  fk-test-bemcom-app-message-broker
+    spec:
+      imagePullSecrets:
+        []
+      serviceAccountName: default
+      containers:
+      - name: fk-test-bemcom-app-message-broker
+        image: "bemcom/mosquitto-mqtt-broker:0.1.0"
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 1883
+          name: mqtt-tcp
+        resources:
+            limits:
+              cpu: 1
+              memory: 1024Mi
+            requests:
+              cpu: 200m
+              memory: 128Mi
+      nodeSelector:
+        {}
+      affinity:
+        {}
+      tolerations:
+        []
+---
+# Source: bemcom-app/templates/deployment.yaml
+# Django API deployment.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  fk-test-bemcom-app-django-api
+  namespace: flexkaelte
+  labels:
+    helm.sh/chart: bemcom-app-0.1.0
+    app.kubernetes.io/name: fk-test-bemcom-app
+    app.kubernetes.io/instance: fk-test-bemcom-app
+    bemcom-service-name:  fk-test-bemcom-app-django-api
+    app.kubernetes.io/version: "0.0.1"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fk-test-bemcom-app
+      app.kubernetes.io/instance: fk-test-bemcom-app
+      bemcom-service-name:  fk-test-bemcom-app-django-api
+  template:
+    metadata:
+      annotations:
+        {}
+      labels:
+        app.kubernetes.io/name: fk-test-bemcom-app
+        app.kubernetes.io/instance: fk-test-bemcom-app
+        bemcom-service-name:  fk-test-bemcom-app-django-api
+    spec:
+      imagePullSecrets:
+        []
+      serviceAccountName: default
+      containers:
+      - name: fk-test-bemcom-app-django-api
+        image: "bemcom/django-api:0.6.3"
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: LOGLEVEL
+          value: "INFO"
+        - name: DJANGO_DEBUG
+          value: "false"
+        - name: DJANGO_ADMINS
+          value: "[]"
+        - name: DJANGO_ALLOWED_HOSTS
+          value: "[\"localhost\",\"flexkaelte-api.cloud.iai.kit.edu\"]"
+        - name: DJANGOAPIDB_HOST
+          value: "fk-test-bemcom-app-django-api-db"
+        - name: DJANGOAPIDB_PORT
+          value: "5432"
+        - name: N_CMI_WRITE_THREADS
+          value: "32"
+        envFrom:
+        - configMapRef:
+            name: fk-test-bemcom-app-generic-config
+        - secretRef:
+            name: fk-test-bemcom-app-django-api
+        resources:
+            limits:
+              cpu: 1
+              memory: 2096Mi
+            requests:
+              cpu: 500m
+              memory: 1024Mi
+      nodeSelector:
+        null
+      affinity:
+        null
+      tolerations:
+        null
+---
+# Source: bemcom-app/templates/deployment.yaml
+# Django API DB deployment.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  fk-test-bemcom-app-django-api-db
+  namespace: flexkaelte
+  labels:
+    helm.sh/chart: bemcom-app-0.1.0
+    app.kubernetes.io/name: fk-test-bemcom-app
+    app.kubernetes.io/instance: fk-test-bemcom-app
+    bemcom-service-name:  fk-test-bemcom-app-django-api-db
+    app.kubernetes.io/version: "0.0.1"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fk-test-bemcom-app
+      app.kubernetes.io/instance: fk-test-bemcom-app
+      bemcom-service-name:  fk-test-bemcom-app-django-api-db
+  template:
+    metadata:
+      annotations:
+        null
+      labels:
+        app.kubernetes.io/name: fk-test-bemcom-app
+        app.kubernetes.io/instance: fk-test-bemcom-app
+        bemcom-service-name:  fk-test-bemcom-app-django-api-db
+    spec:
+      imagePullSecrets:
+        []
+      serviceAccountName: default
+      containers:
+      - name: fk-test-bemcom-app-django-api-db
+        image: "timescale/timescaledb:2.4.1-pg13"
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: pgdata
+        ports:
+        - containerPort: 5432
+          name: postgres
+        env:
+        - name: POSTGRES_DB
+          value: "bemcom"
+        envFrom:
+        - secretRef:
+            name: fk-test-bemcom-app-django-api-db
+        resources:
+            limits:
+              cpu: 1
+              memory: 2096Mi
+            requests:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+      - name: pgdata
+        persistentVolumeClaim:
+          claimName: fk-test-bemcom-app-django-api-db-pgdata
+      nodeSelector:
+        null
+      affinity:
+        null
+      tolerations:
+        null
+---
+# Source: bemcom-app/templates/deployment.yaml
+# Mongo raw message DB deployment.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  fk-test-bemcom-app-mongo-raw-message-db
+  namespace: flexkaelte
+  labels:
+    helm.sh/chart: bemcom-app-0.1.0
+    app.kubernetes.io/name: fk-test-bemcom-app
+    app.kubernetes.io/instance: fk-test-bemcom-app
+    bemcom-service-name:  fk-test-bemcom-app-mongo-raw-message-db
+    app.kubernetes.io/version: "0.0.1"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fk-test-bemcom-app
+      app.kubernetes.io/instance: fk-test-bemcom-app
+      bemcom-service-name:  fk-test-bemcom-app-mongo-raw-message-db
+  template:
+    metadata:
+      annotations:
+        {}
+      labels:
+        app.kubernetes.io/name: fk-test-bemcom-app
+        app.kubernetes.io/instance: fk-test-bemcom-app
+        bemcom-service-name:  fk-test-bemcom-app-mongo-raw-message-db
+    spec:
+      imagePullSecrets:
+        []
+      serviceAccountName: default
+      containers:
+      - name: fk-test-bemcom-app-mongo-raw-message-db
+        image: "bemcom/mongo-raw-message-db:0.2.0"
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - mountPath: /data/db
+          name: mongo-data
+        ports:
+        - containerPort: 27017
+          name: mongo-db
+        env:
+        - name: MQTT_TOPIC_ALL_RAW_MESSAGES
+          value: "+/raw_message_to_db"
+        - name: MQTT_INTEGRATION_LOG_LEVEL
+          value: "INFO"
+        envFrom:
+        - configMapRef:
+            name: fk-test-bemcom-app-generic-config
+        - secretRef:
+            name: fk-test-bemcom-app-mongo-raw-message-db
+        resources:
+            limits:
+              cpu: 1
+              memory: 2096Mi
+            requests:
+              cpu: 200m
+              memory: 1028Mi
+      volumes:
+      - name: mongo-data
+        persistentVolumeClaim:
+          claimName: fk-test-bemcom-app-mongo-raw-message-db-mongo-data
+      nodeSelector:
+        null
+      affinity:
+        null
+      tolerations:
+        null
+---
+# Source: bemcom-app/templates/deployment.yaml
+# Grafana Tool deployment.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  fk-test-bemcom-app-grafana-tool
+  namespace: flexkaelte
+  labels:
+    helm.sh/chart: bemcom-app-0.1.0
+    app.kubernetes.io/name: fk-test-bemcom-app
+    app.kubernetes.io/instance: fk-test-bemcom-app
+    bemcom-service-name:  fk-test-bemcom-app-grafana-tool
+    app.kubernetes.io/version: "0.0.1"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fk-test-bemcom-app
+      app.kubernetes.io/instance: fk-test-bemcom-app
+      bemcom-service-name:  fk-test-bemcom-app-grafana-tool
+  template:
+    metadata:
+      annotations:
+        {}
+      labels:
+        app.kubernetes.io/name: fk-test-bemcom-app
+        app.kubernetes.io/instance: fk-test-bemcom-app
+        bemcom-service-name:  fk-test-bemcom-app-grafana-tool
+    spec:
+      imagePullSecrets:
+        []
+      serviceAccountName: default
+      containers:
+      - name: fk-test-bemcom-app-grafana-tool
+        image: "bemcom/grafana-tool:0.2.1"
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - mountPath: /var/lib/grafana/grafana.db
+          name: grafana-db
+        ports:
+        - containerPort: 3000
+          name: http
+        envFrom:
+        - secretRef:
+            name: fk-test-bemcom-app-grafana-tool
+        resources:
+            limits:
+              cpu: 1
+              memory: 256Mi
+            requests:
+              cpu: 200m
+              memory: 128Mi
+      volumes:
+      - name: grafana-db
+        persistentVolumeClaim:
+          claimName: fk-test-bemcom-app-grafana-tool-grafana-db
+      nodeSelector:
+        null
+      affinity:
+        null
+      tolerations:
+        null
+---
+# Source: bemcom-app/templates/deployment.yaml
+# MQTT message monitor deployment.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  fk-test-bemcom-app-mqtt-message-monitor
+  namespace: flexkaelte
+  labels:
+    helm.sh/chart: bemcom-app-0.1.0
+    app.kubernetes.io/name: fk-test-bemcom-app
+    app.kubernetes.io/instance: fk-test-bemcom-app
+    bemcom-service-name:  fk-test-bemcom-app-mqtt-message-monitor
+    app.kubernetes.io/version: "0.0.1"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fk-test-bemcom-app
+      app.kubernetes.io/instance: fk-test-bemcom-app
+      bemcom-service-name:  fk-test-bemcom-app-mqtt-message-monitor
+  template:
+    metadata:
+      annotations:
+        {}
+      labels:
+        app.kubernetes.io/name: fk-test-bemcom-app
+        app.kubernetes.io/instance: fk-test-bemcom-app
+        bemcom-service-name:  fk-test-bemcom-app-mqtt-message-monitor
+    spec:
+      imagePullSecrets:
+        []
+      serviceAccountName: default
+      containers:
+      - name: fk-test-bemcom-app-mqtt-message-monitor
+        image: "bemcom/mqtt-message-monitor:0.1.0"
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 1880
+          name: http
+        envFrom:
+        - configMapRef:
+            name: fk-test-bemcom-app-generic-config
+        resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+      nodeSelector:
+        {}
+      affinity:
+        {}
+      tolerations:
+        []
+---
+# Source: bemcom-app/templates/deployment.yaml
+# Every specified BEMCom connector service.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  fk-test-bemcom-app-modbus-tcp-connector-406-um96-cm
+  namespace: flexkaelte
+  labels:
+    helm.sh/chart: bemcom-app-0.1.0
+    app.kubernetes.io/name: fk-test-bemcom-app
+    app.kubernetes.io/instance: fk-test-bemcom-app
+    bemcom-service-name:  fk-test-bemcom-app-modbus-tcp-connector-406-um96-cm
+    app.kubernetes.io/version: "0.0.1"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fk-test-bemcom-app
+      app.kubernetes.io/instance: fk-test-bemcom-app
+      bemcom-service-name:  fk-test-bemcom-app-modbus-tcp-connector-406-um96-cm
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: fk-test-bemcom-app
+        app.kubernetes.io/instance: fk-test-bemcom-app
+        bemcom-service-name:  fk-test-bemcom-app-modbus-tcp-connector-406-um96-cm
+    spec:
+      serviceAccountName: default
+      containers:
+      - name: fk-test-bemcom-app-modbus-tcp-connector-406-um96-cm
+        image: "bemcom/modbus-tcp-connector:0.5.0"
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: CONNECTOR_NAME
+            value: "modbus-tcp-connector-406-UM96-CM"
+          - name: MODBUS_MASTER_IP
+            value: "172.18.4.207"
+          - name: MODBUS_MASTER_PORT
+            value: "502"
+          - name: POLL_SECONDS
+            value: "5"
+          - name: MODBUS_CONFIG
+            value: "{\"read_input_registers\":[{\"address\":19000,\"count\":122,\"datatypes\":\"\\u003efffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\",\"unit\":1}]}"
+        envFrom:
+        - configMapRef:
+            name: fk-test-bemcom-app-generic-config
+        resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+---
+# Source: bemcom-app/templates/ingress.yaml
+# Django API ingress.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fk-test-bemcom-app-django-api
+  namespace: flexkaelte
+  labels:
+    helm.sh/chart: bemcom-app-0.1.0
+    app.kubernetes.io/name: fk-test-bemcom-app
+    app.kubernetes.io/instance: fk-test-bemcom-app
+    bemcom-service-name:  fk-test-bemcom-app-django-api
+    app.kubernetes.io/version: "0.0.1"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    kubernetes.io/ingress.class: traefik2-external
+    traefik.ingress.kubernetes.io/router.middlewares: traefik2-redirect-to-https@kubernetescrd
+spec:
+  rules:
+    - host: "flexkaelte-api.cloud.iai.kit.edu"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: fk-test-bemcom-app-django-api
+                port:
+                  name: http
+---
+# Source: bemcom-app/templates/ingress.yaml
+# Grafana tool ingress.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fk-test-bemcom-app-grafana-tool
+  namespace: flexkaelte
+  labels:
+    helm.sh/chart: bemcom-app-0.1.0
+    app.kubernetes.io/name: fk-test-bemcom-app
+    app.kubernetes.io/instance: fk-test-bemcom-app
+    bemcom-service-name:  fk-test-bemcom-app-grafana-tool
+    app.kubernetes.io/version: "0.0.1"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    kubernetes.io/ingress.class: traefik2-external
+    traefik.ingress.kubernetes.io/router.middlewares: traefik2-redirect-to-https@kubernetescrd
+spec:
+  rules:
+    - host: "flexkaelte-grafana.cloud.iai.kit.edu"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: fk-test-bemcom-app-grafana-tool
+                port:
+                  name: http
