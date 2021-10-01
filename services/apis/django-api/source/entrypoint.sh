@@ -66,6 +66,8 @@ else
     cd /source/api && \
     printf "\n\nStarting up Daphne production server.\n\n\n"
     daphne -e ssl:8443:privateKey=/tmp/cert/key.pem:certKey=/tmp/cert/cert.pem \
+           --application-close-timeout 60 \
+           --verbosity 0 \
            -b 0.0.0.0 \
            -p 8080 api_main.asgi:application &
 fi
