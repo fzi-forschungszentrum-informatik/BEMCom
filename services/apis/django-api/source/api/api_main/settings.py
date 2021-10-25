@@ -145,11 +145,6 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "simple": {"format": "%(asctime)s-%(name)s-%(levelname)s: %(message)s"},
-        # Allows logging of issues in requests. See also:
-        # https://docs.djangoproject.com/en/3.2/topics/logging/#django-request
-        "requests": {
-            "format": "%(asctime)s-%(name)s-%(levelname)s-%(ip)s: %(message)s"
-        },
     },
     "handlers": {
         "console": {
@@ -161,27 +156,11 @@ LOGGING = {
             "level": "DEBUG",
             "class": "api_main.loggers.PrometheusHandler",
         },
-        "request": {
-            "level": "WARNING",
-            "class": "logging.StreamHandler",
-            "formatter": "requests",
-        },
-    },
-    "filters": {
-        "add_ip_address": {"()": "api_main.log_filter.IPAddressFilter"}
     },
     "root": {
         "handlers": ["console", "prometheus"],
         "level": os.getenv("LOGLEVEL") or "INFO",
     },
-    "loggers": {
-        "django.request": {
-            "level": "WARNING",
-            "filters": ["add_ip_address"],
-            "handlers": ["request"],
-        },
-    },
-    "disable_existing_loggers": False,
 }
 
 # Password validation
@@ -279,5 +258,5 @@ SPECTACULAR_SETTINGS = {
         "message is **not** deleted on the message broker."
     ),
     "LICENSE": {"name": "Licensed under MIT",},
-    "VERSION": "0.6.8",
+    "VERSION": "0.6.7",
 }
