@@ -49,6 +49,8 @@ class StreamHandlerPlusIPs(logging.StreamHandler):
         Append IP addresses to log message if available. This is likely only
         the case for the django.requests and django.server loggers.
         See: https://docs.djangoproject.com/en/3.2/topics/logging/#id3
+        See also the documentation regarding the header flags:
+        https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For
 
         Parameters
         ----------
@@ -56,8 +58,11 @@ class StreamHandlerPlusIPs(logging.StreamHandler):
             The record to publish.
         """
         if hasattr(record, "request"):
+            forwarded = record.request.META.get("FORWARDED")
             x_forwarded_for = record.request.META.get("HTTP_X_FORWARDED_FOR")
-            if x_forwarded_for:
+            if forwarded:
+                record.msg += " (FORWARDED: %s)" % forwarded
+            elif x_forwarded_for:
                 record.msg += " (HTTP_X_FORWARDED_FOR: %s)" % x_forwarded_for
             else:
                 remote_addr = record.request.META.get("REMOTE_ADDR")
