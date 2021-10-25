@@ -149,7 +149,7 @@ LOGGING = {
     "handlers": {
         "console": {
             "level": "DEBUG",
-            "class": "logging.StreamHandler",
+            "class": "api_main.loggers.StreamHandlerPlusIPs",
             "formatter": "simple",
         },
         "prometheus": {
@@ -258,5 +258,5 @@ SPECTACULAR_SETTINGS = {
         "message is **not** deleted on the message broker."
     ),
     "LICENSE": {"name": "Licensed under MIT",},
-    "VERSION": "0.6.7",
+    "VERSION": "0.6.9",
 }

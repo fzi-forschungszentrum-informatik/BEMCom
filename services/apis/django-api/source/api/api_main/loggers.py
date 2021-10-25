@@ -36,3 +36,30 @@ class PrometheusHandler(logging.StreamHandler):
             levelname=record.levelname,
             loggername=record.name,
         ).inc()
+
+
+class StreamHandlerPlusIPs(logging.StreamHandler):
+    """
+    Like the normal StreamHandler, apart that it glues the IPs of the requests
+    to the log messages.
+    """
+
+    def emit(self, record):
+        """
+        Append IP addresses to log message if available. This is likely only
+        the case for the django.requests and django.server loggers.
+        See: https://docs.djangoproject.com/en/3.2/topics/logging/#id3
+
+        Parameters
+        ----------
+        record : logging.LogRecord
+            The record to publish.
+        """
+        if hasattr(record, "request"):
+            x_forwarded_for = record.request.META.get("HTTP_X_FORWARDED_FOR")
+            if x_forwarded_for:
+                record.msg += " (HTTP_X_FORWARDED_FOR: %s)" % x_forwarded_for
+            else:
+                remote_addr = record.request.META.get("REMOTE_ADDR")
+                record.msg += " (REMOTE_ADDR: %s)" % remote_addr
+        super().emit(record)
