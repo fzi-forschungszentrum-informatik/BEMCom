@@ -1,0 +1,26 @@
+Deployed BEMCom application: {{ include "bemcom-app.fullname" . }}
+
+The following connectors are part of the application:
+{{- range .Values.connectorServices }}
+{{- if .deployment.envStr }}
+{{- if .deployment.envStr.CONNECTOR_NAME }}
+- {{ .deployment.envStr.CONNECTOR_NAME }}
+{{- else }}
+- Connector ({{ .serviceName }}) without CONNECTOR_NAME.
+{{- end }}
+{{- else }}
+- Connector ({{ .serviceName }}) without CONNECTOR_NAME (envStr not set).
+{{- end }}
+{{- end }}
+
+Django API URLs are:
+{{- range .Values.djangoApi.ingress.hosts }}
+- http://{{ .host }}
+{{ end }}
+
+{{- if .Values.grafanaTool.enabled }}
+Grafana URLs are:
+{{- range .Values.grafanaTool.ingress.hosts }}
+- http://{{ .host }}
+{{- end }}
+{{- end }}

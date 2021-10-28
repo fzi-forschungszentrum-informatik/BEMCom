@@ -9,9 +9,10 @@ from api_main.models.datapoint import DatapointSetpoint
 from api_main.models.datapoint import DatapointSchedule
 from ems_utils.timestamp import datetime_to_pretty_str
 from api_main.connector_mqtt_integration import ConnectorMQTTIntegration
+from .connector_admin import AdminWithoutListsOnDelete
 
 @admin.register(Datapoint)
-class DatapointAdmin(admin.ModelAdmin):
+class DatapointAdmin(AdminWithoutListsOnDelete):
     """
     Admin model instance for Datapoints, that also displays fields of the
     addition models.
@@ -56,8 +57,10 @@ class DatapointAdmin(admin.ModelAdmin):
     )
     search_fields = (
         "key_in_connector",
+        "short_name",
+        "description",
         "example_value",
-        "type",
+        "last_value",
     )
     readonly_fields = (
         "id",
@@ -143,21 +146,21 @@ class DatapointAdmin(admin.ModelAdmin):
         """
         Return a possible truncated value if the example value is very long.
         """
-        value = obj.example_value
+        value = str(obj.example_value)
         truncation_length = 100
-        if value is not None and len(value) >= truncation_length: 
+        if value is not None and len(value) >= truncation_length:
             value = value[:truncation_length] + " [truncated]"
         return value
     example_value_truncated.admin_order_field = "example_value"
     example_value_truncated.short_description = "example_value"
-    
+
     def last_value_truncated(self, obj):
         """
         Return a possible truncated value if the example value is very long.
         """
-        value = obj.last_value
+        value = str(obj.last_value)
         truncation_length = 100
-        if value is not None and len(value) >= truncation_length: 
+        if value is not None and len(value) >= truncation_length:
             value = value[:truncation_length] + " [truncated]"
         return value
     last_value_truncated.admin_order_field = "last_value"
@@ -371,7 +374,7 @@ class DatapointAdmin(admin.ModelAdmin):
 
 
 @admin.register(DatapointValue)
-class DatapointValueAdmin(admin.ModelAdmin):
+class DatapointValueAdmin(AdminWithoutListsOnDelete):
 
     list_display = (
         "id",
@@ -382,24 +385,42 @@ class DatapointValueAdmin(admin.ModelAdmin):
     list_filter = (
         "datapoint",
     )
+    # This is just to order the fields in the object detail page
+    fields = (
+        "id",
+        "datapoint",
+        "value",
+        "time"
+    )
     readonly_fields = (
         "id",
+        "datapoint",
+    )
+    exclude = (
+        "_value_float",
+        "_value_bool",
     )
 
     def timestamp_pretty(self, obj):
         """
         Displays a prettier timestamp format.
         """
-        ts = obj.timestamp
+        ts = obj.time
         if ts is None:
             return "-"
         return datetime_to_pretty_str(ts)
-    timestamp_pretty.admin_order_field = "timestamp"
+    timestamp_pretty.admin_order_field = "time"
     timestamp_pretty.short_description = "Timestamp"
+
+    def has_add_permission(cls, request):
+        """
+        Remove `add` and `save and add another` button.
+        """
+        return False
 
 
 @admin.register(DatapointSetpoint)
-class DatapointSetpointAdmin(admin.ModelAdmin):
+class DatapointSetpointAdmin(AdminWithoutListsOnDelete):
 
     list_display = (
         "id",
@@ -410,23 +431,38 @@ class DatapointSetpointAdmin(admin.ModelAdmin):
     list_filter = (
         "datapoint",
     )
+    # This is just to order the fields in the object detail page
+    fields = (
+        "id",
+        "datapoint",
+        "setpoint",
+        "time"
+    )
     readonly_fields = (
         "id",
+        "datapoint",
     )
 
     def timestamp_pretty(self, obj):
         """
         Displays a prettier timestamp format.
         """
-        ts = obj.timestamp
+        ts = obj.time
         if ts is None:
             return "-"
         return datetime_to_pretty_str(ts)
-    timestamp_pretty.admin_order_field = "timestamp"
+    timestamp_pretty.admin_order_field = "time"
     timestamp_pretty.short_description = "Timestamp"
 
+    def has_add_permission(cls, request):
+        """
+        Remove `add` and `save and add another` button.
+        """
+        return False
+
+
 @admin.register(DatapointSchedule)
-class DatapointScheduleAdmin(admin.ModelAdmin):
+class DatapointScheduleAdmin(AdminWithoutListsOnDelete):
 
     list_display = (
         "id",
@@ -437,17 +473,30 @@ class DatapointScheduleAdmin(admin.ModelAdmin):
     list_filter = (
         "datapoint",
     )
+    fields = (
+        "id",
+        "datapoint",
+        "setpoint",
+        "time"
+    )
     readonly_fields = (
         "id",
+        "datapoint",
     )
 
     def timestamp_pretty(self, obj):
         """
         Displays a prettier timestamp format.
         """
-        ts = obj.timestamp
+        ts = obj.time
         if ts is None:
             return "-"
         return datetime_to_pretty_str(ts)
-    timestamp_pretty.admin_order_field = "timestamp"
+    timestamp_pretty.admin_order_field = "time"
     timestamp_pretty.short_description = "Timestamp"
+
+    def has_add_permission(cls, request):
+        """
+        Remove `add` and `save and add another` button.
+        """
+        return False

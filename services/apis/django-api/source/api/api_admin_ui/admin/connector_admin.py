@@ -10,6 +10,22 @@ from api_main.models.datapoint import Datapoint
 from ems_utils.timestamp import datetime_to_pretty_str
 
 
+class AdminWithoutListsOnDelete(admin.ModelAdmin):
+    """
+    A custom admin that does not list every item that is to be deleted.
+    However, this still iterates over all objects so may still require
+    substantial computing resources.
+    """
+    def get_deleted_objects(self, objs, request):
+        """
+        See: https://github.com/django/django/blob/stable/3.1.x/django/contrib/admin/utils.py#L104
+        """
+        orginal_return = super().get_deleted_objects(objs, request)
+        to_delete, model_count, perms_needed, protected = orginal_return
+        to_delete = ["Not listed"]
+        return to_delete, model_count, perms_needed, protected
+
+
 class UsedDatapointsInline(admin.TabularInline):
     """
     Inline view of the active datapoints by a connector.
@@ -100,7 +116,7 @@ class ConnectorLogEntryInline(admin.TabularInline):
 
 
 @admin.register(Connector)
-class ConnectorAdmin(admin.ModelAdmin):
+class ConnectorAdmin(AdminWithoutListsOnDelete):
 
     list_display = ('name', 'added', 'last_changed', 'alive', )
     ordering = ('-name', )
@@ -254,7 +270,7 @@ class ConnectorAdmin(admin.ModelAdmin):
 
 
 @admin.register(ConnectorHeartbeat)
-class ConnectorHeartbeatAdmin(admin.ModelAdmin):
+class ConnectorHeartbeatAdmin(AdminWithoutListsOnDelete):
     """
     Readonly model to search and view heartbeat entries.
     """
@@ -307,7 +323,7 @@ class ConnectorHeartbeatAdmin(admin.ModelAdmin):
 
 
 @admin.register(ConnectorLogEntry)
-class ConnectorLogsAdmin(admin.ModelAdmin):
+class ConnectorLogsAdmin(AdminWithoutListsOnDelete):
     """
     Readonly model to search and view log entries.
     """

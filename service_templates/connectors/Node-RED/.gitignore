@@ -2,6 +2,8 @@
 # Anything that is specific to this service goes here.
 ##############################################################################
 
+# The backup version of the config files.
+*.json.backup
 
 
 ##############################################################################

@@ -1,5 +1,10 @@
 version: '3'
 
+# Use these volumes for development only.
+volumes:
+    django-api-devl-db-pgdata:
+        name: django-api-devl-db-pgdata
+
 services:
 
     django-api:
@@ -20,10 +25,17 @@ services:
             - "DJANGO_DEBUG=${DJANGO_DEBUG}"
             - "DJANGO_ADMINS=${DJANGO_ADMINS}"
             - "DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}"
-            - "FQ_HOSTNAME=${FQ_HOSTNAME}"
+            - "DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}"
+            - "DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME}"
+            - "DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD}"
+            - "DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL}"
             - "SSL_CERT_PEM=${SSL_CERT_PEM}"
             - "SSL_KEY_PEM=${SSL_KEY_PEM}"
-            - "DATABASE_SETTING=${DATABASE_SETTING}"
+            - "DJANGOAPIDB_HOST=${DJANGOAPIDB_HOST}"
+            - "DJANGOAPIDB_PORT=${DJANGOAPIDB_PORT}"
+            - "DJANGOAPIDB_USER=${DJANGOAPIDB_USER}"
+            - "DJANGOAPIDB_PASSWORD=${DJANGOAPIDB_PASSWORD}"
+            - "DJANGOAPIDB_DBNAME=${DJANGOAPIDB_DBNAME}"
             - "N_CMI_WRITE_THREADS=${N_CMI_WRITE_THREADS}"
 
     # Allows local testing.
@@ -34,3 +46,16 @@ services:
         user: "${USER_ID}:${GROUP_ID}"
         ports:
             - "1883:1883"
+
+    django-api-devl-db:
+        container_name: "django-api-devl-db"
+        image: timescale/timescaledb:2.4.1-pg13
+        restart: always
+        ports:
+            - "5432:5432"
+        volumes:
+            - "django-api-devl-db-pgdata:/var/lib/postgresql/data"
+        environment:
+            - "POSTGRES_USER=bemcom"
+            - "POSTGRES_PASSWORD=bemcom"
+            - "POSTGRES_DB=bemcom"

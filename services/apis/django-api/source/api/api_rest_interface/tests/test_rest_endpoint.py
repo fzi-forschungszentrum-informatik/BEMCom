@@ -19,7 +19,8 @@ from api_main.connector_mqtt_integration import ConnectorMQTTIntegration
 from api_main.tests.helpers import connector_factory, datapoint_factory
 from api_main.tests.fake_mqtt import FakeMQTTBroker, FakeMQTTClient
 from api_main.models.datapoint import DatapointValue, DatapointSchedule
-from api_main.models.datapoint import DatapointSetpoint
+from api_main.models.datapoint import DatapointSetpoint, Datapoint
+from api_main.models.connector import Connector
 from ems_utils.timestamp import datetime_from_timestamp
 
 
@@ -83,7 +84,7 @@ class TestRESTEndpoint(TestCase):
 
     TODO: Add test to verify that only active datapoints are returned.
     TODO: Add permission checks for POST/DELETE/PUT endpoints, although this
-          is not super crticial as all endpoints use the same permission
+          is not super critical as all endpoints use the same permission
           setting/setup.
     """
 
@@ -122,19 +123,316 @@ class TestRESTEndpoint(TestCase):
             "max_value": dp.max_value,
             "allowed_values": dp.allowed_values,
             "unit": dp.unit,
-            "connector": dp.connector.name,
+            "connector": {
+                "name": dp.connector.name,
+            },
             "key_in_connector": dp.key_in_connector,
 
         }
         assert request.data == expected_data
+
+    def test_create_datapoint_creates_new_datapoint_and_connector(self):
+        """
+        Test that we can create a datapoint via REST API and that this also
+        creates the corresponding connector.
+        """
+        test_dp_metadata = [{
+            "id": 50002,
+            "type": "sensor",
+            "data_format": "generic_numeric",
+            "short_name": "test_sensor 2",
+            "description": "A sensor datapoint for testing",
+            "min_value": 1.0,
+            "max_value": 2.0,
+            "allowed_values": '[1.0, 2.0]',
+            "unit": "Test Unit",
+            # Note that this format depends on
+            # api_rest_api.serializers.ConnectorSerializer
+            "connector": {
+                "name": "not existing connector",
+            },
+            "key_in_connector": "some__key__in__connector",
+
+        }]
+
+        # First check that the connector does not exist already.
+        # This also implies that the datapoint cannot exist either.
+        for i, dp_metadataset in enumerate(test_dp_metadata):
+            connector_name = dp_metadataset["connector"]["name"]
+            q = Connector.objects.filter(name=connector_name)
+            assert q.count() == 0
+
+        p = Permission.objects.get(codename="add_datapoint")
+        self.user.user_permissions.add(p)
+        response = self.client.post(
+            "/datapoint/",
+            data=json.dumps(test_dp_metadata),
+            content_type="application/json",
+        )
+
+        assert response.status_code == 201
+
+        # Now verify that the connector exists now.
+        for i, dp_metadataset in enumerate(test_dp_metadata):
+            connector_name = dp_metadataset["connector"]["name"]
+            q = Connector.objects.filter(name=connector_name)
+            assert q.count() == 1
+
+        # Finally check that all fields have been updated.
+        for i, dp_metadataset in enumerate(test_dp_metadata):
+            dp = Datapoint.objects.get(id=response.data[i]["id"])
+            for field, actual_value in dp_metadataset.items():
+                if field == "id":
+                    continue
+                expected_value = test_dp_metadata[i][field]
+                expecgted_value = getattr(dp, field)
+                assert actual_value == expected_value
+
+    def test_create_datapoint_creates_new_datapoint_existing_connector(self):
+        """
+        Test that we can create a datapoint via REST API and that this also
+        which uses an existing connector.
+        """
+        test_dp_metadata = [{
+            "id": 50002,
+            "type": "sensor",
+            "data_format": "generic_numeric",
+            "short_name": "test_sensor 4",
+            "description": "A sensor datapoint for testing",
+            "min_value": 1.0,
+            "max_value": 2.0,
+            "allowed_values": '[1.0, 2.0]',
+            "unit": "Test Unit",
+            # Note that this format depends on
+            # api_rest_api.serializers.ConnectorSerializer
+            "connector": {
+                "name":  self.test_connector.name,
+            },
+            "key_in_connector": "some__key__in__connector",
+
+        }]
+
+        # Verify that the connector exists already.
+        for i, dp_metadataset in enumerate(test_dp_metadata):
+            connector_name = dp_metadataset["connector"]["name"]
+            q = Connector.objects.filter(name=connector_name)
+            assert q.count() == 1
+
+        p = Permission.objects.get(codename="add_datapoint")
+        self.user.user_permissions.add(p)
+        response = self.client.post(
+            "/datapoint/",
+            data=json.dumps(test_dp_metadata),
+            content_type="application/json",
+        )
+
+        assert response.status_code == 201
+
+        # Finally check that all fields have been updated.
+        for i, dp_metadataset in enumerate(test_dp_metadata):
+            dp = Datapoint.objects.get(id=response.data[i]["id"])
+            for field, actual_value in dp_metadataset.items():
+                if field == "id":
+                    continue
+                expected_value = test_dp_metadata[i][field]
+                expecgted_value = getattr(dp, field)
+                assert actual_value == expected_value
+
+    def test_create_datapoint_fails_for_existing_datapoint(self):
+        """
+        Verify update cannot create new connectors.
+        """
+        dp = datapoint_factory(self.test_connector)
+        dp.save()
+
+        test_dp_metadata = [{
+            "id": 50001,
+            "short_name": "test_sensor 2 new",
+            # Note that this format depends on
+            # api_rest_api.serializers.ConnectorSerializer
+            "connector": {
+                "name": self.test_connector.name,
+            },
+            "key_in_connector": dp.key_in_connector,
+        }]
+
+        p = Permission.objects.get(codename="add_datapoint")
+        self.user.user_permissions.add(p)
+        response = self.client.post(
+            "/datapoint/",
+            data=json.dumps(test_dp_metadata),
+            content_type="application/json",
+        )
+
+        assert response.status_code == 400
+        assert "datapoint" in response.data[0]
+
+    def test_create_datapoint_forbidden_without_permissions(self):
+        """
+        Verify update cannot create new connectors.
+        """
+        dp = datapoint_factory(self.test_connector)
+        dp.save()
+
+        test_dp_metadata = [{
+            "id": 50001,
+            "short_name": "test_sensor 2 new",
+            # Note that this format depends on
+            # api_rest_api.serializers.ConnectorSerializer
+            "connector": {
+                "name": "not existing connector 2",
+            },
+            "key_in_connector": "some__key__in__connector_2",
+        }]
+
+        response = self.client.post(
+            "/datapoint/",
+            data=json.dumps(test_dp_metadata),
+            content_type="application/json",
+        )
+
+        assert response.status_code == 403
+
+    def test_update_many_datapoint_updates_for_existing(self):
+        """
+        Test that the update_many method can update an existing datapoint.
+        """
+        dp = datapoint_factory(self.test_connector)
+        dp.description = "A sensor datapoint for testing"
+        dp.short_name = "test_sensor 3"
+        dp.unit = "Test Unit"
+        dp.allowed_values = '[1.0, 2.0]'
+        dp.min_value = 1.0
+        dp.max_value = 2.0
+        dp.save()
+
+        test_dp_metadata = [{
+            "id": 50001,
+            "type": "sensor",
+            "data_format": "generic_text",
+            "short_name": "test_sensor 2 new",
+            "description": "A sensor datapoint for testing, but changed.",
+            "min_value": 1.5,
+            "max_value": 2.5,
+            "allowed_values": '[1.0, 2.0, 3.0]',
+            "unit": "Test Unit",
+            # Note that this format depends on
+            # api_rest_api.serializers.ConnectorSerializer
+            "connector": {
+                "name": self.test_connector.name
+            },
+            "key_in_connector": dp.key_in_connector,
+        }]
+
+        p = Permission.objects.get(codename="change_datapoint")
+        self.user.user_permissions.add(p)
+        response = self.client.put(
+            "/datapoint/",
+            data=json.dumps(test_dp_metadata),
+            content_type="application/json",
+        )
+
+        assert response.status_code == 200
+        for i, dp_metadataset in enumerate(response.data):
+            for field, actual_value in dp_metadataset.items():
+                if field == "id":
+                    expected_value = dp.id
+                else:
+                    expected_value = test_dp_metadata[i][field]
+                assert actual_value == expected_value
+
+    def test_update_many_datapoint_forbidden_without_permissions(self):
+        """
+        Verify that a user without sufficient permissions can not update.
+        """
+        dp = datapoint_factory(self.test_connector)
+        dp.save()
+
+        test_dp_metadata = [{
+            "id": 50001,
+            "short_name": "test_sensor 2 new",
+            # Note that this format depends on
+            # api_rest_api.serializers.ConnectorSerializer
+            "connector": {
+                "name": self.test_connector.name
+            },
+            "key_in_connector": dp.key_in_connector,
+        }]
+
+        response = self.client.put(
+            "/datapoint/",
+            data=json.dumps(test_dp_metadata),
+            content_type="application/json",
+        )
+
+        assert response.status_code == 403
+
+    def test_update_many_datapoint_fails_for_unknown_connector(self):
+        """
+        Verify update cannot create new connectors.
+        """
+        dp = datapoint_factory(self.test_connector)
+        dp.save()
+
+        test_dp_metadata = [{
+            "id": 50001,
+            "short_name": "test_sensor 2 new",
+            # Note that this format depends on
+            # api_rest_api.serializers.ConnectorSerializer
+            "connector": {
+                "name": "Totally_new_connector."
+            },
+            "key_in_connector": dp.key_in_connector,
+        }]
+
+        p = Permission.objects.get(codename="change_datapoint")
+        self.user.user_permissions.add(p)
+        response = self.client.put(
+            "/datapoint/",
+            data=json.dumps(test_dp_metadata),
+            content_type="application/json",
+        )
+
+        assert response.status_code == 400
+        assert "connector" in response.data[0]
+
+    def test_update_many_datapoint_fails_for_unknown_datapoint(self):
+        """
+        Verify update cannot create new datapoints.
+        """
+        dp = datapoint_factory(self.test_connector)
+        dp.save()
+
+        test_dp_metadata = [{
+            "id": 50001,
+            "short_name": "test_sensor 2 new",
+            # Note that this format depends on
+            # api_rest_api.serializers.ConnectorSerializer
+            "connector": {
+                "name": self.test_connector.name
+            },
+            "key_in_connector": "totally__new__datapoint__key",
+        }]
+
+        p = Permission.objects.get(codename="change_datapoint")
+        self.user.user_permissions.add(p)
+        response = self.client.put(
+            "/datapoint/",
+            data=json.dumps(test_dp_metadata),
+            content_type="application/json",
+        )
+
+        assert response.status_code == 400
+        assert "datapoint" in response.data[0]
 
     def test_get_datapoint_value_for_sensor(self):
         """
         Request the latest datapoint value msg and check that all expected
         fields are delivered.
         """
+        test_value = "last_value!"
         expected_data = {
-            "value": "last_value!",
+            "value": json.dumps(test_value),
             "timestamp": 1585092224000,
         }
 
@@ -142,8 +440,8 @@ class TestRESTEndpoint(TestCase):
         dp.save()
         dp_value = DatapointValue(
             datapoint = dp,
-            value=expected_data["value"],
-            timestamp=datetime_from_timestamp(expected_data["timestamp"]),
+            value=test_value,
+            time=datetime_from_timestamp(expected_data["timestamp"]),
         )
         dp_value.save()
 
@@ -155,7 +453,7 @@ class TestRESTEndpoint(TestCase):
 
         assert request.data == expected_data
 
-    def test_put_datapoint_value_detail_rejected_for_sensor(self):
+    def test_post_datapoint_value_detail_rejected_for_sensor(self):
         """
         Check that it is not possible to write sensor message from the client.
 
@@ -170,7 +468,7 @@ class TestRESTEndpoint(TestCase):
         # Now put an update for the datapoint and check that the put was
         # denied as expected.
         update_msg = {
-            "value": "last_value!",
+            "value": json.dumps("last_value!"),
             "timestamp": 1585092224000,
         }
         request = self.client.post(
@@ -183,9 +481,9 @@ class TestRESTEndpoint(TestCase):
         # if the user would't have permissions to access the data.
         assert request.status_code == 400
 
-    def test_put_datapoint_value_detail_for_actuator(self):
+    def test_post_datapoint_value_detail_for_actuator(self):
         """
-        Write (PUT) a value message, that should trigger that the corresponding
+        Write (POST) a value message, that should trigger that the corresponding
         message is sent to the message broker and after that also stored in the
         database, from which it should be readable as usual.
 
@@ -213,6 +511,10 @@ class TestRESTEndpoint(TestCase):
         # Now put an update for the datapoint and check that the put was
         # successful.
         expected_msg = {
+            "value": json.dumps("updated_value!"),
+            "timestamp": 1585092224000,
+        }
+        expected_msg_mqtt = {
             "value": "updated_value!",
             "timestamp": 1585092224000,
         }
@@ -239,7 +541,7 @@ class TestRESTEndpoint(TestCase):
 
         # Now that we know the message has been published on the broker,
         # verify it holds the expected information.
-        assert self.mqtt_client.userdata[dp_mqtt_value_topic] == expected_msg
+        assert self.mqtt_client.userdata[dp_mqtt_value_topic] == expected_msg_mqtt
 
         # After the MQTT message has now arrived the updated value should now
         # be available on the REST interface. As above this might happen async,
@@ -247,7 +549,7 @@ class TestRESTEndpoint(TestCase):
         waited_seconds = 0
         while True:
             dp.refresh_from_db()
-            if dp.last_value == expected_msg["value"]:
+            if dp.last_value == expected_msg_mqtt["value"]:
                 break
 
             time.sleep(0.005)
@@ -262,7 +564,7 @@ class TestRESTEndpoint(TestCase):
         )
         assert request.data == expected_msg
 
-    def test_put_datapoint_schedule_detail_rejected_for_sensor(self):
+    def test_post_datapoint_schedule_detail_rejected_for_sensor(self):
         """
         Check that a schedule detail cannot be written for a sensor, as
         this kind of message does only exist for actuators.
@@ -278,12 +580,12 @@ class TestRESTEndpoint(TestCase):
                     {
                         'from_timestamp': None,
                         'to_timestamp': 1564489613491,
-                        'value': "21"
+                        'value': json.dumps(21)
                     },
                     {
                         'from_timestamp': 1564489613491,
                         'to_timestamp': None,
-                        'value': None
+                        'value': json.dumps(None)
                     }
                 ]
         }
@@ -299,17 +601,32 @@ class TestRESTEndpoint(TestCase):
         """
         Check that the schedule of an actuator is returend as expected.
         """
-        expected_data = {
+        test_data = {
             "schedule": [
                 {
                     'from_timestamp': None,
                     'to_timestamp': 1564489613491,
-                    'value': "21"
+                    'value': 21
                 },
                 {
                     'from_timestamp': 1564489613491,
                     'to_timestamp': None,
                     'value': None
+                }
+            ],
+            "timestamp": datetime_from_timestamp(1564489613491),
+        }
+        expected_data = {
+            "schedule": [
+                {
+                    'from_timestamp': None,
+                    'to_timestamp': 1564489613491,
+                    'value': json.dumps(21)
+                },
+                {
+                    'from_timestamp': 1564489613491,
+                    'to_timestamp': None,
+                    'value': json.dumps(None)
                 }
             ],
             "timestamp": 1564489613491,
@@ -320,8 +637,8 @@ class TestRESTEndpoint(TestCase):
 
         dp_schedule = DatapointSchedule(
             datapoint = dp,
-            schedule=expected_data["schedule"],
-            timestamp=datetime_from_timestamp(expected_data["timestamp"]),
+            schedule=test_data["schedule"],
+            time=test_data["timestamp"],
         )
         dp_schedule.save()
 
@@ -334,9 +651,9 @@ class TestRESTEndpoint(TestCase):
 
         assert request.data == expected_data
 
-    def test_put_datapoint_schedule_detail_actuator(self):
+    def test_post_datapoint_schedule_detail_actuator(self):
         """
-        Write (PUT) a schedule message, that should trigger that the
+        Write (POST) a schedule message, that should trigger that the
         corresponding message is sent to the message broker and after that also
         stored in the database, from which it should be readable as usual.
 
@@ -369,7 +686,23 @@ class TestRESTEndpoint(TestCase):
                     {
                         'from_timestamp': None,
                         'to_timestamp': 1564489613491,
-                        'value': "21"
+                        'value': json.dumps(21)
+                    },
+                    {
+                        'from_timestamp': 1564489613491,
+                        'to_timestamp': None,
+                        'value': json.dumps(None)
+                    }
+                ],
+            "timestamp": 1585092224000,
+        }
+        expected_msg_mqtt = {
+            "schedule":
+                [
+                    {
+                        'from_timestamp': None,
+                        'to_timestamp': 1564489613491,
+                        'value': 21
                     },
                     {
                         'from_timestamp': 1564489613491,
@@ -403,7 +736,7 @@ class TestRESTEndpoint(TestCase):
         # Now that we know the message has been published on the broker,
         # verify it holds the expected information.
         received_msg = self.mqtt_client.userdata[dp_mqtt_schedule_topic]
-        assert received_msg == expected_msg
+        assert received_msg == expected_msg_mqtt
 
         # After the MQTT message has now arrived the updated value should now
         # be available on the REST interface. As above this might happen async,
@@ -427,7 +760,7 @@ class TestRESTEndpoint(TestCase):
         )
         assert request.data == expected_msg
 
-    def test_put_datapoint_setpoint_detail_rejected_for_sensor(self):
+    def test_post_datapoint_setpoint_detail_rejected_for_sensor(self):
         """
         Check that a setpoint detail cannot be written for a sensor, as
         this kind of message does only exist for actuators.
@@ -443,7 +776,7 @@ class TestRESTEndpoint(TestCase):
                     {
                         'from_timestamp': None,
                         'to_timestamp': 1564489613491,
-                        'preferred_value': "21",
+                        'preferred_value': json.dumps(21),
                     },
                 ]
         }
@@ -459,17 +792,32 @@ class TestRESTEndpoint(TestCase):
         """
         Check that the setpoint of an actuator is returend as expected.
         """
-        expected_data = {
+        test_data = {
             "setpoint": [
                 {
                     'from_timestamp': None,
                     'to_timestamp': 1564489613491,
-                    'preferred_value': "21",
+                    'preferred_value': 21,
                 },
                 {
                     'from_timestamp': 1564489613491,
                     'to_timestamp': None,
                     'preferred_value': None,
+                }
+            ],
+            "timestamp": datetime_from_timestamp(1564489613491),
+        }
+        expected_data = {
+            "setpoint": [
+                {
+                    'from_timestamp': None,
+                    'to_timestamp': 1564489613491,
+                    'preferred_value': json.dumps(21),
+                },
+                {
+                    'from_timestamp': 1564489613491,
+                    'to_timestamp': None,
+                    'preferred_value': json.dumps(None),
                 }
             ],
             "timestamp": 1564489613491,
@@ -480,8 +828,8 @@ class TestRESTEndpoint(TestCase):
 
         dp_setpoint = DatapointSetpoint(
             datapoint = dp,
-            setpoint=expected_data["setpoint"],
-            timestamp=datetime_from_timestamp(expected_data["timestamp"]),
+            setpoint=test_data["setpoint"],
+            time=test_data["timestamp"],
         )
         dp_setpoint.save()
 
@@ -494,9 +842,9 @@ class TestRESTEndpoint(TestCase):
 
         assert request.data == expected_data
 
-    def test_put_datapoint_setpoint_detail_for_actuator(self):
+    def test_post_datapoint_setpoint_detail_for_actuator(self):
         """
-        Write (PUT) a setpoint message, that should trigger that the
+        Write (POST) a setpoint message, that should trigger that the
         corresponding message is sent to the message broker and after that also
         stored in the database, from which it should be readable as usual.
 
@@ -529,7 +877,18 @@ class TestRESTEndpoint(TestCase):
                     {
                         'from_timestamp': None,
                         'to_timestamp': 1564489613491,
-                        'preferred_value': "21",
+                        'preferred_value': json.dumps(21),
+                    },
+                ],
+            "timestamp": 1585092224000,
+        }
+        expected_msg_mqtt = {
+            "setpoint":
+                [
+                    {
+                        'from_timestamp': None,
+                        'to_timestamp': 1564489613491,
+                        'preferred_value': 21,
                     },
                 ],
             "timestamp": 1585092224000,
@@ -558,7 +917,7 @@ class TestRESTEndpoint(TestCase):
         # Now that we know the message has been published on the broker,
         # verify it holds the expected information.
         received_msg = self.mqtt_client.userdata[dp_mqtt_setpoint_topic]
-        assert received_msg == expected_msg
+        assert received_msg == expected_msg_mqtt
 
         # After the MQTT message has now arrived the updated value should now
         # be available on the REST interface. As above this might happen async,

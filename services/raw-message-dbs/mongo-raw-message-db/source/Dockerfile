@@ -1,5 +1,4 @@
-FROM mongo:4.2-bionic
-
+FROM mongo:5.0
 # Install python3 and dependencies for the 
 # apt-get install python3-pip will take roughly 350MB of diskspace.
 # Thus remove the package after we have installed the MQTT client.

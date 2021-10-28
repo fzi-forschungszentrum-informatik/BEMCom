@@ -20,12 +20,20 @@ def clear_datapoint_map(sender, instance, **kwargs):
     TODO: This deserves a test
     """
     cmi = ConnectorMQTTIntegration.get_instance()
+
+    # Prevents errors when the application is not running.
+    if cmi is None:
+        return
+    topic=instance.get_mqtt_topics()["mqtt_topic_datapoint_map"]
     cmi.client.publish(
-        topic=instance.get_mqtt_topics()["mqtt_topic_datapoint_map"],
+        topic=topic,
         payload=json.dumps({"sensor": {}, "actuator": {}}),
         qos=2,
         retain=True
     )
+    cmi.prom_published_messages_to_connector_counter.labels(
+        topic=topic, connector=sender.name
+    ).inc()
 
 
 @receiver(signals.post_save, sender=Datapoint)
@@ -48,6 +56,9 @@ def update_connector_mqtt_integration_settings(sender, instance, **kwargs):
     if sender == Connector:
         if instance.name != special_connector_name:
             cmi = ConnectorMQTTIntegration.get_instance()
+            # Prevents errors when the application is not running.
+            if cmi is None:
+                return
             cmi.update_topics()
             cmi.update_subscriptions()
 
@@ -60,6 +71,9 @@ def update_connector_mqtt_integration_settings(sender, instance, **kwargs):
             uf = None
         if uf is None or "id" in uf:
             cmi = ConnectorMQTTIntegration.get_instance()
+            # Prevents errors when the application is not running.
+            if cmi is None:
+                return
             cmi.update_topics()
             cmi.update_subscriptions()
 
@@ -85,6 +99,10 @@ def trigger_datapoint_map_update(sender, instance, **kwargs):
     )
 
     cmi = ConnectorMQTTIntegration.get_instance()
+    # Prevents errors when the application is not running.
+    if cmi is None:
+        return
+
     if sender == Connector:
         if instance.name == special_connector_name:
             return
@@ -122,6 +140,9 @@ def trigger_controlled_datapoints_update(sender, instance, **kwargs):
     TODO: This needs a test.
     """
     cmi = ConnectorMQTTIntegration.get_instance()
+    # Prevents errors when the application is not running.
+    if cmi is None:
+        return
     if sender == Controller:
         cmi.create_and_send_controlled_datapoints(controller=instance)
 

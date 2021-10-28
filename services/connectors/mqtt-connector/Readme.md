@@ -4,8 +4,6 @@ This is a connector to integrate data that is published on some MQTT broker (<u>
 
 Sending values to actuator datapoints, i.e. to publish on the broker is currently not implemented.
 
-<font color="red">TODO: Fix  issues here with push to raw message DB.</font>
-
 
 
 ### Supported Devices/Gateways
@@ -104,11 +102,10 @@ Follow the following steps while contributing to the connector:
 
 * git add, commit and push.
 
-
-
 ### Changelog
 
-| Tag   | Changes                                    |
-| ----- | ------------------------------------------ |
-| 0.0.1 | Some work in progress development version. |
-| 0.1.0 | First productive version.                  |
+| Tag   | Changes                                                      |
+| ----- | ------------------------------------------------------------ |
+| 0.0.1 | Some work in progress development version.                   |
+| 0.1.0 | First productive version.                                    |
+| 0.4.0 | Update to python connector template 0.4.0 (Datapoint Value and Available Datapoint messages and a can now contain any JSON data type as value.) |

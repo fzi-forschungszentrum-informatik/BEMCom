@@ -1,1 +1,2 @@
-docker build ./source -t bemcom/fronius-solar-api-connector:0.2.0
+TAG=$(cat source/connector/main.py | grep "__version__=" | cut -d "=" -f 2 | tr -d '"')
+docker build ./source -t bemcom/fronius-solar-api-connector:$TAG

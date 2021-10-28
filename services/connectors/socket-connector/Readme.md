@@ -60,7 +60,9 @@ Follow the following steps while contributing to the connector:
 
 * Ensure all relevant tests exist and all of those are passed before preceding. 
 
-* Update the image name and tag in  [./build_docker_image.sh](./build_docker_image.sh) and execute the shell script to build an updated image. 
+* Update the version number (aka. the tag) in [source/connector/main.py](./source/connector/main.py) before building the docker image. 
+
+* Execute [./build_docker_image.sh](./build_docker_image.sh) to build an updated image. 
 
   ```bash
   # This will fail if not all tests are passed.
@@ -75,6 +77,7 @@ Follow the following steps while contributing to the connector:
 
 ### Changelog
 
-| Tag   | Changes                   |
-| ----- | ------------------------- |
-| 0.1.0 | First productive version. |
+| Tag   | Changes                                                      |
+| ----- | ------------------------------------------------------------ |
+| 0.1.0 | First productive version.                                    |
+| 0.4.0 | Update to python connector template 0.4.0 (Datapoint Value and Available Datapoint messages and a can now contain any JSON data type as value.) |

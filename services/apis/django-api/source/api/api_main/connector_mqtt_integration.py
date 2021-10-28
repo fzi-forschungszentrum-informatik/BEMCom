@@ -1,4 +1,6 @@
+import sys
 import json
+import socket
 import logging
 from time import sleep
 from threading import Thread, Lock, Event
@@ -7,10 +9,11 @@ from django.conf import settings
 from django.db import IntegrityError
 from paho.mqtt.client import Client
 from cachetools.func import ttl_cache
+from prometheus_client import Counter
 
 from .models.datapoint import Datapoint, DatapointValue
-from .models.datapoint import DatapointSetpoint, DatapointSchedule
 from .models.connector import Connector, ConnectorHeartbeat, ConnectorLogEntry
+from .models.datapoint import DatapointSetpoint, DatapointSchedule
 from .models.controller import Controller, ControlledDatapoint
 from ems_utils.timestamp import datetime_from_timestamp
 
@@ -64,6 +67,21 @@ class ConnectorMQTTIntegration():
             "This might take a few minutes."
         )
 
+        self.prom_received_messages_from_connector_counter = Counter(
+            "bemcom_djangoapi_mqtt_messages_received_total",
+            "Total number of MQTT messages the connector_mqtt_integration "
+            "script of the BEMCom Django-API service has received (and thus "
+            "also processed.",
+            ["topic", "connector"]
+        )
+        self.prom_published_messages_to_connector_counter = Counter(
+            "bemcom_djangoapi_mqtt_messages_published_total",
+            "Total number of MQTT messages the connector_mqtt_integration "
+            "script of the BEMCom Django-API service has published",
+            ["topic", "connector"]
+        )
+
+
         # The configuration for connecting to the broker.
         connect_kwargs = {
             'host': settings.MQTT_BROKER['host'],
@@ -80,7 +98,7 @@ class ConnectorMQTTIntegration():
                 "N_CMI_WRITE_THREADS must be int larger then zero as we need "
                 "at least one thread to write the MQTT messages to DB."
             )
-        
+
         # Locks and queue for the message_handle_worker threads.
         self.message_queue = []
         self.message_queue_lock = Lock()
@@ -121,7 +139,14 @@ class ConnectorMQTTIntegration():
         self.update_topics()
 
         # Initial connection to broker.
-        self.client.connect(**connect_kwargs)
+        try:
+            self.client.connect(**connect_kwargs)
+        except (socket.gaierror, OSError):
+            logger.error(
+                "Cannot connect to MQTT broker: %s. Aborting startup.",
+                connect_kwargs
+            )
+            sys.exit(1)
 
         # Start loop in background process.
         self.client.loop_start()
@@ -309,6 +334,9 @@ class ConnectorMQTTIntegration():
                 qos=2,
                 retain=True
             )
+            self.prom_published_messages_to_connector_counter.labels(
+                topic=topic, connector=connector.name
+            ).inc()
 
             logger.debug("Leaving create_and_send_datapoint_map method")
 
@@ -445,7 +473,20 @@ class ConnectorMQTTIntegration():
             topics = self.topics
 
             connector, message_type = topics[msg.topic]
+
+            # Apparently there are situations, where directly after the
+            # connector has been created, it is not existing in DB yet.
+            # Thus wait a bit and hope it appears.
+            try:
+                connector.refresh_from_db()
+            except Connector.DoesNotExist:
+                sleep(1)
+                connector.refresh_from_db()
+
             payload = json.loads(msg.payload)
+            self.prom_received_messages_from_connector_counter.labels(
+                topic=msg.topic, connector=connector.name
+            ).inc()
             if message_type == "mqtt_topic_datapoint_value_message":
                 # If this message has reached that point, i.e. has had a
                 # topic entry it means that the Datapoint object must exist, as
@@ -473,13 +514,13 @@ class ConnectorMQTTIntegration():
                         try:
                             DatapointValue(
                                 datapoint=datapoint,
-                                timestamp=timestamp,
+                                time=timestamp,
                                 value=payload["value"],
                             ).save()
                         except IntegrityError:
                             dp_value = DatapointValue.objects.get(
                                 datapoint=datapoint,
-                                timestamp=timestamp,
+                                time=timestamp,
                             )
                             dp_value.value = payload["value"]
                             dp_value.save()
@@ -518,13 +559,13 @@ class ConnectorMQTTIntegration():
                         try:
                             DatapointSchedule(
                                 datapoint=datapoint,
-                                timestamp=timestamp,
+                                time=timestamp,
                                 schedule=payload["schedule"],
                             ).save()
                         except IntegrityError:
                             dp_schedule = DatapointSchedule.objects.get(
                                 datapoint=datapoint,
-                                timestamp=timestamp,
+                                time=timestamp,
                             )
                             dp_schedule.schedule = payload["schedule"]
                             dp_schedule.save()
@@ -560,13 +601,13 @@ class ConnectorMQTTIntegration():
                         try:
                             DatapointSetpoint(
                                 datapoint=datapoint,
-                                timestamp=timestamp,
+                                time=timestamp,
                                 setpoint=payload["setpoint"],
                             ).save()
                         except IntegrityError:
                             dp_setpoint = DatapointSetpoint.objects.get(
                                 datapoint=datapoint,
-                                timestamp=timestamp,
+                                time=timestamp,
                             )
                             dp_setpoint.setpoint = payload["setpoint"]
                             dp_setpoint.save()
