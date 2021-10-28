@@ -2,6 +2,9 @@
 # -*- coding: utf-8 -*-
 """
 """
+
+__version__="0.0.1"
+
 import os
 import json
 import logging
@@ -16,9 +19,9 @@ from ocpp.routing import on
 from ocpp.v16 import ChargePoint as OCPPChargePoint
 from ocpp.v16 import call_result
 from ocpp.v16 import call
-from pyconnector_template.pyconector_template import SensorFlow as SFTemplate
-from pyconnector_template.pyconector_template import ActuatorFlow as AFTemplate
-from pyconnector_template.pyconector_template import Connector as CTemplate
+from pyconnector_template.pyconnector_template import SensorFlow as SFTemplate
+from pyconnector_template.pyconnector_template import ActuatorFlow as AFTemplate
+from pyconnector_template.pyconnector_template import Connector as CTemplate
 from pyconnector_template.dispatch import DispatchInInterval
 from pyconnector_template.dispatch import DispatchOnce
 
@@ -226,13 +229,18 @@ class ActuatorFlow(AFTemplate):
         """
         ocpp_method = datapoint_key.split("__")[0]
         # Call write_method with parsed (aka. decoded)
-        command_method = getattr(self.cp, ocpp_method)  
+        command_method = getattr(self.cp, ocpp_method)
+
+        # todo: Hier bricht das Programm ab
+        # Fehlermeldung:
+        # RuntimeWarning: coroutine 'ChargePoint.execute_send_charging_profile' was never awaited
+        # im Traceback:
+        #  AttributeError: 'Connector' object has no attribute 'loop_server'
+
 
         future = asyncio.run_coroutine_threadsafe(command_method(datapoint_value), self.loop_server)
         result = future.result()      
-        logger.debug(
-            result
-        )
+
 
 
 class ChargePoint(OCPPChargePoint):
@@ -244,9 +252,10 @@ class ChargePoint(OCPPChargePoint):
     @on('BootNotification')
     def on_boot_notification(self, charge_point_vendor, charge_point_model, **kwargs):
         message = {
-            "message": "BootNotification",
+            "BootNotification" : {
             "charge_point_vendor": charge_point_vendor,
             "charge_point_model": charge_point_model
+            }
         }
         logger.debug(f'Charging station sent boot notification. Vendor: {charge_point_vendor}, Model: {charge_point_model}')
         self.sensor_flow_handler(message)
@@ -260,26 +269,26 @@ class ChargePoint(OCPPChargePoint):
     @on('MeterValues')
     def on_meter_value(self, connector_id, meter_value):
         message = {
-            "message": "MeterValues",
-            "connector_id": connector_id,
-            "meter_value": meter_value
+            "MeterValues" : {
+                "connector_id": {
+                    str(connector_id): {
+                        "meter_value": meter_value
+                    }
+                }
+            }
         }
         self.sensor_flow_handler(message)
         return call_result.MeterValuesPayload()
 
     @on('Heartbeat')
     def on_heartbeat(self):
-        self.sensor_flow_handler({"message": "Heartbeat"})
+        self.sensor_flow_handler({"Heartbeat": "alive"})
         return call_result.HeartbeatPayload(
             current_time=datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S') + "Z"
         )
 
     @on('Authorize')
     def on_authorize(self, id_tag):
-        message = {
-            "message": "Authorize",
-            "id_tag": id_tag
-        }
         return call_result.AuthorizePayload(
             id_tag_info={
                 "status": 'Accepted'
@@ -302,20 +311,19 @@ class ChargePoint(OCPPChargePoint):
     @on('StatusNotification')
     def on_status_notification(self, connector_id, error_code, status, timestamp):
         message = {
-            "message": "StatusNotification",
+            "StatusNotification": {
             "connector_id": connector_id,
             "error_code": error_code,
             "status": status
+            }
         }
         self.sensor_flow_handler(message)
 
-        print(connector_id, error_code, status, timestamp)
         return call_result.StatusNotificationPayload()
 
     @on('LogStatusNotification')
     def on_log_status_notification(self, status, request_id, **kwargs):
-        print(f"status is {status} \n")
-        #print(status, request_id)
+        pass
 
     async def execute_unlock_connector(self):
         request = call.UnlockConnectorPayload(
@@ -335,7 +343,6 @@ class ChargePoint(OCPPChargePoint):
             "schedule_start": response.schedule_start,
             "charging_schedule": response.charging_schedule
         }
-        print(composite_schedule)
         return composite_schedule
 
     async def execute_trigger_message(self):
@@ -433,7 +440,8 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
 
         load_dotenv(find_dotenv(), verbose=True, override=False)
         self.ocpp_port = os.getenv("OCPP_PORT")
-        self.ocpp_config = os.getenv("OCPP_CONFIG")
+        config_str = os.getenv("OCPP_CONFIG")
+        self.ocpp_config = self.parse_ocpp_config(config_str)
 
         # parse actuator datapoints from config
         self.ocpp_command_method_names = [
@@ -453,15 +461,12 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
             "actuator": self.compute_actuator_datapoints()
         }
 
-        self.sync_wrapper_run_ocpp_server()
         CTemplate.__init__(self, *args, **kwargs)
 
-        # DEBUG: Wird diese Methode hier aufgerufen, startet der Server erfolgreich und die Verbindung wird von der Ladetstation aufgebaut.
-        # Außerdem wird die BootNotifcation im richtigen Format von der Alfen empfangen. Das Programm bricht dann ab, wenn die available_datapoints geupdatet werden sollen
-        # l. 839 in pyconnector_template: available_datapoints_old = self.available_datapoints
-        # AttributeError: 'Connector' has no attriute 'available_datapoints'
-        # Grund: Der Server soll nicht beim Initiatlisieren starten (wie hier in der nächsten Zeile), sondern in der run-Methode der Elternklasse CTemplate
-       # self.sync_wrapper_run_ocpp_server()
+    @staticmethod
+    def parse_ocpp_config(config_str):
+        config = json.loads(config_str)
+        return config
 
     def compute_actuator_datapoints(self):
         actuator_temp = {}
@@ -472,10 +477,9 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
 
     def sync_wrapper_run_ocpp_server(self):
         logger.info('Starting Server by Sync Wrapper')
-        #time.sleep(60)
         asyncio.run(self.run_ocpp_server())
 
-    def loop_in_thread_server(self, loop):
+    def loop_in_thread_server(self, loop): #outdated
         asyncio.set_event_loop(loop)
         loop.run_until_complete(self.run_ocpp_server())
 
@@ -510,5 +514,5 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
 
 
 if __name__ == "__main__":
-    connector = Connector()
+    connector = Connector(version=__version__)
     connector.run()
