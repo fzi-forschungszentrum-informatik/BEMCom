@@ -9,4 +9,4 @@ RUN pip install -r /source/requirements.txt
 COPY ./connector/ /source/connector/
 
 # Run all tests to verify the connector is ok.
-# RUN pytest /source/connector/
+#RUN pytest /source/connector/

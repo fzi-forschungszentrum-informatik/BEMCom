@@ -6,7 +6,7 @@ import os
 import json
 import logging
 from re import L
-
+import time
 
 from dotenv import load_dotenv, find_dotenv
 import asyncio
@@ -23,8 +23,9 @@ from pyconnector_template.dispatch import DispatchInInterval
 from pyconnector_template.dispatch import DispatchOnce
 
 
-logger = logging.getLogger("pyconnector")
-logger.setLevel(os.getenv('LOGLEVEL'))
+LOGFORMAT = '%(asctime)s-%(funcName)s-%(levelname)s: %(message)s'
+logging.basicConfig(format=LOGFORMAT, level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 class SensorFlow(SFTemplate):
     """
@@ -247,12 +248,7 @@ class ChargePoint(OCPPChargePoint):
             "charge_point_vendor": charge_point_vendor,
             "charge_point_model": charge_point_model
         }
-        logger.debug(
-            "Charging station sent boot notification %s,",
-            *(
-                message
-            )
-        )
+        logger.debug(f'Charging station sent boot notification. Vendor: {charge_point_vendor}, Model: {charge_point_model}')
         self.sensor_flow_handler(message)
 
         return call_result.BootNotificationPayload(
@@ -433,6 +429,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
     """
 
     def __init__(self, *args, **kwargs):
+        logger.debug('Connector init starts')
 
         load_dotenv(find_dotenv(), verbose=True, override=False)
         self.ocpp_port = os.getenv("OCPP_PORT")
@@ -456,8 +453,15 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
             "actuator": self.compute_actuator_datapoints()
         }
 
+        self.sync_wrapper_run_ocpp_server()
         CTemplate.__init__(self, *args, **kwargs)
 
+        # DEBUG: Wird diese Methode hier aufgerufen, startet der Server erfolgreich und die Verbindung wird von der Ladetstation aufgebaut.
+        # Außerdem wird die BootNotifcation im richtigen Format von der Alfen empfangen. Das Programm bricht dann ab, wenn die available_datapoints geupdatet werden sollen
+        # l. 839 in pyconnector_template: available_datapoints_old = self.available_datapoints
+        # AttributeError: 'Connector' has no attriute 'available_datapoints'
+        # Grund: Der Server soll nicht beim Initiatlisieren starten (wie hier in der nächsten Zeile), sondern in der run-Methode der Elternklasse CTemplate
+       # self.sync_wrapper_run_ocpp_server()
 
     def compute_actuator_datapoints(self):
         actuator_temp = {}
@@ -467,7 +471,8 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         return actuator_temp
 
     def sync_wrapper_run_ocpp_server(self):
-        logger.debug('Starting Server by DeviceDispatcher')
+        logger.info('Starting Server by Sync Wrapper')
+        #time.sleep(60)
         asyncio.run(self.run_ocpp_server())
 
     def loop_in_thread_server(self, loop):
