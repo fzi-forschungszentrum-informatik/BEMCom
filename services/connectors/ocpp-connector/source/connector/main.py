@@ -236,10 +236,11 @@ class ActuatorFlow(AFTemplate):
         # RuntimeWarning: coroutine 'ChargePoint.execute_send_charging_profile' was never awaited
         # im Traceback:
         #  AttributeError: 'Connector' object has no attribute 'loop_server'
-
-
-        future = asyncio.run_coroutine_threadsafe(command_method(datapoint_value), self.loop_server)
-        result = future.result()      
+        #loop = asyncio.get_event_loop()
+        #loop.run_until_complete(command_method, datapoint_value)
+        asyncio.run(command_method(datapoint_value))
+       # future = asyncio.run_coroutine_threadsafe(command_method(datapoint_value), self.loop_server)
+       # result = future.result()
 
 
 
@@ -353,20 +354,28 @@ class ChargePoint(OCPPChargePoint):
         response = await self.call(request)
 
     async def execute_send_charging_profile(self, value):
-        charging_profile = {"ChargingSchedule": {
+        charging_profile = {
+            "chargingProfileId":int(time.time()),
+            "stackLevel":0,
+            "chargingProfilePurpose": "TxDefaultProfile",
+            "chargingProfileKind": "Relative",
+            "chargingSchedule": {
             'chargingRateUnit':'W',
-            'chargingSchedulePeriod': {
-                'startPeriod': datetime.now().isoformat(),
+            'chargingSchedulePeriod':  [
+                {
+                'startPeriod': 0,
                 'limit':float(value)
-            }
+                },
+                ]
+
         }}
         request = call.SetChargingProfilePayload(
             connector_id=1, cs_charging_profiles=charging_profile)
-        response = await self.call(request)
-        if response.status == 'Accepted':
-            return 'Profile acceped by charging station'
-        else:
-            return 'Profile not acceped by charging station'
+
+        loop = asyncio.get_event_loop()
+        task = loop.create_task(self.call(request))
+        # The response of the charging station (and return value of self.call() should be 'Accepted'. Can be used for logging
+        # but respose = await task doesn't work
 
 
 class Connector(CTemplate, SensorFlow, ActuatorFlow):
@@ -479,9 +488,6 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         logger.info('Starting Server by Sync Wrapper')
         asyncio.run(self.run_ocpp_server())
 
-    def loop_in_thread_server(self, loop): #outdated
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(self.run_ocpp_server())
 
     async def run_ocpp_server(self):
         self.server = await websockets.serve(
