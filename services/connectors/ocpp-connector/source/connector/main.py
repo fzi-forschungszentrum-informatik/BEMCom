@@ -3,7 +3,7 @@
 """
 """
 
-__version__="0.0.1"
+__version__="0.2.1"
 
 import os
 import json
@@ -22,13 +22,18 @@ from ocpp.v16 import call
 from pyconnector_template.pyconnector_template import SensorFlow as SFTemplate
 from pyconnector_template.pyconnector_template import ActuatorFlow as AFTemplate
 from pyconnector_template.pyconnector_template import Connector as CTemplate
-from pyconnector_template.dispatch import DispatchInInterval
 from pyconnector_template.dispatch import DispatchOnce
 
+logger = logging.getLogger("pyconnector")
+logging.basicConfig(level=logging.INFO) # ignoring environment variables for now
 
-LOGFORMAT = '%(asctime)s-%(funcName)s-%(levelname)s: %(message)s'
-logging.basicConfig(format=LOGFORMAT, level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+
+logging.getLogger('ocpp').setLevel(level=logging.INFO)
+logging.getLogger('ocpp').addHandler(logging.StreamHandler())
+
+# LOGFORMAT = '%(asctime)s-%(funcName)s-%(levelname)s: %(message)s'
+# logging.basicConfig(format=LOGFORMAT, level=logging.INFO)
+# logger = logging.getLogger(__name__)
 
 class SensorFlow(SFTemplate):
     """
@@ -230,17 +235,7 @@ class ActuatorFlow(AFTemplate):
         ocpp_method = datapoint_key.split("__")[0]
         # Call write_method with parsed (aka. decoded)
         command_method = getattr(self.cp, ocpp_method)
-
-        # todo: Hier bricht das Programm ab
-        # Fehlermeldung:
-        # RuntimeWarning: coroutine 'ChargePoint.execute_send_charging_profile' was never awaited
-        # im Traceback:
-        #  AttributeError: 'Connector' object has no attribute 'loop_server'
-        #loop = asyncio.get_event_loop()
-        #loop.run_until_complete(command_method, datapoint_value)
         asyncio.run(command_method(datapoint_value))
-       # future = asyncio.run_coroutine_threadsafe(command_method(datapoint_value), self.loop_server)
-       # result = future.result()
 
 
 
@@ -269,16 +264,27 @@ class ChargePoint(OCPPChargePoint):
 
     @on('MeterValues')
     def on_meter_value(self, connector_id, meter_value):
-        message = {
-            "MeterValues" : {
-                "connector_id": {
-                    str(connector_id): {
-                        "meter_value": meter_value
+        if type(meter_value) == list:
+            meter_value = meter_value[-1] # if meter values are provided as a list, take only last entry
+
+        if 'sampled_value' in meter_value:
+            for m in meter_value['sampled_value']:
+                if 'phase' in m:
+                    msg = {
+                    m['measurand'] : {
+                        m['phase']: {
+                        m['unit'] : m['value']
+                        }
                     }
                 }
-            }
-        }
-        self.sensor_flow_handler(message)
+                else:
+                    msg = {
+                        m['measurand'] : {
+                            m['unit'] : m['value']
+                        }
+                    }
+                self.sensor_flow_handler(msg)
+
         return call_result.MeterValuesPayload()
 
     @on('Heartbeat')
@@ -326,11 +332,24 @@ class ChargePoint(OCPPChargePoint):
     def on_log_status_notification(self, status, request_id, **kwargs):
         pass
 
+    @on('CompositeSchedule')
+    def on_composeite_schedule(self, status, schedule_start, charging_schedule):
+        message = {
+            "CompositeSchedule": {
+                "status": status,
+                "schedule_start": schedule_start,
+                "charging_schedule": charging_schedule
+            }
+        }
+        self.sensor_flow_handler(message)
+        return call_result.GetCompositeSchedulePayload(status='Accepted')
+
     async def execute_unlock_connector(self):
         request = call.UnlockConnectorPayload(
             connector_id=1
         )
-        response = await self.call(request)
+        loop = asyncio.get_event_loop()
+        task = loop.create_task(self.call(request))
 
     async def execute_get_composite_schedule(self):
         request = call.GetCompositeSchedulePayload(
@@ -338,20 +357,37 @@ class ChargePoint(OCPPChargePoint):
             duration=5,
             charging_rate_unit="W"
         )
-        response = await self.call(request)
-        composite_schedule = {
-            "status": response.status,
-            "schedule_start": response.schedule_start,
-            "charging_schedule": response.charging_schedule
-        }
-        return composite_schedule
+        loop = asyncio.get_event_loop()
+        task = loop.create_task(self.call(request))
 
-    async def execute_trigger_message(self):
+
+    async def execute_trigger_message(self, value=4):
+        """
+        Allowed values TriggerMessage:
+
+        "BootNotification",
+        "DiagnosticsStatusNotification",
+        "FirmwareStatusNotification",
+        "Heartbeat",
+        "MeterValues",
+        "StatusNotification"
+        """
+        switcher = {
+            0: "BootNotification",
+            1: "DiagnosticsStatusNotification",
+            2: "FirmwareStatusNotification",
+            3: "Heartbeat",
+            4: "MeterValues",
+            5: "StatusNotification"
+        }
+        requested_message = switcher[value]
+
         request = call.TriggerMessagePayload(
-            requested_message='MeterValues',
+            requested_message=requested_message,
             connector_id=1
         )
-        response = await self.call(request)
+        loop = asyncio.get_event_loop()
+        task = loop.create_task(self.call(request))
 
     async def execute_send_charging_profile(self, value):
         charging_profile = {
