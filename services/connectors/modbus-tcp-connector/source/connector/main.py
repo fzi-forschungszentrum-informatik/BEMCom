@@ -652,9 +652,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         self.max_retries = int(os.getenv("MODBUS_MAX_RETRIES") or 3)
         self.retry_wait = int(os.getenv("MODBUS_RETRY_WAIT_SECONDS") or 15)
         self.poll_break = float(os.getenv("MODBUS_POLL_BREAK") or 0)
-        self.disconnect_between_polls = False
-        if os.getenv("MODBUS_DISCONNECT_BETWEEN_POLLS") == "TRUE":
-            self.disconnect_between_polls = True
+        self.disconnect_between_polls = os.getenv("MODBUS_DISCONNECT_BETWEEN_POLLS") == "TRUE"
 
         # This lock should prevent that reading and writing operations
         # intervene with each other. Especially if connections are disconnected
