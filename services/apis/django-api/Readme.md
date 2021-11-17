@@ -33,7 +33,7 @@ This is the reference implementation for an BEMCom API service.
 | DJANGOAPIDB_USER          | johndoe                                           | The username used for authentication at TimescaleDB. Defaults to `bemcom`. |
 | DJANGOAPIDB_PASSWORD      | VerySecret123                                     | The password used for authentication at TimescaleDB. Defaults to `bemcom`. |
 | DJANGOAPIDB_DBNAME        | bemcom                                            | The name of the of the database inside TimescaleDB to store the data in. Defaults to `bemcom` |
-| N_CMI_WRITE_THREADS       | 1                                                 | The number of parallel threads the api_main/connector_mqtt_integration.py script uses to push incomming MQTT messages into the Database. This must be an integer. Defaults to 1 as SQLite DBs don't support parallel read or write operations. For TimescaleDBs Values like 32 or above give a significant increase in write throughput. |
+| N_ATD_WRITE_THREADS       | 1                                                 | The number of parallel threads the api_main/mqtt_integration.py MqttToDb class uses to push incomming MQTT messages into the Database. This must be an integer. Defaults to 1 as SQLite DBs don't support parallel read or write operations. For TimescaleDBs Values like 32 or above give a significant increase in write throughput. |
 
 
 ##### Volumes
@@ -122,8 +122,11 @@ docker run --rm -v ${PWD}:/data -u "$(id -u):$(id -g)" --name django-db-backup b
 * [ ] Alerting (Prom AlertManager) if datapoint values have certain values or have not been updated for a certain time.
 * [ ] Document return objects and codes for errors of REST interface.
 * [ ] Add functionality to disable controllers and the history DB to support new users.
-* [ ] Add flag `CMI_ACTIVATED` and change default values for `CMI_N_WRITE_THREADS` to 1 for SQLite and 32 for Timescale.
+* [ ] Add Flags like STORE_VALUE_MESSAGES
 * [ ] Add Websocket Push Interface.
+  * [ ] Fix communication between ApiMqttIntegration and MqttToDb and reenable the tests for mqtt_integration.
+  * [ ] Disable last_* fields in datapoint model.
+
 * [ ] Fix adding Controller Admin Pages, there seems to be while defining controlled_datapoints.
 * [ ] Extend documentation:
   * [ ] REST and UI Endpoints

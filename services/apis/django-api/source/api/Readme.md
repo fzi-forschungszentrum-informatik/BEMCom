@@ -8,7 +8,7 @@ Contains the core elements of the API service:
 
 * The settings holding the configuration of the service incl. parsing from environment variables.
 * Database models and migrations.
-* The logic to communicate with other services over MQTT (lives in`connector_mqtt_integration.py`) and the signals that trigger automatic MQTT message updates on configuration changes. 
+* The logic to communicate with other services over MQTT (lives in`mqtt_integration.py`) and the signals that trigger automatic MQTT message updates on configuration changes. 
 
 ### api_admin_ui
 

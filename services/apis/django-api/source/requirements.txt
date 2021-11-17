@@ -20,7 +20,7 @@ python-dotenv==0.17.*
 daphne==3.0.*
 whitenoise==5.2.*
 
-# To speed up ConnectorMQTTIntegration
+# To speed up MQTT integration
 cachetools==4.2.*
 
 # Database engines

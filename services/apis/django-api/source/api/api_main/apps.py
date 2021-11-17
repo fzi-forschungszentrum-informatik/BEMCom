@@ -9,12 +9,12 @@ logger = logging.getLogger(__name__)
 
 
 class ApiMainConfig(AppConfig):
-    name = 'api_main'
+    name = "api_main"
 
     def ready(self):
         import api_main.signals
 
-        if 'runserver' in sys.argv or "daphne" in sys.argv[0]:
+        if "runserver" in sys.argv or "daphne" in sys.argv[0]:
             logger.info("Starting up the API main module.")
 
             # Report which database is used so people have a chance to
@@ -24,10 +24,11 @@ class ApiMainConfig(AppConfig):
             else:
                 logger.info("Using TimescaleDB.")
 
-            from .connector_mqtt_integration import ConnectorMQTTIntegration
+            from .mqtt_integration import ApiMqttIntegration
+
             try:
-                ConnectorMQTTIntegration()
-            except ConnectionRefusedError:
+                ApiMqttIntegration()
+            except ApiMqttIntegration:
                 logger.critical("")
                 logger.critical(
                     "Could not connect to MQTT broker of backend. Exiting"

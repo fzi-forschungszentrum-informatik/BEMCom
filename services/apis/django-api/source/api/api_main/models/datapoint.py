@@ -132,7 +132,7 @@ class DatapointValue(DatapointValueTemplate):
         """
         Disable the inherited save method from ems_utils.
         We update the last_* fields of Datapoint directly in
-        ConnectorMQTTIntegration for better performance.
+        MqttToDb for better performance.
         """
         original_value = self.value
         if isinstance(self.value, bool):
@@ -193,7 +193,7 @@ class DatapointSchedule(DatapointScheduleTemplate):
         """
         Disable the inherited save method from ems_utils.
         We update the last_* fields of Datapoint directly in
-        ConnectorMQTTIntegration for better performance.
+        MqttToDb for better performance.
         """
         models.Model.save(self, *args, **kwargs)
 
@@ -221,6 +221,6 @@ class DatapointSetpoint(DatapointSetpointTemplate):
         """
         Disable the inherited save method from ems_utils.
         We update the last_* fields of Datapoint directly in
-        ConnectorMQTTIntegration for better performance.
+        MqttToDb for better performance.
         """
         models.Model.save(self, *args, **kwargs)

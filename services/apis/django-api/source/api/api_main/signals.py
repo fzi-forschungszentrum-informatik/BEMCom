@@ -6,7 +6,7 @@ from django.dispatch import receiver
 from .models.connector import Connector
 from .models.datapoint import Datapoint
 from .models.controller import Controller, ControlledDatapoint
-from .connector_mqtt_integration import ConnectorMQTTIntegration
+from .mqtt_integration import ApiMqttIntegration
 
 
 @receiver(signals.pre_delete, sender=Connector)
@@ -19,19 +19,19 @@ def clear_datapoint_map(sender, instance, **kwargs):
 
     TODO: This deserves a test
     """
-    cmi = ConnectorMQTTIntegration.get_instance()
+    ami = ApiMqttIntegration.get_instance()
 
     # Prevents errors when the application is not running.
-    if cmi is None:
+    if ami is None:
         return
-    topic=instance.get_mqtt_topics()["mqtt_topic_datapoint_map"]
-    cmi.client.publish(
+    topic = instance.get_mqtt_topics()["mqtt_topic_datapoint_map"]
+    ami.client.publish(
         topic=topic,
         payload=json.dumps({"sensor": {}, "actuator": {}}),
         qos=2,
-        retain=True
+        retain=True,
     )
-    cmi.prom_published_messages_to_connector_counter.labels(
+    ami.prom_published_messages_to_connector_counter.labels(
         topic=topic, connector=sender.name
     ).inc()
 
@@ -40,27 +40,27 @@ def clear_datapoint_map(sender, instance, **kwargs):
 @receiver(signals.post_delete, sender=Datapoint)
 @receiver(signals.post_delete, sender=Connector)
 @receiver(signals.post_save, sender=Connector)
-def update_connector_mqtt_integration_settings(sender, instance, **kwargs):
+def update_mqtt_integration_settings(sender, instance, **kwargs):
     """
     Trigger update of subscribed topics if changes in Connector DB occure.
 
     The `special_connector_name` is used during tests for a special case
     where we do not want the signal to be fired, i.e. as the connector is added
-    before the ConnectorMQTTIntegration is set up.
+    before the ApiMqttIntegration is set up.
 
-    See the ConnectorMQTTIntegration class for more documentation.
+    See the ApiMqttIntegration class for more documentation.
     """
     special_connector_name = (
         "the_only_connector_name_that_won't_fire_the_signal"
     )
     if sender == Connector:
         if instance.name != special_connector_name:
-            cmi = ConnectorMQTTIntegration.get_instance()
+            ami = ApiMqttIntegration.get_instance()
             # Prevents errors when the application is not running.
-            if cmi is None:
+            if ami is None:
                 return
-            cmi.update_topics()
-            cmi.update_subscriptions()
+            ami.update_topics()
+            ami.update_subscriptions()
 
     if sender == Datapoint:
         # Trigger updates of topics only if the topic could have changed, i.e.
@@ -70,12 +70,12 @@ def update_connector_mqtt_integration_settings(sender, instance, **kwargs):
         else:
             uf = None
         if uf is None or "id" in uf:
-            cmi = ConnectorMQTTIntegration.get_instance()
+            ami = ApiMqttIntegration.get_instance()
             # Prevents errors when the application is not running.
-            if cmi is None:
+            if ami is None:
                 return
-            cmi.update_topics()
-            cmi.update_subscriptions()
+            ami.update_topics()
+            ami.update_subscriptions()
 
 
 @receiver(signals.post_save, sender=Datapoint)
@@ -98,9 +98,9 @@ def trigger_datapoint_map_update(sender, instance, **kwargs):
         "the_only_connector_name_that_won't_fire_the_signal"
     )
 
-    cmi = ConnectorMQTTIntegration.get_instance()
+    ami = ApiMqttIntegration.get_instance()
     # Prevents errors when the application is not running.
-    if cmi is None:
+    if ami is None:
         return
 
     if sender == Connector:
@@ -109,7 +109,7 @@ def trigger_datapoint_map_update(sender, instance, **kwargs):
 
         # If in doubt if name could have been changed better create a new
         # datapoint_map.
-        cmi.create_and_send_datapoint_map(connector=instance)
+        ami.create_and_send_datapoint_map(connector=instance)
 
     if sender == Datapoint:
         connector = instance.connector
@@ -121,10 +121,10 @@ def trigger_datapoint_map_update(sender, instance, **kwargs):
             # if is_active has been changed as this might have an affect wether
             # the datapoint is in datapoint_map or not.
             if uf is None or "id" in uf or "is_active" in uf:
-                cmi.create_and_send_datapoint_map(connector=connector)
+                ami.create_and_send_datapoint_map(connector=connector)
         # If Datapoint is deleted.
         else:
-            cmi.create_and_send_datapoint_map(connector=connector)
+            ami.create_and_send_datapoint_map(connector=connector)
 
 
 @receiver(signals.post_save, sender=ControlledDatapoint)
@@ -139,14 +139,14 @@ def trigger_controlled_datapoints_update(sender, instance, **kwargs):
 
     TODO: This needs a test.
     """
-    cmi = ConnectorMQTTIntegration.get_instance()
+    ami = ApiMqttIntegration.get_instance()
     # Prevents errors when the application is not running.
-    if cmi is None:
+    if ami is None:
         return
     if sender == Controller:
-        cmi.create_and_send_controlled_datapoints(controller=instance)
+        ami.create_and_send_controlled_datapoints(controller=instance)
 
     if sender == ControlledDatapoint:
-        cmi.create_and_send_controlled_datapoints(
+        ami.create_and_send_controlled_datapoints(
             controller=instance.controller
         )

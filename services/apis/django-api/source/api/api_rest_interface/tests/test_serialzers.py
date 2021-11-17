@@ -3,7 +3,7 @@ from django.test import TransactionTestCase
 from api_main.models.connector import Connector
 from api_main.models.datapoint import Datapoint
 from api_rest_interface.serializers import DatapointSerializer
-from api_main.connector_mqtt_integration import ConnectorMQTTIntegration
+from api_main.mqtt_integration import ApiMqttIntegration
 from api_main.tests.helpers import connector_factory
 from api_main.tests.fake_mqtt import FakeMQTTBroker, FakeMQTTClient
 
@@ -17,9 +17,8 @@ class TestDatapointSerializer(TransactionTestCase):
         fake_broker = FakeMQTTBroker()
         fake_client_1 = FakeMQTTClient(fake_broker=fake_broker)
         fake_client_2 = FakeMQTTClient(fake_broker=fake_broker)
-        cmi = ConnectorMQTTIntegration(
+        ami = ApiMqttIntegration(
             mqtt_client=fake_client_1,
-            n_cmi_write_threads_overload=1,
         )
 
     def setUp(self):

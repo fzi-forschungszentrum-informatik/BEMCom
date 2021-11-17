@@ -20,7 +20,7 @@ from api_main.models.datapoint import Datapoint
 from api_main.models.datapoint import DatapointValue
 from api_main.models.datapoint import DatapointSchedule
 from api_main.models.datapoint import DatapointSetpoint
-from api_main.connector_mqtt_integration import ConnectorMQTTIntegration
+from api_main.mqtt_integration import ApiMqttIntegration
 from ems_utils.message_format.views import DatapointViewSetTemplate
 from ems_utils.message_format.views import ViewSetWithDatapointFK
 
@@ -264,8 +264,8 @@ class DatapointValueViewSet(ViewSetWithDatapointFK):
 
         # Send the message to the MQTT broker.
         mqtt_topic = datapoint.get_mqtt_topics()["value"]
-        cmi = ConnectorMQTTIntegration.get_instance()
-        cmi.client.publish(
+        ami = ApiMqttIntegration.get_instance()
+        ami.client.publish(
             topic=mqtt_topic,
             payload=json.dumps(validated_data)
         )
@@ -311,8 +311,8 @@ class DatapointScheduleViewSet(ViewSetWithDatapointFK):
 
         # Send the message to the MQTT broker.
         mqtt_topic = datapoint.get_mqtt_topics()["schedule"]
-        cmi = ConnectorMQTTIntegration.get_instance()
-        cmi.client.publish(
+        ami = ApiMqttIntegration.get_instance()
+        ami.client.publish(
             topic=mqtt_topic,
             payload=json.dumps(validated_data),
             retain=True,
@@ -358,8 +358,8 @@ class DatapointSetpointViewSet(ViewSetWithDatapointFK):
 
         # Send the message to the MQTT broker.
         mqtt_topic = datapoint.get_mqtt_topics()["setpoint"]
-        cmi = ConnectorMQTTIntegration.get_instance()
-        cmi.client.publish(
+        ami = ApiMqttIntegration.get_instance()
+        ami.client.publish(
             topic=mqtt_topic,
             payload=json.dumps(validated_data),
             retain=True,
