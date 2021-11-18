@@ -25,11 +25,6 @@ class MqttToDb:
     This class listens on the MQTT broker and stores incomming messages
     in the DB.
 
-    TODO: Listen for mqtt messages triggering one of the following functions:
-            - clear_datapoint_map
-            - update_topics & update_subscriptions
-            - create_and_send_datapoint_map
-            - create_and_send_controlled_datapoints
     TODO: Use multiprocess prometheus.
     TODO: Integrate STORE_VALUE_MSGS flags.
     """
@@ -170,7 +165,15 @@ class MqttToDb:
         """
         logger.debug("Entering update_topics method")
 
-        topics = {}
+        # MqttToDB should always listen on these topics to check for
+        # RPC requests from ApiMqttIntegration instances.
+        rpc_topics = [
+            "django_api/mqtt_to_db/rpc/update_topics_and_subscriptions",
+            "django_api/mqtt_to_db/rpc/create_and_send_datapoint_map",
+            "django_api/mqtt_to_db/rpc/create_and_send_controlled_datapoints",
+            "django_api/mqtt_to_db/rpc/clear_datapoint_map",
+        ]
+        topics = {t: (None, "mqtt_topic_rpc_call") for t in rpc_topics}
 
         # Don't subscribe to the datapoint_message_wildcard topic, we want to
         # control which messages we receive, in order to prevent the case
@@ -248,7 +251,15 @@ class MqttToDb:
 
         logger.debug("Leaving update_subscriptions method")
 
-    def create_and_send_datapoint_map(self, connector=None):
+    def update_topics_and_subscriptions(self):
+        """
+        This is just a shortcut, as these two methods are usually called
+        directly after each other.
+        """
+        self.update_topics()
+        self.update_subscriptions()
+
+    def create_and_send_datapoint_map(self, connector_id=None):
         """
         Creates and sends a datapoint_map.
 
@@ -260,9 +271,10 @@ class MqttToDb:
         """
         logger.debug("Entering create_and_send_datapoint_map method")
 
-        if connector is None:
+        if connector_id is None:
             connectors = Connector.objects.all()
         else:
+            connector = Connector.objects.get(id=connector_id)
             connectors = [connector]
 
         for connector in connectors:
@@ -295,6 +307,36 @@ class MqttToDb:
             ).inc()
 
             logger.debug("Leaving create_and_send_datapoint_map method")
+
+    def clear_datapoint_map(self, connector_id):
+        """
+        Send an empty datapoint_map to a connector.
+
+        If we just delete the Connector object the connector service will not
+        see any update to datapoint_map, and hence continue to push data
+        about the previously selected datapoints. Here we send an empty
+        datapoint_map, before we delete to reset all selected datapoints
+        for the connector.
+        """
+        connector = Connector.objects.get(id=connector_id)
+        logger.debug(
+            "Entering clear_datapoint_map method for connector: %s - %s",
+            connector_id, connector.name
+        )
+
+        topic = connector.mqtt_topic_datapoint_map
+        logger.debug("Publishing clear datapoint map on topic: %s", topic)
+        self.client.publish(
+            topic=topic,
+            payload=json.dumps({"sensor": {}, "actuator": {}}),
+            qos=2,
+            retain=True,
+        )
+        self.prom_published_messages_to_connector_counter.labels(
+            topic=topic, connector=connector.name
+        ).inc()
+
+        logger.debug("Leaving clear_datapoint_map method.")
 
     def create_and_send_controlled_datapoints(self, controller=None):
         """
@@ -425,18 +467,24 @@ class MqttToDb:
 
             connector, message_type = topics[msg.topic]
 
-            # Apparently there are situations, where directly after the
-            # connector has been created, it is not existing in DB yet.
-            # Thus wait a bit and hope it appears.
-            try:
-                connector.refresh_from_db()
-            except Connector.DoesNotExist:
-                sleep(1)
-                connector.refresh_from_db()
+            # Connector is None for RPC calls.
+            if connector is not None:
+                # Apparently there are situations, where directly after the
+                # connector has been created, it is not existing in DB yet.
+                # Thus wait a bit and hope it appears.
+                try:
+                    connector.refresh_from_db()
+                except Connector.DoesNotExist:
+                    sleep(1)
+                    connector.refresh_from_db()
 
             payload = json.loads(msg.payload)
+            if connector is not None:
+                prom_connector_name = connector.name
+            else:
+                prom_connector_name = None
             self.prom_received_messages_from_connector_counter.labels(
-                topic=msg.topic, connector=connector.name
+                topic=msg.topic, connector=prom_connector_name
             ).inc()
             if message_type == "mqtt_topic_datapoint_value_message":
                 # If this message has reached that point, i.e. has had a
@@ -682,6 +730,16 @@ class MqttToDb:
                                     "Exception while updating available "
                                     "datapoint."
                                 )
+            elif message_type == "mqtt_topic_rpc_call":
+                try:
+                    target_method_name = msg.topic.split("/")[-1]
+                    target_method = getattr(self, target_method_name)
+                    target_method_kwargs = payload["kwargs"]
+                    target_method(**target_method_kwargs)
+                except Exception:
+                    logger.exception(
+                        "Exception while executing RPC request."
+                    )
 
     @staticmethod
     def on_connect(client, userdata, flags, rc):
@@ -805,14 +863,79 @@ class ApiMqttIntegration:
             )
             client.connect(**userdata["connect_kwargs"])
 
-    def update_topics(self):
-        logger.error("Not implemented: update_topics")
+    def _publish_trigger_message(self, topic, payload):
+        """
+        Publishes the payload on the message.
 
-    def update_subscriptions(self):
-        logger.error("Not implemented: update_subscriptions")
+        This function is mainly here to prevent code repetition.
 
-    def create_and_send_datapoint_map(self, connector=None):
-        logger.error("Not implemented: create_and_send_datapoint_map")
+        Arguments:
+        topic : string
+            The MQTT topic to publish on.
+        payload : dict
+            A dict like {"method": .. , "kwargs": ...} containing the
+            name of the method that should be called as well as the kwargs
+            to give to that method.
+        """
+        self.client.publish(
+            topic=topic,
+            payload=json.dumps(payload),
+            # Ensure RPC calls are received only once to prevent additional
+            # computational burden from multiple DB queries.
+            qos=2,
+            # No retain here, if MqttToDb is offline it would probably miss
+            # a lot of RPC calls, doesn't make sense to process only the
+            # last one.
+            retain=False,
+        )
 
-    def create_and_send_controlled_datapoints(self, controller=None):
-        logger.error("Not implemented: create_and_send_controlled_datapoints")
+    def trigger_update_topics_and_subscriptions(self):
+        """
+        Trigger that MqttToDb instance calls update_topics_and_subscriptions.
+
+        See the docstring of the called method for details.
+        """
+        topic = "django_api/mqtt_to_db/rpc/update_topics_and_subscriptions"
+        payload = {
+            "kwargs": {},
+        }
+        self._publish_trigger_message(topic=topic, payload=payload)
+
+    def trigger_create_and_send_datapoint_map(self, connector_id=None):
+        """
+        Trigger that MqttToDb instance calls create_and_send_datapoint_map.
+
+        See the docstring of the called method for details.
+        """
+        topic = "django_api/mqtt_to_db/rpc/create_and_send_datapoint_map"
+        payload = {
+            "kwargs": {"connector_id": connector_id},
+        }
+        self._publish_trigger_message(topic=topic, payload=payload)
+
+    def trigger_create_and_send_controlled_datapoints(self, controller_id=None):
+        """
+        Trigger that MqttToDb instance calls
+        create_and_send_controlled_datapoints.
+
+        See the docstring of the called method for details.
+        """
+        topic = (
+            "django_api/mqtt_to_db/rpc/create_and_send_controlled_datapoints"
+        )
+        payload = {
+            "kwargs": {"controller_id": controller_id},
+        }
+        self._publish_trigger_message(topic=topic, payload=payload)
+
+    def trigger_clear_datapoint_map(self, connector_id=None):
+        """
+        Trigger that MqttToDb instance calls clear_datapoint_map.
+
+        See the docstring of the called method for details.
+        """
+        topic = "django_api/mqtt_to_db/rpc/clear_datapoint_map"
+        payload = {
+            "kwargs": {"connector_id": connector_id},
+        }
+        self._publish_trigger_message(topic=topic, payload=payload)

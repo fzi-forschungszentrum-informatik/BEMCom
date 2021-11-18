@@ -15,7 +15,7 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User, Permission
 from django.contrib.contenttypes.models import ContentType
 
-from api_main.mqtt_integration import ApiMqttIntegration
+from api_main.mqtt_integration import ApiMqttIntegration, MqttToDb
 from api_main.tests.helpers import connector_factory, datapoint_factory
 from api_main.tests.fake_mqtt import FakeMQTTBroker, FakeMQTTClient
 from api_main.models.datapoint import DatapointValue, DatapointSchedule
@@ -43,12 +43,19 @@ def rest_endpoint_setup(request, django_db_setup, django_db_blocker):
     fake_broker = FakeMQTTBroker()
     fake_client_1 = FakeMQTTClient(fake_broker=fake_broker)
     fake_client_2 = FakeMQTTClient(fake_broker=fake_broker)
+    fake_client_3 = FakeMQTTClient(fake_broker=fake_broker)
+    # This must be initialized so the api_main component can use a
+    # mqtt client to publish messages.
     ami = ApiMqttIntegration(
         mqtt_client=fake_client_1,
     )
+    # This is required to forward published messages to the DB.
+    mqtt_to_db = MqttToDb(
+        mqtt_client=fake_client_2,
+    )
 
     # Setup MQTT client endpoints for test.
-    mqtt_client = fake_client_2(userdata={})
+    mqtt_client = fake_client_3(userdata={})
     mqtt_client.connect('localhost', 1883)
     mqtt_client.loop_start()
 
@@ -71,6 +78,7 @@ def rest_endpoint_setup(request, django_db_setup, django_db_blocker):
     mqtt_client.disconnect()
     mqtt_client.loop_stop()
     ami.disconnect()
+    mqtt_to_db.disconnect()
 
     # Remove access to DB.
     django_db_blocker.block()
