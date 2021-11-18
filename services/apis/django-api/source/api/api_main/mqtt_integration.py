@@ -338,15 +338,16 @@ class MqttToDb:
 
         logger.debug("Leaving clear_datapoint_map method.")
 
-    def create_and_send_controlled_datapoints(self, controller=None):
+    def create_and_send_controlled_datapoints(self, controller_id=None):
         """
         Computes and sends a list of controlled datapoints to a connector.
         """
         logger.debug("Entering create_and_send_controlled_datapoints method")
 
-        if controller is None:
+        if controller_id is None:
             controllers = Controller.objects.all()
         else:
+            controller = Controller.objects.get(id=controller_id)
             controllers = [controller]
 
         for controller in controllers:
