@@ -140,6 +140,8 @@ class MqttToDb:
 
         Disconnect from broker, stop background loop and join threads.
         """
+        logger.info("Shutting down MqttToDb.")
+
         self.client.disconnect()
         self.client.loop_stop()
         # Remove the client, so init can establish a new connection.
@@ -149,6 +151,8 @@ class MqttToDb:
         self.shutdown_event.set()
         for thread in self.msg_handler_threads:
             thread.join()
+
+        logger.info("Shut down of MqttToDB complete. Goodbye!")
 
     def update_topics(self):
         """
