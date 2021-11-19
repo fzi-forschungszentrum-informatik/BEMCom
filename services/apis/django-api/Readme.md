@@ -119,6 +119,8 @@ docker run --rm -v ${PWD}:/data -u "$(id -u):$(id -g)" --name django-db-backup b
 ### TODO
 
 * [ ] Alerting (E-Mail) on 500 status code.
+* [ ] Collect (and test) code for changes in datapoint at central location and add tests. Is currently distributed over api_admin_ui and api_main.signals
+* [ ] Find solution if example value is NaN,+Inf or - Inf. Maybe just a try except and store these as text?
 * [ ] Alerting (Prom AlertManager) if datapoint values have certain values or have not been updated for a certain time.
 * [ ] Document return objects and codes for errors of REST interface.
 * [ ] Add functionality to disable controllers and the history DB to support new users.
@@ -126,7 +128,6 @@ docker run --rm -v ${PWD}:/data -u "$(id -u):$(id -g)" --name django-db-backup b
 * [ ] Add Websocket Push Interface.
   * [ ] Fix communication between ApiMqttIntegration and MqttToDb and reenable the tests for mqtt_integration.
   * [ ] Disable last_* fields in datapoint model.
-
 * [ ] Fix adding Controller Admin Pages, there seems to be while defining controlled_datapoints.
 * [ ] Extend documentation:
   * [ ] REST and UI Endpoints

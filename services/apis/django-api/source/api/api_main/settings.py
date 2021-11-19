@@ -258,5 +258,5 @@ SPECTACULAR_SETTINGS = {
         "message is **not** deleted on the message broker."
     ),
     "LICENSE": {"name": "Licensed under MIT",},
-    "VERSION": "0.6.10",
+    "VERSION": "0.7.0",
 }

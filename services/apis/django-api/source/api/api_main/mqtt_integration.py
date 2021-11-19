@@ -442,7 +442,7 @@ class MqttToDb:
         """
         while True:
             # Check if the the program is going to stop and terminate if yes.
-            if self.shutdown_event.isSet():
+            if self.shutdown_event.is_set():
                 return
 
             # Try to fetch a message from the queue.
@@ -816,6 +816,7 @@ class ApiMqttIntegration:
         return instance
 
     def __init__(self, mqtt_client=Client):
+        logger.debug("ApiMqttIntegration entering __init__")
 
         # The configuration for connecting to the broker.
         connect_kwargs = {
@@ -833,6 +834,24 @@ class ApiMqttIntegration:
         self.client.on_connect = self.on_connect
         self.client.on_disconnect = self.on_disconnect
 
+        logger.debug(
+            "ApiMqttIntegration attempting initial connection to MQTT "
+            "broker: %s.",
+            connect_kwargs,
+        )
+        try:
+            self.client.connect(**connect_kwargs)
+        except (socket.gaierror, OSError):
+            logger.error(
+                "ApiMqttIntegration: Cannot connect to MQTT broker: %s."
+                " Aborting startup.",
+                connect_kwargs,
+            )
+            sys.exit(1)
+
+        # Start loop in dedicated thread..
+        self.client.loop_start()
+
     def disconnect(self):
         """
         Shutdown gracefully.
@@ -847,7 +866,7 @@ class ApiMqttIntegration:
     @staticmethod
     def on_connect(client, userdata, flags, rc):
         logger.info(
-            "Connected to MQTT broker tcp://%s:%s",
+            "ApiMqttIntegration connected to MQTT broker tcp://%s:%s",
             userdata["connect_kwargs"]["host"],
             userdata["connect_kwargs"]["port"],
         )
@@ -860,7 +879,8 @@ class ApiMqttIntegration:
         """
         if rc != 0:
             logger.info(
-                "Lost connection to MQTT broker with code %s. Reconnecting", rc
+                "ApiMqttIntegration lost connection to MQTT broker with "
+                "code %s. Reconnecting", rc
             )
             client.connect(**userdata["connect_kwargs"])
 
@@ -896,6 +916,10 @@ class ApiMqttIntegration:
 
         See the docstring of the called method for details.
         """
+        logger.debug(
+            "ApiMqttIntegration entering "
+            "trigger_update_topics_and_subscriptions"
+        )
         topic = "django_api/mqtt_to_db/rpc/update_topics_and_subscriptions"
         payload = {
             "kwargs": {},
@@ -908,6 +932,10 @@ class ApiMqttIntegration:
 
         See the docstring of the called method for details.
         """
+        logger.debug(
+            "ApiMqttIntegration entering "
+            "trigger_create_and_send_datapoint_map"
+        )
         topic = "django_api/mqtt_to_db/rpc/create_and_send_datapoint_map"
         payload = {
             "kwargs": {"connector_id": connector_id},
@@ -921,6 +949,10 @@ class ApiMqttIntegration:
 
         See the docstring of the called method for details.
         """
+        logger.debug(
+            "ApiMqttIntegration entering "
+            "trigger_create_and_send_controlled_datapoints"
+        )
         topic = (
             "django_api/mqtt_to_db/rpc/create_and_send_controlled_datapoints"
         )
@@ -935,6 +967,10 @@ class ApiMqttIntegration:
 
         See the docstring of the called method for details.
         """
+        logger.debug(
+            "ApiMqttIntegration entering "
+            "trigger_clear_datapoint_map"
+        )
         topic = "django_api/mqtt_to_db/rpc/clear_datapoint_map"
         payload = {
             "kwargs": {"connector_id": connector_id},

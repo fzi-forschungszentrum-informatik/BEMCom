@@ -51,6 +51,12 @@ then
   python3 /source/api/manage.py createsuperuser --no-input || printf ""
 fi
 
+# Start MqttToDb in background and patch sigtern and SIGINT signals,
+# to trigger graceful shutdown of the component on container exit.
+python3 /source/api/manage.py mqtttodb &
+service_pid=$!
+trap "kill -TERM $service_pid" SIGTERM
+trap "kill -INT $service_pid" INT
 
 # Start up the server, use the internal devl server in debug mode.
 # Both serve plain http on port 8080 within the container.
@@ -72,8 +78,7 @@ else
            -p 8080 api_main.asgi:application &
 fi
 
-# Patches SIGTERM and SIGINT to stop the service. This is required
-# to trigger graceful shutdown if docker wants to stop the container.
+# Also patch SIGTERM and SIGINT to the django application.
 service_pid=$!
 trap "kill -TERM $service_pid" SIGTERM
 trap "kill -INT $service_pid" INT

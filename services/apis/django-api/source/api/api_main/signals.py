@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django.db.models import signals
 from django.dispatch import receiver
@@ -7,6 +8,9 @@ from .models.connector import Connector
 from .models.datapoint import Datapoint
 from .models.controller import Controller, ControlledDatapoint
 from .mqtt_integration import ApiMqttIntegration
+
+
+logger = logging.getLogger(__name__)
 
 
 @receiver(signals.pre_delete, sender=Connector)
@@ -26,7 +30,6 @@ def trigger_clear_datapoint_map(sender, instance, **kwargs):
             "of MqttToDb. ApiMqttIntegration is not running."
         )
         return
-
     ami.trigger_clear_datapoint_map(connector_id=instance.id)
 
 
@@ -42,14 +45,6 @@ def trigger_datapoint_map_update(sender, instance, **kwargs):
 
     TODO: This deserves a test.
     """
-    ami = ApiMqttIntegration.get_instance()
-    if ami is None:
-        logger.warning(
-            "Could not trigger datapoint_map_update."
-            "of MqttToDb. ApiMqttIntegration is not running."
-        )
-        return
-
     if sender == Connector:
         connector_id = instance.id
 
@@ -64,6 +59,13 @@ def trigger_datapoint_map_update(sender, instance, **kwargs):
             if "id" not in uf and "is_active" not in uf:
                 return
 
+    ami = ApiMqttIntegration.get_instance()
+    if ami is None:
+        logger.warning(
+            "Could not trigger datapoint_map_update."
+            "of MqttToDb. ApiMqttIntegration is not running."
+        )
+        return
     ami.trigger_create_and_send_datapoint_map(connector_id=connector_id)
 
 
@@ -79,14 +81,6 @@ def trigger_update_topics_and_subscriptions(sender, instance, **kwargs):
 
     TODO: This needs a test.
     """
-    ami = ApiMqttIntegration.get_instance()
-    if ami is None:
-        logger.warning(
-            "Could not trigger update_topics_and_subscriptions "
-            "of MqttToDb. ApiMqttIntegration is not running."
-        )
-        return
-
     # Trigger updates of topics only if the topic could have changed, i.e.
     # the id has changed or we don't know which files have been changed.
     if sender == Datapoint:
@@ -95,6 +89,13 @@ def trigger_update_topics_and_subscriptions(sender, instance, **kwargs):
             if "id" not in uf and "is_active" not in uf:
                 return
 
+    ami = ApiMqttIntegration.get_instance()
+    if ami is None:
+        logger.warning(
+            "Could not trigger update_topics_and_subscriptions "
+            "of MqttToDb. ApiMqttIntegration is not running."
+        )
+        return
     ami.trigger_update_topics_and_subscriptions()
 
 
@@ -110,6 +111,11 @@ def trigger_create_and_send_controlled_datapoints(sender, instance, **kwargs):
 
     TODO: This needs a test.
     """
+    if sender == Controller:
+        controller_id = instance.id
+    elif sender == ControlledDatapoint:
+        controller_id=instance.controller.id
+
     ami = ApiMqttIntegration.get_instance()
     if ami is None:
         logger.warning(
@@ -117,12 +123,6 @@ def trigger_create_and_send_controlled_datapoints(sender, instance, **kwargs):
             "of MqttToDb. ApiMqttIntegration is not running."
         )
         return
-
-    if sender == Controller:
-        controller_id = instance.id
-    elif sender == ControlledDatapoint:
-        controller_id=instance.controller.id
-
     ami.trigger_create_and_send_controlled_datapoints(
         controller_id=controller_id
     )

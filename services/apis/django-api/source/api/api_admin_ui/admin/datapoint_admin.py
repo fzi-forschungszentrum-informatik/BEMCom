@@ -264,9 +264,8 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         """
         queryset.update(is_active=True)
         ami = ApiMqttIntegration.get_instance()
-        ami.update_topics()
-        ami.update_subscriptions()
-        ami.create_and_send_datapoint_map()
+        ami.trigger_update_topics_and_subscriptions()
+        ami.trigger_create_and_send_datapoint_map()
     mark_active.short_description = "Mark datapoints as active"
 
     def mark_not_active(self, request, queryset):
@@ -275,9 +274,8 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         """
         queryset.update(is_active=False)
         ami = ApiMqttIntegration.get_instance()
-        ami.update_topics()
-        ami.update_subscriptions()
-        ami.create_and_send_datapoint_map()
+        ami.trigger_update_topics_and_subscriptions()
+        ami.trigger_create_and_send_datapoint_map()
     mark_not_active.short_description = "Mark datapoints as not active"
 
     def mark_data_format_as_generic_text(self, request, queryset):
