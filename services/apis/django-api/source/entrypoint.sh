@@ -70,12 +70,9 @@ else
     printf "\n\nCollecting static files."
     python3 /source/api/manage.py collectstatic --no-input
     cd /source/api && \
-    printf "\n\nStarting up Daphne production server.\n\n\n"
-    daphne -e ssl:8443:privateKey=/tmp/cert/key.pem:certKey=/tmp/cert/cert.pem \
-           --application-close-timeout 60 \
-           --verbosity 0 \
-           -b 0.0.0.0 \
-           -p 8080 api_main.asgi:application &
+    printf "\n\nStarting up Gunicorn production server.\n\n\n"
+    gunicorn api_main.asgi:application --workers 8 --worker-class uvicorn.workers.UvicornWorker -b 0.0.0.0:8080 & 
+
 fi
 
 # Also patch SIGTERM and SIGINT to the django application.

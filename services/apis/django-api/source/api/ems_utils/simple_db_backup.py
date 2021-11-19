@@ -445,7 +445,7 @@ def restore_datapoint_messages(args, auth, dp_id_mapping):
     logger.info("Starting to process %s chunks", len(chunk_vars))
     # Django-API (CPU processing) is the main bottleneck here, there is
     # hence no point in parallelizing more.
-    pool = Pool(processes=2)
+    pool = Pool(processes=16)
     msgs_created_total = 0
     msgs_updated_total = 0
     for msg_stats in tqdm(
