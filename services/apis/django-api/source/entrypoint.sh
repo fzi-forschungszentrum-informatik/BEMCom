@@ -27,6 +27,10 @@ then
   python3 /source/api/manage.py createsuperuser --no-input || printf ""
 fi
 
+# Create a temporary directory as this is required for the Prometheus exporter
+# running in multiprocess mode.
+export PROMETHEUS_MULTIPROC_DIR="$(mktemp -d)"
+
 # Start MqttToDb in background and patch sigtern and SIGINT signals,
 # to trigger graceful shutdown of the component on container exit.
 python3 /source/api/manage.py mqtttodb &

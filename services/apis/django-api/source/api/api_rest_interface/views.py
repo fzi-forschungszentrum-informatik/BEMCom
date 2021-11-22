@@ -7,7 +7,9 @@ the generic implementation in ems_utils to display in the API schema.
 """
 import json
 
-import prometheus_client
+from prometheus_client import multiprocess
+from prometheus_client import generate_latest
+from prometheus_client import CollectorRegistry, CONTENT_TYPE_LATEST
 from rest_framework import status, renderers
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
@@ -392,11 +394,16 @@ class PrometheusMetricsViewSet(GenericViewSet):
     """
     Exposes Prometheus metrics.
     """
-
     renderer_classes = [PlainTextRenderer]
     # This is required for automatic permission checking.
     queryset = Metric.objects.all()
 
     def retrieve(self, request):
-        metrics = prometheus_client.generate_latest()
-        return Response(metrics)
+        registry = CollectorRegistry()
+        multiprocess.MultiProcessCollector(registry)
+        metrics = generate_latest(registry)
+        headers = {
+            "Content-type": CONTENT_TYPE_LATEST,
+            "Content-Length": str(len(metrics)),
+        }
+        return Response(metrics, headers=headers)

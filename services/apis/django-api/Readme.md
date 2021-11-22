@@ -123,22 +123,15 @@ docker run --rm -v ${PWD}:/data -u "$(id -u):$(id -g)" --name django-db-backup b
 * [ ] Alerting (E-Mail) on 500 status code.
 * [ ] Collect (and test) code for changes in datapoint at central location and add tests. Is currently distributed over api_admin_ui and api_main.signals
 * [ ] Find solution if example value is NaN,+Inf or - Inf. Maybe just a try except and store these as text?
-* [ ] Gunicorn Update: 
-  * [ ] Rework Prom to use Multiprocess mode
-  * [ ] Add flag to set number of processes to backup script.
-  * [ ] Add environment variable to set number of Gunicorn workers.
-
 * [ ] Alerting (Prom AlertManager) if datapoint values have certain values or have not been updated for a certain time.
 * [ ] Document return objects and codes for errors of REST interface.
 * [ ] Add functionality to disable controllers and the history DB to support new users.
 * [ ] Add Flags like STORE_VALUE_MESSAGES
 * [ ] Add Websocket Push Interface.
-  * [ ] Fix communication between ApiMqttIntegration and MqttToDb and reenable the tests for mqtt_integration.
   * [ ] Disable last_* fields in datapoint model.
 * [ ] Fix adding Controller Admin Pages, there seems to be while defining controlled_datapoints.
 * [ ] Extend documentation:
   * [ ] REST and UI Endpoints
-  * [ ] How to set certs, e.g. with:`MODE=PROD SSL_KEY_PEM=$(cat key.pem) SSL_CERT_PEM=$(cat cert.pem) docker-compose up --build`
   * [ ] Security issues are monitored and new versions of this API are provided asap if a security issue in one of the components becomes known.
 
 
@@ -159,11 +152,22 @@ Follow the following steps while contributing to the connector:
     pip install -r ./source/requirements.txt
     ```
 
+  * Define a an export temporary directory for Prometheus exporter (see [here](https://github.com/prometheus/client_python#multiprocess-mode-eg-gunicorn) for details).
+    
+    ```bash
+    export PROMETHEUS_MULTIPROC_DIR="$(mktemp -d)"
+    ```
+    
+  * Start the MqttToDb process if needed with:
+    
+    ```bash
+    source/api/manage.py mqtttodb
+    ```
+    
   * Start the development server if needed with: 
     
     ```bash
-    # --noreload prevents duplicate entries in DB.
-    source/api/manage.py runserver --noreload
+    source/api/manage.py runserver
     ```
     
   * Implement your changes as well all tests to cover your changes.
@@ -218,3 +222,5 @@ Follow the following steps while contributing to the connector:
 | 0.4.0 | Datapoint Value and Available Datapoint messages and a can now contain any JSON data type as value. |
 | 0.5.0 | Transition to TimescaleDB. Datapoint value messages can now be resampled to intervals (operation happens in DB) with REST parameter. Restore function implemented.<br />**Note: this is a breaking update. All data must be backed up manually before upgrading to this version and restored manually afterwards.** |
 | 0.6.0 | Django-API service now exposes Prometheus metrics to support monitoring of BEMCom applications. |
+| 0.7.0 | Django-API service can now be run with multiple worker processes. Added dedicated process to write MQTT messages to DB. Removed support for direct HTTPS endpoint (not supported by Gunicorn). |
+
