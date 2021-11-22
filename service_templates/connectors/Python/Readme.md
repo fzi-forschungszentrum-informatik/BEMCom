@@ -8,7 +8,7 @@ This template allows the the implementation of connectors in Python with maximum
 * [ ] Edit your copy of [starter-kit/docker-compose.yml](starter-kit/docker-compose.yml) file as needed. It is intended to to start the new connector service during development of it. See some of the other connectors for an example.
 * [ ] Implement the logic of the connector following the process described in [starter-kit/Readme.md](starter-kit/Readme.md). Be aware that base classes for developing connectors are provided in [source/pyconnector_template/pyconnector_template.py](source/pyconnector_template/pyconnector_template.py) and  [source/pyconnector_template/dispatch.py](source/pyconnector_template/dispatch.py), where extensive documentation is provided.
 * [ ] Document the connector by extending your copy [starter-kit/Readme.md](starter-kit/Readme.md).
-* [ ] Update the name of the connector and the current version number in your copy of [starter-kit/build_docker_image.sh](starter-kit/build_docker_image.sh).
+* [ ] Update the name of the connector image and the current version number in your copy of [starter-kit/build_docker_image.sh](starter-kit/build_docker_image.sh).
 
 ###  Checklist for Updating the Template
 
