@@ -14,7 +14,7 @@ class ApiMainConfig(AppConfig):
     def ready(self):
         import api_main.signals
 
-        if "runserver" in sys.argv or "daphne" in sys.argv[0]:
+        if "runserver" in sys.argv or "gunicorn" in sys.argv[0]:
             logger.info("Starting up the API main module.")
 
             # Report which database is used so people have a chance to
@@ -28,7 +28,7 @@ class ApiMainConfig(AppConfig):
 
             try:
                 ApiMqttIntegration()
-            except ApiMqttIntegration:
+            except ValueError:
                 logger.critical("")
                 logger.critical(
                     "Could not connect to MQTT broker of backend. Exiting"
