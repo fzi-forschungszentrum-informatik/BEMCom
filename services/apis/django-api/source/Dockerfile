@@ -3,7 +3,7 @@ FROM python:3
 ENV PYTHONUNBUFFERED 1
 
 # Create the required folder structure.
-RUN mkdir -p /source/api /source/static /source/cert
+RUN mkdir -p /source/api /source/static
 
 WORKDIR /source
 

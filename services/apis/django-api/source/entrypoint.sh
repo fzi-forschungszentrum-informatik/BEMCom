@@ -18,30 +18,6 @@ then
     printf "\nDjango production tests done\n\n"
 fi
 
-# Check if SSL certificates have been provided by the user. If yes use there.
-# If not create self signed certificates.
-# Use a directory in tmp as the user might have no write access for the
-# /source/ folder
-printf "\n\n"
-echo "Checking the certificate situation."
-mkdir -p /tmp/cert
-chmod 700 /tmp/cert
-cd /tmp/cert
-if [ -z "${SSL_CERT_PEM:-}" ] || [ -z "${SSL_KEY_PEM:-}" ]
-then
-    # As proposed by:
-    # https://stackoverflow.com/questions/10175812/how-to-create-a-self-signed-certificate-with-openssl
-    echo "Environment variables SSL_CERT_PEM or SSL_KEY_PEM empty."
-    echo "Generating self signed certificate."
-    openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/CN=$HOSTNAME"
-else
-    # write the users cert and key to file if both have been provided.
-    echo "The user provided cert.pem and key.pem"
-    printf "\ncert.pem:\n$SSL_CERT_PEM\n\n"
-    echo "$SSL_CERT_PEM" > cert.pem
-    echo "$SSL_KEY_PEM" > key.pem
-fi
-
 # Create the admin account from environment variables.
 if [ ! -z "${DJANGO_SUPERUSER_PASSWORD}" ] && [ ! -z "${DJANGO_SUPERUSER_USERNAME}" ] && [ ! -z "${DJANGO_SUPERUSER_EMAIL}" ]
 then
@@ -60,7 +36,6 @@ trap "kill -INT $service_pid" INT
 
 # Start up the server, use the internal devl server in debug mode.
 # Both serve plain http on port 8080 within the container.
-# The production server also serves https on 8443.
 if  [[ "${DJANGO_DEBUG:-FALSE}" == "TRUE" ]]
 then
     # --noreload prevents duplicate entries in DB.
@@ -70,8 +45,8 @@ else
     printf "\n\nCollecting static files."
     python3 /source/api/manage.py collectstatic --no-input
     cd /source/api && \
-    printf "\n\nStarting up Gunicorn production server.\n\n\n"
-    gunicorn api_main.asgi:application --workers $N_WORKER_PROCESSES --worker-class uvicorn.workers.UvicornWorker -b 0.0.0.0:8080 &
+    printf "\n\nStarting up Gunicorn/UVicorn production server.\n\n\n"
+    gunicorn api_main.asgi:application --workers ${N_WORKER_PROCESSES:-4} --worker-class uvicorn.workers.UvicornWorker -b 0.0.0.0:8080 &
 fi
 
 # Also patch SIGTERM and SIGINT to the django application.
