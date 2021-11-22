@@ -71,8 +71,7 @@ else
     python3 /source/api/manage.py collectstatic --no-input
     cd /source/api && \
     printf "\n\nStarting up Gunicorn production server.\n\n\n"
-    gunicorn api_main.asgi:application --workers 8 --worker-class uvicorn.workers.UvicornWorker -b 0.0.0.0:8080 & 
-
+    gunicorn api_main.asgi:application --workers $N_WORKER_PROCESSES --worker-class uvicorn.workers.UvicornWorker -b 0.0.0.0:8080 &
 fi
 
 # Also patch SIGTERM and SIGINT to the django application.
