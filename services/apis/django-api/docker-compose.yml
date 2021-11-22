@@ -34,7 +34,7 @@ services:
             - "DJANGOAPIDB_PASSWORD=${DJANGOAPIDB_PASSWORD}"
             - "DJANGOAPIDB_DBNAME=${DJANGOAPIDB_DBNAME}"
             - "N_CMI_WRITE_THREADS=${N_CMI_WRITE_THREADS}"
-            - "N_WORKER_PROCESSES"=${N_WORKER_PROCESSES}
+            - "N_WORKER_PROCESSES=${N_WORKER_PROCESSES}"
 
     # Allows local testing.
     django-api-devl-broker:
