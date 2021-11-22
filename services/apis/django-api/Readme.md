@@ -121,6 +121,11 @@ docker run --rm -v ${PWD}:/data -u "$(id -u):$(id -g)" --name django-db-backup b
 * [ ] Alerting (E-Mail) on 500 status code.
 * [ ] Collect (and test) code for changes in datapoint at central location and add tests. Is currently distributed over api_admin_ui and api_main.signals
 * [ ] Find solution if example value is NaN,+Inf or - Inf. Maybe just a try except and store these as text?
+* [ ] Gunicorn Update: 
+  * [ ] Rework Prom to use Multiprocess mode
+  * [ ] Add flag to set number of processes to backup script.
+  * [ ] Add environment variable to set number of Gunicorn workers.
+
 * [ ] Alerting (Prom AlertManager) if datapoint values have certain values or have not been updated for a certain time.
 * [ ] Document return objects and codes for errors of REST interface.
 * [ ] Add functionality to disable controllers and the history DB to support new users.
