@@ -114,7 +114,7 @@ class SensorFlow(SFTemplate):
                     }
                 }
         """
-        with self.modebus_communication_ongoing:
+        with self.modbus_communication_ongoing:
             if not hasattr(self, "modbus_connection"):
                 # Establish connection to modbus master device.
                 logger.debug(
@@ -453,7 +453,7 @@ class ActuatorFlow(AFTemplate):
             # values = builder.to_registers()[0]
 
 
-        with self.modebus_communication_ongoing:
+        with self.modbus_communication_ongoing:
             if not hasattr(self, "modbus_connection"):
                 # Establish connection to modbus master device.
                 logger.debug(
@@ -657,7 +657,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         # This lock should prevent that reading and writing operations
         # intervene with each other. Especially if connections are disconnected
         # in between calls.
-        self.modebus_communication_ongoing = Lock()
+        self.modbus_communication_ongoing = Lock()
 
     @staticmethod
     def parse_modbus_config(config_json_str):
