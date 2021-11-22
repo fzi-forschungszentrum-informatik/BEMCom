@@ -198,14 +198,13 @@ def backup_datapoint_messages(args, auth, datapoint_ids):
     logger.info(
         "User requested %s chunks. %s chunks exist already. Starting download.",
         *(chunks_to_load+skipped_chunks, skipped_chunks)
-    )
-    # 8 Processes seems to be good compromise for decent download rates.
-    pool = Pool(processes=8)
-    for _ in tqdm(
-        pool.imap_unordered(load_datapoint_message, chunk_vars),
-        total=chunks_to_load
-    ):
-        pass
+    ) 
+    with Pool(processes=args.worker_process_number) as pool:
+        for _ in tqdm(
+            pool.imap_unordered(load_datapoint_message, chunk_vars),
+            total=chunks_to_load
+        ):
+            pass
     logger.info("Finished loading %s chunks.", chunks_to_load)
 
 def restore_datapoint_metadata(args, auth):
@@ -443,24 +442,22 @@ def restore_datapoint_messages(args, auth, dp_id_mapping):
         date += timedelta(days=1)
 
     logger.info("Starting to process %s chunks", len(chunk_vars))
-    # Django-API (CPU processing) is the main bottleneck here, there is
-    # hence no point in parallelizing more.
-    pool = Pool(processes=16)
-    msgs_created_total = 0
-    msgs_updated_total = 0
-    for msg_stats in tqdm(
-        pool.imap_unordered(write_datapoint_message, chunk_vars),
-        total=len(chunk_vars)
-    ):
-        msgs_created_total += msg_stats["msgs_created"]
-        msgs_updated_total += msg_stats["msgs_updated"]
+    with Pool(processes=args.worker_process_number) as pool:
+        msgs_created_total = 0
+        msgs_updated_total = 0
+        for msg_stats in tqdm(
+            pool.imap_unordered(write_datapoint_message, chunk_vars),
+            total=len(chunk_vars)
+        ):
+            msgs_created_total += msg_stats["msgs_created"]
+            msgs_updated_total += msg_stats["msgs_updated"]
 
-    logger.info("Finished loading %s chunks.", len(chunk_vars))
-    logger.info(
-        "Created %s and updated %s messages in total.",
-        msgs_created_total,
-        msgs_updated_total
-    )
+        logger.info("Finished loading %s chunks.", len(chunk_vars))
+        logger.info(
+            "Created %s and updated %s messages in total.",
+            msgs_created_total,
+            msgs_updated_total
+        )
 
 def main(args):
     """
@@ -604,6 +601,16 @@ if __name__ == "__main__":
             "corresponding connector doesn't know. These datapoints will "
             "not receive data or nor will it be possible to send value "
             "messages to actuator datapoints."
+        )
+    )
+    parser.add_argument(
+        "-w",
+        "--worker-process-number",
+        type=int,
+        default=4,
+        help=(
+            "The number of worker processes to use for interacting with API "
+            "service."
         )
     )
     args = parser.parse_args()
