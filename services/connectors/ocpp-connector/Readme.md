@@ -1,11 +1,11 @@
 # OCPP Connector
 
-This is a connector to communicate with ocpp charging stations using the ocpp 1.6 protocol. The library used is provided by The Mobility House (https://github.com/mobilityhouse/ocpp).
+This is a connector to communicate with ocpp-capable charging stations using **OCPP 1.6**. The library used is provided by The Mobility House (https://github.com/mobilityhouse/ocpp).
 The Open ChargePoint Protocol (OCPP) defines the central system (here BEMCom) as a server, while the ChargePoint acts as a client. This is different to many hardware communication protocols.  
 
 # Implementation
 Besides the classes ActuatorFlow, SensorFlow and Connector there is a class called ChargePoint that inherits from the corresponding class in the ocpp module
-from The Mobility House. This class contains the protocoll-specific messages. OCPP uses websockets. The messages from the charge point are routed to the
+from The Mobility House. This class contains the protocol-specific messages. OCPP uses websockets. The messages from the charge point are routed to the
 corresponding method where the response to the charge point is defined. If there are values to be sent to the BEMCom message broker, a callback
 method with the name "sensor_flow_handler" is executed. Messages passed to it will be made available in the BEMCom framework by using the method "run_sensor_flow" 
 of the Connector class.
@@ -23,7 +23,7 @@ instantiated and the communication begins.
 
 | Port | Usage/Remarks                           |
 | ---- | --------------------------------------- |
-| 9000 | Port of the BEMCom Host (server), not the charge point. Has to be configured in the charge point als well if it is desired to use another one.|
+| 9000 | Port of the BEMCom Host (server), not the charging station. Has to be configured in the charging station as well if it is desired to use another one.|
 
 ##### Environment Variables
 
@@ -53,6 +53,7 @@ using the datapoint "execute_trigger_message". There, the following vales are al
 | 4               | "MeterValues"                    |
 | 5               | "StatusNotification"             |
 
+For more information according OCPP, you can download the specification here: (https://www.openchargealliance.org/downloads/)
 
 ### Development Checklist
 
@@ -97,4 +98,5 @@ Follow the following steps while contributing to the connector:
 | ----- | ------------------------------------------ |
 | 0.1.0 | First successful communication.            |
 | 0.2.0 | First successfully sent charging profile   |
-| 0.2.1 | Possible to trigger and receive meter values | 
+| 0.2.1 | Possible to trigger and receive meter values |
+| 0.2.2 | Bugfix logs, increasing robustnes. | 
