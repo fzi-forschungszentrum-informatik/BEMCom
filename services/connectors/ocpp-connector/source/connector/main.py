@@ -8,9 +8,7 @@ __version__="0.2.1"
 import os
 import json
 import logging
-from re import L
 import time
-
 from dotenv import load_dotenv, find_dotenv
 import asyncio
 import websockets
@@ -24,16 +22,10 @@ from pyconnector_template.pyconnector_template import ActuatorFlow as AFTemplate
 from pyconnector_template.pyconnector_template import Connector as CTemplate
 from pyconnector_template.dispatch import DispatchOnce
 
-logger = logging.getLogger("pyconnector")
-logging.basicConfig(level=logging.INFO) # ignoring environment variables for now
+logger = logging.getLogger('pyconnector')
+#logging.basicConfig(level=logging.INFO) # ignoring environment variables for now
 
-
-logging.getLogger('ocpp').setLevel(level=logging.INFO)
-logging.getLogger('ocpp').addHandler(logging.StreamHandler())
-
-# LOGFORMAT = '%(asctime)s-%(funcName)s-%(levelname)s: %(message)s'
-# logging.basicConfig(format=LOGFORMAT, level=logging.INFO)
-# logger = logging.getLogger(__name__)
+logging.getLogger("websockets").propagate = False
 
 class SensorFlow(SFTemplate):
     """
@@ -232,6 +224,11 @@ class ActuatorFlow(AFTemplate):
         datapoint_value : string.
             The value that should be sent to the datapoint.
         """
+        if not hasattr(self, 'cp'):
+            logger.warning('Chargepoint is not connected yet. Cannot send command.')
+            return
+
+
         ocpp_method = datapoint_key.split("__")[0]
         # Call write_method with parsed (aka. decoded)
         command_method = getattr(self.cp, ocpp_method)
@@ -244,6 +241,13 @@ class ChargePoint(OCPPChargePoint):
     def __init__(self, cp_id, ws, sensor_flow_handler):
         super().__init__(cp_id, ws)
         self.sensor_flow_handler = sensor_flow_handler
+
+    @on('status')
+    def on_status(self, status):
+        msg = {
+            "status": status
+        }
+        self.sensor_flow_handler(msg)
 
     @on('BootNotification')
     def on_boot_notification(self, charge_point_vendor, charge_point_model, **kwargs):
@@ -362,16 +366,6 @@ class ChargePoint(OCPPChargePoint):
 
 
     async def execute_trigger_message(self, value=4):
-        """
-        Allowed values TriggerMessage:
-
-        "BootNotification",
-        "DiagnosticsStatusNotification",
-        "FirmwareStatusNotification",
-        "Heartbeat",
-        "MeterValues",
-        "StatusNotification"
-        """
         switcher = {
             0: "BootNotification",
             1: "DiagnosticsStatusNotification",
@@ -382,12 +376,17 @@ class ChargePoint(OCPPChargePoint):
         }
         requested_message = switcher[value]
 
+        if value not in switcher:
+            logger.error(f'Requested trigger is not a valid ocpp message trigger.')
+            return
+
         request = call.TriggerMessagePayload(
             requested_message=requested_message,
             connector_id=1
         )
         loop = asyncio.get_event_loop()
         task = loop.create_task(self.call(request))
+
 
     async def execute_send_charging_profile(self, value):
         charging_profile = {
@@ -410,8 +409,6 @@ class ChargePoint(OCPPChargePoint):
 
         loop = asyncio.get_event_loop()
         task = loop.create_task(self.call(request))
-        # The response of the charging station (and return value of self.call() should be 'Accepted'. Can be used for logging
-        # but respose = await task doesn't work
 
 
 class Connector(CTemplate, SensorFlow, ActuatorFlow):
@@ -521,7 +518,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         return actuator_temp
 
     def sync_wrapper_run_ocpp_server(self):
-        logger.info('Starting Server by Sync Wrapper')
+        logger.info('Starting OCPP Server')
         asyncio.run(self.run_ocpp_server())
 
 
@@ -543,7 +540,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         """
         charge_point_id = path.strip('/')
         self.cp = ChargePoint(charge_point_id, websocket, sensor_flow_handler=self.run_sensor_flow)
-        logger.debug(f'charging point connected: {charge_point_id}')
+        logger.info(f'Chargepoint connected. ID: {charge_point_id}')
 
         await self.cp.start()
 
