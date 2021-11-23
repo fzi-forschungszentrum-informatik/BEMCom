@@ -23,7 +23,6 @@ from pyconnector_template.pyconnector_template import Connector as CTemplate
 from pyconnector_template.dispatch import DispatchOnce
 
 logger = logging.getLogger('pyconnector')
-#logging.basicConfig(level=logging.INFO) # ignoring environment variables for now
 
 logging.getLogger("websockets").propagate = False
 
