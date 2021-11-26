@@ -41,7 +41,8 @@ When WmaxLimPct is to be written, the given value is multiplied by the scaling f
 | MODBUS_RETRY_WAIT_SECONDS       | 15                               | Wait time in seconds after a failed read/write operation before trying again. Defaults to 15 seconds. |
 | MODBUS_POLL_BREAK               | 0.1                              | Wait time in seconds between two consecutive requests. Some devices react with errors if getting polled too often. Defaults to 0.0 |
 | MODBUS_DISCONNECT_BETWEEN_POLLS | TRUE                             | If == "TRUE" (i.e. the string) will disconnect from Modbus master device between polls. This is useful for devices that can only handle a single connection or that react with errors if POLL_SECONDS is larger then a few seconds. Defaults to FALSE. |
-
+| MODBUS_W_MAX_LIM_PCT            | 40242                            | Register of "WmaxLimPct". Change it if your inverter uses a different one than 40242. Otherwise it can beleft blank |
+| MODBUS_W_MAX_LIM_ENA            | 40246                            | Register of "WmaxLim_Ena". Change it if your inverter uses a different one than 40246. Otherwise it can beleft blank |
 The MODBUS_CONFIG allows to specify which registers should be read out by the connector as well as how to parse the values.
 
 A JSON string is expected that is is structured like this:
