@@ -15,7 +15,7 @@ from pymodbus.payload import BinaryPayloadBuilder
 from pymodbus.datastore import ModbusSequentialDataBlock
 from pymodbus.datastore import ModbusSlaveContext, ModbusServerContext
 
-from ..main import Connector
+from ..main import Connector, __version__
 
 
 class ModbusTestServer():
@@ -148,7 +148,7 @@ class TestReceiveRawMsg(unittest.TestCase):
                 modbus_slave_context_kwargs=modbus_slave_context_kwargs
             ) as used_port:
                 os.environ["MODBUS_MASTER_PORT"] = str(used_port)
-                connector = Connector()
+                connector = Connector(__version__)
                 raw_msg = connector.receive_raw_msg()
                 raw_msg["payload"]["timestamp"] = 1617027818000
             parsed_msg = connector.parse_raw_msg(raw_msg=raw_msg)
@@ -244,7 +244,7 @@ class TestReceiveRawMsg(unittest.TestCase):
                 modbus_slave_context_kwargs=modbus_slave_context_kwargs
             ) as used_port:
                 os.environ["MODBUS_MASTER_PORT"] = str(used_port)
-                connector = Connector()
+                connector = Connector(__version__)
                 raw_msg = connector.receive_raw_msg()
                 raw_msg["payload"]["timestamp"] = 1617027818000
             parsed_msg = connector.parse_raw_msg(raw_msg=raw_msg)
@@ -312,7 +312,7 @@ class TestReceiveRawMsg(unittest.TestCase):
                 modbus_slave_context_kwargs=modbus_slave_context_kwargs
             ) as used_port:
                 os.environ["MODBUS_MASTER_PORT"] = str(used_port)
-                connector = Connector()
+                connector = Connector(__version__)
                 raw_msg = connector.receive_raw_msg()
                 print(raw_msg)
                 raw_msg["payload"]["timestamp"] = 1617027818000
@@ -356,7 +356,7 @@ class TestParseRawMsg(unittest.TestCase):
         os.environ["MQTT_BROKER_PORT"] = "1883"
         os.environ["POLL_SECONDS"] = "5"
         os.environ["MODBUS_CONFIG"] = json.dumps(test_modbus_config)
-        cls.connector = Connector()
+        cls.connector = Connector(__version__)
 
         # This is an actual returned raw message object received with the config
         # above, corresponding to ten 32 bit float values received from a
@@ -574,7 +574,7 @@ class TestSendCommand(unittest.TestCase):
             ]
         ]
 
-        cn = Connector()
+        cn = Connector(__version__)
         for datapoint_key, datapoint_value, expected_result in test_value_msgs:
             cn.modbus_connection = MagicMock()
             cn.send_command(
@@ -623,7 +623,7 @@ class TestComputeActuatorDatapoints(unittest.TestCase):
         This uses an actual returned raw_msg received with the above
         from a real device.
         """
-        cn = Connector()
+        cn = Connector(__version__)
         expected_datapoints = {
             "write_coil__19__1": "0",
             "write_register__21__1": "0"
@@ -640,7 +640,7 @@ class TestComputeActuatorDatapoints(unittest.TestCase):
         This uses an actual returned raw_msg received with the above
         from a real device.
         """
-        cn = Connector()
+        cn = Connector(__version__)
         expected_method_ranges = {
             "write_coil": {"19":
                     {
@@ -674,7 +674,7 @@ class TestComputeActuatorDatapoints(unittest.TestCase):
         # Connector.computeActuatorDatapoints = MagicMock(
         #     return_value = expected_available_datapoints["actuator"]
         # )
-        cn = Connector()
+        cn = Connector(__version__)
         actual_available_datapoints = cn._initial_available_datapoints
         # Connector.computeActuatorDatapoints = cad_backup
         assert actual_available_datapoints == expected_available_datapoints

@@ -2,6 +2,9 @@
 # -*- coding: utf-8 -*-
 """
 """
+
+__version__ = '0.1.0'
+
 import os
 import json
 import struct
@@ -15,9 +18,9 @@ from pymodbus.exceptions import ModbusException
 from pymodbus.payload import BinaryPayloadBuilder
 from pymodbus.constants import Endian
 
-from pyconnector_template.pyconector_template import SensorFlow as SFTemplate
-from pyconnector_template.pyconector_template import ActuatorFlow as AFTemplate
-from pyconnector_template.pyconector_template import Connector as CTemplate
+from pyconnector_template.pyconnector_template import SensorFlow as SFTemplate
+from pyconnector_template.pyconnector_template import ActuatorFlow as AFTemplate
+from pyconnector_template.pyconnector_template import Connector as CTemplate
 from pyconnector_template.dispatch import DispatchInInterval
 
 
@@ -412,16 +415,30 @@ class ActuatorFlow(AFTemplate):
             *(values, modbus_reg, modbus_unit )
             )   
             logger.debug("Received response for send_command: %s", response)
-            # enter value 1 in WMaxLim_Ena (Register 40246) to start operation if WMaxLim_Pct (Register 40242) is changed
-            if modbus_reg == 40242:
-                logger.debug("Power limit to change (WMaxLimPct). Writing additional register WMaxLim_Ena")
+
+
+            register_wmaxlim_pct_env = os.getenv('MODBUS_W_MAX_LIM_PCT')
+            if register_wmaxlim_pct_env:
+                register_wmaxlimpct = int(register_wmaxlim_pct_env)
+            else:
+                register_wmaxlimpct = 40242
+
+            register_wmaxlim_ena_env = os.getenv('MODBUS_W_MAX_LIM_ENA')
+            if register_wmaxlim_ena_env:
+                register_wmaxlim_ena = int(register_wmaxlim_ena_env)
+            else:
+                register_wmaxlim_ena = 40246
+
+
+            if modbus_reg == register_wmaxlimpct:
+                logger.info("Power limit to change (WMaxLimPct). Writing additional register WMaxLim_Ena to ensure power control via Modbus is enabled.")
                 builder = BinaryPayloadBuilder(byteorder=modbus_datatype[0], wordorder=Endian.Big)
                 builder.reset()
                 p_string = builder._pack_words(modbus_datatype[1:], 1)
                 builder._payload.append(p_string)
                 values = builder.to_registers()[0]
                 response = write_method(
-                    address=40246,
+                    address=register_wmaxlim_ena,
                     value=values,
                     unit=modbus_unit,
                 )
@@ -725,5 +742,5 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
 
 
 if __name__ == "__main__":
-    connector = Connector()
+    connector = Connector(version=__version__)
     connector.run()
