@@ -1,0 +1,95 @@
+{{- $fullname := include "bemcom-app.fullname" . -}}
+{{- $chart := include "bemcom-app.chart" . -}}
+{{- $appVersion := .Values.appVersion }}
+{{- $managedBy := .Release.Service }}
+{{- $namespace := .Release.Namespace }}
+{{- $globalVars := dict "fullname" $fullname "chart" $chart "appVersion" $appVersion "managedBy" $managedBy }}
+---
+# MQTT message broker service.
+{{- $serviceVars := (merge .Values.messageBroker $globalVars ) }}
+{{- with $serviceVars }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "bemcom-app.service.fullname" . }}
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "bemcom-app.labels" . | nindent 4 }}
+  annotations:
+    {{- .service.annotations | toYaml | nindent 4 }}
+spec:
+  type: {{ .service.type }}
+  ports:
+  - name: mqtt-tcp
+    port: {{ .service.ports.mqttTcp }}
+    targetPort: mqtt-tcp
+  selector:
+    {{- include "bemcom-app.selectorLabels" . | nindent 4 }}
+{{- end }}
+---
+# Django API service.
+{{- $serviceVars := (merge .Values.djangoApi $globalVars ) }}
+{{- with $serviceVars }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "bemcom-app.service.fullname" . }}
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "bemcom-app.labels" . | nindent 4 }}
+  annotations:
+    {{- .service.api.annotations | toYaml | nindent 4 }}
+spec:
+  type: {{ .service.api.type }}
+  ports:
+  - name: http
+    port: {{ .service.api.ports.http }}
+    targetPort: http
+  selector:
+    {{- include "bemcom-app.selectorLabels" . | nindent 4 }}
+{{- end }}
+---
+# Grafana tool service.
+{{- if .Values.grafanaTool.enabled }}
+{{- $serviceVars := (merge .Values.grafanaTool $globalVars ) }}
+{{- with $serviceVars }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "bemcom-app.service.fullname" . }}
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "bemcom-app.labels" . | nindent 4 }}
+  annotations:
+    {{- .service.annotations | toYaml | nindent 4 }}
+spec:
+  type: {{ .service.type }}
+  ports:
+  - name: http
+    port: {{ .service.ports.http }}
+    targetPort: http
+  selector:
+    {{- include "bemcom-app.selectorLabels" . | nindent 4 }}
+{{- end }}
+{{- end }}
+---
+{{- range $.Values.connectorServices }}
+{{- if .service }}
+{{- $serviceVars := (merge . $globalVars ) }}
+{{- with $serviceVars }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "bemcom-app.service.fullname" . }}
+  labels:
+    {{- include "bemcom-app.labels" . | nindent 4 }}
+spec:
+  type: {{ .service.type }}
+  ports:
+    {{- .service.ports | toYaml | nindent 4 }}
+  selector:
+    {{- include "bemcom-app.selectorLabels" . | nindent 4 }}
+{{- end }}
+---
+{{- end }}
+{{- end }}

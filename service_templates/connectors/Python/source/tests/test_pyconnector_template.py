@@ -325,6 +325,29 @@ class TestSensorFlowRun(TestClassWithFixtures):
         self.sf.run_sensor_flow()
         self.sf._filter_and_publish_datapoint_values.assert_called()
 
+    def test_raw_messages_with_None_will_be_caught(self):
+        """
+        Check that receive_raw_msg has the option to drop an incoming msg,
+        by setting the payload to None.
+        """
+        self.sf.receive_raw_msg = MagicMock(
+            return_value={"payload": None}
+        )
+        self.sf.run_sensor_flow()
+        assert not self.sf.parse_raw_msg.called
+
+    def test_parsed_messages_with_None_will_be_caught(self):
+        """
+        Check that parsed_msg has the option to drop an incoming msg,
+        by setting the payload to None.
+        """
+        self.sf.parse_raw_msg = MagicMock(
+            return_value={"payload": None}
+        )
+        self.sf.run_sensor_flow()
+        assert not self.sf._flatten_parsed_msg.called
+
+
 class TestSensorFlowFlattenParsedMsg(TestClassWithFixtures):
 
     fixture_names = []
@@ -405,7 +428,7 @@ class TestSensorFlowFlattenParsedMsg(TestClassWithFixtures):
 
 class TestSensorFlowFilterAndPublish(TestClassWithFixtures):
 
-    fixture_names = []
+    fixture_names = ("caplog", )
 
     def setup_method(self, method):
 
@@ -416,8 +439,8 @@ class TestSensorFlowFilterAndPublish(TestClassWithFixtures):
             "payload": {
                 "flattened_message": {
                     "device_1__sensor_1": "1.12",
-                    "device_1__sensor_2": "2.12",
-                    "device_1__sensor_3": "3.12"
+                    "device_1__sensor_2": 2.12,
+                    "device_1__sensor_3": True,
                 },
                 "timestamp": 1573680749000
             }
@@ -430,6 +453,8 @@ class TestSensorFlowFilterAndPublish(TestClassWithFixtures):
             },
             "actuator": {}
         }
+
+        self.logger_name = "pyconnector"
 
     def test_value_msgs_published_for_selected_datapoints(self):
         """
@@ -467,6 +492,86 @@ class TestSensorFlowFilterAndPublish(TestClassWithFixtures):
             index_value_msg = actual_value_msgs.index(expected_value_msg)
             assert index_topic == index_value_msg
 
+    def test_fallback_to_string_encoding(self):
+        """
+        At 2021-08-05 the behaviour of the _filter_and_publish_datapoint_values
+        method has been changed to send values as JSON encoded strings and not
+        always as strings (to allow more efficient DB layouts.)
+
+        As a fallback if JSON encoding fails will send the value as string.
+        Verify here that this fallback works as expected.
+        """
+
+        flattened_msg = {
+            "payload": {
+                "flattened_message": {
+                    # binnary data cannot be encoded to json.
+                    "device_1__sensor_1": b"binary",
+                },
+                "timestamp": 1573680749000
+            }
+        }
+
+        self.sf._filter_and_publish_datapoint_values(
+            flattened_msg=flattened_msg
+        )
+
+        # Compute the messages that would have been sent by the call above.
+        calls = self.sf.mqtt_client.publish.call_args_list
+        actual_value_msgs = [json.loads(c.kwargs["payload"]) for c in calls]
+        actual_topics = [c.kwargs["topic"] for c in calls]
+
+        flattened_message = flattened_msg["payload"]["flattened_message"]
+        for dp_key, dp_value in flattened_message.items():
+            expected_value_msg = {
+                "value": str(dp_value),
+                "timestamp": self.flattened_msg["payload"]["timestamp"]
+            }
+
+            # Verify that all selected datapoints have been sent.
+            expected_topic = self.sf.datapoint_map["sensor"][dp_key]
+            assert expected_topic in actual_topics
+            assert expected_value_msg in actual_value_msgs
+
+            # Also verify that the topics and message matches.
+            index_topic = actual_topics.index(expected_topic)
+            index_value_msg = actual_value_msgs.index(expected_value_msg)
+            assert index_topic == index_value_msg
+
+    def test_fallback_to_string_sends_warning(self):
+        """
+        In extension to the test above, also verify that a warning is raised
+        so the user can notice that the connector behaves unexpected.
+        """
+
+        self.caplog.set_level(logging.WARNING, logger=self.logger_name)
+        self.caplog.clear()
+        records = self.caplog.records
+
+        # This should raise no warning.
+        self.sf._filter_and_publish_datapoint_values(
+            flattened_msg=self.flattened_msg
+        )
+        assert len(records) == 0
+
+        # But this should.
+        flattened_msg = {
+            "payload": {
+                "flattened_message": {
+                    # binnary data cannot be encoded to json.
+                    "device_1__sensor_1": b"binary",
+                },
+                "timestamp": 1573680749000
+            }
+        }
+        self.sf._filter_and_publish_datapoint_values(
+            flattened_msg=flattened_msg
+        )
+        assert len(records) == 1
+        assert records[0].levelname == "WARNING"
+        # Without the topic will not know which message went wrong.
+        expected_topic = self.sf.datapoint_map["sensor"]["device_1__sensor_1"]
+        assert expected_topic in records[0].message
 
 class TestActuatorFlowRun(TestClassWithFixtures):
 

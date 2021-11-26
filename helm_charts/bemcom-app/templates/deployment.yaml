@@ -1,0 +1,366 @@
+{{- $fullname := include "bemcom-app.fullname" . -}}
+{{- $chart := include "bemcom-app.chart" . -}}
+{{- $appVersion := .Values.appVersion }}
+{{- $managedBy := .Release.Service }}
+{{- $namespace := .Release.Namespace }}
+{{- $globalVars := dict "fullname" $fullname "chart" $chart "appVersion" $appVersion "managedBy" $managedBy }}
+---
+# MQTT message broker deployment.
+{{- $serviceVars := (merge .Values.messageBroker $globalVars) }}
+{{- with $serviceVars }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  {{ include "bemcom-app.service.fullname" . }}
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "bemcom-app.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "bemcom-app.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- toYaml .deployment.podAnnotations | nindent 8 }}
+      labels:
+        {{- include "bemcom-app.selectorLabels" . | nindent 8 }}
+    spec:
+      imagePullSecrets:
+        {{- toYaml .deployment.image.pullSecrets | nindent 8 }}
+      serviceAccountName: {{ include "bemcom-app.serviceAccountName" $ }}
+      containers:
+      - name: {{ include "bemcom-app.service.fullname" . }}
+        image: "{{ .deployment.image.repository }}:{{ .deployment.image.tag }}"
+        imagePullPolicy: {{ .deployment.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .deployment.ports.mqttTcp }}
+          name: mqtt-tcp
+        resources:
+          {{- .deployment.resources | toYaml | nindent 12 }}
+      nodeSelector:
+        {{- toYaml .deployment.nodeSelector | nindent 8 }}
+      affinity:
+        {{- toYaml .deployment.affinity | nindent 8 }}
+      tolerations:
+        {{- toYaml .deployment.tolerations | nindent 8 }}
+{{- end }}
+---
+# Django API and DB deployment.
+# TODO You may want to add a Prometheus exporter for Timescale.
+# See: https://github.com/timescale/timescaledb-kubernetes/blob/master/charts/timescaledb-single/templates/statefulset-timescaledb.yaml#L426
+{{- $serviceVars := (merge .Values.djangoApi $globalVars) }}
+{{- with $serviceVars }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name:  {{ include "bemcom-app.service.fullname" . }}
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "bemcom-app.labels" . | nindent 4 }}
+spec:
+  serviceName:  {{ include "bemcom-app.service.fullname" . }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "bemcom-app.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- toYaml .deployment.podAnnotations | nindent 8 }}
+      labels:
+        {{- include "bemcom-app.selectorLabels" . | nindent 8 }}
+    spec:
+      imagePullSecrets:
+        {{- toYaml .deployment.api.image.pullSecrets | nindent 8 }}
+      serviceAccountName: {{ include "bemcom-app.serviceAccountName" $ }}
+      containers:
+      - name: {{ include "bemcom-app.service.fullname" . }}
+        image: "{{ .deployment.api.image.repository }}:{{ .deployment.api.image.tag }}"
+        imagePullPolicy: {{ .deployment.api.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .deployment.api.ports.http }}
+          name: http
+        env:
+        - name: LOGLEVEL
+          value: {{ .deployment.api.env.LOGLEVEL | quote }}
+        - name: DJANGO_DEBUG
+          value: {{ .deployment.api.env.DJANGO_DEBUG | quote }}
+        - name: DJANGO_ADMINS
+          value: {{ .deployment.api.env.DJANGO_ADMINS | toJson | quote }}
+        - name: DJANGO_ALLOWED_HOSTS
+          value: {{ .deployment.api.env.DJANGO_ALLOWED_HOSTS | toJson | quote }}
+        - name: DJANGOAPIDB_HOST
+          value: "localhost"
+        - name: DJANGOAPIDB_PORT
+          value: {{ .service.db.ports.postgres | quote }}
+        - name: DJANGOAPIDB_DBNAME
+          value: {{ .deployment.db.env.POSTGRES_DB | quote }}
+        - name: N_CMI_WRITE_THREADS
+          value: {{ .deployment.api.env.N_CMI_WRITE_THREADS | quote }}
+        envFrom:
+        - configMapRef:
+            name: {{ $fullname }}-generic-config
+        - secretRef:
+            name: {{ $fullname }}-django-api
+        resources:
+          {{- .deployment.api.resources | toYaml | nindent 12 }}
+      - name: {{ include "bemcom-app.service.fullname" . }}-db
+        image: "{{ .deployment.db.image.repository }}:{{ .deployment.db.image.tag }}"
+        imagePullPolicy: {{ .deployment.db.image.pullPolicy }}
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: pgdata
+        ports:
+        - containerPort: {{ .deployment.db.ports.postgres }}
+          name: postgres
+        env:
+        - name: POSTGRES_DB
+          value: {{ .deployment.db.env.POSTGRES_DB | quote }}
+        envFrom:
+        - secretRef:
+            name: {{ $fullname }}-django-api-db
+        resources:
+          {{- .deployment.db.resources | toYaml | nindent 12 }}
+      volumes:
+      - name: pgdata
+        persistentVolumeClaim:
+          claimName: {{ include "bemcom-app.service.fullname" . }}-pgdata
+      nodeSelector:
+        {{- toYaml .deployment.nodeSelector | nindent 8 }}
+      affinity:
+        {{- toYaml .deployment.affinity | nindent 8 }}
+      tolerations:
+        {{- toYaml .deployment.tolerations | nindent 8 }}
+{{- end }}
+---
+# Mongo raw message DB deployment.
+{{- if .Values.mongoRawMessageDb.enabled }}
+{{- $serviceVars := (merge .Values.mongoRawMessageDb $globalVars ) }}
+{{- with $serviceVars }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  {{ include "bemcom-app.service.fullname" . }}
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "bemcom-app.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "bemcom-app.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- toYaml .deployment.podAnnotations | nindent 8 }}
+      labels:
+        {{- include "bemcom-app.selectorLabels" . | nindent 8 }}
+    spec:
+      imagePullSecrets:
+        {{- toYaml .deployment.image.pullSecrets | nindent 8 }}
+      serviceAccountName: {{ include "bemcom-app.serviceAccountName" $ }}
+      containers:
+      - name: {{ include "bemcom-app.service.fullname" (merge . $globalVars) }}
+        image: "{{ .deployment.image.repository }}:{{ .deployment.image.tag }}"
+        imagePullPolicy: {{ .deployment.image.pullPolicy }}
+        volumeMounts:
+        - mountPath: /data/db
+          name: mongo-data
+        ports:
+        - containerPort: {{ .deployment.ports.mongo }}
+          name: mongo-db
+        env:
+        - name: MQTT_TOPIC_ALL_RAW_MESSAGES
+          value: {{ .deployment.env.MQTT_TOPIC_ALL_RAW_MESSAGES | quote }}
+        - name: MQTT_INTEGRATION_LOG_LEVEL
+          value: {{ .deployment.env.MQTT_INTEGRATION_LOG_LEVEL | quote }}
+        envFrom:
+        - configMapRef:
+            name: {{ $fullname }}-generic-config
+        - secretRef:
+            name: {{ $fullname }}-mongo-raw-message-db
+        resources:
+          {{- .deployment.resources | toYaml | nindent 12 }}
+      volumes:
+      - name: mongo-data
+        persistentVolumeClaim:
+          claimName: {{ include "bemcom-app.service.fullname" . }}-mongo-data
+      nodeSelector:
+        {{- toYaml .deployment.nodeSelector | nindent 8 }}
+      affinity:
+        {{- toYaml .deployment.affinity | nindent 8 }}
+      tolerations:
+        {{- toYaml .deployment.tolerations | nindent 8 }}
+{{- end }}
+{{- end }}
+---
+# Grafana Tool deployment.
+{{- if .Values.grafanaTool.enabled }}
+{{- $serviceVars := (merge .Values.grafanaTool $globalVars ) }}
+{{- with $serviceVars }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  {{ include "bemcom-app.service.fullname" . }}
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "bemcom-app.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "bemcom-app.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- toYaml .deployment.podAnnotations | nindent 8 }}
+      labels:
+        {{- include "bemcom-app.selectorLabels" . | nindent 8 }}
+    spec:
+      imagePullSecrets:
+        {{- toYaml .deployment.image.pullSecrets | nindent 8 }}
+      serviceAccountName: {{ include "bemcom-app.serviceAccountName" $ }}
+      containers:
+      - name: {{ include "bemcom-app.service.fullname" (merge . $globalVars) }}
+        image: "{{ .deployment.image.repository }}:{{ .deployment.image.tag }}"
+        imagePullPolicy: {{ .deployment.image.pullPolicy }}
+        volumeMounts:
+        - mountPath: /var/lib/grafana
+          name: grafana-data
+        ports:
+        - containerPort: {{ .deployment.ports.http }}
+          name: http
+        envFrom:
+        - secretRef:
+            name: {{ $fullname }}-grafana-tool
+        resources:
+          {{- .deployment.resources | toYaml | nindent 12 }}
+      volumes:
+      - name: grafana-data
+        persistentVolumeClaim:
+          claimName: {{ include "bemcom-app.service.fullname" . }}-grafana-data
+      nodeSelector:
+        {{- toYaml .deployment.nodeSelector | nindent 8 }}
+      affinity:
+        {{- toYaml .deployment.affinity | nindent 8 }}
+      tolerations:
+        {{- toYaml .deployment.tolerations | nindent 8 }}
+{{- end }}
+{{- end }}
+---
+# MQTT message monitor deployment.
+{{- if .Values.mqttMessageMonitor.enabled }}
+{{- $serviceVars := (merge .Values.mqttMessageMonitor $globalVars ) }}
+{{- with $serviceVars }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  {{ include "bemcom-app.service.fullname" . }}
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "bemcom-app.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "bemcom-app.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- toYaml .deployment.podAnnotations | nindent 8 }}
+      labels:
+        {{- include "bemcom-app.selectorLabels" . | nindent 8 }}
+    spec:
+      imagePullSecrets:
+        {{- toYaml .deployment.image.pullSecrets | nindent 8 }}
+      serviceAccountName: {{ include "bemcom-app.serviceAccountName" $ }}
+      containers:
+      - name: {{ include "bemcom-app.service.fullname" (merge . $globalVars) }}
+        image: "{{ .deployment.image.repository }}:{{ .deployment.image.tag }}"
+        imagePullPolicy: {{ .deployment.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .deployment.ports.http }}
+          name: http
+        envFrom:
+        - configMapRef:
+            name: {{ $fullname }}-generic-config
+        resources:
+          {{- .deployment.resources | toYaml | nindent 12 }}
+      nodeSelector:
+        {{- toYaml .deployment.nodeSelector | nindent 8 }}
+      affinity:
+        {{- toYaml .deployment.affinity | nindent 8 }}
+      tolerations:
+        {{- toYaml .deployment.tolerations | nindent 8 }}
+{{- end }}
+{{- end }}
+---
+# Every specified BEMCom connector service.
+{{- range $.Values.connectorServices }}
+{{- $serviceVars := (merge . $globalVars) }}
+{{- with $serviceVars }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  {{ include "bemcom-app.service.fullname" . }}
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "bemcom-app.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "bemcom-app.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- if .deployment.podAnnotations }}
+      annotations:
+        {{- toYaml .deployment.podAnnotations | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "bemcom-app.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- if .deployment.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .deployment.image.pullSecrets | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "bemcom-app.serviceAccountName" $ }}
+      containers:
+      - name: {{ include "bemcom-app.service.fullname" . }}
+        image: "{{ .deployment.image.repository }}:{{ .deployment.image.tag }}"
+        imagePullPolicy: {{ .deployment.image.pullPolicy | default "IfNotPresent" }}
+        {{- if .deployment.ports }}
+        ports:
+          {{- .deployment.ports | toYaml | nindent 12 }}
+        {{- end }}
+        env:
+          {{- range $key, $value := .deployment.envStr }}
+          - name: {{ $key }}
+            value: {{ $value | quote }}
+          {{- end }}
+          {{- range $key, $value := .deployment.envJson }}
+          - name: {{ $key }}
+            value: {{ $value | toJson | quote }}
+          {{- end }}
+        envFrom:
+        - configMapRef:
+            name: {{ $fullname }}-generic-config
+        resources:
+          {{- .deployment.resources | default $.Values.defaultResourcesConnectors | toYaml | nindent 12 }}
+      {{- if .deployment.nodeSelector }}
+      nodeSelector:
+        {{- toYaml .deployment.nodeSelector | nindent 8 }}
+      {{- end }}
+      {{- if .deployment.affinity }}
+      affinity:
+        {{- toYaml .deployment.affinity | nindent 8 }}
+      {{- end }}
+      {{- if .deployment.tolerations }}
+      tolerations:
+        {{- toYaml .deployment.tolerations | nindent 8 }}
+      {{- end }}
+{{- end }}
+---
+{{- end }}

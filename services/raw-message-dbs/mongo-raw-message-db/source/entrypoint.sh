@@ -1,13 +1,7 @@
 #!/bin/bash
 
 # Start the DB in background.
-if [ -z $MONGO_USERNAME ]
-then
-    # No auth if username is not set.
-    mongod --bind_ip_all &
-else
-    mongod --auth --bind_ip_all &
-fi
+bash /usr/local/bin/docker-entrypoint.sh mongod &
 mongo_pid=$!
 
 # Give the DB time to boot before connecting with MQTT.

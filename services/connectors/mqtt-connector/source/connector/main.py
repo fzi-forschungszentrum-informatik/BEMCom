@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 """
-__version__="0.1.0"
+__version__="0.4.0"
 
 import os
 import ssl
@@ -73,23 +73,35 @@ class SensorFlow(SFTemplate):
 
     def receive_raw_msg(self, raw_data=None):
         """
-        Receive payload and topic from remote broker.
+        Functionality to receive a raw message from device.
+
+        Poll the device/gateway for data and transforms this raw data
+        into the format expected by run_sensor_flow. If the device/gateway
+        uses some protocol that pushes data, the raw data should be passed
+        as the raw_data argument to the function.
 
         Parameters
         ----------
-        raw_data : paho mqtt message
-            MQTT msg received from the remote broker.
+        raw_data : TYPE, optional
+            Raw data of device/gateway if the device pushes and is not
+            pulled for data. The default is None.
 
         Returns
         -------
         msg : dict
-            The message object containing the raw data as string. It must
-            be a string to allow sending the raw_message object as JSON object
-            to the raw message DB.
+            The message object containing the raw data. It must be
+            JSON serializable (to allow sending the raw_message object as JSON
+            object to the raw message DB). If the data received from the device
+            or gateway cannot be packed to JSON directly (like e.g. for bytes)
+            it must modified accordingly. Avoid manipulation of the data as much
+            as possible, to prevent data losses when these operations fail.
+            A simple solution may often be to cast the raw data to strings.
+            Dict structures are fine, especially if created in this function,
+            e.g. by iterating over many endpoints of one device.
             Should be formatted like this:
                 msg = {
                     "payload": {
-                        "raw_message": <the raw data as string>
+                        "raw_message": <raw data in JSON serializable form>
                     }
                 }
             E.g.
@@ -111,15 +123,14 @@ class SensorFlow(SFTemplate):
 
     def parse_raw_msg(self, raw_msg):
         """
-        Functionality to receive a raw message from device.
+        Parses the values from the raw_message.
 
-        Poll the device/gateway for data and transforms this raw data
-        into the format expected by run_sensor_flow. If the device/gateway
-        uses some protocol that pushes data, the raw data should be passed
-        as the raw_data argument to the function.
+        This parses the raw_message into an object (in a JSON meaning, a
+        dict in Python). The resulting object can be nested to allow
+        representation of hierarchical data.
 
         Be aware: All keys in the output message should be strings. All values
-        should be converted be strings, too.
+        must be convertable to JSON.
 
         Parameters
         ----------
@@ -136,8 +147,8 @@ class SensorFlow(SFTemplate):
         -------
         msg : dict
             The message object containing the parsed data as python dicts from
-            dicts structure.
-            Should be formatted like this:
+            dicts structure. All keys should be strings. All value should be
+            of type string, bool or numbers. Should be formatted like this:
                 msg = {
                     "payload": {
                         "parsed_message": <the parsed data as object>,
@@ -149,8 +160,9 @@ class SensorFlow(SFTemplate):
                     "payload": {
                         "parsed_message": {
                             "device_1": {
-                                "sensor_1": "2.12",
-                                "sensor_2": "3.12"
+                                "sensor_1": "test",
+                                "sensor_2": 3.12,
+                                "sensor_2": True,
                             }
                         },
                         "timestamp": 1573680749000
@@ -286,7 +298,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
     These attributes are created by init and are then dynamically used
     by the Connector.
     mqtt_client : class instance.
-        Initialized MQTT client library with signature of paho MQTT.
+        Initialized MQTT client library with signature of paho mqtt.
     remote_mqtt_client : class instance.
         Similar to the one above but for the remote MQTT broker.
     parse_sensor_msgs_as_json : bool
@@ -365,9 +377,6 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
             "actuator": actuator_datapoints,
         }
         CTemplate.__init__(self, *args, **kwargs)
-
-        # TODO Remove this.
-        self._heartbeat_interval = 1.0
 
     def parse_topic_mapping(self):
         """

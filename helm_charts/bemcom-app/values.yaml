@@ -1,0 +1,274 @@
+# Default values for bemcom-app.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# This is the version number of the application being deployed. This version number should be
+# incremented each time you make changes to the application. Versions are not expected to
+# follow Semantic Versioning. They should reflect the version the application is using.
+# It is recommended to use it with quotes.
+appVersion: "0.1.0"
+
+# Override the default values app.kubernetes.io/name, app.kubernetes.io/instance
+# and the first part of every service full name. Not recommended.
+fullnameOverride: ""
+
+# This allows to add a service account to all deployments.
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+# Below here all BEMCom services that usually exist once.
+messageBroker:
+  serviceName: message-broker
+  deployment:
+    podAnnotations: {}
+    image:
+      repository: bemcom/mosquitto-mqtt-broker
+      tag: "0.1.0"
+      pullPolicy: IfNotPresent
+      pullSecrets: []
+    ports:
+     mqttTcp: 1883
+    resources:
+      limits:
+        cpu: 1
+        memory: 1024Mi
+      requests:
+        cpu: 200m
+        memory: 128Mi
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+  service:
+    type: ClusterIP
+    annotations: {}
+    ports:
+      mqttTcp: 1883
+
+djangoApi:
+  serviceName: django-api
+  deployment:
+    api:
+      podAnnotations: {}
+      image:
+        repository: bemcom/django-api
+        tag: "0.6.6"
+        pullPolicy: IfNotPresent
+        pullSecrets: []
+      ports:
+        http: 8080
+      env:
+        LOGLEVEL: INFO
+        DJANGO_DEBUG: FALSE
+        DJANGO_ADMINS: []
+        DJANGO_ALLOWED_HOSTS:
+          - localhost
+        N_CMI_WRITE_THREADS: 32
+      secrets:
+        DJANGO_SUPERUSER_USERNAME: bemcom
+        DJANGO_SUPERUSER_PASSWORD: bemcom
+        DJANGO_SUPERUSER_EMAIL: bemcom@example.com
+      resources:
+        limits:
+          cpu: 1
+          memory: 2096Mi
+        requests:
+          cpu: 500m
+          memory: 1024Mi
+    db:
+      image:
+        repository: timescale/timescaledb
+        tag: "2.4.2-pg13"
+        pullPolicy: IfNotPresent
+        pullSecrets: []
+      ports:
+        postgres: 5432
+      env:
+        POSTGRES_DB: bemcom
+      secrets:
+        POSTGRES_USER: bemcom
+        POSTGRES_PASSWORD: bemcom
+      resources:
+        limits:
+          cpu: 2
+          memory: 2096Mi
+        requests:
+          cpu: 500m
+          memory: 512Mi
+  service:
+    api:
+      type: ClusterIP
+      annotations: {}
+      ports:
+        http: 80
+    db:
+      type: ClusterIP
+      annotations: {}
+      ports:
+        postgres: 5432
+  volumes:
+    pvc:
+      pgdata:
+        spec:
+          storageClassName: local
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 800Gi
+  ingress:
+    className: ""
+    annotations:
+      kubernetes.io/ingress.class: traefik2-external
+      traefik.ingress.kubernetes.io/router.middlewares: traefik2-redirect-to-https@kubernetescrd
+    hosts:
+      - host: bemcom-app-api.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+
+mongoRawMessageDb:
+  serviceName: mongo-raw-message-db
+  enabled: true
+  deployment:
+    podAnnotations: {}
+    image:
+      repository: bemcom/mongo-raw-message-db
+      tag: "0.2.0"
+      pullPolicy: IfNotPresent
+      pullSecrets: []
+    ports:
+      mongo: 27017
+    env:
+      MQTT_TOPIC_ALL_RAW_MESSAGES: "+/raw_message_to_db"
+      MQTT_INTEGRATION_LOG_LEVEL: INFO
+    secrets:
+      MONGO_USERNAME: bemcom-mongo
+      MONGO_PASSWORD: bemcom-mongo-pass
+      MONGO_LOGIN_DB: admin
+    resources:
+      limits:
+        cpu: 1
+        memory: 2096Mi
+      requests:
+        cpu: 200m
+        memory: 1028Mi
+  volumes:
+    pvc:
+      mongoData:
+        spec:
+          storageClassName: shared
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 100Gi
+
+grafanaTool:
+  serviceName: grafana-tool
+  enabled: true
+  deployment:
+    podAnnotations: {}
+    image:
+      repository: bemcom/grafana-tool
+      tag: "0.2.2"
+      pullPolicy: IfNotPresent
+      pullSecrets: []
+    ports:
+      http: 3000
+    secrets:
+      GF_SECURITY_ADMIN_USER: bemcom
+      GF_SECURITY_ADMIN_PASSWORD: bemcom
+    resources:
+      limits:
+        cpu: 1
+        memory: 256Mi
+      requests:
+        cpu: 200m
+        memory: 128Mi
+  service:
+    type: ClusterIP
+    annotations: {}
+    ports:
+      http: 80
+  volumes:
+    pvc:
+      grafanaData:
+        spec:
+          storageClassName: shared
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+  ingress:
+    className: ""
+    annotations:
+      kubernetes.io/ingress.class: traefik2-external
+      traefik.ingress.kubernetes.io/router.middlewares: traefik2-redirect-to-https@kubernetescrd
+    hosts:
+      - host: bemcom-app-grafana.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+
+mqttMessageMonitor:
+  serviceName: mqtt-message-monitor
+  enabled: true
+  deployment:
+    podAnnotations: {}
+    image:
+      repository: bemcom/mqtt-message-monitor
+      tag: "0.1.0"
+      pullPolicy: IfNotPresent
+      pullSecrets: []
+    ports:
+      http: 1880
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+# Specify below all BEMCom connector services that should be deployed.
+connectorServices: {}
+  # - serviceName: modbus-tcp-connector-example
+  #   deployment:
+  #     image:
+  #       repository: bemcom/modbus-tcp-connector
+  #       tag: "0.5.0"
+  #     envStr:
+  #       POLL_SECONDS: 5
+  #       CONNECTOR_NAME: modbus-tcp-connector-example
+  #       MODBUS_MASTER_IP: xxx.xxx.xxx.xxx
+  #       MODBUS_MASTER_PORT: 502
+  #     envJson:
+  #       MODBUS_CONFIG:
+  #         read_input_registers:
+  #           - address: 19000
+  #             count: 122
+  #             unit: 1
+  #             datatypes: ">fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+
+
+# These are default resources that apply to deployments if resources are not
+# specified explicitly. Should be OK for simple connectors.
+defaultResourcesConnectors:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi

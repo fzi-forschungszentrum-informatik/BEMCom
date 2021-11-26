@@ -1,5 +1,11 @@
 version: '3'
 
+# Use these volumes for development only.
+volumes:
+    mongo-raw-message-db-mongodata:
+        name: mongo-raw-message-db-mongodata
+
+
 services:
 
     mongo-raw-message-db:
@@ -13,16 +19,18 @@ services:
             - "${MONGODB_PORT}:27017"
 
         volumes: 
-            - "${MONGODB_VOLUME}:/data/db"
+            - "mongo-raw-message-db-mongodata:/data/db"
 
         user: "${USER_ID}:${GROUP_ID}"
 
         environment:
-            - "MONGO_USERNAME=${MONGO_USERNAME}"
-            - "MONGO_PASSWORD=${MONGO_PASSWORD}"
-            - "MONGO_LOGIN_DB=${MONGO_PASSWORD}"
             - "MQTT_BROKER_HOST=${MQTT_BROKER_HOST}"
             - "MQTT_BROKER_PORT=${MQTT_BROKER_PORT}"
+            - "MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}"
+            - "MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}"
+            - "MONGO_USERNAME=${MONGO_USERNAME}"
+            - "MONGO_PASSWORD=${MONGO_PASSWORD}"
+            - "MONGO_LOGIN_DB=${MONGO_LOGIN_DB}"
             - "MQTT_TOPIC_ALL_RAW_MESSAGES=+/raw_message_to_db"
             - "MQTT_INTEGRATION_LOG_LEVEL=DEBUG"
 

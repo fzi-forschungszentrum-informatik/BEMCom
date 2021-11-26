@@ -14,7 +14,7 @@ from threading import Thread
 
 import pytest
 
-from ..main import Connector
+from ..main import Connector, __version__
 
 
 class RecursiveMagicMock(MagicMock):
@@ -71,6 +71,7 @@ class TestSocketClient(unittest.TestCase):
         self.connector_default_kwargs = {
             "MqttClient": MagicMock,
             "heartbeat_interval": 0.05,
+            "version": __version__
         }
 
     def test_data_received_from_tcp(self):
@@ -119,41 +120,46 @@ class TestReceiveRawMsg(unittest.TestCase):
         """
         ... hence just check that the output format is as expected.
         """
+        test_raw_data = b'{"instantaneousActivePower":"10150","instantaneousCurrent1":"22.50","instantaneousCurrent2":"20.50000000000000150","instantaneousCurrent3":"20.0","instantaneousCurrentOBIS91":"19.00","instantaneousFrequency":"50.01","instantaneousManufacturerSpecificReactivePower":"8550","instantaneousPowerFactorAll":"0.76","instantaneousPowerFactorL1":"0.66","instantaneousPowerFactorL2":"0.72","instantaneousPowerFactorL3":"0.9","instantaneousVoltage1":"228.53","instantaneousVoltage2":"228.63","instantaneousVoltage3":"228.02","phaseAngleIL1_UL1":"301.0","phaseAngleIL2_UL1":"59.0","phaseAngleIL3_UL1":"202.0","phaseAngleUL1_UL1":"0.0","phaseAngleUL2_UL1":"120.0","phaseAngleUL3_UL1":"240.0"}\r\n'
         expected_msg = {
             "payload": {
-                "raw_message": "test_msg".encode()
+                "raw_message": str(test_raw_data)
             }
         }
-        cn = Connector()
+        cn = Connector(version=__version__)
         actual_msg = cn.receive_raw_msg(
-            raw_data=expected_msg["payload"]["raw_message"]
+            raw_data=test_raw_data
         )
+
+        assert actual_msg == expected_msg
 
 
 class TestParseRawMsg(unittest.TestCase):
 
     def test_json_parsed_correctly(self):
         os.environ["PARSE_AS"] = "JSON"
-        cn = Connector()
+        cn = Connector(version=__version__)
 
         # A message that allows us to differtiate between encodings due to
         # non ASCII characters.
-        test_msg_obj = {"dummy_dp": {"sensor_1": 2.0}}
+        test_msg_obj = {
+            "dummy_dp": {
+                "sensor_1": 2.0,
+                "sensor_2": True,
+                "sensor_3": "A string.",
+            }
+        }
         timestamp = 1618256642000
 
         test_raw_msg = {
             "payload": {
-                "raw_message": json.dumps(test_msg_obj).encode(),
+                "raw_message": str(json.dumps(test_msg_obj).encode()),
                 "timestamp": timestamp,
             },
         }
         expected_parsed_msg = {
             "payload": {
-                "parsed_message": {
-                    "dummy_dp": {
-                        "sensor_1": "2.0",
-                    }
-                },
+                "parsed_message": test_msg_obj,
                 "timestamp": timestamp
             }
         }
@@ -162,26 +168,28 @@ class TestParseRawMsg(unittest.TestCase):
 
     def test_yaml_parsed_correctly(self):
         os.environ["PARSE_AS"] = "YAML"
-        cn = Connector()
+        cn = Connector(version=__version__)
 
         # A message that allows us to differtiate between encodings due to
         # non ASCII characters.
-        test_msg_obj = {"dummy_dp": {"sensor_1": 2.0}}
+        test_msg_obj = {
+            "dummy_dp": {
+                "sensor_1": 2.0,
+                "sensor_2": True,
+                "sensor_3": "A string.",
+            }
+        }
         timestamp = 1618256642000
 
         test_raw_msg = {
             "payload": {
-                "raw_message": yaml.dump(test_msg_obj).encode(),
+                "raw_message":str(yaml.dump(test_msg_obj).encode()),
                 "timestamp": timestamp,
             },
         }
         expected_parsed_msg = {
             "payload": {
-                "parsed_message": {
-                    "dummy_dp": {
-                        "sensor_1": "2.0",
-                    }
-                },
+                "parsed_message": test_msg_obj,
                 "timestamp": timestamp
             }
         }

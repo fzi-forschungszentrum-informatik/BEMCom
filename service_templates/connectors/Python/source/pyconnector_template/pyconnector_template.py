@@ -19,7 +19,7 @@ from dotenv import load_dotenv, find_dotenv
 from .dispatch import DispatchOnce
 
 # Log everything to stdout by default, i.e. to docker container logs.
-LOGFORMAT = '%(asctime)s-%(funcName)s-%(levelname)s: %(message)s'
+LOGFORMAT = "%(asctime)s-%(funcName)s-%(levelname)s: %(message)s"
 logging.basicConfig(format=LOGFORMAT, level=logging.DEBUG)
 logger = logging.getLogger("pyconnector")
 
@@ -74,13 +74,11 @@ class MQTTHandler(logging.StreamHandler):
         }
 
         self.mqtt_client.publish(
-            payload=json.dumps(log_msg),
-            topic=self.log_topic,
-            retain=True,
+            payload=json.dumps(log_msg), topic=self.log_topic, retain=True,
         )
 
 
-class SensorFlow():
+class SensorFlow:
     """
     Bundles all functionality to handle sensor messages.
 
@@ -143,6 +141,15 @@ class SensorFlow():
         logger.debug("Calling receive_raw_msg with raw_data: %s", raw_data)
         msg = self.receive_raw_msg(raw_data=raw_data)
 
+        # Stop if receive_raw_msg returned a message that is not intended
+        # to be processed.
+        if msg["payload"] is None:
+            logger.debug(
+                "Stopped run_sensor_flow for msg with empty payload after "
+                "receive_raw_msg."
+            )
+            return
+
         # Add receival timestamp in milliseconds since epoch.
         # (Following the message format.)
         ts_utc_now = timestamp_utc_now()
@@ -174,6 +181,15 @@ class SensorFlow():
         logger.debug("Calling parse_raw_msg with raw_msg: %s", msg)
         msg = self.parse_raw_msg(raw_msg=msg)
 
+        # Stop if receive_raw_msg returned a message that is not intended
+        # to be processed.
+        if msg["payload"] is None:
+            logger.debug(
+                "Stopped run_sensor_flow for msg with empty payload after "
+                "parse_raw_msg."
+            )
+            return
+
         # Flatten the parsed message to a single level dict.
         logger.debug("Calling _flatten_parsed_msg with parsed_msg: %s", msg)
         msg = self._flatten_parsed_msg(parsed_msg=msg)
@@ -182,7 +198,7 @@ class SensorFlow():
         # send an update to the AdminUI.
         available_datapoints_update = {
             "actuator": {},
-            "sensor": msg["payload"]["flattened_message"]
+            "sensor": msg["payload"]["flattened_message"],
         }
         self._update_available_datapoints(
             available_datapoints=available_datapoints_update
@@ -192,7 +208,8 @@ class SensorFlow():
         # within the AdminUI.
         logger.debug(
             "Calling _filter_and_publish_datapoint_values with "
-            "flattened_msg: %s", msg
+            "flattened_msg: %s",
+            msg,
         )
         self._filter_and_publish_datapoint_values(flattened_msg=msg)
 
@@ -214,13 +231,21 @@ class SensorFlow():
         Returns
         -------
         msg : dict
-            The message object containing the raw data as string. It must
-            be a string to allow sending the raw_message object as JSON object
-            to the raw message DB.
+            The message object containing the raw data. It must be
+            JSON serializable (to allow sending the raw_message object as JSON
+            object to the raw message DB). If the data received from the device
+            or gateway cannot be packed to JSON directly (like e.g. for bytes)
+            it must modified accordingly. Avoid manipulation of the data as much
+            as possible, to prevent data losses when these operations fail.
+            A simple solution may often be to cast the raw data to strings.
+            Dict structures are fine, especially if created in this function,
+            e.g. by iterating over many endpoints of one device.
+            Set the value of payload to None if run_sensor_flow should be
+            stopped for this message.
             Should be formatted like this:
                 msg = {
                     "payload": {
-                        "raw_message": <the raw data as string>
+                        "raw_message": <raw data in JSON serializable form>
                     }
                 }
             E.g.
@@ -234,15 +259,14 @@ class SensorFlow():
 
     def parse_raw_msg(self, raw_msg):
         """
-        Functionality to receive a raw message from device.
+        Parses the values from the raw_message.
 
-        Poll the device/gateway for data and transforms this raw data
-        into the format expected by run_sensor_flow. If the device/gateway
-        uses some protocol that pushes data, the raw data should be passed
-        as the raw_data argument to the function.
+        This parses the raw_message into an object (in a JSON meaning, a
+        dict in Python). The resulting object can be nested to allow
+        representation of hierarchical data.
 
         Be aware: All keys in the output message should be strings. All values
-        should be converted be strings, too.
+        must be convertable to JSON.
 
         Parameters
         ----------
@@ -259,7 +283,10 @@ class SensorFlow():
         -------
         msg : dict
             The message object containing the parsed data as python dicts from
-            dicts structure.
+            dicts structure. All keys should be strings. All value should be
+            of type string, bool or numbers.
+            Set the value of payload to None if run_sensor_flow should be
+            stopped for this message.
             Should be formatted like this:
                 msg = {
                     "payload": {
@@ -272,8 +299,9 @@ class SensorFlow():
                     "payload": {
                         "parsed_message": {
                             "device_1": {
-                                "sensor_1": "2.12",
-                                "sensor_2": "3.12"
+                                "sensor_1": "test",
+                                "sensor_2": 3.12,
+                                "sensor_2": True,
                             }
                         },
                         "timestamp": 1573680749000
@@ -370,22 +398,39 @@ class SensorFlow():
             if datapoint_key not in self.datapoint_map["sensor"]:
                 continue
 
-            # By definition (message convention) the value should always be
-            # a string, and the upstream functions should have formated value
-            # as a string already, but better save then sorry here.
+            # The datapoint_value here must be convertible to a JSON.
+            # If in doubt pack it into a string.
+            timestamp = flattened_msg["payload"]["timestamp"]
             value_msg = {
-                "value": str(datapoint_value),
-                "timestamp": flattened_msg["payload"]["timestamp"],
+                "value": datapoint_value,
+                "timestamp": timestamp,
             }
 
+            # Previously this method was expected to return strings only.
+            # Now it accepts any datatype that is JSON serializable.
+            # This is a fallback in case a connector parsed values which
+            # are not JSON serializable.
+            topic = self.datapoint_map["sensor"][datapoint_key]
+            try:
+                payload = json.dumps(value_msg)
+            except TypeError:
+                logger.warning(
+                    "Encountered TypeError while serializing value message "
+                    "for topic: %s",
+                    topic,
+                )
+                value_msg = {
+                    "value": str(datapoint_value),
+                    "timestamp": timestamp,
+                }
+                payload = json.dumps(value_msg)
+
             self.mqtt_client.publish(
-                topic=self.datapoint_map["sensor"][datapoint_key],
-                payload=json.dumps(value_msg),
-                retain=True,
+                topic=topic, payload=payload, retain=True,
             )
 
 
-class ActuatorFlow():
+class ActuatorFlow:
     """
     Bundles all functionality to handle actuator messages.
 
@@ -459,7 +504,7 @@ class ActuatorFlow():
         raise NotImplementedError("send_command has not been implemented.")
 
 
-class Connector():
+class Connector:
     """
     The generic logic of the connector.
 
@@ -526,15 +571,15 @@ class Connector():
     """
 
     def __init__(
-            self,
-            version,
-            datapoint_map=None,
-            available_datapoints=None,
-            DeviceDispatcher=None,
-            device_dispatcher_kwargs=None,
-            MqttClient=Client,
-            heartbeat_interval=30,
-        ):
+        self,
+        version,
+        datapoint_map=None,
+        available_datapoints=None,
+        DeviceDispatcher=None,
+        device_dispatcher_kwargs=None,
+        MqttClient=Client,
+        heartbeat_interval=30,
+    ):
         """
         Parameters
         ----------
@@ -581,7 +626,7 @@ class Connector():
 
         logger.info(
             "Initiating pyconnector.Connector class for: %s",
-            self.CONNECTOR_NAME
+            self.CONNECTOR_NAME,
         )
 
         cn = self.CONNECTOR_NAME
@@ -611,8 +656,6 @@ class Connector():
         # the MQTT connection is not available yet.
         self._initial_datapoint_map = datapoint_map
         self._initial_available_datapoints = available_datapoints
-
-
 
         logger.debug("Finished Connector init.")
 
@@ -649,7 +692,7 @@ class Connector():
         logger.debug("Starting broker dispatcher with MQTT client loop.")
         broker_dispatcher = DispatchOnce(
             target_func=mqtt_worker,
-            target_kwargs={"mqtt_client": self.mqtt_client}
+            target_kwargs={"mqtt_client": self.mqtt_client},
         )
         broker_dispatcher.start()
 
@@ -660,8 +703,7 @@ class Connector():
         # Add MQTT Log handler if it isn't in there yet.
         if not any([isinstance(h, MQTTHandler) for h in logger.handlers]):
             mqtt_log_handler = MQTTHandler(
-                mqtt_client=self.mqtt_client,
-                log_topic=self.MQTT_TOPIC_LOGS,
+                mqtt_client=self.mqtt_client, log_topic=self.MQTT_TOPIC_LOGS,
             )
             logger.addHandler(mqtt_log_handler)
 
@@ -788,9 +830,7 @@ class Connector():
                 datapoint_map_json=msg.payload
             )
         else:
-            self.run_actuator_flow(
-                topic=msg.topic, value_msg_json=msg.payload
-            )
+            self.run_actuator_flow(topic=msg.topic, value_msg_json=msg.payload)
 
     def _validate_and_update_datapoint_map(self, datapoint_map_json):
         """
@@ -901,6 +941,5 @@ class Connector():
             "next_heartbeats_timestamp": ts_next,
         }
         self.mqtt_client.publish(
-            topic=self.MQTT_TOPIC_HEARTBEAT,
-            payload=json.dumps(heartbeat_msg)
+            topic=self.MQTT_TOPIC_HEARTBEAT, payload=json.dumps(heartbeat_msg)
         )

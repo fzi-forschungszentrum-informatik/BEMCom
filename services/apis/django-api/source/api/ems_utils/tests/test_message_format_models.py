@@ -1,4 +1,9 @@
-from django.db import connection, models
+import pytz
+import json
+from datetime import datetime
+
+from django.conf import settings
+from django.db import connection, connections, models
 from django.test import TransactionTestCase
 from django.db.utils import IntegrityError
 
@@ -330,11 +335,13 @@ class TestDatapointValue(TransactionTestCase):
         #  Create a dummy datapoint to be used as foreign key for the msgs.
         cls.datapoint = cls.Datapoint(type="sensor")
         cls.datapoint.save()
+        cls.datapoint2 = cls.Datapoint(type="sensor")
+        cls.datapoint2.save()
 
         # Here are the default field values:
         cls.default_field_values = {
             "datapoint": cls.datapoint,
-            "timestamp": datetime_from_timestamp(1612860152000)
+            "time": datetime_from_timestamp(1612860152000)
         }
 
     @classmethod
@@ -379,7 +386,7 @@ class TestDatapointValue(TransactionTestCase):
         """
         field_values = self.default_field_values.copy()
 
-        field_values.update({"value": "1.0"})
+        field_values.update({"value": 1.0})
 
         self.generic_field_value_test(field_values=field_values)
 
@@ -391,7 +398,7 @@ class TestDatapointValue(TransactionTestCase):
 
         ts = 1596240000000
         ts_datetime = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update({"timestamp": ts_datetime})
+        field_values.update({"time":ts_datetime})
 
         self.generic_field_value_test(field_values=field_values)
 
@@ -406,11 +413,11 @@ class TestDatapointValue(TransactionTestCase):
         self.datapoint.last_value_timestamp = None
         self.datapoint.save()
 
-        expected_value = "3.14159"
+        expected_value = 3.14159
         ts = 1596240000000
         expected_timestamp = datetime_from_timestamp(ts, tz_aware=True)
         field_values.update(
-            {"value": expected_value, "timestamp": expected_timestamp}
+            {"value": expected_value, "time":expected_timestamp}
         )
 
         self.generic_field_value_test(field_values=field_values)
@@ -429,18 +436,18 @@ class TestDatapointValue(TransactionTestCase):
         field_values = self.default_field_values.copy()
 
         # Ensure there is a newer msg available that will prevent saving.
-        expected_value = "3.14159"
+        expected_value = 3.14159
         self.datapoint.last_value = expected_value
         ts = 1596240000000
         expected_timestamp = datetime_from_timestamp(ts, tz_aware=True)
         self.datapoint.last_value_timestamp = expected_timestamp
         self.datapoint.save()
 
-        older_value = "-2.0"
+        older_value = -2.0
         ts = 1200000000000
         older_timestamp = datetime_from_timestamp(ts, tz_aware=True)
         field_values.update(
-            {"value": older_value, "timestamp": older_timestamp}
+            {"value": older_value, "time":older_timestamp}
         )
 
         self.generic_field_value_test(field_values=field_values)
@@ -451,42 +458,282 @@ class TestDatapointValue(TransactionTestCase):
         self.assertEqual(actual_value, expected_value)
         self.assertEqual(actual_timestamp, expected_timestamp)
 
-    def test_save_will_store_float_as_float(self):
+    def get_raw_values_from_db(self, dp_value_id):
         """
-        There is an automatic mechanism that stores float values not as strings
-        but as floats to save storage space. It's hard to check here if the
-        values are really stored that way in DB, but we assume so if the
-        floats have been parsed.
+        A utility function that fetches the raw data from the DB.
+        """
+        query = (
+            'SELECT "value", "_value_float", "_value_bool"'
+            'FROM "{table_name}" WHERE id = %s'
+        ).format(table_name = self.DatapointValue.objects.model._meta.db_table)
+        with connection.cursor() as cursor:
+            cursor.execute(query, [dp_value_id])
+            row = cursor.fetchone()
+        return row
+
+    def test_save_will_store_string_on_value_field(self):
+        """
+        There is an automatic mechanism that stores floats and bool values
+        not as strings but as floats/bools to save storage space.
+        Verify that the string ends up in the intended table column and
+        that all other fields are empty as expected.
         """
         field_values = self.default_field_values.copy()
         dp_value = self.DatapointValue.objects.create(**field_values)
         dp_value.save()
 
-        dp_value.value = "1"
+        dp_value.value = "Hello there."
         dp_value.save()
-        dp_value.refresh_from_db()
 
-        expected_value = "1.0"
+        row = self.get_raw_values_from_db(dp_value_id=dp_value.id)
+        actual_value, actual_value_float, actual_value_bool = row
+
+         # Outer quotes because of the JSON field.
+        expected_value = '"Hello there."'
+        expected_value_float = None
+        expected_value_bool = None
+
+        assert actual_value == expected_value
+        assert actual_value_float == expected_value_float
+        assert actual_value_bool == expected_value_bool
+
+        # Finally also validate that the data can be fetched back from the
+        # the value field.
         dp_value.refresh_from_db()
+        expected_value = "Hello there."
         actual_value = dp_value.value
-
         assert actual_value == expected_value
 
-    def test_value_float_also_populated(self):
+    def test_save_will_store_float_on_value_float_field(self):
         """
-        Float values are made available as float (not string) under the
-        value_float field. Check this is the case.
+        There is an automatic mechanism that stores floats and bool values
+        not as strings but as floats/bools to save storage space.
+        Verify that the float ends up in the intended table column and
+        that all other fields are empty as expected.
         """
         field_values = self.default_field_values.copy()
         dp_value = self.DatapointValue.objects.create(**field_values)
-        dp_value.value = "21.2"
         dp_value.save()
 
-        dp_value.refresh_from_db()
-        expected_value = 21.2
-        actual_value = dp_value.value_float
+        dp_value.value = 1
+        dp_value.save()
+
+        row = self.get_raw_values_from_db(dp_value_id=dp_value.id)
+        actual_value, actual_value_float, actual_value_bool = row
+
+        expected_value = None
+        expected_value_float = 1
+        expected_value_bool = None
 
         assert actual_value == expected_value
+        assert actual_value_float == expected_value_float
+        assert actual_value_bool == expected_value_bool
+
+        # Finally also validate that the data can be fetched back from the
+        # the value field.
+        dp_value.refresh_from_db()
+        expected_value = 1
+        actual_value = dp_value.value
+        assert actual_value == expected_value
+
+    def test_save_will_store_bool_on_value_bool_field(self):
+        """
+        There is an automatic mechanism that stores floats and bool values
+        not as strings but as floats/bools to save storage space.
+        Verify that the bool ends up in the intended table column and
+        that all other fields are empty as expected.
+        """
+        field_values = self.default_field_values.copy()
+        dp_value = self.DatapointValue.objects.create(**field_values)
+        dp_value.save()
+
+        dp_value.value = True
+        dp_value.save()
+
+        row = self.get_raw_values_from_db(dp_value_id=dp_value.id)
+        actual_value, actual_value_float, actual_value_bool = row
+
+        expected_value = None
+        expected_value_float = None
+        expected_value_bool = True
+
+        assert actual_value == expected_value
+        assert actual_value_float == expected_value_float
+        assert actual_value_bool == expected_value_bool
+
+        # Finally also validate that the data can be fetched back from the
+        # the value field.
+        dp_value.refresh_from_db()
+        expected_value = True
+        actual_value = dp_value.value
+        assert actual_value == expected_value
+
+    def get_raw_values_from_db_by_time_and_dp(self, dp_id, time):
+        """
+        A utility function that fetches the raw data from the DB.
+        """
+        query = (
+            'SELECT "datapoint_id", "time", "value", "_value_float", "_value_bool"'
+            'FROM "{table_name}" WHERE datapoint_id = %s AND time = %s'
+        ).format(table_name = self.DatapointValue.objects.model._meta.db_table)
+        with connection.cursor() as cursor:
+            cursor.execute(query, [dp_id, time])
+            row = cursor.fetchone()
+        return row
+
+    def test_bulk_update_or_create_stores_in_db(self):
+        """
+        Verify that bulk_update_or_create is able to create and update
+        data in the DB.
+        """
+        # These are the Datapoints Msgs that should be updated.
+        # We want to have here at least two value msgs from the same datapoint
+        # to show that matching and updating msgs works even if several msgs
+        # are involved (the matching part). We also want to have msgs from
+        # at least to distinct datapoints as we expect the bulk_update_or_create
+        # method to distinguish the msgs by datapoints while fetching msgs
+        # for updating
+        dp_value = self.DatapointValue(
+            datapoint=self.datapoint,
+            time=datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+            value=31.0,
+        )
+        dp_value.save()
+        dp_value2 = self.DatapointValue(
+            datapoint=self.datapoint,
+            time=datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
+            value=42,
+        )
+        dp_value2.save()
+        dp_value3 = self.DatapointValue(
+            datapoint=self.datapoint2,
+            time=datetime(2021, 1, 1, 12, 30, 0, tzinfo=pytz.utc),
+            value=False,
+        )
+        dp_value3.save()
+
+        test_msgs = [
+            {
+                "datapoint": self.datapoint,
+                "time": datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+                "value": 32.0,
+            },
+            {
+                "datapoint": self.datapoint2,
+                "time": datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+                "value": "A msg at the exact same time as for dp1",
+            },
+            {
+                "datapoint": self.datapoint2,
+                "time": datetime(2021, 1, 1, 12, 30, 0, tzinfo=pytz.utc),
+                "value": True,
+            },
+            {
+                "datapoint": self.datapoint,
+                "time": datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
+                "value": None,
+            },
+            {
+                "datapoint": self.datapoint2,
+                "time": datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
+                "value": "A msg at the exact same time as for dp1",
+            },
+            {
+                "datapoint": self.datapoint,
+                "time": datetime(2021, 1, 1, 14, 0, 0, tzinfo=pytz.utc),
+                "value": True,
+            },
+            {
+                "datapoint": self.datapoint,
+                "time": datetime(2021, 1, 1, 15, 0, 0, tzinfo=pytz.utc),
+                "value": "a string",
+            }
+        ]
+
+        msg_stats = self.DatapointValue.bulk_update_or_create(
+            model=self.DatapointValue,
+            msgs=test_msgs
+        )
+
+        expected_msgs_created = 4
+        actual_msgs_created = msg_stats[0]
+        assert actual_msgs_created == expected_msgs_created
+        expected_msgs_updated = 3
+        actual_msgs_updated = msg_stats[1]
+        assert actual_msgs_updated == expected_msgs_updated
+
+        # Apparently SQlite has issues storing timezone for datetimes, while
+        # tests fails for PostgreSQL if timezones are not provided like
+        # pytz.utc. Maybe this is just because of the hacky style of
+        # reading data directly and raw from DB
+        db_engine = settings.DATABASES["default"]["ENGINE"]
+        if db_engine == 'django.db.backends.sqlite3':
+            dt_kwargs = {}
+        else:
+            dt_kwargs = {"tzinfo": pytz.utc}
+
+        # That is "datapoint", "time", "value", "_value_float", "_value_bool"
+        all_expected_values = [
+            (
+                self.datapoint.id,
+                datetime(2021, 1, 1, 12, 0, 0, **dt_kwargs),
+                None,
+                32.0,
+                None,
+            ),
+            (
+                self.datapoint2.id,
+                datetime(2021, 1, 1, 12, 0, 0, **dt_kwargs),
+                json.dumps("A msg at the exact same time as for dp1"),
+                None,
+                None,
+            ),
+            (
+                self.datapoint2.id,
+                datetime(2021, 1, 1, 12, 30, 0, **dt_kwargs),
+                None,
+                None,
+                True,
+            ),
+            (
+                self.datapoint2.id,
+                datetime(2021, 1, 1, 13, 0, 0, **dt_kwargs),
+                json.dumps("A msg at the exact same time as for dp1"),
+                None,
+                None,
+            ),
+            (
+                self.datapoint.id,
+                datetime(2021, 1, 1, 13, 0, 0, **dt_kwargs),
+                None,
+                None,
+                None,
+            ),
+            (
+                self.datapoint.id,
+                datetime(2021, 1, 1, 14, 0, 0, **dt_kwargs),
+                None,
+                None,
+                True,
+            ),
+            (
+                self.datapoint.id,
+                datetime(2021, 1, 1, 15, 0, 0, **dt_kwargs),
+                json.dumps("a string"),
+                None,
+                None,
+            ),
+        ]
+        all_actual_values = []
+        for expected_value in all_expected_values:
+            actual_values = self.get_raw_values_from_db_by_time_and_dp(
+                dp_id=expected_value[0],
+                time=expected_value[1],
+            )
+            all_actual_values.append(actual_values)
+
+        assert all_actual_values == all_expected_values
+
 
 class TestDatapointSchedule(TransactionTestCase):
 
@@ -516,11 +763,13 @@ class TestDatapointSchedule(TransactionTestCase):
         #  Create a dummy datapoint to be used as foreign key for the msgs.
         cls.datapoint = cls.Datapoint(type="sensor")
         cls.datapoint.save()
+        cls.datapoint2 = cls.Datapoint(type="sensor")
+        cls.datapoint2.save()
 
         # Here are the default field values:
         cls.default_field_values = {
             "datapoint": cls.datapoint,
-            "timestamp": datetime_from_timestamp(1612860152000),
+            "time": datetime_from_timestamp(1612860152000),
             "schedule": [],
         }
 
@@ -590,7 +839,7 @@ class TestDatapointSchedule(TransactionTestCase):
 
         ts = 1596240000000
         ts_datetime = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update({"timestamp": ts_datetime})
+        field_values.update({"time":ts_datetime})
 
         self.generic_field_value_test(field_values=field_values)
 
@@ -620,7 +869,7 @@ class TestDatapointSchedule(TransactionTestCase):
         ts = 1596230000001
         expected_timestamp = datetime_from_timestamp(ts, tz_aware=True)
         field_values.update(
-            {"schedule": expected_schedule, "timestamp": expected_timestamp}
+            {"schedule": expected_schedule, "time":expected_timestamp}
         )
 
         self.generic_field_value_test(field_values=field_values)
@@ -661,7 +910,7 @@ class TestDatapointSchedule(TransactionTestCase):
         ts = 1200000000000
         older_timestamp = datetime_from_timestamp(ts, tz_aware=True)
         field_values.update(
-            {"schedule": older_schedule, "timestamp": older_timestamp}
+            {"schedule": older_schedule, "time":older_timestamp}
         )
 
         self.generic_field_value_test(field_values=field_values)
@@ -671,6 +920,128 @@ class TestDatapointSchedule(TransactionTestCase):
 
         self.assertEqual(actual_schedule, expected_schedule)
         self.assertEqual(actual_timestamp, expected_timestamp)
+
+    def get_raw_values_from_db_by_time_and_dp(self, dp_id, time):
+        """
+        A utility function that fetches the raw data from the DB.
+        """
+        query = (
+            'SELECT "datapoint_id", "time", "schedule"'
+            'FROM "{table_name}" WHERE datapoint_id = %s AND time = %s'
+        ).format(table_name = self.DatapointSchedule.objects.model._meta.db_table)
+        with connection.cursor() as cursor:
+            cursor.execute(query, [dp_id, time])
+            row = cursor.fetchone()
+        return row
+
+    def test_bulk_update_or_create_stores_in_db(self):
+        """
+        Verify that bulk_update_or_create is able to create and update
+        data in the DB.
+        """
+        # These are the Datapoints Msgs that should be updated.
+        dp_schedule = self.DatapointSchedule(
+            datapoint=self.datapoint,
+            time=datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+            schedule=[{"test": 1}],
+        )
+        dp_schedule.save()
+
+        dp_schedule2 = self.DatapointSchedule(
+            datapoint=self.datapoint,
+            time=datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
+            schedule=[{"test": 2}],
+        )
+        dp_schedule2.save()
+
+        test_msgs = [
+            {
+                "datapoint": self.datapoint,
+                "time": datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+                "schedule": [],
+            },
+            {
+                "datapoint": self.datapoint2,
+                "time": datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+                "schedule": "A msg at the exact same time as for dp1",
+            },
+            {
+                "datapoint": self.datapoint,
+                "time": datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
+                "schedule": [],
+            },
+            {
+                "datapoint": self.datapoint2,
+                "time": datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
+                "schedule": "A msg at the exact same time as for dp1",
+            },
+            {
+                "datapoint": self.datapoint,
+                "time": datetime(2021, 1, 1, 14, 0, 0, tzinfo=pytz.utc),
+                "schedule": [],
+            },
+        ]
+
+        msg_stats = self.DatapointSchedule.bulk_update_or_create(
+            model=self.DatapointSchedule,
+            msgs=test_msgs
+        )
+
+        expected_msgs_created = 3
+        actual_msgs_created = msg_stats[0]
+        assert actual_msgs_created == expected_msgs_created
+        expected_msgs_updated = 2
+        actual_msgs_updated = msg_stats[1]
+        assert actual_msgs_updated == expected_msgs_updated
+
+        # Apparently SQlite has issues storing timezone for datetimes, while
+        # tests fails for PostgreSQL if timezones are not provided like
+        # pytz.utc. Maybe this is just because of the hacky style of
+        # reading data directly and raw from DB
+        db_engine = settings.DATABASES["default"]["ENGINE"]
+        if db_engine == 'django.db.backends.sqlite3':
+            dt_kwargs = {}
+        else:
+            dt_kwargs = {"tzinfo": pytz.utc}
+
+        # That is "datapoint", "time", "schedule"
+        all_expected_schedules = [
+            (
+                self.datapoint.id,
+                datetime(2021, 1, 1, 12, 0, 0, **dt_kwargs),
+                json.dumps([]),
+            ),
+            (
+                self.datapoint2.id,
+                datetime(2021, 1, 1, 12, 0, 0, **dt_kwargs),
+                json.dumps("A msg at the exact same time as for dp1"),
+            ),
+            (
+                self.datapoint.id,
+                datetime(2021, 1, 1, 13, 0, 0, **dt_kwargs),
+                json.dumps([]),
+            ),
+            (
+                self.datapoint2.id,
+                datetime(2021, 1, 1, 13, 0, 0, **dt_kwargs),
+                json.dumps("A msg at the exact same time as for dp1"),
+            ),
+            (
+                self.datapoint.id,
+                datetime(2021, 1, 1, 14, 0, 0, **dt_kwargs),
+                json.dumps([]),
+            ),
+
+        ]
+        all_actual_schedules = []
+        for expected_schedule in all_expected_schedules:
+            actual_schedule = self.get_raw_values_from_db_by_time_and_dp(
+                dp_id=expected_schedule[0],
+                time=expected_schedule[1],
+            )
+            all_actual_schedules.append(actual_schedule)
+
+        assert all_actual_schedules == all_expected_schedules
 
 
 class TestDatapointSetpoint(TransactionTestCase):
@@ -701,11 +1072,13 @@ class TestDatapointSetpoint(TransactionTestCase):
         #  Create a dummy datapoint to be used as foreign key for the msgs.
         cls.datapoint = cls.Datapoint(type="sensor")
         cls.datapoint.save()
+        cls.datapoint2 = cls.Datapoint(type="sensor")
+        cls.datapoint2.save()
 
         # Here are the default field values:
         cls.default_field_values = {
             "datapoint": cls.datapoint,
-            "timestamp": datetime_from_timestamp(1612860152000),
+            "time": datetime_from_timestamp(1612860152000),
             "setpoint": [],
         }
 
@@ -775,7 +1148,7 @@ class TestDatapointSetpoint(TransactionTestCase):
 
         ts = 1596240000000
         ts_datetime = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update({"timestamp": ts_datetime})
+        field_values.update({"time":ts_datetime})
 
         self.generic_field_value_test(field_values=field_values)
 
@@ -805,7 +1178,7 @@ class TestDatapointSetpoint(TransactionTestCase):
         ts = 1596220000001
         expected_timestamp = datetime_from_timestamp(ts, tz_aware=True)
         field_values.update(
-            {"setpoint": expected_setpoint, "timestamp": expected_timestamp}
+            {"setpoint": expected_setpoint, "time":expected_timestamp}
         )
 
         self.generic_field_value_test(field_values=field_values)
@@ -846,7 +1219,7 @@ class TestDatapointSetpoint(TransactionTestCase):
         ts = 1200000000000
         older_timestamp = datetime_from_timestamp(ts, tz_aware=True)
         field_values.update(
-            {"setpoint": older_setpoint, "timestamp": older_timestamp}
+            {"setpoint": older_setpoint, "time":older_timestamp}
         )
 
         self.generic_field_value_test(field_values=field_values)
@@ -856,3 +1229,123 @@ class TestDatapointSetpoint(TransactionTestCase):
 
         self.assertEqual(actual_setpoint, expected_setpoint)
         self.assertEqual(actual_timestamp, expected_timestamp)
+
+    def get_raw_values_from_db_by_time_and_dp(self, dp_id, time):
+        """
+        A utility function that fetches the raw data from the DB.
+        """
+        query = (
+            'SELECT "datapoint_id", "time", "setpoint"'
+            'FROM "{table_name}" WHERE datapoint_id = %s AND time = %s'
+        ).format(table_name = self.DatapointSetpoint.objects.model._meta.db_table)
+        with connection.cursor() as cursor:
+            cursor.execute(query, [dp_id, time])
+            row = cursor.fetchone()
+        return row
+
+    def test_bulk_update_or_create_stores_in_db(self):
+        """
+        Verify that bulk_update_or_create is able to create and update
+        data in the DB.
+        """
+        # These are the Datapoints Msgs that should be updated.
+        dp_setpoint = self.DatapointSetpoint(
+            datapoint=self.datapoint,
+            time=datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+            setpoint=[{"test": 1}],
+        )
+        dp_setpoint.save()
+        dp_setpoint2 = self.DatapointSetpoint(
+            datapoint=self.datapoint,
+            time=datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
+            setpoint=[{"test": 2}],
+        )
+        dp_setpoint2.save()
+
+        test_msgs = [
+            {
+                "datapoint": self.datapoint,
+                "time": datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+                "setpoint": [],
+            },
+            {
+                "datapoint": self.datapoint2,
+                "time": datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.utc),
+                "setpoint": "A msg at the exact same time as for dp1",
+            },
+            {
+                "datapoint": self.datapoint,
+                "time": datetime(2021, 1, 1, 13, 0, 0, tzinfo=pytz.utc),
+                "setpoint": [],
+            },
+            {
+                "datapoint": self.datapoint,
+                "time": datetime(2021, 1, 1, 14, 0, 0, tzinfo=pytz.utc),
+                "setpoint": [],
+            },
+            {
+                "datapoint": self.datapoint,
+                "time": datetime(2021, 1, 1, 15, 0, 0, tzinfo=pytz.utc),
+                "setpoint": [],
+            }
+        ]
+
+        msg_stats = self.DatapointSetpoint.bulk_update_or_create(
+            model=self.DatapointSetpoint,
+            msgs=test_msgs
+        )
+
+        expected_msgs_created = 3
+        actual_msgs_created = msg_stats[0]
+        assert actual_msgs_created == expected_msgs_created
+        expected_msgs_updated = 2
+        actual_msgs_updated = msg_stats[1]
+        assert actual_msgs_updated == expected_msgs_updated
+
+        # Apparently SQlite has issues storing timezone for datetimes, while
+        # tests fails for PostgreSQL if timezones are not provided like
+        # pytz.utc. Maybe this is just because of the hacky style of
+        # reading data directly and raw from DB
+        db_engine = settings.DATABASES["default"]["ENGINE"]
+        if db_engine == 'django.db.backends.sqlite3':
+            dt_kwargs = {}
+        else:
+            dt_kwargs = {"tzinfo": pytz.utc}
+
+        # That is "datapoint", "setpoint"
+        all_expected_setpoints = [
+            (
+                self.datapoint.id,
+                datetime(2021, 1, 1, 12, 0, 0, **dt_kwargs),
+                json.dumps([]),
+            ),
+            (
+                self.datapoint2.id,
+                datetime(2021, 1, 1, 12, 0, 0, **dt_kwargs),
+                json.dumps("A msg at the exact same time as for dp1"),
+            ),
+            (
+                self.datapoint.id,
+                datetime(2021, 1, 1, 13, 0, 0, **dt_kwargs),
+                json.dumps([]),
+            ),
+            (
+                self.datapoint.id,
+                datetime(2021, 1, 1, 14, 0, 0, **dt_kwargs),
+                json.dumps([]),
+            ),
+            (
+                self.datapoint.id,
+                datetime(2021, 1, 1, 15, 0, 0, **dt_kwargs),
+                json.dumps([]),
+            ),
+        ]
+        all_actual_setpoints = []
+        for expected_setpoint in all_expected_setpoints:
+            actual_setpoint = self.get_raw_values_from_db_by_time_and_dp(
+                dp_id=expected_setpoint[0],
+                time=expected_setpoint[1],
+            )
+            all_actual_setpoints.append(actual_setpoint)
+
+        assert all_actual_setpoints == all_expected_setpoints

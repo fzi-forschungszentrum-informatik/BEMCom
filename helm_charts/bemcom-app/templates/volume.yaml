@@ -1,0 +1,59 @@
+{{- $fullname := include "bemcom-app.fullname" . -}}
+{{- $chart := include "bemcom-app.chart" . -}}
+{{- $appVersion := .Values.appVersion }}
+{{- $managedBy := .Release.Service }}
+{{- $namespace := .Release.Namespace }}
+{{- $globalVars := dict "fullname" $fullname "chart" $chart "appVersion" $appVersion "managedBy" $managedBy }}
+---
+# Django API DB volume.
+{{- $serviceVars := (merge .Values.djangoApi $globalVars ) }}
+{{- with $serviceVars }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name:  {{ include "bemcom-app.service.fullname" . }}-pgdata
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "bemcom-app.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: retain
+spec:
+  {{- .volumes.pvc.pgdata.spec | toYaml | nindent 4 }}
+{{- end }}
+---
+# Mongo raw message DB volume.
+{{- if .Values.mongoRawMessageDb.enabled }}
+{{- $serviceVars := (merge .Values.mongoRawMessageDb $globalVars ) }}
+{{- with $serviceVars }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name:  {{ include "bemcom-app.service.fullname" . }}-mongo-data
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "bemcom-app.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: retain
+spec:
+  {{- .volumes.pvc.mongoData.spec | toYaml | nindent 4 }}
+{{- end }}
+{{- end }}
+---
+# Grafana Tool DB volume.
+{{- if .Values.grafanaTool.enabled }}
+{{- $serviceVars := (merge .Values.grafanaTool $globalVars ) }}
+{{- with $serviceVars }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name:  {{ include "bemcom-app.service.fullname" . }}-grafana-data
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "bemcom-app.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: retain
+spec:
+  {{- .volumes.pvc.grafanaData.spec | toYaml | nindent 4 }}
+{{- end }}
+{{- end }}
+---

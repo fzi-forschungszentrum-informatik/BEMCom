@@ -75,6 +75,6 @@ class TestDatapointSerializer(TransactionTestCase):
         dp_representation = DatapointSerializer().to_representation(
             instance=self.test_dp
         )
-        expected_value = self.test_dp_fields["connector"].name
+        expected_value = {"name": self.test_dp_fields["connector"].name}
         actual_value = dp_representation["connector"]
         assert actual_value == expected_value

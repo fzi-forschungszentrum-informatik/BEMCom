@@ -42,6 +42,16 @@ else
     echo "$SSL_KEY_PEM" > key.pem
 fi
 
+# Create the admin account from environment variables.
+if [ ! -z "${DJANGO_SUPERUSER_PASSWORD}" ] && [ ! -z "${DJANGO_SUPERUSER_USERNAME}" ] && [ ! -z "${DJANGO_SUPERUSER_EMAIL}" ]
+then
+  printf "\n\n"
+  echo "Attempting to create admin account for user $DJANGO_SUPERUSER_USERNAME"
+  # The printf should produce no output but catches errors.
+  python3 /source/api/manage.py createsuperuser --no-input || printf ""
+fi
+
+
 # Start up the server, use the internal devl server in debug mode.
 # Both serve plain http on port 8080 within the container.
 # The production server also serves https on 8443.
@@ -56,6 +66,8 @@ else
     cd /source/api && \
     printf "\n\nStarting up Daphne production server.\n\n\n"
     daphne -e ssl:8443:privateKey=/tmp/cert/key.pem:certKey=/tmp/cert/cert.pem \
+           --application-close-timeout 60 \
+           --verbosity 0 \
            -b 0.0.0.0 \
            -p 8080 api_main.asgi:application &
 fi

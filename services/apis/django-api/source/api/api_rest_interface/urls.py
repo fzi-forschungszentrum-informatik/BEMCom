@@ -3,15 +3,22 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from .views import DatapointViewSet, DatapointValueViewSet
 from .views import DatapointScheduleViewSet, DatapointSetpointViewSet
+from .views import PrometheusMetricsViewSet
 
 
 urlpatterns = [
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
     path("", SpectacularSwaggerView.as_view(url_name="schema")),
     path(
+        "metrics/",
+        PrometheusMetricsViewSet.as_view({"get": "retrieve"}),
+        name="metrics"
+    ),
+    path(
         "datapoint/",
         DatapointViewSet.as_view({
             "get": "list",
+            "post": "create",
             "put": "update_many",
         })
     ),
@@ -26,13 +33,13 @@ urlpatterns = [
         DatapointValueViewSet.as_view({
             "get": "list",
             "post": "create",
+            "put": "update_many",
         })
     ),
     path(
         "datapoint/<int:dp_id>/value/<int:timestamp>/",
         DatapointValueViewSet.as_view({
             "get": "retrieve",
-            "put": "update",
             "delete": "destroy",
         })
     ),
@@ -41,13 +48,13 @@ urlpatterns = [
         DatapointScheduleViewSet.as_view({
             "get": "list",
             "post": "create",
+            "put": "update_many",
         })
     ),
     path(
         "datapoint/<int:dp_id>/schedule/<int:timestamp>/",
         DatapointScheduleViewSet.as_view({
             "get": "retrieve",
-            "put": "update",
             "delete": "destroy",
         })
     ),
@@ -56,13 +63,13 @@ urlpatterns = [
         DatapointSetpointViewSet.as_view({
             "get": "list",
             "post": "create",
+            "put": "update_many",
         })
     ),
     path(
         "datapoint/<int:dp_id>/setpoint/<int:timestamp>/",
         DatapointSetpointViewSet.as_view({
             "get": "retrieve",
-            "put": "update",
             "delete": "destroy",
         })
     ),

@@ -171,11 +171,11 @@ class TestConnectorIntegration():
         # while asserting below.
         test_available_datapoints = {
             "sensor": {
-                "Channel__P__value__0": "0.122",
+                "Channel__P__value__0": 0.122,
                 "Channel__P__unit__0": "kW",
             },
             "actuator": {
-                "Channel__P__setpoint__0": "0.4",
+                "Channel__P__setpoint__0": True,
             },
         }
 
@@ -878,7 +878,7 @@ class TestUpdateSubscription():
 
         # We expect a string as numeric value as the DB saves everything
         # as strings for simplicity.
-        expected_numeric_value = str(datapoint_message_numeric["value"])
+        expected_numeric_value = datapoint_message_numeric["value"]
         expected_numeric_timestamp = datapoint_message_numeric["timestamp"]
         expected_numeric_datetime = datetime_from_timestamp(
             expected_numeric_timestamp
