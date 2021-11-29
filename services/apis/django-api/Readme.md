@@ -34,7 +34,7 @@ This service serves plain HTTP only.
 | DJANGOAPIDB_USER          | johndoe                        | The username used for authentication at TimescaleDB. Defaults to `bemcom`. |
 | DJANGOAPIDB_PASSWORD      | VerySecret123                  | The password used for authentication at TimescaleDB. Defaults to `bemcom`. |
 | DJANGOAPIDB_DBNAME        | bemcom                         | The name of the of the database inside TimescaleDB to store the data in. Defaults to `bemcom` |
-| N_ATD_WRITE_THREADS       | 1                              | The number of parallel threads the api_main/mqtt_integration.py MqttToDb class uses to push incomming MQTT messages into the Database. This must be an integer. Defaults to 1 as SQLite DBs don't support parallel read or write operations. For TimescaleDBs Values like 32 or above give a significant increase in write throughput. |
+| N_MTD_WRITE_THREADS       | 1                              | The number of parallel threads the api_main/mqtt_integration.py MqttToDb class uses to push incomming MQTT messages into the Database. This must be an integer. Defaults to 1 as SQLite DBs don't support parallel read or write operations. For TimescaleDBs Values like 32 or above give a significant increase in write throughput. |
 | N_WORKER_PROCESSES        | 16                             | The number of parallel worker processes that are used by the production server (UVicorn) to run the application. A sane number may be roughly 2-4 times the number of cores. Defaults to 4. |
 
 
