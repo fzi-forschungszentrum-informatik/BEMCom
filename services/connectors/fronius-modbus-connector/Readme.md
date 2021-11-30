@@ -1,8 +1,12 @@
-# Modbus TCP Connector Gen24
+# Fronius Modbus Connector
 
 This is a Modbus connector specifically for Fronius Symo GEN24 inverters. Manufacturer's information can be found [here](https://www.fronius.com/de/solarenergie/installateure-partner/technische-daten/alle-produkte/anlagen-monitoring/offene-schnittstellen/modbus-tcp?id=a7db8a37-85fb-412d-8c06-9de458400f59).
 
 The reason for this special connector is the requirement to write two registers in order to change the power limit of the inverter (see below).
+
+### TODO
+
+This connector contains a lot of code duplicated from modbus-tcp-connector. It would be better to build the image based on the modbus-tcp-connector image and import these code pieces.
 
 ### Supported Devices/Gateways
 
@@ -140,8 +144,6 @@ Follow the following steps while contributing to the connector:
 
 ### Changelog
 
-| Tag   | Changes                                                      |
-| ----- | ------------------------------------------------------------ |
-| 0.1.0 | First productive version.                                    |
-| 0.2.0 | Can read coils and discrete inputs now and allows application of scaling factors. |
-| 0.3.0 | Allow disconnecting between polls and breaks between requests in one poll run. |
+| Tag   | Changes                   |
+| ----- | ------------------------- |
+| 0.1.0 | First productive version. |
