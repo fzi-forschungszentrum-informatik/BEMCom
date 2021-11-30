@@ -26,7 +26,9 @@ class MqttToDb:
     in the DB.
 
     TODO: Use multiprocess prometheus.
-    TODO: Integrate STORE_VALUE_MSGS flags.
+    TODO: Integrate STORE_VALUE_MSGS aka HISTORY_DB flags.
+    TOOD: Add a main loop that periodically checks on the health of the worker
+          threads and reports exceptions that probably are not caught right now.
     """
 
     def __init__(self, mqtt_client=Client, n_mtd_write_threads_overload=None):
@@ -321,7 +323,8 @@ class MqttToDb:
         connector = Connector.objects.get(id=connector_id)
         logger.debug(
             "Entering clear_datapoint_map method for connector: %s - %s",
-            connector_id, connector.name
+            connector_id,
+            connector.name,
         )
 
         topic = connector.mqtt_topic_datapoint_map
@@ -518,6 +521,9 @@ class MqttToDb:
                                 value=payload["value"],
                             ).save()
                         except IntegrityError:
+                            # TODO: Investigate error. After the IntegrityError
+                            # above it takes 5-7 minutes for the DB to return
+                            # the correct dp_value here on DB startup.
                             dp_value = DatapointValue.objects.get(
                                 datapoint=datapoint, time=timestamp,
                             )
@@ -738,9 +744,7 @@ class MqttToDb:
                     target_method_kwargs = payload["kwargs"]
                     target_method(**target_method_kwargs)
                 except Exception:
-                    logger.exception(
-                        "Exception while executing RPC request."
-                    )
+                    logger.exception("Exception while executing RPC request.")
 
     @staticmethod
     def on_connect(client, userdata, flags, rc):
@@ -880,7 +884,8 @@ class ApiMqttIntegration:
         if rc != 0:
             logger.info(
                 "ApiMqttIntegration lost connection to MQTT broker with "
-                "code %s. Reconnecting", rc
+                "code %s. Reconnecting",
+                rc,
             )
             client.connect(**userdata["connect_kwargs"])
 
@@ -968,8 +973,7 @@ class ApiMqttIntegration:
         See the docstring of the called method for details.
         """
         logger.debug(
-            "ApiMqttIntegration entering "
-            "trigger_clear_datapoint_map"
+            "ApiMqttIntegration entering " "trigger_clear_datapoint_map"
         )
         topic = "django_api/mqtt_to_db/rpc/clear_datapoint_map"
         payload = {
