@@ -97,8 +97,10 @@ spec:
           value: {{ .service.db.ports.postgres | quote }}
         - name: DJANGOAPIDB_DBNAME
           value: {{ .deployment.db.env.POSTGRES_DB | quote }}
-        - name: N_CMI_WRITE_THREADS
-          value: {{ .deployment.api.env.N_CMI_WRITE_THREADS | quote }}
+        - name: N_MTD_WRITE_THREADS
+          value: {{ .deployment.api.env.N_MTD_WRITE_THREADS | quote }}
+        - name: N_WORKER_PROCESSES
+          value: {{ .deployment.api.env.N_WORKER_PROCESSES | quote }}
         envFrom:
         - configMapRef:
             name: {{ $fullname }}-generic-config

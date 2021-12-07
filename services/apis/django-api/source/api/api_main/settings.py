@@ -24,13 +24,13 @@ from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv(), verbose=False, override=True)
 
 # ------------------------------------------------------------------------------
-# Settings for connector_mqtt_integration.py
+# Settings for mqtt_integration.py
 # ------------------------------------------------------------------------------
 
 # Load custom configuration variables from environment variable
 MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST")
 MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT") or 1883)
-N_CMI_WRITE_THREADS = int(os.getenv("N_CMI_WRITE_THREADS") or 1)
+N_MTD_WRITE_THREADS = int(os.getenv("N_MTD_WRITE_THREADS") or 1)
 
 # Settings for connection to MQTT broker.
 MQTT_BROKER = {
@@ -258,5 +258,5 @@ SPECTACULAR_SETTINGS = {
         "message is **not** deleted on the message broker."
     ),
     "LICENSE": {"name": "Licensed under MIT",},
-    "VERSION": "0.6.10",
+    "VERSION": "0.7.1",
 }

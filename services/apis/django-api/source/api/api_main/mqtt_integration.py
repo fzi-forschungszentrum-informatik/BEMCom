@@ -20,82 +20,55 @@ from ems_utils.timestamp import datetime_from_timestamp
 logger = logging.getLogger(__name__)
 
 
-class ConnectorMQTTIntegration():
+class MqttToDb:
     """
-    This class allows the API (django) to communicate with the connectors via
-    MQTT.
+    This class listens on the MQTT broker and stores incomming messages
+    in the DB.
 
-    It has some mechanisms implemented to ensure that only one instance of this
-    class is running, to prevent concurrent and redundand read/write operations
-    the djangos DB.
-
-    Within the admin_interface app this class will be instantiated in apps.py.
-    Parts of the class will be called at runtime to react on changed settings
-    from within signals.py.
+    TODO: Use multiprocess prometheus.
+    TODO: Integrate STORE_VALUE_MSGS aka HISTORY_DB flags.
+    TOOD: Add a main loop that periodically checks on the health of the worker
+          threads and reports exceptions that probably are not caught right now.
     """
 
-    def __new__(cls, *args, **kwargs):
-        """
-        Ensure singleton, i.e. only one instance is created.
-        """
-        if not hasattr(cls, "_instance"):
-            # This magically calls __init__ with the correct arguements too.
-            cls._instance = object.__new__(cls)
-        else:
-            logger.warning(
-                "ConnectorMQTTIntegration is aldready running. Use "
-                "get_instance method to retrieve the running instance."
-            )
-        return cls._instance
-
-    def __init__(self, mqtt_client=Client, n_cmi_write_threads_overload=None):
+    def __init__(self, mqtt_client=Client, n_mtd_write_threads_overload=None):
         """
         Initial configuration of the MQTT communication.
         """
-
-        # Ignore the potentially changed configuration if instance, and thus
-        # also an MQTT client, exist.
-        # If a new configuration should be used, disconnect and destroy the
-        # current instance and create a new one.
-        if hasattr(self, "client"):
-            return
-
-        # Below the normal startup and configration of this class.
         logger.info(
-            "Starting up Connector MQTT Integration. This includes connecting "
+            "Starting up MqttToDb. This includes connecting "
             "to the required topics and processing the retained messages. "
             "This might take a few minutes."
         )
 
         self.prom_received_messages_from_connector_counter = Counter(
             "bemcom_djangoapi_mqtt_messages_received_total",
-            "Total number of MQTT messages the connector_mqtt_integration "
-            "script of the BEMCom Django-API service has received (and thus "
+            "Total number of MQTT messages the MqttToDb class "
+            "of the BEMCom Django-API service has received (and thus "
             "also processed.",
-            ["topic", "connector"]
+            ["topic", "connector"],
         )
         self.prom_published_messages_to_connector_counter = Counter(
             "bemcom_djangoapi_mqtt_messages_published_total",
-            "Total number of MQTT messages the connector_mqtt_integration "
-            "script of the BEMCom Django-API service has published",
-            ["topic", "connector"]
+            "Total number of MQTT messages the MqttToDb class "
+            "of the BEMCom Django-API service has published",
+            ["topic", "connector"],
         )
-
 
         # The configuration for connecting to the broker.
         connect_kwargs = {
-            'host': settings.MQTT_BROKER['host'],
-            'port': settings.MQTT_BROKER['port'],
+            "host": settings.MQTT_BROKER["host"],
+            "port": settings.MQTT_BROKER["port"],
         }
 
         # TODO Get this from settings in future:
         self.HISTORY_DB = True
-        N_CMI_WRITE_THREADS = settings.N_CMI_WRITE_THREADS
-        if n_cmi_write_threads_overload is not None:
-            N_CMI_WRITE_THREADS = n_cmi_write_threads_overload
-        if N_CMI_WRITE_THREADS < 1:
+        N_MTD_WRITE_THREADS = settings.N_MTD_WRITE_THREADS
+        if n_mtd_write_threads_overload is not None:
+            N_MTD_WRITE_THREADS = n_mtd_write_threads_overload
+        if N_MTD_WRITE_THREADS < 1:
             raise ValueError(
-                "N_CMI_WRITE_THREADS must be int larger then zero as we need "
+                "N_MTD_WRITE_THREADS must be int larger then zero as we need "
                 "at least one thread to write the MQTT messages to DB."
             )
 
@@ -106,14 +79,10 @@ class ConnectorMQTTIntegration():
         self.shutdown_event = Event()
 
         # Start the threads that handle the incomming messages.
-        # Note that (at least for ./manage.py runserver) there exists
-        # no clean shutdown protocol. Triggering the keyboard interupt
-        # will just kill Django hard and the Django main thread is set
-        # up as a daemon to be killed by the OS as this seems to be faster.
-        # Hence we have no change in this program to rely on a graceful
-        # shutdown and start our threads as deamons too.
+        # The daemon flag is a fallback that kills the worker threads
+        # if folks forget about stopping this component explicitly.
         self.msg_handler_threads = []
-        for i in range(N_CMI_WRITE_THREADS):
+        for i in range(N_MTD_WRITE_THREADS):
             message_handler_thread = Thread(
                 target=self.message_handle_worker, args=(), daemon=True,
             )
@@ -122,9 +91,9 @@ class ConnectorMQTTIntegration():
 
         # The private userdata, used by the callbacks.
         userdata = {
-            'connect_kwargs': connect_kwargs,
-            'message_queue': self.message_queue,
-            'message_queue_lock': self.message_queue_lock,
+            "connect_kwargs": connect_kwargs,
+            "message_queue": self.message_queue,
+            "message_queue_lock": self.message_queue_lock,
         }
         self.userdata = userdata
 
@@ -144,11 +113,11 @@ class ConnectorMQTTIntegration():
         except (socket.gaierror, OSError):
             logger.error(
                 "Cannot connect to MQTT broker: %s. Aborting startup.",
-                connect_kwargs
+                connect_kwargs,
             )
             sys.exit(1)
 
-        # Start loop in background process.
+        # Start loop in dedicated thread..
         self.client.loop_start()
 
         # Subscripe to all computed topics.
@@ -160,24 +129,7 @@ class ConnectorMQTTIntegration():
         self.create_and_send_datapoint_map()
         self.create_and_send_controlled_datapoints()
 
-        logger.debug("Init of Connector MQTT Integration completed.")
-
-
-    @classmethod
-    def get_instance(cls):
-        """
-        Return the running instance of the class.
-
-        Returns:
-        --------
-        instance: ConnectorMQTTIntegration instance
-            The running instance of the class. Is none of not running yet.
-        """
-        if hasattr(cls, "_instance"):
-            instance = cls._instance
-        else:
-            instance = None
-        return instance
+        logger.debug("Init of MqttToDb completed.")
 
     def disconnect(self):
         """
@@ -185,6 +137,8 @@ class ConnectorMQTTIntegration():
 
         Disconnect from broker, stop background loop and join threads.
         """
+        logger.info("Shutting down MqttToDb.")
+
         self.client.disconnect()
         self.client.loop_stop()
         # Remove the client, so init can establish a new connection.
@@ -194,6 +148,8 @@ class ConnectorMQTTIntegration():
         self.shutdown_event.set()
         for thread in self.msg_handler_threads:
             thread.join()
+
+        logger.info("Shut down of MqttToDB complete. Goodbye!")
 
     def update_topics(self):
         """
@@ -211,16 +167,24 @@ class ConnectorMQTTIntegration():
         """
         logger.debug("Entering update_topics method")
 
-        topics = {}
+        # MqttToDB should always listen on these topics to check for
+        # RPC requests from ApiMqttIntegration instances.
+        rpc_topics = [
+            "django_api/mqtt_to_db/rpc/update_topics_and_subscriptions",
+            "django_api/mqtt_to_db/rpc/create_and_send_datapoint_map",
+            "django_api/mqtt_to_db/rpc/create_and_send_controlled_datapoints",
+            "django_api/mqtt_to_db/rpc/clear_datapoint_map",
+        ]
+        topics = {t: (None, "mqtt_topic_rpc_call") for t in rpc_topics}
 
         # Don't subscribe to the datapoint_message_wildcard topic, we want to
         # control which messages we receive, in order to prevent the case
         # were incoming messages from a wildcard topic have no corresponding
         # equivalent in the database and cause errors.
         message_types = [
-            'mqtt_topic_logs',
-            'mqtt_topic_heartbeat',
-            'mqtt_topic_available_datapoints',
+            "mqtt_topic_logs",
+            "mqtt_topic_heartbeat",
+            "mqtt_topic_available_datapoints",
         ]
 
         # It might be more efficient to extract the topics only for those
@@ -289,7 +253,15 @@ class ConnectorMQTTIntegration():
 
         logger.debug("Leaving update_subscriptions method")
 
-    def create_and_send_datapoint_map(self, connector=None):
+    def update_topics_and_subscriptions(self):
+        """
+        This is just a shortcut, as these two methods are usually called
+        directly after each other.
+        """
+        self.update_topics()
+        self.update_subscriptions()
+
+    def create_and_send_datapoint_map(self, connector_id=None):
         """
         Creates and sends a datapoint_map.
 
@@ -301,9 +273,10 @@ class ConnectorMQTTIntegration():
         """
         logger.debug("Entering create_and_send_datapoint_map method")
 
-        if connector is None:
+        if connector_id is None:
             connectors = Connector.objects.all()
         else:
+            connector = Connector.objects.get(id=connector_id)
             connectors = [connector]
 
         for connector in connectors:
@@ -329,10 +302,7 @@ class ConnectorMQTTIntegration():
             payload = json.dumps(datapoint_map)
             topic = connector.mqtt_topic_datapoint_map
             self.client.publish(
-                topic=topic,
-                payload=payload,
-                qos=2,
-                retain=True
+                topic=topic, payload=payload, qos=2, retain=True
             )
             self.prom_published_messages_to_connector_counter.labels(
                 topic=topic, connector=connector.name
@@ -340,15 +310,47 @@ class ConnectorMQTTIntegration():
 
             logger.debug("Leaving create_and_send_datapoint_map method")
 
-    def create_and_send_controlled_datapoints(self, controller=None):
+    def clear_datapoint_map(self, connector_id):
+        """
+        Send an empty datapoint_map to a connector.
+
+        If we just delete the Connector object the connector service will not
+        see any update to datapoint_map, and hence continue to push data
+        about the previously selected datapoints. Here we send an empty
+        datapoint_map, before we delete to reset all selected datapoints
+        for the connector.
+        """
+        connector = Connector.objects.get(id=connector_id)
+        logger.debug(
+            "Entering clear_datapoint_map method for connector: %s - %s",
+            connector_id,
+            connector.name,
+        )
+
+        topic = connector.mqtt_topic_datapoint_map
+        logger.debug("Publishing clear datapoint map on topic: %s", topic)
+        self.client.publish(
+            topic=topic,
+            payload=json.dumps({"sensor": {}, "actuator": {}}),
+            qos=2,
+            retain=True,
+        )
+        self.prom_published_messages_to_connector_counter.labels(
+            topic=topic, connector=connector.name
+        ).inc()
+
+        logger.debug("Leaving clear_datapoint_map method.")
+
+    def create_and_send_controlled_datapoints(self, controller_id=None):
         """
         Computes and sends a list of controlled datapoints to a connector.
         """
         logger.debug("Entering create_and_send_controlled_datapoints method")
 
-        if controller is None:
+        if controller_id is None:
             controllers = Controller.objects.all()
         else:
+            controller = Controller.objects.get(id=controller_id)
             controllers = [controller]
 
         for controller in controllers:
@@ -367,14 +369,12 @@ class ConnectorMQTTIntegration():
 
                 # Build the message for this controlled datapoint object.
                 controlled_datapoints_msg = {
-                    "sensor": {
-                        "value": sensor_value_topic,
-                    },
+                    "sensor": {"value": sensor_value_topic,},
                     "actuator": {
                         "value": actuator_value_topic,
                         "setpoint": actuator_setpoint_topic,
                         "schedule": actuator_schedule_topic,
-                    }
+                    },
                 }
                 controlled_datapoint_msgs.append(controlled_datapoints_msg)
 
@@ -383,12 +383,10 @@ class ConnectorMQTTIntegration():
                 topic=controller.mqtt_topic_controlled_datapoints,
                 payload=json.dumps(controlled_datapoint_msgs),
                 qos=2,
-                retain=True
+                retain=True,
             )
 
-            logger.debug(
-                "Leaving create_and_send_controlled_datapoints method"
-            )
+            logger.debug("Leaving create_and_send_controlled_datapoints method")
 
     @staticmethod
     def on_message(client, userdata, msg):
@@ -422,11 +420,11 @@ class ConnectorMQTTIntegration():
             else:
                 logger.warning(
                     "Message Queue full! Droping message with topic: %s\n"
-                    "Increasing N_CMI_WRITE_THREADS may solve this issue."
+                    "Increasing N_MTD_WRITE_THREADS may solve this issue."
                     % msg.topic
                 )
 
-    @ttl_cache(maxsize=None, ttl=15*60)
+    @ttl_cache(maxsize=None, ttl=15 * 60)
     def get_datapoint_by_id(self, id):
         """
         This is a simple wrapper that acts as a cache.
@@ -447,7 +445,7 @@ class ConnectorMQTTIntegration():
         """
         while True:
             # Check if the the program is going to stop and terminate if yes.
-            if self.shutdown_event.isSet():
+            if self.shutdown_event.is_set():
                 return
 
             # Try to fetch a message from the queue.
@@ -467,25 +465,30 @@ class ConnectorMQTTIntegration():
                 continue
 
             logger.debug(
-                "message_handle_worker processing msg with topic %s"
-                % msg.topic
+                "message_handle_worker processing msg with topic %s" % msg.topic
             )
             topics = self.topics
 
             connector, message_type = topics[msg.topic]
 
-            # Apparently there are situations, where directly after the
-            # connector has been created, it is not existing in DB yet.
-            # Thus wait a bit and hope it appears.
-            try:
-                connector.refresh_from_db()
-            except Connector.DoesNotExist:
-                sleep(1)
-                connector.refresh_from_db()
+            # Connector is None for RPC calls.
+            if connector is not None:
+                # Apparently there are situations, where directly after the
+                # connector has been created, it is not existing in DB yet.
+                # Thus wait a bit and hope it appears.
+                try:
+                    connector.refresh_from_db()
+                except Connector.DoesNotExist:
+                    sleep(1)
+                    connector.refresh_from_db()
 
             payload = json.loads(msg.payload)
+            if connector is not None:
+                prom_connector_name = connector.name
+            else:
+                prom_connector_name = None
             self.prom_received_messages_from_connector_counter.labels(
-                topic=msg.topic, connector=connector.name
+                topic=msg.topic, connector=prom_connector_name
             ).inc()
             if message_type == "mqtt_topic_datapoint_value_message":
                 # If this message has reached that point, i.e. has had a
@@ -518,9 +521,11 @@ class ConnectorMQTTIntegration():
                                 value=payload["value"],
                             ).save()
                         except IntegrityError:
+                            # TODO: Investigate error. After the IntegrityError
+                            # above it takes 5-7 minutes for the DB to return
+                            # the correct dp_value here on DB startup.
                             dp_value = DatapointValue.objects.get(
-                                datapoint=datapoint,
-                                time=timestamp,
+                                datapoint=datapoint, time=timestamp,
                             )
                             dp_value.value = payload["value"]
                             dp_value.save()
@@ -544,8 +549,8 @@ class ConnectorMQTTIntegration():
                         )
                 except Exception:
                     logger.exception(
-                        'Exception while writing datapoint value to DB.\n'
-                        'The topic was: %s' % msg.topic
+                        "Exception while writing datapoint value to DB.\n"
+                        "The topic was: %s" % msg.topic
                     )
 
             elif message_type == "mqtt_topic_datapoint_schedule_message":
@@ -564,8 +569,7 @@ class ConnectorMQTTIntegration():
                             ).save()
                         except IntegrityError:
                             dp_schedule = DatapointSchedule.objects.get(
-                                datapoint=datapoint,
-                                time=timestamp,
+                                datapoint=datapoint, time=timestamp,
                             )
                             dp_schedule.schedule = payload["schedule"]
                             dp_schedule.save()
@@ -586,8 +590,8 @@ class ConnectorMQTTIntegration():
                         )
                 except Exception:
                     logger.exception(
-                        'Exception while writing datapoint schedule to DB.\n'
-                        'The topic was: %s' % msg.topic
+                        "Exception while writing datapoint schedule to DB.\n"
+                        "The topic was: %s" % msg.topic
                     )
 
             elif message_type == "mqtt_topic_datapoint_setpoint_message":
@@ -606,8 +610,7 @@ class ConnectorMQTTIntegration():
                             ).save()
                         except IntegrityError:
                             dp_setpoint = DatapointSetpoint.objects.get(
-                                datapoint=datapoint,
-                                time=timestamp,
+                                datapoint=datapoint, time=timestamp,
                             )
                             dp_setpoint.setpoint = payload["setpoint"]
                             dp_setpoint.save()
@@ -628,27 +631,27 @@ class ConnectorMQTTIntegration():
                         )
                 except Exception:
                     logger.exception(
-                        'Exception while writing datapoint setpoint to DB.\n'
-                        'The topic was: %s' % msg.topic
+                        "Exception while writing datapoint setpoint to DB.\n"
+                        "The topic was: %s" % msg.topic
                     )
 
-            elif message_type == 'mqtt_topic_logs':
-                timestamp = datetime_from_timestamp(payload['timestamp'])
+            elif message_type == "mqtt_topic_logs":
+                timestamp = datetime_from_timestamp(payload["timestamp"])
                 try:
                     _ = ConnectorLogEntry(
                         connector=connector,
                         timestamp=timestamp,
-                        msg=payload['msg'],
-                        emitter=payload['emitter'],
-                        level=payload['level'],
+                        msg=payload["msg"],
+                        emitter=payload["emitter"],
+                        level=payload["level"],
                     ).save()
                 except Exception:
                     logger.exception(
-                        'Exception while writing Log into DB.\n'
-                        'The topic was: %s' % msg.topic
+                        "Exception while writing Log into DB.\n"
+                        "The topic was: %s" % msg.topic
                     )
 
-            elif message_type == 'mqtt_topic_heartbeat':
+            elif message_type == "mqtt_topic_heartbeat":
                 try:
                     hb_model = ConnectorHeartbeat
                     # Create a new DB entry if this is the first time we see a
@@ -656,14 +659,16 @@ class ConnectorMQTTIntegration():
                     # creating an object with invalid values for the heartbeat
                     # entries (i.e. null or 1.1.1970, etc.) which should be
                     # beneficial for downstream code that relies on valid entries.
-                    if not hb_model.objects.filter(connector=connector).exists():
+                    if not hb_model.objects.filter(
+                        connector=connector
+                    ).exists():
                         _ = hb_model(
                             connector=connector,
                             last_heartbeat=datetime_from_timestamp(
-                                payload['this_heartbeats_timestamp']
+                                payload["this_heartbeats_timestamp"]
                             ),
                             next_heartbeat=datetime_from_timestamp(
-                                payload['next_heartbeats_timestamp']
+                                payload["next_heartbeats_timestamp"]
                             ),
                         ).save()
                     # Else this is an update to an existing entry. There should
@@ -672,27 +677,28 @@ class ConnectorMQTTIntegration():
                     else:
                         hb_object = hb_model.objects.get(connector=connector)
                         hb_object.last_heartbeat = datetime_from_timestamp(
-                            payload['this_heartbeats_timestamp']
+                            payload["this_heartbeats_timestamp"]
                         )
                         hb_object.next_heartbeat = datetime_from_timestamp(
-                            payload['next_heartbeats_timestamp']
+                            payload["next_heartbeats_timestamp"]
                         )
                         hb_object.save()
                 except Exception:
                     logger.exception(
-                        'Exception while writing heartbeat into DB.\n'
-                        'The topic was: %s' % msg.topic
+                        "Exception while writing heartbeat into DB.\n"
+                        "The topic was: %s" % msg.topic
                     )
 
-            elif message_type == 'mqtt_topic_available_datapoints':
+            elif message_type == "mqtt_topic_available_datapoints":
                 for datapoint_type in payload:
                     for key, example in payload[datapoint_type].items():
 
                         if not Datapoint.objects.filter(
-                                # Handling if the Datapoint does not exist yet.
-                                connector=connector,
-                                key_in_connector=key,
-                                type=datapoint_type).exists():
+                            # Handling if the Datapoint does not exist yet.
+                            connector=connector,
+                            key_in_connector=key,
+                            type=datapoint_type,
+                        ).exists():
                             try:
                                 _ = Datapoint(
                                     connector=connector,
@@ -702,9 +708,9 @@ class ConnectorMQTTIntegration():
                                 ).save()
                             except Exception:
                                 logger.exception(
-                                    'Exception while writing available '
-                                    'datapoint into DB.\n'
-                                    'The topic was: %s' % msg.topic
+                                    "Exception while writing available "
+                                    "datapoint into DB.\n"
+                                    "The topic was: %s" % msg.topic
                                 )
 
                         else:
@@ -717,29 +723,35 @@ class ConnectorMQTTIntegration():
                                 datapoint = Datapoint.objects.get(
                                     connector=connector,
                                     key_in_connector=key,
-                                    type=datapoint_type
+                                    type=datapoint_type,
                                 )
                                 if datapoint.example_value != example:
                                     datapoint.example_value = example
                                     datapoint.save(
                                         # This prevents that the datapoint_map is
                                         # updated.
-                                        update_fields=[
-                                            "example_value",
-                                        ]
+                                        update_fields=["example_value",]
                                     )
                             except Exception:
                                 logger.exception(
-                                    'Exception while updating available '
-                                    'datapoint.'
+                                    "Exception while updating available "
+                                    "datapoint."
                                 )
+            elif message_type == "mqtt_topic_rpc_call":
+                try:
+                    target_method_name = msg.topic.split("/")[-1]
+                    target_method = getattr(self, target_method_name)
+                    target_method_kwargs = payload["kwargs"]
+                    target_method(**target_method_kwargs)
+                except Exception:
+                    logger.exception("Exception while executing RPC request.")
 
     @staticmethod
     def on_connect(client, userdata, flags, rc):
         logger.info(
-            'Connected to MQTT broker tcp://%s:%s',
-            userdata['connect_kwargs']['host'],
-            userdata['connect_kwargs']['port'],
+            "Connected to MQTT broker tcp://%s:%s",
+            userdata["connect_kwargs"]["host"],
+            userdata["connect_kwargs"]["port"],
         )
 
     @staticmethod
@@ -750,16 +762,221 @@ class ConnectorMQTTIntegration():
         """
         if rc != 0:
             logger.info(
-                'Lost connection to MQTT broker with code %s. Reconnecting',
-                rc
+                "Lost connection to MQTT broker with code %s. Reconnecting", rc
             )
-            client.connect(**userdata['connect_kwargs'])
+            client.connect(**userdata["connect_kwargs"])
 
     @staticmethod
     def on_subscribe(client, userdata, mid, granted_qos):
-        logger.debug('Subscribe successful: %s, %s', mid, granted_qos)
+        logger.debug("Subscribe successful: %s, %s", mid, granted_qos)
 
     @staticmethod
     def on_unsubscribe(client, userdata, mid):
-        logger.debug('Unsubscribe successful: %s', mid)
+        logger.debug("Unsubscribe successful: %s", mid)
         # TODO: Set subscription status of av. datapoint here?
+
+
+class ApiMqttIntegration:
+    """
+    This class allows the API service (django) to communicate with the
+    with the other BEMCom components via MQTT.
+
+    It has some mechanisms implemented to ensure that only one instance of this
+    class is running (at least per process), to prevent more connections to the
+    MQTT broker then necessary.
+
+    This class will be instantiated in apps.py of api_main. Parts of the class
+    will be called at runtime to react on changed settings.
+    """
+
+    def __new__(cls, *args, **kwargs):
+        """
+        Ensure singleton, i.e. only one instance is created.
+        """
+        if not hasattr(cls, "_instance"):
+            # This magically calls __init__ with the correct arguements too.
+            cls._instance = object.__new__(cls)
+        else:
+            logger.warning(
+                "MqttClient is aldready running. Use "
+                "get_instance method to retrieve the running instance."
+            )
+        return cls._instance
+
+    @classmethod
+    def get_instance(cls):
+        """
+        Return the running instance of the class.
+
+        Returns:
+        --------
+        instance: ApiMqttIntegration instance
+            The running instance of the class. Is none of not running yet.
+        """
+        if hasattr(cls, "_instance"):
+            instance = cls._instance
+        else:
+            instance = None
+        return instance
+
+    def __init__(self, mqtt_client=Client):
+        logger.debug("ApiMqttIntegration entering __init__")
+
+        # The configuration for connecting to the broker.
+        connect_kwargs = {
+            "host": settings.MQTT_BROKER["host"],
+            "port": settings.MQTT_BROKER["port"],
+        }
+
+        # The private userdata, used by the callbacks.
+        userdata = {
+            "connect_kwargs": connect_kwargs,
+        }
+        self.userdata = userdata
+
+        self.client = mqtt_client(userdata=userdata)
+        self.client.on_connect = self.on_connect
+        self.client.on_disconnect = self.on_disconnect
+
+        logger.debug(
+            "ApiMqttIntegration attempting initial connection to MQTT "
+            "broker: %s.",
+            connect_kwargs,
+        )
+        try:
+            self.client.connect(**connect_kwargs)
+        except (socket.gaierror, OSError):
+            logger.error(
+                "ApiMqttIntegration: Cannot connect to MQTT broker: %s."
+                " Aborting startup.",
+                connect_kwargs,
+            )
+            sys.exit(1)
+
+        # Start loop in dedicated thread..
+        self.client.loop_start()
+
+    def disconnect(self):
+        """
+        Shutdown gracefully.
+
+        Disconnect from broker and stop background loop of MQTT client.
+        """
+        self.client.disconnect()
+        self.client.loop_stop()
+        # Remove the client, so init can establish a new connection.
+        del self.client
+
+    @staticmethod
+    def on_connect(client, userdata, flags, rc):
+        logger.info(
+            "ApiMqttIntegration connected to MQTT broker tcp://%s:%s",
+            userdata["connect_kwargs"]["host"],
+            userdata["connect_kwargs"]["port"],
+        )
+
+    @staticmethod
+    def on_disconnect(client, userdata, rc):
+        """
+        Atempt Reconnecting if disconnect was not called from a call to
+        client.disconnect().
+        """
+        if rc != 0:
+            logger.info(
+                "ApiMqttIntegration lost connection to MQTT broker with "
+                "code %s. Reconnecting",
+                rc,
+            )
+            client.connect(**userdata["connect_kwargs"])
+
+    def _publish_trigger_message(self, topic, payload):
+        """
+        Publishes the payload on the message.
+
+        This function is mainly here to prevent code repetition.
+
+        Arguments:
+        topic : string
+            The MQTT topic to publish on.
+        payload : dict
+            A dict like {"method": .. , "kwargs": ...} containing the
+            name of the method that should be called as well as the kwargs
+            to give to that method.
+        """
+        self.client.publish(
+            topic=topic,
+            payload=json.dumps(payload),
+            # Ensure RPC calls are received only once to prevent additional
+            # computational burden from multiple DB queries.
+            qos=2,
+            # No retain here, if MqttToDb is offline it would probably miss
+            # a lot of RPC calls, doesn't make sense to process only the
+            # last one.
+            retain=False,
+        )
+
+    def trigger_update_topics_and_subscriptions(self):
+        """
+        Trigger that MqttToDb instance calls update_topics_and_subscriptions.
+
+        See the docstring of the called method for details.
+        """
+        logger.debug(
+            "ApiMqttIntegration entering "
+            "trigger_update_topics_and_subscriptions"
+        )
+        topic = "django_api/mqtt_to_db/rpc/update_topics_and_subscriptions"
+        payload = {
+            "kwargs": {},
+        }
+        self._publish_trigger_message(topic=topic, payload=payload)
+
+    def trigger_create_and_send_datapoint_map(self, connector_id=None):
+        """
+        Trigger that MqttToDb instance calls create_and_send_datapoint_map.
+
+        See the docstring of the called method for details.
+        """
+        logger.debug(
+            "ApiMqttIntegration entering "
+            "trigger_create_and_send_datapoint_map"
+        )
+        topic = "django_api/mqtt_to_db/rpc/create_and_send_datapoint_map"
+        payload = {
+            "kwargs": {"connector_id": connector_id},
+        }
+        self._publish_trigger_message(topic=topic, payload=payload)
+
+    def trigger_create_and_send_controlled_datapoints(self, controller_id=None):
+        """
+        Trigger that MqttToDb instance calls
+        create_and_send_controlled_datapoints.
+
+        See the docstring of the called method for details.
+        """
+        logger.debug(
+            "ApiMqttIntegration entering "
+            "trigger_create_and_send_controlled_datapoints"
+        )
+        topic = (
+            "django_api/mqtt_to_db/rpc/create_and_send_controlled_datapoints"
+        )
+        payload = {
+            "kwargs": {"controller_id": controller_id},
+        }
+        self._publish_trigger_message(topic=topic, payload=payload)
+
+    def trigger_clear_datapoint_map(self, connector_id=None):
+        """
+        Trigger that MqttToDb instance calls clear_datapoint_map.
+
+        See the docstring of the called method for details.
+        """
+        logger.debug(
+            "ApiMqttIntegration entering " "trigger_clear_datapoint_map"
+        )
+        topic = "django_api/mqtt_to_db/rpc/clear_datapoint_map"
+        payload = {
+            "kwargs": {"connector_id": connector_id},
+        }
+        self._publish_trigger_message(topic=topic, payload=payload)

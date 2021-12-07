@@ -7,7 +7,9 @@ the generic implementation in ems_utils to display in the API schema.
 """
 import json
 
-import prometheus_client
+from prometheus_client import multiprocess
+from prometheus_client import generate_latest
+from prometheus_client import CollectorRegistry, CONTENT_TYPE_LATEST
 from rest_framework import status, renderers
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
@@ -20,7 +22,7 @@ from api_main.models.datapoint import Datapoint
 from api_main.models.datapoint import DatapointValue
 from api_main.models.datapoint import DatapointSchedule
 from api_main.models.datapoint import DatapointSetpoint
-from api_main.connector_mqtt_integration import ConnectorMQTTIntegration
+from api_main.mqtt_integration import ApiMqttIntegration
 from ems_utils.message_format.views import DatapointViewSetTemplate
 from ems_utils.message_format.views import ViewSetWithDatapointFK
 
@@ -264,8 +266,8 @@ class DatapointValueViewSet(ViewSetWithDatapointFK):
 
         # Send the message to the MQTT broker.
         mqtt_topic = datapoint.get_mqtt_topics()["value"]
-        cmi = ConnectorMQTTIntegration.get_instance()
-        cmi.client.publish(
+        ami = ApiMqttIntegration.get_instance()
+        ami.client.publish(
             topic=mqtt_topic,
             payload=json.dumps(validated_data)
         )
@@ -311,8 +313,8 @@ class DatapointScheduleViewSet(ViewSetWithDatapointFK):
 
         # Send the message to the MQTT broker.
         mqtt_topic = datapoint.get_mqtt_topics()["schedule"]
-        cmi = ConnectorMQTTIntegration.get_instance()
-        cmi.client.publish(
+        ami = ApiMqttIntegration.get_instance()
+        ami.client.publish(
             topic=mqtt_topic,
             payload=json.dumps(validated_data),
             retain=True,
@@ -358,8 +360,8 @@ class DatapointSetpointViewSet(ViewSetWithDatapointFK):
 
         # Send the message to the MQTT broker.
         mqtt_topic = datapoint.get_mqtt_topics()["setpoint"]
-        cmi = ConnectorMQTTIntegration.get_instance()
-        cmi.client.publish(
+        ami = ApiMqttIntegration.get_instance()
+        ami.client.publish(
             topic=mqtt_topic,
             payload=json.dumps(validated_data),
             retain=True,
@@ -392,11 +394,16 @@ class PrometheusMetricsViewSet(GenericViewSet):
     """
     Exposes Prometheus metrics.
     """
-
     renderer_classes = [PlainTextRenderer]
     # This is required for automatic permission checking.
     queryset = Metric.objects.all()
 
     def retrieve(self, request):
-        metrics = prometheus_client.generate_latest()
-        return Response(metrics)
+        registry = CollectorRegistry()
+        multiprocess.MultiProcessCollector(registry)
+        metrics = generate_latest(registry)
+        headers = {
+            "Content-type": CONTENT_TYPE_LATEST,
+            "Content-Length": str(len(metrics)),
+        }
+        return Response(metrics, headers=headers)

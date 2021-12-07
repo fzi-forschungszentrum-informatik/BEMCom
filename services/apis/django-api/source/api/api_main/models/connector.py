@@ -9,10 +9,10 @@ class Connector(models.Model):
 
     Don't restrict length of name and mqtt fields, this could lead to errors.
     Setting the MQTT topics (and the name hence too) is required for the
-    ConnectorMQTTIntegration to work correctly. We hence enforce that these
+    MQTT Integration to work correctly. We hence enforce that these
     fields are not empty and unique. Furthermore we set all mqtt_topics to be
     non editable as other parts of the API rely on the convention introduced
-    here (e.g. the connector_mqtt_integration on the wildcard format).
+    here (e.g. the MqttToDb class on the wildcard format).
 
     TODO: Review set and get MQTT topics
     """
@@ -138,7 +138,7 @@ class ConnectorLogEntry(models.Model):
     about the fields.
 
     The objects for this model are automatically generated (received via MQTT)
-    by ConnectorMQTTIntegration. They are not intended to be edited manually.
+    by MqttToDb. They are not intended to be edited manually.
     """
 
     class Meta:
@@ -183,7 +183,7 @@ class ConnectorHeartbeat(models.Model):
     about the fields.
 
     The objects for this model are automatically generated (received via MQTT)
-    by ConnectorMQTTIntegration. They are not intended to be edited manually.
+    by MqttToDb. They are not intended to be edited manually.
     """
 
     class Meta:

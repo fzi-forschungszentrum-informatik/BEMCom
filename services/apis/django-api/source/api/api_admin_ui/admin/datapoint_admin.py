@@ -8,7 +8,7 @@ from api_main.models.datapoint import DatapointValue
 from api_main.models.datapoint import DatapointSetpoint
 from api_main.models.datapoint import DatapointSchedule
 from ems_utils.timestamp import datetime_to_pretty_str
-from api_main.connector_mqtt_integration import ConnectorMQTTIntegration
+from api_main.mqtt_integration import ApiMqttIntegration
 from .connector_admin import AdminWithoutListsOnDelete
 
 @admin.register(Datapoint)
@@ -253,7 +253,7 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
 
         The update method doesn't call the save method of each object, hence
         we need to manually trigger the update operations of
-        ConnectorMQTTIntegration, i.e. that we subscribe to the topics of
+        ApiMqttIntegration, i.e. that we subscribe to the topics of
         the activated datapoints and send a corrected datatpoint map to the
         connectors.
 
@@ -263,10 +263,9 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
 
         """
         queryset.update(is_active=True)
-        cmi = ConnectorMQTTIntegration.get_instance()
-        cmi.update_topics()
-        cmi.update_subscriptions()
-        cmi.create_and_send_datapoint_map()
+        ami = ApiMqttIntegration.get_instance()
+        ami.trigger_update_topics_and_subscriptions()
+        ami.trigger_create_and_send_datapoint_map()
     mark_active.short_description = "Mark datapoints as active"
 
     def mark_not_active(self, request, queryset):
@@ -274,10 +273,9 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         Similar to mark_active above, but deactivates these datapoints.
         """
         queryset.update(is_active=False)
-        cmi = ConnectorMQTTIntegration.get_instance()
-        cmi.update_topics()
-        cmi.update_subscriptions()
-        cmi.create_and_send_datapoint_map()
+        ami = ApiMqttIntegration.get_instance()
+        ami.trigger_update_topics_and_subscriptions()
+        ami.trigger_create_and_send_datapoint_map()
     mark_not_active.short_description = "Mark datapoints as not active"
 
     def mark_data_format_as_generic_text(self, request, queryset):

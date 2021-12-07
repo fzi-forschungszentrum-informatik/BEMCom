@@ -15,7 +15,6 @@ services:
         user: "${USER_ID}:${GROUP_ID}"
         ports:
             - "8080:8080"
-            - "8443:8443"
         volumes:
             - ./source/api:/source/api
         environment:
@@ -29,14 +28,13 @@ services:
             - "DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME}"
             - "DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD}"
             - "DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL}"
-            - "SSL_CERT_PEM=${SSL_CERT_PEM}"
-            - "SSL_KEY_PEM=${SSL_KEY_PEM}"
             - "DJANGOAPIDB_HOST=${DJANGOAPIDB_HOST}"
             - "DJANGOAPIDB_PORT=${DJANGOAPIDB_PORT}"
             - "DJANGOAPIDB_USER=${DJANGOAPIDB_USER}"
             - "DJANGOAPIDB_PASSWORD=${DJANGOAPIDB_PASSWORD}"
             - "DJANGOAPIDB_DBNAME=${DJANGOAPIDB_DBNAME}"
             - "N_CMI_WRITE_THREADS=${N_CMI_WRITE_THREADS}"
+            - "N_WORKER_PROCESSES=${N_WORKER_PROCESSES}"
 
     # Allows local testing.
     django-api-devl-broker:
