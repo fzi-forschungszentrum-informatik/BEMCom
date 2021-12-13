@@ -1,4 +1,4 @@
-FROM grafana/grafana:7.3.6
+FROM grafana/grafana:8.3.2
 
 # Sets the plugins directory out of the main data dircectory (/var/lib/grafana by default).
 # Else the plugins would be overwritten while mounting the /var/lib/grafana directory.

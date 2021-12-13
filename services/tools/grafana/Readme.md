@@ -131,3 +131,4 @@ Further instructions about working with Grafana:
 | 0.1.3 | Additional fields for custom name, scaling factor and datapoint description |
 | 0.1.4 | Restructured query editor. Optional field to define an offset. Integrate grafana's query option 'interval' |
 | 0.2.0 | Added additional plugins for querying nwpdata and stochastic prediction services |
+| 0.3.0 | Update to Grafana 8.3.* due to a [zero day exploit in Grafana](https://www.bleepingcomputer.com/news/security/grafana-fixes-zero-day-vulnerability-after-exploits-spread-over-twitter/). |
