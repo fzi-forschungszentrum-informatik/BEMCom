@@ -74,7 +74,7 @@ At this point it is important to highlight two important properties about the co
 1. It is solely necessary to change the environment variables to adapted a BEMCom service for a particular application or to a specific device. If one would need to connect a second different Modbus device to the demo application above for example, it is intended to use the same image of the Modbus/TCP connector with adjusted environment variables. It is thus possible to very quickly establish connection to even larger numbers of devices if a suitable connector exists.
 2. That which environment variables are available varies per BEMCom service and that a documentation about how to configure each service utilizing those variables is provided in the documentation of the services. Regarding the current example, the documentation of the [Modbus/TCP connector](../services/connectors/modbus-tcp-connector/Readme.md) provides additional details for each environment variables including e.g. extensive discussion how to define the `MODBUS_CONFIG` variable correctly.
 
-Before moving on it is again a good idea to verify the correct operation of the connector by inspecting the logs with `bemcom-demo-modbus-tcp-connector`, which should yield an output similar to:
+Before moving on it is again a good idea to verify the correct operation of the connector by inspecting the logs with `docker logs bemcom-demo-modbus-tcp-connector`, which should yield an output similar to:
 
 ```
 2022-02-03 11:22:19,416-_get_stream-INFO: Python-dotenv could not find configuration file .env.
@@ -88,6 +88,10 @@ Before moving on it is again a good idea to verify the correct operation of the 
 
 
 <p style="color:red;">TODO: Add details about how to add the API service.</p>
+
+
+
+<p style="color:red;">TODO: Add note about Play with docker.</p>
 
 
 
