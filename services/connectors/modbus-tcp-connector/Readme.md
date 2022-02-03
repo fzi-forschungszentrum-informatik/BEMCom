@@ -1,6 +1,6 @@
-# Modbus TCP Connector
+# Modbus/TCP Connector
 
-This is a connector to communicate with Devices over ModbusTCP. A short introduction to Modbus can e.g. be found [here](https://www.csimn.com/CSI_pages/Modbus101.html).
+This is a connector to communicate with Devices over Modbus/TCP. A short introduction to Modbus can e.g. be found [here](https://www.csimn.com/CSI_pages/Modbus101.html).
 
 The following Modbus function codes are supported:
 

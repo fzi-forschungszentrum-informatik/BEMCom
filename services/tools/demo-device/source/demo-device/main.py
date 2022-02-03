@@ -42,7 +42,7 @@ class DemoDeviceDataBlock(ModbusSequentialDataBlock):
         """
         value = getattr(self.demo_device, self.variable_name)
         builder = payload.BinaryPayloadBuilder(byteorder="<", wordorder="<",)
-        builder.add_32bit_float(round(value, 1))
+        builder.add_16bit_float(round(value, 1))
         return builder.to_registers()
 
     def setValues(self, address, value):
