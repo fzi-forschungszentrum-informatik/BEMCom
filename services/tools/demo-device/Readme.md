@@ -23,7 +23,9 @@ The demo device exposes the following registers:
 
 ##### Environment Variables
 
-None.
+| Enironment Variable | Example  Value | Usage/Remarks                                                |
+| ------------------- | -------------- | ------------------------------------------------------------ |
+| LOG_VALUES          | FALSE          | If set to `TRUE` (the string) will log every change to the values with level `INFO`. Default to `TRUE` |
 
 ##### Volumes
 
@@ -33,7 +35,6 @@ None.
 
 ### Changelog
 
-| Tag   | Changes                                    |
-| ----- | ------------------------------------------ |
-| 0.0.1 | Some work in progress development version. |
-| 0.1.0 | First productive version.                  |
+| Tag   | Changes                   |
+| ----- | ------------------------- |
+| 0.1.0 | First productive version. |
