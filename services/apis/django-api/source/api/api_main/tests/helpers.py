@@ -49,16 +49,15 @@ def connector_factory(connector_name=None):
         next_id = Connector.objects.count() + 1
         connector_name = "test_connector_" + str(next_id)
 
-    test_connector = Connector(
-        name=connector_name,
-    )
+    test_connector = Connector(name=connector_name)
     test_connector.save()
 
     return test_connector
 
 
-def datapoint_factory(connector, key_in_connector=None,
-                      data_format="unknown", type="sensor"):
+def datapoint_factory(
+    connector, key_in_connector=None, data_format="unknown", type="sensor"
+):
     """
     Create a dummy datapoint in DB.
 

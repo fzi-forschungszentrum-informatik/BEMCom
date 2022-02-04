@@ -13,8 +13,8 @@ from ems_utils.message_format.models import DatapointValueTemplate
 from ems_utils.message_format.models import DatapointScheduleTemplate
 from ems_utils.message_format.models import DatapointSetpointTemplate
 
-class TestDatapoint(TransactionTestCase):
 
+class TestDatapoint(TransactionTestCase):
     @classmethod
     def setUpClass(cls):
         # Generic default values to prevent errors when creating datapoints
@@ -26,7 +26,8 @@ class TestDatapoint(TransactionTestCase):
         # on the fly for testing.
         class Datapoint(DatapointTemplate):
             class Meta:
-                app_label="test_message_format_models"
+                app_label = "test_message_format_models"
+
         cls.Datapoint = Datapoint
         with connection.schema_editor() as schema_editor:
             schema_editor.create_model(cls.Datapoint)
@@ -209,7 +210,6 @@ class TestDatapoint(TransactionTestCase):
 
         self.generic_field_value_test(field_values=field_values)
 
-
     def test_field_last_value_exists(self):
         """
         This field stores datapoint payload.
@@ -232,7 +232,6 @@ class TestDatapoint(TransactionTestCase):
 
         self.generic_field_value_test(field_values=field_values)
 
-
     def test_field_last_setpoint_exists(self):
         """
         This field stores datapoint payload.
@@ -243,18 +242,17 @@ class TestDatapoint(TransactionTestCase):
             {
                 "from_timestamp": None,
                 "to_timestamp": 1564489613491,
-                'preferred_value': 21,
-                'min_value': 20,
-                'max_value': 22,
-
+                "preferred_value": 21,
+                "min_value": 20,
+                "max_value": 22,
             },
             {
                 "from_timestamp": 1564489613491,
                 "to_timestamp": None,
-                'preferred_value': None,
-                'min_value': None,
-                'max_value': None,
-            }
+                "preferred_value": None,
+                "min_value": None,
+                "max_value": None,
+            },
         ]
         field_values.update({"last_setpoint": last_setpoint})
 
@@ -279,16 +277,8 @@ class TestDatapoint(TransactionTestCase):
         field_values = self.default_field_values.copy()
 
         last_schedule = [
-            {
-                'from_timestamp': None,
-                'to_timestamp': 1564489613491,
-                'value': 21
-            },
-            {
-                'from_timestamp': 1564489613491,
-                'to_timestamp': None,
-                'value': None
-            }
+            {"from_timestamp": None, "to_timestamp": 1564489613491, "value": 21},
+            {"from_timestamp": 1564489613491, "to_timestamp": None, "value": None},
         ]
         field_values.update({"last_schedule": last_schedule})
 
@@ -308,7 +298,6 @@ class TestDatapoint(TransactionTestCase):
 
 
 class TestDatapointValue(TransactionTestCase):
-
     @classmethod
     def setUpClass(cls):
         # Datapoint model is abstract, hence no table exists. Here we
@@ -316,16 +305,16 @@ class TestDatapointValue(TransactionTestCase):
         # on the fly for testing.
         class Datapoint(DatapointTemplate):
             class Meta:
-                app_label="test_message_format_models_2"
+                app_label = "test_message_format_models_2"
+
         class DatapointValue(DatapointValueTemplate):
             class Meta:
-                app_label="test_message_format_models_2"
+                app_label = "test_message_format_models_2"
+
             # The datapoint foreign key must be overwritten as it points
             # to the abstract datapoint model by default.
-            datapoint = models.ForeignKey(
-                Datapoint,
-                on_delete=models.CASCADE,
-            )
+            datapoint = models.ForeignKey(Datapoint, on_delete=models.CASCADE)
+
         cls.Datapoint = Datapoint
         cls.DatapointValue = DatapointValue
         with connection.schema_editor() as schema_editor:
@@ -341,7 +330,7 @@ class TestDatapointValue(TransactionTestCase):
         # Here are the default field values:
         cls.default_field_values = {
             "datapoint": cls.datapoint,
-            "time": datetime_from_timestamp(1612860152000)
+            "time": datetime_from_timestamp(1612860152000),
         }
 
     @classmethod
@@ -398,7 +387,7 @@ class TestDatapointValue(TransactionTestCase):
 
         ts = 1596240000000
         ts_datetime = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update({"time":ts_datetime})
+        field_values.update({"time": ts_datetime})
 
         self.generic_field_value_test(field_values=field_values)
 
@@ -416,9 +405,7 @@ class TestDatapointValue(TransactionTestCase):
         expected_value = 3.14159
         ts = 1596240000000
         expected_timestamp = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update(
-            {"value": expected_value, "time":expected_timestamp}
-        )
+        field_values.update({"value": expected_value, "time": expected_timestamp})
 
         self.generic_field_value_test(field_values=field_values)
         self.datapoint.refresh_from_db()
@@ -446,9 +433,7 @@ class TestDatapointValue(TransactionTestCase):
         older_value = -2.0
         ts = 1200000000000
         older_timestamp = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update(
-            {"value": older_value, "time":older_timestamp}
-        )
+        field_values.update({"value": older_value, "time": older_timestamp})
 
         self.generic_field_value_test(field_values=field_values)
         self.datapoint.refresh_from_db()
@@ -465,7 +450,7 @@ class TestDatapointValue(TransactionTestCase):
         query = (
             'SELECT "value", "_value_float", "_value_bool"'
             'FROM "{table_name}" WHERE id = %s'
-        ).format(table_name = self.DatapointValue.objects.model._meta.db_table)
+        ).format(table_name=self.DatapointValue.objects.model._meta.db_table)
         with connection.cursor() as cursor:
             cursor.execute(query, [dp_value_id])
             row = cursor.fetchone()
@@ -488,7 +473,7 @@ class TestDatapointValue(TransactionTestCase):
         row = self.get_raw_values_from_db(dp_value_id=dp_value.id)
         actual_value, actual_value_float, actual_value_bool = row
 
-         # Outer quotes because of the JSON field.
+        # Outer quotes because of the JSON field.
         expected_value = '"Hello there."'
         expected_value_float = None
         expected_value_bool = None
@@ -575,7 +560,7 @@ class TestDatapointValue(TransactionTestCase):
         query = (
             'SELECT "datapoint_id", "time", "value", "_value_float", "_value_bool"'
             'FROM "{table_name}" WHERE datapoint_id = %s AND time = %s'
-        ).format(table_name = self.DatapointValue.objects.model._meta.db_table)
+        ).format(table_name=self.DatapointValue.objects.model._meta.db_table)
         with connection.cursor() as cursor:
             cursor.execute(query, [dp_id, time])
             row = cursor.fetchone()
@@ -647,12 +632,11 @@ class TestDatapointValue(TransactionTestCase):
                 "datapoint": self.datapoint,
                 "time": datetime(2021, 1, 1, 15, 0, 0, tzinfo=pytz.utc),
                 "value": "a string",
-            }
+            },
         ]
 
         msg_stats = self.DatapointValue.bulk_update_or_create(
-            model=self.DatapointValue,
-            msgs=test_msgs
+            model=self.DatapointValue, msgs=test_msgs
         )
 
         expected_msgs_created = 4
@@ -667,7 +651,7 @@ class TestDatapointValue(TransactionTestCase):
         # pytz.utc. Maybe this is just because of the hacky style of
         # reading data directly and raw from DB
         db_engine = settings.DATABASES["default"]["ENGINE"]
-        if db_engine == 'django.db.backends.sqlite3':
+        if db_engine == "django.db.backends.sqlite3":
             dt_kwargs = {}
         else:
             dt_kwargs = {"tzinfo": pytz.utc}
@@ -727,8 +711,7 @@ class TestDatapointValue(TransactionTestCase):
         all_actual_values = []
         for expected_value in all_expected_values:
             actual_values = self.get_raw_values_from_db_by_time_and_dp(
-                dp_id=expected_value[0],
-                time=expected_value[1],
+                dp_id=expected_value[0], time=expected_value[1]
             )
             all_actual_values.append(actual_values)
 
@@ -736,7 +719,6 @@ class TestDatapointValue(TransactionTestCase):
 
 
 class TestDatapointSchedule(TransactionTestCase):
-
     @classmethod
     def setUpClass(cls):
         # Datapoint model is abstract, hence no table exists. Here we
@@ -744,16 +726,16 @@ class TestDatapointSchedule(TransactionTestCase):
         # on the fly for testing.
         class Datapoint(DatapointTemplate):
             class Meta:
-                app_label="test_message_format_models_3"
+                app_label = "test_message_format_models_3"
+
         class DatapointSchedule(DatapointScheduleTemplate):
             class Meta:
-                app_label="test_message_format_models_3"
+                app_label = "test_message_format_models_3"
+
             # The datapoint foreign key must be overwritten as it points
             # to the abstract datapoint model by default.
-            datapoint = models.ForeignKey(
-                Datapoint,
-                on_delete=models.CASCADE,
-            )
+            datapoint = models.ForeignKey(Datapoint, on_delete=models.CASCADE)
+
         cls.Datapoint = Datapoint
         cls.DatapointSchedule = DatapointSchedule
         with connection.schema_editor() as schema_editor:
@@ -816,16 +798,8 @@ class TestDatapointSchedule(TransactionTestCase):
         field_values = self.default_field_values.copy()
 
         schedule = [
-            {
-                'from_timestamp': None,
-                'to_timestamp': 1564489613491,
-                'value': 21
-            },
-            {
-                'from_timestamp': 1564489613491,
-                'to_timestamp': None,
-                'value': None
-            }
+            {"from_timestamp": None, "to_timestamp": 1564489613491, "value": 21},
+            {"from_timestamp": 1564489613491, "to_timestamp": None, "value": None},
         ]
         field_values.update({"schedule": schedule})
 
@@ -839,7 +813,7 @@ class TestDatapointSchedule(TransactionTestCase):
 
         ts = 1596240000000
         ts_datetime = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update({"time":ts_datetime})
+        field_values.update({"time": ts_datetime})
 
         self.generic_field_value_test(field_values=field_values)
 
@@ -855,22 +829,12 @@ class TestDatapointSchedule(TransactionTestCase):
         self.datapoint.save()
 
         expected_schedule = [
-            {
-                'from_timestamp': None,
-                'to_timestamp': 1564489613492,
-                'value': 21
-            },
-            {
-                'from_timestamp': 1564489613492,
-                'to_timestamp': None,
-                'value': None
-            }
+            {"from_timestamp": None, "to_timestamp": 1564489613492, "value": 21},
+            {"from_timestamp": 1564489613492, "to_timestamp": None, "value": None},
         ]
         ts = 1596230000001
         expected_timestamp = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update(
-            {"schedule": expected_schedule, "time":expected_timestamp}
-        )
+        field_values.update({"schedule": expected_schedule, "time": expected_timestamp})
 
         self.generic_field_value_test(field_values=field_values)
         self.datapoint.refresh_from_db()
@@ -889,16 +853,8 @@ class TestDatapointSchedule(TransactionTestCase):
 
         # Ensure there is a newer msg available that will prevent saving.
         expected_schedule = [
-            {
-                'from_timestamp': None,
-                'to_timestamp': 1564489613492,
-                'value': 21
-            },
-            {
-                'from_timestamp': 1564489613492,
-                'to_timestamp': None,
-                'value': None
-            }
+            {"from_timestamp": None, "to_timestamp": 1564489613492, "value": 21},
+            {"from_timestamp": 1564489613492, "to_timestamp": None, "value": None},
         ]
         self.datapoint.last_schedule = expected_schedule
         ts = 1596220000000
@@ -909,9 +865,7 @@ class TestDatapointSchedule(TransactionTestCase):
         older_schedule = []
         ts = 1200000000000
         older_timestamp = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update(
-            {"schedule": older_schedule, "time":older_timestamp}
-        )
+        field_values.update({"schedule": older_schedule, "time": older_timestamp})
 
         self.generic_field_value_test(field_values=field_values)
         self.datapoint.refresh_from_db()
@@ -928,7 +882,7 @@ class TestDatapointSchedule(TransactionTestCase):
         query = (
             'SELECT "datapoint_id", "time", "schedule"'
             'FROM "{table_name}" WHERE datapoint_id = %s AND time = %s'
-        ).format(table_name = self.DatapointSchedule.objects.model._meta.db_table)
+        ).format(table_name=self.DatapointSchedule.objects.model._meta.db_table)
         with connection.cursor() as cursor:
             cursor.execute(query, [dp_id, time])
             row = cursor.fetchone()
@@ -983,8 +937,7 @@ class TestDatapointSchedule(TransactionTestCase):
         ]
 
         msg_stats = self.DatapointSchedule.bulk_update_or_create(
-            model=self.DatapointSchedule,
-            msgs=test_msgs
+            model=self.DatapointSchedule, msgs=test_msgs
         )
 
         expected_msgs_created = 3
@@ -999,7 +952,7 @@ class TestDatapointSchedule(TransactionTestCase):
         # pytz.utc. Maybe this is just because of the hacky style of
         # reading data directly and raw from DB
         db_engine = settings.DATABASES["default"]["ENGINE"]
-        if db_engine == 'django.db.backends.sqlite3':
+        if db_engine == "django.db.backends.sqlite3":
             dt_kwargs = {}
         else:
             dt_kwargs = {"tzinfo": pytz.utc}
@@ -1031,13 +984,11 @@ class TestDatapointSchedule(TransactionTestCase):
                 datetime(2021, 1, 1, 14, 0, 0, **dt_kwargs),
                 json.dumps([]),
             ),
-
         ]
         all_actual_schedules = []
         for expected_schedule in all_expected_schedules:
             actual_schedule = self.get_raw_values_from_db_by_time_and_dp(
-                dp_id=expected_schedule[0],
-                time=expected_schedule[1],
+                dp_id=expected_schedule[0], time=expected_schedule[1]
             )
             all_actual_schedules.append(actual_schedule)
 
@@ -1045,7 +996,6 @@ class TestDatapointSchedule(TransactionTestCase):
 
 
 class TestDatapointSetpoint(TransactionTestCase):
-
     @classmethod
     def setUpClass(cls):
         # Datapoint model is abstract, hence no table exists. Here we
@@ -1053,16 +1003,16 @@ class TestDatapointSetpoint(TransactionTestCase):
         # on the fly for testing.
         class Datapoint(DatapointTemplate):
             class Meta:
-                app_label="test_message_format_models_4"
+                app_label = "test_message_format_models_4"
+
         class DatapointSetpoint(DatapointSetpointTemplate):
             class Meta:
-                app_label="test_message_format_models_4"
+                app_label = "test_message_format_models_4"
+
             # The datapoint foreign key must be overwritten as it points
             # to the abstract datapoint model by default.
-            datapoint = models.ForeignKey(
-                Datapoint,
-                on_delete=models.CASCADE,
-            )
+            datapoint = models.ForeignKey(Datapoint, on_delete=models.CASCADE)
+
         cls.Datapoint = Datapoint
         cls.DatapointSetpoint = DatapointSetpoint
         with connection.schema_editor() as schema_editor:
@@ -1125,16 +1075,8 @@ class TestDatapointSetpoint(TransactionTestCase):
         field_values = self.default_field_values.copy()
 
         setpoint = [
-            {
-                'from_timestamp': None,
-                'to_timestamp': 1564489613491,
-                'value': 21
-            },
-            {
-                'from_timestamp': 1564489613491,
-                'to_timestamp': None,
-                'value': None
-            }
+            {"from_timestamp": None, "to_timestamp": 1564489613491, "value": 21},
+            {"from_timestamp": 1564489613491, "to_timestamp": None, "value": None},
         ]
         field_values.update({"setpoint": setpoint})
 
@@ -1148,7 +1090,7 @@ class TestDatapointSetpoint(TransactionTestCase):
 
         ts = 1596240000000
         ts_datetime = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update({"time":ts_datetime})
+        field_values.update({"time": ts_datetime})
 
         self.generic_field_value_test(field_values=field_values)
 
@@ -1164,22 +1106,12 @@ class TestDatapointSetpoint(TransactionTestCase):
         self.datapoint.save()
 
         expected_setpoint = [
-            {
-                'from_timestamp': None,
-                'to_timestamp': 1564489613492,
-                'value': 21
-            },
-            {
-                'from_timestamp': 1564489613492,
-                'to_timestamp': None,
-                'value': None
-            }
+            {"from_timestamp": None, "to_timestamp": 1564489613492, "value": 21},
+            {"from_timestamp": 1564489613492, "to_timestamp": None, "value": None},
         ]
         ts = 1596220000001
         expected_timestamp = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update(
-            {"setpoint": expected_setpoint, "time":expected_timestamp}
-        )
+        field_values.update({"setpoint": expected_setpoint, "time": expected_timestamp})
 
         self.generic_field_value_test(field_values=field_values)
         self.datapoint.refresh_from_db()
@@ -1198,16 +1130,8 @@ class TestDatapointSetpoint(TransactionTestCase):
 
         # Ensure there is a newer msg available that will prevent saving.
         expected_setpoint = [
-            {
-                'from_timestamp': None,
-                'to_timestamp': 1564489613492,
-                'value': 21
-            },
-            {
-                'from_timestamp': 1564489613492,
-                'to_timestamp': None,
-                'value': None
-            }
+            {"from_timestamp": None, "to_timestamp": 1564489613492, "value": 21},
+            {"from_timestamp": 1564489613492, "to_timestamp": None, "value": None},
         ]
         self.datapoint.last_setpoint = expected_setpoint
         ts = 1596220000000
@@ -1218,9 +1142,7 @@ class TestDatapointSetpoint(TransactionTestCase):
         older_setpoint = []
         ts = 1200000000000
         older_timestamp = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update(
-            {"setpoint": older_setpoint, "time":older_timestamp}
-        )
+        field_values.update({"setpoint": older_setpoint, "time": older_timestamp})
 
         self.generic_field_value_test(field_values=field_values)
         self.datapoint.refresh_from_db()
@@ -1237,7 +1159,7 @@ class TestDatapointSetpoint(TransactionTestCase):
         query = (
             'SELECT "datapoint_id", "time", "setpoint"'
             'FROM "{table_name}" WHERE datapoint_id = %s AND time = %s'
-        ).format(table_name = self.DatapointSetpoint.objects.model._meta.db_table)
+        ).format(table_name=self.DatapointSetpoint.objects.model._meta.db_table)
         with connection.cursor() as cursor:
             cursor.execute(query, [dp_id, time])
             row = cursor.fetchone()
@@ -1287,12 +1209,11 @@ class TestDatapointSetpoint(TransactionTestCase):
                 "datapoint": self.datapoint,
                 "time": datetime(2021, 1, 1, 15, 0, 0, tzinfo=pytz.utc),
                 "setpoint": [],
-            }
+            },
         ]
 
         msg_stats = self.DatapointSetpoint.bulk_update_or_create(
-            model=self.DatapointSetpoint,
-            msgs=test_msgs
+            model=self.DatapointSetpoint, msgs=test_msgs
         )
 
         expected_msgs_created = 3
@@ -1307,7 +1228,7 @@ class TestDatapointSetpoint(TransactionTestCase):
         # pytz.utc. Maybe this is just because of the hacky style of
         # reading data directly and raw from DB
         db_engine = settings.DATABASES["default"]["ENGINE"]
-        if db_engine == 'django.db.backends.sqlite3':
+        if db_engine == "django.db.backends.sqlite3":
             dt_kwargs = {}
         else:
             dt_kwargs = {"tzinfo": pytz.utc}
@@ -1343,8 +1264,7 @@ class TestDatapointSetpoint(TransactionTestCase):
         all_actual_setpoints = []
         for expected_setpoint in all_expected_setpoints:
             actual_setpoint = self.get_raw_values_from_db_by_time_and_dp(
-                dp_id=expected_setpoint[0],
-                time=expected_setpoint[1],
+                dp_id=expected_setpoint[0], time=expected_setpoint[1]
             )
             all_actual_setpoints.append(actual_setpoint)
 

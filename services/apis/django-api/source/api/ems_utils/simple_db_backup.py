@@ -34,8 +34,7 @@ import requests
 from tqdm import tqdm
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s-%(funcName)s-%(levelname)s: %(message)s"
+    level=logging.INFO, format="%(asctime)s-%(funcName)s-%(levelname)s: %(message)s"
 )
 logger = logging.getLogger()
 
@@ -53,9 +52,10 @@ def date_to_timestamp(_date):
     timestamp : int
         Milliseconds since 1.1.1970 UTC
     """
-    dt = datetime(_date.year, _date.month, _date.day, tzinfo=timezone.utc)#
+    dt = datetime(_date.year, _date.month, _date.day, tzinfo=timezone.utc)  #
     timestamp = int(dt.timestamp() * 1000)
     return timestamp
+
 
 def backup_datapoint_metadata(args, auth):
     """
@@ -102,6 +102,7 @@ def backup_datapoint_metadata(args, auth):
     logger.info("Fetched metadata for %s datapoints", len(datapoint_ids))
     return datapoint_ids
 
+
 def load_datapoint_message(cv):
     """
     The worker that loads, compresses and saves the datapoint messages for one
@@ -129,6 +130,7 @@ def load_datapoint_message(cv):
     out_json = json.dumps(datapoint_data, indent=4)
     with open(cv["out_fnp"], "wb") as f:
         f.write(bz2.compress(out_json.encode()))
+
 
 def backup_datapoint_messages(args, auth, datapoint_ids):
     """
@@ -160,9 +162,8 @@ def backup_datapoint_messages(args, auth, datapoint_ids):
             for message_type in ["value", "setpoint", "schedule"]:
 
                 # Compute filenames and full filename incl. path.
-                out_fn = (
-                    "dpdata_{}_{}_{}.json.bz2"
-                    .format(datapoint_id, date, message_type)
+                out_fn = "dpdata_{}_{}_{}.json.bz2".format(
+                    datapoint_id, date, message_type
                 )
                 out_fnp = out_directory / out_fn
 
@@ -176,7 +177,7 @@ def backup_datapoint_messages(args, auth, datapoint_ids):
                     "datapoint_id": datapoint_id,
                     "message_type": message_type,
                     "ts_chunk_start": date_to_timestamp(date),
-                    "ts_chunk_end": date_to_timestamp(date+timedelta(days=1)),
+                    "ts_chunk_end": date_to_timestamp(date + timedelta(days=1)),
                     "out_fn": out_fn,
                     "out_fnp": out_fnp,
                     "auth": auth,
@@ -197,15 +198,16 @@ def backup_datapoint_messages(args, auth, datapoint_ids):
     chunks_to_load = len(chunk_vars)
     logger.info(
         "User requested %s chunks. %s chunks exist already. Starting download.",
-        *(chunks_to_load+skipped_chunks, skipped_chunks)
-    ) 
+        *(chunks_to_load + skipped_chunks, skipped_chunks)
+    )
     with Pool(processes=args.worker_process_number) as pool:
         for _ in tqdm(
             pool.imap_unordered(load_datapoint_message, chunk_vars),
-            total=chunks_to_load
+            total=chunks_to_load,
         ):
             pass
     logger.info("Finished loading %s chunks.", chunks_to_load)
+
 
 def restore_datapoint_metadata(args, auth):
     """
@@ -241,15 +243,12 @@ def restore_datapoint_metadata(args, auth):
     all_datapoint_metadata_fnps = args.data_directory.glob(
         "datapoint_metadata_*.json.bz2"
     )
-    latest_datapoint_metadata_fnp =  sorted(all_datapoint_metadata_fnps)[-1]
-    logger.info(
-        "Loading datapoint metadata from: %s",
-        latest_datapoint_metadata_fnp
-    )
+    latest_datapoint_metadata_fnp = sorted(all_datapoint_metadata_fnps)[-1]
+    logger.info("Loading datapoint metadata from: %s", latest_datapoint_metadata_fnp)
     with bz2.open(latest_datapoint_metadata_fnp, "rb") as f:
         datapoint_metadata_str = f.read().decode()
         all_datapoint_metadata = json.loads(datapoint_metadata_str)
-    all_datapoint_metadata.sort(key=lambda k: k['id'])
+    all_datapoint_metadata.sort(key=lambda k: k["id"])
 
     if not args.force_datapoint_creation:
         # First print out all connectors, that must be created by the
@@ -284,7 +283,7 @@ def restore_datapoint_metadata(args, auth):
     # This could also be done with a single PUT call, but it seems
     # safer this way.
     dp_metadata_url = args.target_url + "/datapoint/"
-    dp_id_mapping = {} # Maps from ids of files to API ids.
+    dp_id_mapping = {}  # Maps from ids of files to API ids.
     for datapoint_metadata in tqdm(all_datapoint_metadata):
         dp_id_file = datapoint_metadata["id"]
         datapoint_created = False
@@ -297,9 +296,7 @@ def restore_datapoint_metadata(args, auth):
                 datapoint_created = True
             else:
                 logger.info(
-                    "Could not create datapoint %s: %s",
-                    dp_id_file,
-                    response.json()
+                    "Could not create datapoint %s: %s", dp_id_file, response.json()
                 )
                 continue
 
@@ -310,9 +307,7 @@ def restore_datapoint_metadata(args, auth):
                 dp_metadata_url, auth=auth, json=[datapoint_metadata]
             )
             if response.status_code != 200:
-                logger.warning(
-                    "Error for datapint %s: %s", dp_id_file, response.json()
-                )
+                logger.warning("Error for datapint %s: %s", dp_id_file, response.json())
                 continue
 
         dp_id_api = response.json()[0]["id"]
@@ -321,9 +316,10 @@ def restore_datapoint_metadata(args, auth):
     logger.info(
         "Restored metadata for %s of %s datapoints.",
         len(dp_id_mapping),
-        len(all_datapoint_metadata)
+        len(all_datapoint_metadata),
     )
     return dp_id_mapping
+
 
 def write_datapoint_message(cv):
     """
@@ -346,14 +342,14 @@ def write_datapoint_message(cv):
     # for that datapoint and data. But no need to restore nothing, wright?
     if not datapoint_data:
         # This is similar to the output of response.json() below.
-        {'msgs_created': 0, 'msgs_updated': 0}
+        {"msgs_created": 0, "msgs_updated": 0}
 
     # Try to parse data, i.e. bools and floats to allow storing them
     # not as strings. New versions of the database should have generated
     # the data correctly wright away, but this is a backfix for older data.
     for msg in datapoint_data:
         if "value" in msg:
-            if  msg["value"] in [None, "null"]:
+            if msg["value"] in [None, "null"]:
                 value_native = None
             elif msg["value"] in ["True", "true", "TRUE", True]:
                 value_native = True
@@ -368,19 +364,16 @@ def write_datapoint_message(cv):
                     value_native = msg["value"]
             msg["value"] = json.dumps(value_native)
     logger.debug("Pushing datapoint data to: %s", cv["dp_data_url"])
-    response = requests.put(
-        cv["dp_data_url"], auth=cv["auth"], json=datapoint_data
-    )
+    response = requests.put(cv["dp_data_url"], auth=cv["auth"], json=datapoint_data)
     # Verify that the request returned OK.
     if response.status_code != 200:
-        logger.error(
-            "Request failed (%s): %s", response.status_code, response.json()
-        )
+        logger.error("Request failed (%s): %s", response.status_code, response.json())
         raise RuntimeError(
             "Could not write datapoint data to url: %s" % cv["dp_data_url"]
         )
 
     return response.json()
+
 
 def restore_datapoint_messages(args, auth, dp_id_mapping):
     """
@@ -407,7 +400,7 @@ def restore_datapoint_messages(args, auth, dp_id_mapping):
     else:
         logger.info(
             "Restoring value/setpoint/schedule messages for %s datapoints",
-            len(dp_id_mapping)
+            len(dp_id_mapping),
         )
 
     # Find all chunks relevant for the selected dates and datapoints.
@@ -422,9 +415,8 @@ def restore_datapoint_messages(args, auth, dp_id_mapping):
                 # Compute filenames and full filename incl. path.
                 # Also check whether file exists, as for some datapoints
                 # not the full history may exist (e.g. datapoint added later).
-                chunk_fn = (
-                    "dpdata_{}_{}_{}.json.bz2"
-                    .format(dp_id_file, date, message_type)
+                chunk_fn = "dpdata_{}_{}_{}.json.bz2".format(
+                    dp_id_file, date, message_type
                 )
                 chunk_fnp = out_directory / chunk_fn
                 if chunk_fnp.is_file():
@@ -436,7 +428,6 @@ def restore_datapoint_messages(args, auth, dp_id_mapping):
                         "chunk_fnp": chunk_fnp,
                         "dp_data_url": dp_data_url,
                         "auth": auth,
-
                     }
                     chunk_vars.append(chunk_var)
         date += timedelta(days=1)
@@ -447,7 +438,7 @@ def restore_datapoint_messages(args, auth, dp_id_mapping):
         msgs_updated_total = 0
         for msg_stats in tqdm(
             pool.imap_unordered(write_datapoint_message, chunk_vars),
-            total=len(chunk_vars)
+            total=len(chunk_vars),
         ):
             msgs_created_total += msg_stats["msgs_created"]
             msgs_updated_total += msg_stats["msgs_updated"]
@@ -456,8 +447,9 @@ def restore_datapoint_messages(args, auth, dp_id_mapping):
         logger.info(
             "Created %s and updated %s messages in total.",
             msgs_created_total,
-            msgs_updated_total
+            msgs_updated_total,
         )
+
 
 def main(args):
     """
@@ -495,15 +487,11 @@ def main(args):
 
     if args.restore:
         dp_id_mapping = restore_datapoint_metadata(args=args, auth=auth)
-        restore_datapoint_messages(
-           args=args, auth=auth, dp_id_mapping=dp_id_mapping
-        )
+        restore_datapoint_messages(args=args, auth=auth, dp_id_mapping=dp_id_mapping)
 
     if args.backup:
         datapoint_ids = backup_datapoint_metadata(args=args, auth=auth)
-        backup_datapoint_messages(
-            args=args, auth=auth, datapoint_ids=datapoint_ids
-        )
+        backup_datapoint_messages(args=args, auth=auth, datapoint_ids=datapoint_ids)
 
 
 if __name__ == "__main__":
@@ -512,18 +500,10 @@ if __name__ == "__main__":
     )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
-        "-b",
-        "--backup",
-        action="store_true",
-        default=False,
-        help="Backup the data."
+        "-b", "--backup", action="store_true", default=False, help="Backup the data."
     )
     group.add_argument(
-        "-r",
-        "--restore",
-        action="store_true",
-        default=False,
-        help="Restore the data."
+        "-r", "--restore", action="store_true", default=False, help="Restore the data."
     )
     parser.add_argument(
         "-t",
@@ -532,7 +512,7 @@ if __name__ == "__main__":
         help=(
             "The URL of the target REST API (without trailing slash).\n"
             "E.g: http://localhost:8080"
-        )
+        ),
     )
     parser.add_argument(
         "-u",
@@ -540,7 +520,7 @@ if __name__ == "__main__":
         help=(
             "The username used for HTTP BasicAuth. If not set will connect "
             "without attempting authentication."
-        )
+        ),
     )
     parser.add_argument(
         "-p",
@@ -548,7 +528,7 @@ if __name__ == "__main__":
         help=(
             "The password for HTTP BasicAuth is only used in combination with "
             "username if username is set."
-        )
+        ),
     )
     parser.add_argument(
         "-s",
@@ -558,7 +538,7 @@ if __name__ == "__main__":
         help=(
             "The first date (in ISO format) for which the value/schedule/"
             "setpoint messages should be backed up or restored."
-        )
+        ),
     )
     parser.add_argument(
         "-e",
@@ -569,7 +549,7 @@ if __name__ == "__main__":
             "The last date (in ISO format) for which the value/"
             "schedule/setpoint messages should be backed up or restored. "
             "Defaults to yesterday in UTC."
-        )
+        ),
     )
     parser.add_argument(
         "-d",
@@ -579,7 +559,7 @@ if __name__ == "__main__":
         help=(
             "Path to directoy where backed up data is stored and resored data"
             "is loaded from. This directory must exist."
-        )
+        ),
     )
     parser.add_argument(
         "-y",
@@ -589,7 +569,7 @@ if __name__ == "__main__":
             "Always answer yes while restoring. This is fine if one has"
             "has ensured that connectors and datapoints exist before running "
             "the script."
-        )
+        ),
     )
     parser.add_argument(
         "-f",
@@ -601,7 +581,7 @@ if __name__ == "__main__":
             "corresponding connector doesn't know. These datapoints will "
             "not receive data or nor will it be possible to send value "
             "messages to actuator datapoints."
-        )
+        ),
     )
     parser.add_argument(
         "-w",
@@ -609,9 +589,8 @@ if __name__ == "__main__":
         type=int,
         default=4,
         help=(
-            "The number of worker processes to use for interacting with API "
-            "service."
-        )
+            "The number of worker processes to use for interacting with API " "service."
+        ),
     )
     args = parser.parse_args()
     main(args)

@@ -12,11 +12,13 @@ from ems_utils.message_format.models import DatapointValueTemplate
 from ems_utils.message_format.models import DatapointSetpointTemplate
 from ems_utils.message_format.models import DatapointScheduleTemplate
 
+
 class Datapoint(DatapointTemplate):
     """
     Similar to the generic Datapoint model (see docstring in DatapointTemplate
     for more information) but with fields adapted to the needs of API service.
     """
+
     # Overload the docstring with the one of DatapointTemplate for the
     # automatic generation of documentation in schema, as the original
     # docstring contains more general descriptions.
@@ -27,20 +29,15 @@ class Datapoint(DatapointTemplate):
         # multiple times due to race conditions.
         constraints = [
             models.UniqueConstraint(
-                fields=['connector', 'key_in_connector'],
-                name='Datapoint key_in_connector and connector unique together',
-            ),
+                fields=["connector", "key_in_connector"],
+                name="Datapoint key_in_connector and connector unique together",
+            )
         ]
 
-    connector = models.ForeignKey(
-        Connector,
-        on_delete=models.CASCADE,
-    )
+    connector = models.ForeignKey(Connector, on_delete=models.CASCADE)
     is_active = models.BooleanField(
         default=False,
-        help_text=(
-            "Flag if the connector should publish values for this datapoint."
-        )
+        help_text=("Flag if the connector should publish values for this datapoint."),
     )
     # This must be unlimeted to prevent errors from cut away keys while
     # using the datapoint map by the connector.
@@ -57,7 +54,7 @@ class Datapoint(DatapointTemplate):
         help_text=(
             "Datapoint type, can be ether sensor or actuator. Is defined by "
             "the connector."
-        )
+        ),
     )
     example_value = models.JSONField(
         editable=False,
@@ -65,16 +62,16 @@ class Datapoint(DatapointTemplate):
         help_text=(
             "One example value for this datapoint. Should help admins while "
             "mangeing datapoints, i.e. to specify the correct data format."
-        )
+        ),
     )
     # Delete this field, the API IS THE origin of meta data.
-    exclude = ("origin_id", )
+    exclude = ("origin_id",)
 
     def __str__(self):
         if self.short_name is not None:
-            return (self.connector.name + "/" + self.short_name)
+            return self.connector.name + "/" + self.short_name
         else:
-            return (self.connector.name + "/" + self.key_in_connector)
+            return self.connector.name + "/" + self.key_in_connector
 
     def get_mqtt_topics(self):
         """
@@ -115,6 +112,7 @@ class DatapointValue(DatapointValueTemplate):
     DatapointValueTemplate for more information) but with the correct
     Datapoint model linked to it.
     """
+
     # Overload the docstring with the one of DatapointValueTemplate for
     # the automatic generation of documentation in schema, as the original
     # docstring contains more general descriptions.
@@ -123,9 +121,7 @@ class DatapointValue(DatapointValueTemplate):
     datapoint = models.ForeignKey(
         Datapoint,
         on_delete=models.CASCADE,
-        help_text=(
-            "The datapoint that the value message belongs to."
-        )
+        help_text=("The datapoint that the value message belongs to."),
     )
 
     def save(self, *args, **kwargs):
@@ -176,6 +172,7 @@ class DatapointSchedule(DatapointScheduleTemplate):
     DatapointScheduleTemplate for more information) but with the correct
     Datapoint model linked to it.
     """
+
     # Overload the docstring with the one of DatapointScheduleTemplate for
     # the automatic generation of documentation in schema, as the original
     # docstring contains more general descriptions.
@@ -184,9 +181,7 @@ class DatapointSchedule(DatapointScheduleTemplate):
     datapoint = models.ForeignKey(
         Datapoint,
         on_delete=models.CASCADE,
-        help_text=(
-            "The datapoint that the schedule message belongs to."
-        )
+        help_text=("The datapoint that the schedule message belongs to."),
     )
 
     def save(self, *args, **kwargs):
@@ -204,6 +199,7 @@ class DatapointSetpoint(DatapointSetpointTemplate):
     DatapointSetpointTemplate for more information) but with the correct
     Datapoint model linked to it.
     """
+
     # Overload the docstring with the one of DatapointSetpointTemplate for
     # the automatic generation of documentation in schema, as the original
     # docstring contains more general descriptions.
@@ -212,9 +208,7 @@ class DatapointSetpoint(DatapointSetpointTemplate):
     datapoint = models.ForeignKey(
         Datapoint,
         on_delete=models.CASCADE,
-        help_text=(
-            "The datapoint that the setpoint message belongs to."
-        )
+        help_text=("The datapoint that the setpoint message belongs to."),
     )
 
     def save(self, *args, **kwargs):

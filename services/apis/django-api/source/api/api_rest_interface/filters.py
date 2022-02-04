@@ -12,6 +12,7 @@ class DatapointFilter(FilterSet):
     """
     Some useful filters for the Datapoint list.
     """
+
     class Meta:
         model = Datapoint
         fields = {
@@ -27,24 +28,16 @@ class DatapointFilter(FilterSet):
 
 class TimestampFilter(FilterSet):
     timestamp__gte = NumberFilter(
-        field_name="time__gte",
-        lookup_expr="gte",
-        method="filter_timestamp",
+        field_name="time__gte", lookup_expr="gte", method="filter_timestamp"
     )
     timestamp__gt = NumberFilter(
-        field_name="time__gt",
-        lookup_expr="gt",
-        method="filter_timestamp",
+        field_name="time__gt", lookup_expr="gt", method="filter_timestamp"
     )
     timestamp__lte = NumberFilter(
-        field_name="time__lte",
-        lookup_expr="lte",
-        method="filter_timestamp",
+        field_name="time__lte", lookup_expr="lte", method="filter_timestamp"
     )
     timestamp__lt = NumberFilter(
-        field_name="time__lt",
-        lookup_expr="lt",
-        method="filter_timestamp",
+        field_name="time__lt", lookup_expr="lt", method="filter_timestamp"
     )
 
     def filter_timestamp(self, queryset, lookup_expr, value):
@@ -57,13 +50,12 @@ class DatapointValueFilter(TimestampFilter):
     """
     Allows selecting values by timestamp ranges.
     """
-    interval = CharFilter(
-        method="apply_timebucket",
-    )
+
+    interval = CharFilter(method="apply_timebucket")
 
     class Meta:
         model = DatapointValue
-        fields = [] # The custom methods are added automatically.
+        fields = []  # The custom methods are added automatically.
 
     def apply_timebucket(self, queryset, _, value):
         """
@@ -78,26 +70,29 @@ class DatapointValueFilter(TimestampFilter):
 
         """
         queryset = queryset.time_bucket("time", value)
-        queryset = queryset.annotate(value=models.Avg('_value_float'))
+        queryset = queryset.annotate(value=models.Avg("_value_float"))
         # Late first, newest item last in list. This should not cost anything
         # extra as the timescaledb django plugin orders too, but just the other
         # way around.
-        queryset = queryset.order_by('bucket')
+        queryset = queryset.order_by("bucket")
         return queryset
+
 
 class DatapointSetpointFilter(TimestampFilter):
     """
     Allows selecting values by timestamp ranges.
     """
+
     class Meta:
         model = DatapointSetpoint
-        fields = [] # The custom methods are added automatically.
+        fields = []  # The custom methods are added automatically.
 
 
 class DatapointScheduleFilter(TimestampFilter):
     """
     Allows selecting values by timestamp ranges.
     """
+
     class Meta:
         model = DatapointSchedule
-        fields = [] # The custom methods are added automatically.
+        fields = []  # The custom methods are added automatically.

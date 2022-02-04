@@ -24,7 +24,7 @@ from api_main.models.connector import Connector
 from ems_utils.timestamp import datetime_from_timestamp
 
 
-@pytest.fixture(scope='class')
+@pytest.fixture(scope="class")
 def rest_endpoint_setup(request, django_db_setup, django_db_blocker):
     """
     SetUp FakeMQTTBroker, MQTT Integration and APIClient for all
@@ -46,21 +46,17 @@ def rest_endpoint_setup(request, django_db_setup, django_db_blocker):
     fake_client_3 = FakeMQTTClient(fake_broker=fake_broker)
     # This must be initialized so the api_main component can use a
     # mqtt client to publish messages.
-    ami = ApiMqttIntegration(
-        mqtt_client=fake_client_1,
-    )
+    ami = ApiMqttIntegration(mqtt_client=fake_client_1)
     # This is required to forward published messages to the DB.
-    mqtt_to_db = MqttToDb(
-        mqtt_client=fake_client_2,
-    )
+    mqtt_to_db = MqttToDb(mqtt_client=fake_client_2)
 
     # Setup MQTT client endpoints for test.
     mqtt_client = fake_client_3(userdata={})
-    mqtt_client.connect('localhost', 1883)
+    mqtt_client.connect("localhost", 1883)
     mqtt_client.loop_start()
 
     client = APIClient()
-    user = User.objects.create_user(username='testuser', password='12345')
+    user = User.objects.create_user(username="testuser", password="12345")
     test_connector = connector_factory("test_connector6")
 
     # Inject objects into test class.
@@ -84,7 +80,8 @@ def rest_endpoint_setup(request, django_db_setup, django_db_blocker):
     django_db_blocker.block()
     django_db_blocker.restore()
 
-@pytest.mark.usefixtures('rest_endpoint_setup')
+
+@pytest.mark.usefixtures("rest_endpoint_setup")
 class TestRESTEndpoint(TestCase):
     """
     Here all tests targeting for functionality triggered by the client.
@@ -112,7 +109,7 @@ class TestRESTEndpoint(TestCase):
         dp.description = "A sensor datapoint for testing"
         dp.short_name = "test_sensor"
         dp.unit = "Test Unit"
-        dp.allowed_values = '[1.0, 2.0]'
+        dp.allowed_values = "[1.0, 2.0]"
         dp.min_value = 1.0
         dp.max_value = 2.0
         dp.save()
@@ -130,11 +127,8 @@ class TestRESTEndpoint(TestCase):
             "max_value": dp.max_value,
             "allowed_values": dp.allowed_values,
             "unit": dp.unit,
-            "connector": {
-                "name": dp.connector.name,
-            },
+            "connector": {"name": dp.connector.name},
             "key_in_connector": dp.key_in_connector,
-
         }
         assert request.data == expected_data
 
@@ -143,24 +137,23 @@ class TestRESTEndpoint(TestCase):
         Test that we can create a datapoint via REST API and that this also
         creates the corresponding connector.
         """
-        test_dp_metadata = [{
-            "id": 50002,
-            "type": "sensor",
-            "data_format": "generic_numeric",
-            "short_name": "test_sensor 2",
-            "description": "A sensor datapoint for testing",
-            "min_value": 1.0,
-            "max_value": 2.0,
-            "allowed_values": '[1.0, 2.0]',
-            "unit": "Test Unit",
-            # Note that this format depends on
-            # api_rest_api.serializers.ConnectorSerializer
-            "connector": {
-                "name": "not existing connector",
-            },
-            "key_in_connector": "some__key__in__connector",
-
-        }]
+        test_dp_metadata = [
+            {
+                "id": 50002,
+                "type": "sensor",
+                "data_format": "generic_numeric",
+                "short_name": "test_sensor 2",
+                "description": "A sensor datapoint for testing",
+                "min_value": 1.0,
+                "max_value": 2.0,
+                "allowed_values": "[1.0, 2.0]",
+                "unit": "Test Unit",
+                # Note that this format depends on
+                # api_rest_api.serializers.ConnectorSerializer
+                "connector": {"name": "not existing connector"},
+                "key_in_connector": "some__key__in__connector",
+            }
+        ]
 
         # First check that the connector does not exist already.
         # This also implies that the datapoint cannot exist either.
@@ -200,24 +193,23 @@ class TestRESTEndpoint(TestCase):
         Test that we can create a datapoint via REST API and that this also
         which uses an existing connector.
         """
-        test_dp_metadata = [{
-            "id": 50002,
-            "type": "sensor",
-            "data_format": "generic_numeric",
-            "short_name": "test_sensor 4",
-            "description": "A sensor datapoint for testing",
-            "min_value": 1.0,
-            "max_value": 2.0,
-            "allowed_values": '[1.0, 2.0]',
-            "unit": "Test Unit",
-            # Note that this format depends on
-            # api_rest_api.serializers.ConnectorSerializer
-            "connector": {
-                "name":  self.test_connector.name,
-            },
-            "key_in_connector": "some__key__in__connector",
-
-        }]
+        test_dp_metadata = [
+            {
+                "id": 50002,
+                "type": "sensor",
+                "data_format": "generic_numeric",
+                "short_name": "test_sensor 4",
+                "description": "A sensor datapoint for testing",
+                "min_value": 1.0,
+                "max_value": 2.0,
+                "allowed_values": "[1.0, 2.0]",
+                "unit": "Test Unit",
+                # Note that this format depends on
+                # api_rest_api.serializers.ConnectorSerializer
+                "connector": {"name": self.test_connector.name},
+                "key_in_connector": "some__key__in__connector",
+            }
+        ]
 
         # Verify that the connector exists already.
         for i, dp_metadataset in enumerate(test_dp_metadata):
@@ -252,16 +244,16 @@ class TestRESTEndpoint(TestCase):
         dp = datapoint_factory(self.test_connector)
         dp.save()
 
-        test_dp_metadata = [{
-            "id": 50001,
-            "short_name": "test_sensor 2 new",
-            # Note that this format depends on
-            # api_rest_api.serializers.ConnectorSerializer
-            "connector": {
-                "name": self.test_connector.name,
-            },
-            "key_in_connector": dp.key_in_connector,
-        }]
+        test_dp_metadata = [
+            {
+                "id": 50001,
+                "short_name": "test_sensor 2 new",
+                # Note that this format depends on
+                # api_rest_api.serializers.ConnectorSerializer
+                "connector": {"name": self.test_connector.name},
+                "key_in_connector": dp.key_in_connector,
+            }
+        ]
 
         p = Permission.objects.get(codename="add_datapoint")
         self.user.user_permissions.add(p)
@@ -281,16 +273,16 @@ class TestRESTEndpoint(TestCase):
         dp = datapoint_factory(self.test_connector)
         dp.save()
 
-        test_dp_metadata = [{
-            "id": 50001,
-            "short_name": "test_sensor 2 new",
-            # Note that this format depends on
-            # api_rest_api.serializers.ConnectorSerializer
-            "connector": {
-                "name": "not existing connector 2",
-            },
-            "key_in_connector": "some__key__in__connector_2",
-        }]
+        test_dp_metadata = [
+            {
+                "id": 50001,
+                "short_name": "test_sensor 2 new",
+                # Note that this format depends on
+                # api_rest_api.serializers.ConnectorSerializer
+                "connector": {"name": "not existing connector 2"},
+                "key_in_connector": "some__key__in__connector_2",
+            }
+        ]
 
         response = self.client.post(
             "/datapoint/",
@@ -308,28 +300,28 @@ class TestRESTEndpoint(TestCase):
         dp.description = "A sensor datapoint for testing"
         dp.short_name = "test_sensor 3"
         dp.unit = "Test Unit"
-        dp.allowed_values = '[1.0, 2.0]'
+        dp.allowed_values = "[1.0, 2.0]"
         dp.min_value = 1.0
         dp.max_value = 2.0
         dp.save()
 
-        test_dp_metadata = [{
-            "id": 50001,
-            "type": "sensor",
-            "data_format": "generic_text",
-            "short_name": "test_sensor 2 new",
-            "description": "A sensor datapoint for testing, but changed.",
-            "min_value": 1.5,
-            "max_value": 2.5,
-            "allowed_values": '[1.0, 2.0, 3.0]',
-            "unit": "Test Unit",
-            # Note that this format depends on
-            # api_rest_api.serializers.ConnectorSerializer
-            "connector": {
-                "name": self.test_connector.name
-            },
-            "key_in_connector": dp.key_in_connector,
-        }]
+        test_dp_metadata = [
+            {
+                "id": 50001,
+                "type": "sensor",
+                "data_format": "generic_text",
+                "short_name": "test_sensor 2 new",
+                "description": "A sensor datapoint for testing, but changed.",
+                "min_value": 1.5,
+                "max_value": 2.5,
+                "allowed_values": "[1.0, 2.0, 3.0]",
+                "unit": "Test Unit",
+                # Note that this format depends on
+                # api_rest_api.serializers.ConnectorSerializer
+                "connector": {"name": self.test_connector.name},
+                "key_in_connector": dp.key_in_connector,
+            }
+        ]
 
         p = Permission.objects.get(codename="change_datapoint")
         self.user.user_permissions.add(p)
@@ -355,16 +347,16 @@ class TestRESTEndpoint(TestCase):
         dp = datapoint_factory(self.test_connector)
         dp.save()
 
-        test_dp_metadata = [{
-            "id": 50001,
-            "short_name": "test_sensor 2 new",
-            # Note that this format depends on
-            # api_rest_api.serializers.ConnectorSerializer
-            "connector": {
-                "name": self.test_connector.name
-            },
-            "key_in_connector": dp.key_in_connector,
-        }]
+        test_dp_metadata = [
+            {
+                "id": 50001,
+                "short_name": "test_sensor 2 new",
+                # Note that this format depends on
+                # api_rest_api.serializers.ConnectorSerializer
+                "connector": {"name": self.test_connector.name},
+                "key_in_connector": dp.key_in_connector,
+            }
+        ]
 
         response = self.client.put(
             "/datapoint/",
@@ -381,16 +373,16 @@ class TestRESTEndpoint(TestCase):
         dp = datapoint_factory(self.test_connector)
         dp.save()
 
-        test_dp_metadata = [{
-            "id": 50001,
-            "short_name": "test_sensor 2 new",
-            # Note that this format depends on
-            # api_rest_api.serializers.ConnectorSerializer
-            "connector": {
-                "name": "Totally_new_connector."
-            },
-            "key_in_connector": dp.key_in_connector,
-        }]
+        test_dp_metadata = [
+            {
+                "id": 50001,
+                "short_name": "test_sensor 2 new",
+                # Note that this format depends on
+                # api_rest_api.serializers.ConnectorSerializer
+                "connector": {"name": "Totally_new_connector."},
+                "key_in_connector": dp.key_in_connector,
+            }
+        ]
 
         p = Permission.objects.get(codename="change_datapoint")
         self.user.user_permissions.add(p)
@@ -410,16 +402,16 @@ class TestRESTEndpoint(TestCase):
         dp = datapoint_factory(self.test_connector)
         dp.save()
 
-        test_dp_metadata = [{
-            "id": 50001,
-            "short_name": "test_sensor 2 new",
-            # Note that this format depends on
-            # api_rest_api.serializers.ConnectorSerializer
-            "connector": {
-                "name": self.test_connector.name
-            },
-            "key_in_connector": "totally__new__datapoint__key",
-        }]
+        test_dp_metadata = [
+            {
+                "id": 50001,
+                "short_name": "test_sensor 2 new",
+                # Note that this format depends on
+                # api_rest_api.serializers.ConnectorSerializer
+                "connector": {"name": self.test_connector.name},
+                "key_in_connector": "totally__new__datapoint__key",
+            }
+        ]
 
         p = Permission.objects.get(codename="change_datapoint")
         self.user.user_permissions.add(p)
@@ -438,15 +430,12 @@ class TestRESTEndpoint(TestCase):
         fields are delivered.
         """
         test_value = "last_value!"
-        expected_data = {
-            "value": json.dumps(test_value),
-            "timestamp": 1585092224000,
-        }
+        expected_data = {"value": json.dumps(test_value), "timestamp": 1585092224000}
 
         dp = datapoint_factory(self.test_connector)
         dp.save()
         dp_value = DatapointValue(
-            datapoint = dp,
+            datapoint=dp,
             value=test_value,
             time=datetime_from_timestamp(expected_data["timestamp"]),
         )
@@ -474,14 +463,9 @@ class TestRESTEndpoint(TestCase):
         self.user.user_permissions.add(p)
         # Now put an update for the datapoint and check that the put was
         # denied as expected.
-        update_msg = {
-            "value": json.dumps("last_value!"),
-            "timestamp": 1585092224000,
-        }
+        update_msg = {"value": json.dumps("last_value!"), "timestamp": 1585092224000}
         request = self.client.post(
-            "/datapoint/%s/value/" % dp.id,
-            update_msg,
-            format='json'
+            "/datapoint/%s/value/" % dp.id, update_msg, format="json"
         )
         # Exceptions when trying to create/update on sensor datapoints
         # trigger error code 400, in contrast to permission denied errors
@@ -521,14 +505,9 @@ class TestRESTEndpoint(TestCase):
             "value": json.dumps("updated_value!"),
             "timestamp": 1585092224000,
         }
-        expected_msg_mqtt = {
-            "value": "updated_value!",
-            "timestamp": 1585092224000,
-        }
+        expected_msg_mqtt = {"value": "updated_value!", "timestamp": 1585092224000}
         request = self.client.post(
-            "/datapoint/%s/value/" % dp.id,
-            expected_msg,
-            format='json'
+            "/datapoint/%s/value/" % dp.id, expected_msg, format="json"
         )
         assert request.status_code == 201
 
@@ -582,24 +561,21 @@ class TestRESTEndpoint(TestCase):
         self.user.user_permissions.add(p)
 
         update_msg = {
-            "schedule":
-                [
-                    {
-                        'from_timestamp': None,
-                        'to_timestamp': 1564489613491,
-                        'value': json.dumps(21)
-                    },
-                    {
-                        'from_timestamp': 1564489613491,
-                        'to_timestamp': None,
-                        'value': json.dumps(None)
-                    }
-                ]
+            "schedule": [
+                {
+                    "from_timestamp": None,
+                    "to_timestamp": 1564489613491,
+                    "value": json.dumps(21),
+                },
+                {
+                    "from_timestamp": 1564489613491,
+                    "to_timestamp": None,
+                    "value": json.dumps(None),
+                },
+            ]
         }
         request = self.client.post(
-            "/datapoint/%s/schedule/" % dp.id,
-            update_msg,
-            format='json'
+            "/datapoint/%s/schedule/" % dp.id, update_msg, format="json"
         )
 
         assert request.status_code == 400
@@ -610,31 +586,23 @@ class TestRESTEndpoint(TestCase):
         """
         test_data = {
             "schedule": [
-                {
-                    'from_timestamp': None,
-                    'to_timestamp': 1564489613491,
-                    'value': 21
-                },
-                {
-                    'from_timestamp': 1564489613491,
-                    'to_timestamp': None,
-                    'value': None
-                }
+                {"from_timestamp": None, "to_timestamp": 1564489613491, "value": 21},
+                {"from_timestamp": 1564489613491, "to_timestamp": None, "value": None},
             ],
             "timestamp": datetime_from_timestamp(1564489613491),
         }
         expected_data = {
             "schedule": [
                 {
-                    'from_timestamp': None,
-                    'to_timestamp': 1564489613491,
-                    'value': json.dumps(21)
+                    "from_timestamp": None,
+                    "to_timestamp": 1564489613491,
+                    "value": json.dumps(21),
                 },
                 {
-                    'from_timestamp': 1564489613491,
-                    'to_timestamp': None,
-                    'value': json.dumps(None)
-                }
+                    "from_timestamp": 1564489613491,
+                    "to_timestamp": None,
+                    "value": json.dumps(None),
+                },
             ],
             "timestamp": 1564489613491,
         }
@@ -643,9 +611,7 @@ class TestRESTEndpoint(TestCase):
         dp.save()
 
         dp_schedule = DatapointSchedule(
-            datapoint = dp,
-            schedule=test_data["schedule"],
-            time=test_data["timestamp"],
+            datapoint=dp, schedule=test_data["schedule"], time=test_data["timestamp"]
         )
         dp_schedule.save()
 
@@ -688,41 +654,29 @@ class TestRESTEndpoint(TestCase):
         # Now put an update for the datapoint and check that the put was
         # successful.
         expected_msg = {
-            "schedule":
-                [
-                    {
-                        'from_timestamp': None,
-                        'to_timestamp': 1564489613491,
-                        'value': json.dumps(21)
-                    },
-                    {
-                        'from_timestamp': 1564489613491,
-                        'to_timestamp': None,
-                        'value': json.dumps(None)
-                    }
-                ],
+            "schedule": [
+                {
+                    "from_timestamp": None,
+                    "to_timestamp": 1564489613491,
+                    "value": json.dumps(21),
+                },
+                {
+                    "from_timestamp": 1564489613491,
+                    "to_timestamp": None,
+                    "value": json.dumps(None),
+                },
+            ],
             "timestamp": 1585092224000,
         }
         expected_msg_mqtt = {
-            "schedule":
-                [
-                    {
-                        'from_timestamp': None,
-                        'to_timestamp': 1564489613491,
-                        'value': 21
-                    },
-                    {
-                        'from_timestamp': 1564489613491,
-                        'to_timestamp': None,
-                        'value': None
-                    }
-                ],
+            "schedule": [
+                {"from_timestamp": None, "to_timestamp": 1564489613491, "value": 21},
+                {"from_timestamp": 1564489613491, "to_timestamp": None, "value": None},
+            ],
             "timestamp": 1585092224000,
         }
         request = self.client.post(
-            "/datapoint/%s/schedule/" % dp.id,
-            expected_msg,
-            format='json'
+            "/datapoint/%s/schedule/" % dp.id, expected_msg, format="json"
         )
         assert request.status_code == 201
 
@@ -758,8 +712,7 @@ class TestRESTEndpoint(TestCase):
             waited_seconds += 0.005
             if waited_seconds >= 3:
                 raise RuntimeError(
-                    "Expected datapoint schedule message has not reached the "
-                    "DB."
+                    "Expected datapoint schedule message has not reached the " "DB."
                 )
 
         request = self.client.get(
@@ -778,19 +731,16 @@ class TestRESTEndpoint(TestCase):
         self.user.user_permissions.add(p)
 
         update_msg = {
-            "setpoint":
-                [
-                    {
-                        'from_timestamp': None,
-                        'to_timestamp': 1564489613491,
-                        'preferred_value': json.dumps(21),
-                    },
-                ]
+            "setpoint": [
+                {
+                    "from_timestamp": None,
+                    "to_timestamp": 1564489613491,
+                    "preferred_value": json.dumps(21),
+                }
+            ]
         }
         request = self.client.post(
-            "/datapoint/%s/setpoint/" % dp.id,
-            update_msg,
-            format='json'
+            "/datapoint/%s/setpoint/" % dp.id, update_msg, format="json"
         )
 
         assert request.status_code == 400
@@ -802,30 +752,30 @@ class TestRESTEndpoint(TestCase):
         test_data = {
             "setpoint": [
                 {
-                    'from_timestamp': None,
-                    'to_timestamp': 1564489613491,
-                    'preferred_value': 21,
+                    "from_timestamp": None,
+                    "to_timestamp": 1564489613491,
+                    "preferred_value": 21,
                 },
                 {
-                    'from_timestamp': 1564489613491,
-                    'to_timestamp': None,
-                    'preferred_value': None,
-                }
+                    "from_timestamp": 1564489613491,
+                    "to_timestamp": None,
+                    "preferred_value": None,
+                },
             ],
             "timestamp": datetime_from_timestamp(1564489613491),
         }
         expected_data = {
             "setpoint": [
                 {
-                    'from_timestamp': None,
-                    'to_timestamp': 1564489613491,
-                    'preferred_value': json.dumps(21),
+                    "from_timestamp": None,
+                    "to_timestamp": 1564489613491,
+                    "preferred_value": json.dumps(21),
                 },
                 {
-                    'from_timestamp': 1564489613491,
-                    'to_timestamp': None,
-                    'preferred_value': json.dumps(None),
-                }
+                    "from_timestamp": 1564489613491,
+                    "to_timestamp": None,
+                    "preferred_value": json.dumps(None),
+                },
             ],
             "timestamp": 1564489613491,
         }
@@ -834,9 +784,7 @@ class TestRESTEndpoint(TestCase):
         dp.save()
 
         dp_setpoint = DatapointSetpoint(
-            datapoint = dp,
-            setpoint=test_data["setpoint"],
-            time=test_data["timestamp"],
+            datapoint=dp, setpoint=test_data["setpoint"], time=test_data["timestamp"]
         )
         dp_setpoint.save()
 
@@ -879,31 +827,27 @@ class TestRESTEndpoint(TestCase):
         # Now put an update for the datapoint and check that the put was
         # successful.
         expected_msg = {
-            "setpoint":
-                [
-                    {
-                        'from_timestamp': None,
-                        'to_timestamp': 1564489613491,
-                        'preferred_value': json.dumps(21),
-                    },
-                ],
+            "setpoint": [
+                {
+                    "from_timestamp": None,
+                    "to_timestamp": 1564489613491,
+                    "preferred_value": json.dumps(21),
+                }
+            ],
             "timestamp": 1585092224000,
         }
         expected_msg_mqtt = {
-            "setpoint":
-                [
-                    {
-                        'from_timestamp': None,
-                        'to_timestamp': 1564489613491,
-                        'preferred_value': 21,
-                    },
-                ],
+            "setpoint": [
+                {
+                    "from_timestamp": None,
+                    "to_timestamp": 1564489613491,
+                    "preferred_value": 21,
+                }
+            ],
             "timestamp": 1585092224000,
         }
         request = self.client.post(
-            "/datapoint/%s/setpoint/" % dp.id,
-            expected_msg,
-            format='json'
+            "/datapoint/%s/setpoint/" % dp.id, expected_msg, format="json"
         )
         assert request.status_code == 201
 
@@ -939,8 +883,7 @@ class TestRESTEndpoint(TestCase):
             waited_seconds += 0.005
             if waited_seconds >= 3:
                 raise RuntimeError(
-                    "Expected datapoint setpoint message has not reached the "
-                    "DB."
+                    "Expected datapoint setpoint message has not reached the " "DB."
                 )
         request = self.client.get(
             "/datapoint/%s/setpoint/%s/" % (dp.id, expected_msg["timestamp"])

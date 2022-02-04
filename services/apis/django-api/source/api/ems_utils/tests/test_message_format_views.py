@@ -34,7 +34,7 @@ class TestDatapointViewSetTemplate(TransactionTestCase):
         # on the fly for testing.
         class Datapoint(DatapointTemplate):
             class Meta:
-                app_label="test_message_format_models_view_2"
+                app_label = "test_message_format_models_view_2"
 
         class DPSerializer(DatapointSerializer):
             class Meta:
@@ -71,9 +71,8 @@ class TestDatapointViewSetTemplate(TransactionTestCase):
             "min_value": 1,
             "max_value": 3,
             "allowed_values": json.dumps([1, "string", True]),
-            "unit": "V"
+            "unit": "V",
         }
-
 
     def tearDown(self):
         """
@@ -112,6 +111,7 @@ class TestDatapointViewSetTemplate(TransactionTestCase):
         with pytest.raises(ValidationError):
             response = self.DatapointViewSet().create(request)
 
+
 class TestViewSetWithDatapointFK(TransactionTestCase):
     """
     This view class is verified at the example of the Datapoint Value
@@ -125,16 +125,16 @@ class TestViewSetWithDatapointFK(TransactionTestCase):
         # on the fly for testing.
         class Datapoint(DatapointTemplate):
             class Meta:
-                app_label="test_message_format_models_view_1"
+                app_label = "test_message_format_models_view_1"
+
         class DatapointValue(DatapointValueTemplate):
             class Meta:
-                app_label="test_message_format_models_view_1"
+                app_label = "test_message_format_models_view_1"
+
             # The datapoint foreign key must be overwritten as it points
             # to the abstract datapoint model by default.
-            datapoint = models.ForeignKey(
-                Datapoint,
-                on_delete=models.CASCADE,
-            )
+            datapoint = models.ForeignKey(Datapoint, on_delete=models.CASCADE)
+
         class DatapointValueViewSet(ViewSetWithDatapointFK):
             model = DatapointValue
             datapoint_model = Datapoint
@@ -188,9 +188,7 @@ class TestViewSetWithDatapointFK(TransactionTestCase):
         ]
         for test_time, test_value in test_values:
             dpv = self.DatapointValue(
-                datapoint=self.datapoint,
-                time=test_time,
-                value=test_value,
+                datapoint=self.datapoint, time=test_time, value=test_value
             )
             dpv.save()
 
@@ -207,11 +205,11 @@ class TestViewSetWithDatapointFK(TransactionTestCase):
         expected_data = [
             {
                 "value": json.dumps(2.0),
-                "timestamp": round(expected_dt_1.timestamp() * 1000)
+                "timestamp": round(expected_dt_1.timestamp() * 1000),
             },
             {
                 "value": json.dumps(5.0),
-                "timestamp": round(expected_dt_2.timestamp() * 1000)
+                "timestamp": round(expected_dt_2.timestamp() * 1000),
             },
         ]
 
@@ -220,7 +218,7 @@ class TestViewSetWithDatapointFK(TransactionTestCase):
             expected_data.append(
                 {
                     "value": json.dumps(test_value),
-                    "timestamp": round(test_time.timestamp() * 1000)
+                    "timestamp": round(test_time.timestamp() * 1000),
                 }
             )
 
@@ -229,7 +227,7 @@ class TestViewSetWithDatapointFK(TransactionTestCase):
 
     @pytest.mark.skipif(
         "timescale" not in settings.DATABASES["default"]["ENGINE"],
-        reason="Requires TimescaleDB for correct execution."
+        reason="Requires TimescaleDB for correct execution.",
     )
     def test_list_handles_time_buckets(self):
         """
@@ -251,25 +249,21 @@ class TestViewSetWithDatapointFK(TransactionTestCase):
         ]
         for test_time, test_value in test_values:
             dpv = self.DatapointValue(
-                datapoint=self.datapoint,
-                time=test_time,
-                value=test_value,
+                datapoint=self.datapoint, time=test_time, value=test_value
             )
             dpv.save()
 
         factory = RequestFactory()
         request = factory.get("/datapoint/%s/value/" % dp_id)
 
-        ts_qs = self.DatapointValue.timescale.time_bucket('time', '15 minutes')
-        ts_qs = ts_qs.annotate(value=models.Avg('_value_float'))
+        ts_qs = self.DatapointValue.timescale.time_bucket("time", "15 minutes")
+        ts_qs = ts_qs.annotate(value=models.Avg("_value_float"))
         # Overload the default ordering from new to old.
         ts_qs = ts_qs.order_by("bucket")
         dpvs = self.DatapointValueViewSet(request=request)
         dpvs.filter_queryset = MagicMock(return_value=ts_qs)
 
-        response = dpvs.list(
-            request, dp_id=dp_id
-        )
+        response = dpvs.list(request, dp_id=dp_id)
         actual_data = response.data
 
         # Expecting left aligned 15 minute blocks.
@@ -278,11 +272,11 @@ class TestViewSetWithDatapointFK(TransactionTestCase):
         expected_data = [
             {
                 "value": json.dumps(2.0),
-                "timestamp": round(expected_dt_1.timestamp() * 1000)
+                "timestamp": round(expected_dt_1.timestamp() * 1000),
             },
             {
                 "value": json.dumps(5.0),
-                "timestamp": round(expected_dt_2.timestamp() * 1000)
+                "timestamp": round(expected_dt_2.timestamp() * 1000),
             },
         ]
 
@@ -291,7 +285,7 @@ class TestViewSetWithDatapointFK(TransactionTestCase):
 
     @pytest.mark.skipif(
         "timescale" not in settings.DATABASES["default"]["ENGINE"],
-        reason="Requires TimescaleDB for correct execution."
+        reason="Requires TimescaleDB for correct execution.",
     )
     def test_list_handles_invalid_time_bucket_intervals(self):
         """
@@ -309,18 +303,14 @@ class TestViewSetWithDatapointFK(TransactionTestCase):
         request = factory.get("/datapoint/%s/value/" % dp_id)
 
         # Note the 'no interval' which is not a valid PostgreSQL interval.
-        ts_qs = self.DatapointValue.timescale.time_bucket('time', 'no interval')
-        ts_qs = ts_qs.annotate(value=models.Avg('_value_float'))
+        ts_qs = self.DatapointValue.timescale.time_bucket("time", "no interval")
+        ts_qs = ts_qs.annotate(value=models.Avg("_value_float"))
 
         dpvs = self.DatapointValueViewSet(request=request)
         dpvs.filter_queryset = MagicMock(return_value=ts_qs)
 
         with pytest.raises(ValidationError):
-            response = dpvs.list(
-                request, dp_id=dp_id
-            )
-
-
+            response = dpvs.list(request, dp_id=dp_id)
 
     def test_update_many_writes_to_db(self):
         """
@@ -345,27 +335,19 @@ class TestViewSetWithDatapointFK(TransactionTestCase):
         request = factory.put("/datapoint/1/value/")
         request.data = test_data
 
-        response = self.DatapointValueViewSet().update_many(
-            request, dp_id=dp_id
-        )
+        response = self.DatapointValueViewSet().update_many(request, dp_id=dp_id)
         assert response.status_code == 200
         assert response.data["msgs_created"] == 7
         assert response.data["msgs_updated"] == 0
 
         for ts, v in test_values:
             ts_as_dt = datetime_from_timestamp(ts)
-            dpv = self.DatapointValue.objects.get(
-                datapoint=dp_id, time=ts_as_dt
-            )
+            dpv = self.DatapointValue.objects.get(datapoint=dp_id, time=ts_as_dt)
             assert dpv.value == v
-
 
         # Now also check that an posting with an existing timestamp and
         # dp_id will lead to an update.
-        test_values = [
-            (1630409948005, "a new string!"),
-            (1630409948006, "update"),
-        ]
+        test_values = [(1630409948005, "a new string!"), (1630409948006, "update")]
         test_data = []
         for ts, v in test_values:
             test_data.append({"timestamp": ts, "value": json.dumps(v)})
@@ -373,18 +355,14 @@ class TestViewSetWithDatapointFK(TransactionTestCase):
         request = factory.put("/datapoint/1/value/")
         request.data = test_data
 
-        response = self.DatapointValueViewSet().update_many(
-            request, dp_id=dp_id
-        )
+        response = self.DatapointValueViewSet().update_many(request, dp_id=dp_id)
         assert response.status_code == 200
         assert response.data["msgs_created"] == 0
         assert response.data["msgs_updated"] == 2
 
         for ts, v in test_values:
             ts_as_dt = datetime_from_timestamp(ts)
-            dpv = self.DatapointValue.objects.get(
-                datapoint=dp_id, time=ts_as_dt
-            )
+            dpv = self.DatapointValue.objects.get(datapoint=dp_id, time=ts_as_dt)
             assert dpv.value == v
 
     def test_update_many_writes_to_db_empty(self):
@@ -400,9 +378,7 @@ class TestViewSetWithDatapointFK(TransactionTestCase):
         request = factory.put("/datapoint/1/value/")
         request.data = test_data
 
-        response = self.DatapointValueViewSet().update_many(
-            request, dp_id=dp_id
-        )
+        response = self.DatapointValueViewSet().update_many(request, dp_id=dp_id)
         assert response.status_code == 200
         assert response.data["msgs_created"] == 0
         assert response.data["msgs_updated"] == 0

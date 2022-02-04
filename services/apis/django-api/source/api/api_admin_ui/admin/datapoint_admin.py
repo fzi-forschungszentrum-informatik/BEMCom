@@ -11,6 +11,7 @@ from ems_utils.timestamp import datetime_to_pretty_str
 from api_main.mqtt_integration import ApiMqttIntegration
 from .connector_admin import AdminWithoutListsOnDelete
 
+
 @admin.register(Datapoint)
 class DatapointAdmin(AdminWithoutListsOnDelete):
     """
@@ -24,6 +25,7 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
     that are required for a data_format are set with appropriate values, and
     that e.g. jsons fields are parsable.
     """
+
     list_display = (
         "id",
         "connector",
@@ -38,22 +40,14 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         "last_value_truncated",
         "last_value_timestamp_pretty",
     )
-    list_display_links = (
-        "id",
-    )
-    list_editable = (
-        "is_active",
-        "data_format",
-        "short_name",
-        "description",
-        "unit",
-    )
+    list_display_links = ("id",)
+    list_editable = ("is_active", "data_format", "short_name", "description", "unit")
     list_filter = (
         "type",
         "connector",
         "data_format",
         "is_active",
-        ("short_name", admin.EmptyFieldListFilter)
+        ("short_name", admin.EmptyFieldListFilter),
     )
     search_fields = (
         "key_in_connector",
@@ -84,6 +78,7 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         if ts is None:
             return "-"
         return datetime_to_pretty_str(ts)
+
     last_value_timestamp_pretty.admin_order_field = "last_value_timestamp"
     last_value_timestamp_pretty.short_description = "Last value timestamp"
 
@@ -95,6 +90,7 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         if ts is None:
             return "-"
         return datetime_to_pretty_str(ts)
+
     last_setpoint_timestamp_pretty.admin_order_field = "last_setpoint_timestamp"
     last_setpoint_timestamp_pretty.short_description = "Last setpoint timestamp"
 
@@ -106,6 +102,7 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         if ts is None:
             return "-"
         return datetime_to_pretty_str(ts)
+
     last_schedule_timestamp_pretty.admin_order_field = "last_schedule_timestamp"
     last_schedule_timestamp_pretty.short_description = "Last schedule timestamp"
 
@@ -123,6 +120,7 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         except Exception:
             pass
         return schedule
+
     last_schedule_pretty.short_description = "Last schedule"
 
     def last_setpoint_pretty(self, obj):
@@ -140,6 +138,7 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         except Exception:
             pass
         return setpoint
+
     last_setpoint_pretty.short_description = "Last setpoint"
 
     def example_value_truncated(self, obj):
@@ -151,6 +150,7 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         if value is not None and len(value) >= truncation_length:
             value = value[:truncation_length] + " [truncated]"
         return value
+
     example_value_truncated.admin_order_field = "example_value"
     example_value_truncated.short_description = "example_value"
 
@@ -163,6 +163,7 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         if value is not None and len(value) >= truncation_length:
             value = value[:truncation_length] + " [truncated]"
         return value
+
     last_value_truncated.admin_order_field = "last_value"
     last_value_truncated.short_description = "last_value"
 
@@ -172,15 +173,15 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         of data_format or additional fields for actuators.
         """
         generic_metadata_fields = [
-                "id",
-                "connector",
-                "key_in_connector",
-                "type",
-                "example_value",
-                "is_active",
-                "data_format",
-                "short_name",
-                "description",
+            "id",
+            "connector",
+            "key_in_connector",
+            "type",
+            "example_value",
+            "is_active",
+            "data_format",
+            "short_name",
+            "description",
         ]
 
         data_format_specific_fields = []
@@ -192,10 +193,7 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
             data_format_specific_fields.append("min_value")
             data_format_specific_fields.append("max_value")
 
-        last_datapoint_msg_fields = [
-            "last_value",
-            "last_value_timestamp_pretty",
-        ]
+        last_datapoint_msg_fields = ["last_value", "last_value_timestamp_pretty"]
         if obj.type == "actuator":
             last_datapoint_msg_fields.append("last_setpoint_pretty")
             last_datapoint_msg_fields.append("last_setpoint_timestamp_pretty")
@@ -203,31 +201,16 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
             last_datapoint_msg_fields.append("last_schedule_timestamp_pretty")
 
         fieldsets = (
-            (
-                "GENERIC METADATA",
-                {
-                    "fields": generic_metadata_fields
-                }
-            ),
-            (
-                "DATA FORMAT SPECIFIC METADATA",
-                {
-                    "fields": data_format_specific_fields
-                }
-            ),
-            (
-                "LAST DATAPOINT MESSAGES",
-                {
-                    "fields": last_datapoint_msg_fields
-                }
-            ),
+            ("GENERIC METADATA", {"fields": generic_metadata_fields}),
+            ("DATA FORMAT SPECIFIC METADATA", {"fields": data_format_specific_fields}),
+            ("LAST DATAPOINT MESSAGES", {"fields": last_datapoint_msg_fields}),
         )
         return fieldsets
 
     # Display wider version of normal TextInput for all text fields, as
     # default forms look ugly.
     formfield_overrides = {
-        db.models.TextField: {'widget': forms.TextInput(attrs={'size': '60'})},
+        db.models.TextField: {"widget": forms.TextInput(attrs={"size": "60"})}
     }
     """
     Define list view actions below.
@@ -266,6 +249,7 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         ami = ApiMqttIntegration.get_instance()
         ami.trigger_update_topics_and_subscriptions()
         ami.trigger_create_and_send_datapoint_map()
+
     mark_active.short_description = "Mark datapoints as active"
 
     def mark_not_active(self, request, queryset):
@@ -276,6 +260,7 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         ami = ApiMqttIntegration.get_instance()
         ami.trigger_update_topics_and_subscriptions()
         ami.trigger_create_and_send_datapoint_map()
+
     mark_not_active.short_description = "Mark datapoints as not active"
 
     def mark_data_format_as_generic_text(self, request, queryset):
@@ -287,6 +272,7 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         save hooks won't be executed.
         """
         queryset.update(data_format="generic_text")
+
     mark_data_format_as_generic_text.short_description = (
         "Mark data_format of datapoints as generic_text"
     )
@@ -296,6 +282,7 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         Updates data_format. Similar to mark_data_format_as_generic_text
         """
         queryset.update(data_format="discrete_text")
+
     mark_data_format_as_discrete_text.short_description = (
         "Mark data_format of datapoints as discrete_text"
     )
@@ -305,6 +292,7 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         Updates data_format. Similar to mark_data_format_as_generic_text
         """
         queryset.update(data_format="generic_numeric")
+
     mark_data_format_as_generic_numeric.short_description = (
         "Mark data_format of datapoints as generic_numeric"
     )
@@ -314,6 +302,7 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         Updates data_format. Similar to mark_data_format_as_generic_text
         """
         queryset.update(data_format="discrete_numeric")
+
     mark_data_format_as_discrete_numeric.short_description = (
         "Mark data_format of datapoints as discrete_numeric"
     )
@@ -323,6 +312,7 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         Updates data_format. Similar to mark_data_format_as_generic_text
         """
         queryset.update(data_format="continuous_numeric")
+
     mark_data_format_as_continuous_numeric.short_description = (
         "Mark data_format of datapoints as continuous_numeric"
     )
@@ -337,7 +327,7 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         """
         return False
 
-    def get_changelist_formset(self,request, **kwargs):
+    def get_changelist_formset(self, request, **kwargs):
         """
         This ensures that when we edit a couple of datapoints in list
         mode we can save and ignore those datapoints that have not been
@@ -374,30 +364,12 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
 @admin.register(DatapointValue)
 class DatapointValueAdmin(AdminWithoutListsOnDelete):
 
-    list_display = (
-        "id",
-        "datapoint",
-        "timestamp_pretty",
-        "value",
-    )
-    list_filter = (
-        "datapoint",
-    )
+    list_display = ("id", "datapoint", "timestamp_pretty", "value")
+    list_filter = ("datapoint",)
     # This is just to order the fields in the object detail page
-    fields = (
-        "id",
-        "datapoint",
-        "value",
-        "time"
-    )
-    readonly_fields = (
-        "id",
-        "datapoint",
-    )
-    exclude = (
-        "_value_float",
-        "_value_bool",
-    )
+    fields = ("id", "datapoint", "value", "time")
+    readonly_fields = ("id", "datapoint")
+    exclude = ("_value_float", "_value_bool")
 
     def timestamp_pretty(self, obj):
         """
@@ -407,6 +379,7 @@ class DatapointValueAdmin(AdminWithoutListsOnDelete):
         if ts is None:
             return "-"
         return datetime_to_pretty_str(ts)
+
     timestamp_pretty.admin_order_field = "time"
     timestamp_pretty.short_description = "Timestamp"
 
@@ -420,26 +393,11 @@ class DatapointValueAdmin(AdminWithoutListsOnDelete):
 @admin.register(DatapointSetpoint)
 class DatapointSetpointAdmin(AdminWithoutListsOnDelete):
 
-    list_display = (
-        "id",
-        "datapoint",
-        "timestamp_pretty",
-        "setpoint",
-    )
-    list_filter = (
-        "datapoint",
-    )
+    list_display = ("id", "datapoint", "timestamp_pretty", "setpoint")
+    list_filter = ("datapoint",)
     # This is just to order the fields in the object detail page
-    fields = (
-        "id",
-        "datapoint",
-        "setpoint",
-        "time"
-    )
-    readonly_fields = (
-        "id",
-        "datapoint",
-    )
+    fields = ("id", "datapoint", "setpoint", "time")
+    readonly_fields = ("id", "datapoint")
 
     def timestamp_pretty(self, obj):
         """
@@ -449,6 +407,7 @@ class DatapointSetpointAdmin(AdminWithoutListsOnDelete):
         if ts is None:
             return "-"
         return datetime_to_pretty_str(ts)
+
     timestamp_pretty.admin_order_field = "time"
     timestamp_pretty.short_description = "Timestamp"
 
@@ -462,25 +421,10 @@ class DatapointSetpointAdmin(AdminWithoutListsOnDelete):
 @admin.register(DatapointSchedule)
 class DatapointScheduleAdmin(AdminWithoutListsOnDelete):
 
-    list_display = (
-        "id",
-        "datapoint",
-        "timestamp_pretty",
-        "schedule",
-    )
-    list_filter = (
-        "datapoint",
-    )
-    fields = (
-        "id",
-        "datapoint",
-        "setpoint",
-        "time"
-    )
-    readonly_fields = (
-        "id",
-        "datapoint",
-    )
+    list_display = ("id", "datapoint", "timestamp_pretty", "schedule")
+    list_filter = ("datapoint",)
+    fields = ("id", "datapoint", "setpoint", "time")
+    readonly_fields = ("id", "datapoint")
 
     def timestamp_pretty(self, obj):
         """
@@ -490,6 +434,7 @@ class DatapointScheduleAdmin(AdminWithoutListsOnDelete):
         if ts is None:
             return "-"
         return datetime_to_pretty_str(ts)
+
     timestamp_pretty.admin_order_field = "time"
     timestamp_pretty.short_description = "Timestamp"
 

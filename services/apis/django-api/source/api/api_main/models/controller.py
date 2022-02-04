@@ -15,6 +15,7 @@ class Controller(models.Model):
     required to connect it, that is mostly the correct topic for
     configuration.
     """
+
     name = models.TextField(
         blank=False,
         default=None,
@@ -28,7 +29,7 @@ class Controller(models.Model):
         unique=True,
         verbose_name=(
             "MQTT topic on which the controller awaits the configuration data."
-        )
+        ),
     )
 
     def __str__(self):
@@ -41,22 +42,19 @@ class ControlledDatapoint(models.Model):
 
     This essentially maps a sensor datapoint to an actuator datapoint.
     """
-    controller = models.ForeignKey(
-        Controller,
-        on_delete=models.CASCADE,
-        editable=True,
-    )
+
+    controller = models.ForeignKey(Controller, on_delete=models.CASCADE, editable=True)
     sensor_datapoint = models.ForeignKey(
         Datapoint,
         on_delete=models.CASCADE,
         editable=True,
-        related_name="controller_sensor_datapoint"
+        related_name="controller_sensor_datapoint",
     )
     actuator_datapoint = models.ForeignKey(
         Datapoint,
         on_delete=models.CASCADE,
         editable=True,
-        related_name="controller_actuator_datapoint"
+        related_name="controller_actuator_datapoint",
     )
     is_active = models.BooleanField(
         default=True,
@@ -64,5 +62,5 @@ class ControlledDatapoint(models.Model):
             "Flag if the this mapping should currently be used (i.e. be "
             "published as part of the controlled_datapoints msg to the "
             "controller)."
-        )
+        ),
     )

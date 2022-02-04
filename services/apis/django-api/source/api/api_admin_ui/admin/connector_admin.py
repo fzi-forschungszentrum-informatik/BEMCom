@@ -16,6 +16,7 @@ class AdminWithoutListsOnDelete(admin.ModelAdmin):
     However, this still iterates over all objects so may still require
     substantial computing resources.
     """
+
     def get_deleted_objects(self, objs, request):
         """
         See: https://github.com/django/django/blob/stable/3.1.x/django/contrib/admin/utils.py#L104
@@ -30,6 +31,7 @@ class UsedDatapointsInline(admin.TabularInline):
     """
     Inline view of the active datapoints by a connector.
     """
+
     model = Datapoint
     fields = (
         "key_in_connector",
@@ -37,22 +39,18 @@ class UsedDatapointsInline(admin.TabularInline):
         "example_value",
         "is_active",
         "data_format",
-        "description"
-        )
-    readonly_fields = (
-        "key_in_connector",
-        "type",
-        "example_value"
+        "description",
     )
-    ordering = ('key_in_connector', )
+    readonly_fields = ("key_in_connector", "type", "example_value")
+    ordering = ("key_in_connector",)
     verbose_name_plural = "Active datapoints of connector"
     can_delete = False
     show_change_link = True
-    classes = ['collapse']
+    classes = ["collapse"]
     # Display wider version of normal TextInput for all text fields, as
     # default forms look ugly.
     formfield_overrides = {
-        db.models.TextField: {'widget': forms.TextInput(attrs={'size': '60'})},
+        db.models.TextField: {"widget": forms.TextInput(attrs={"size": "60"})}
     }
 
     def has_add_permission(self, request, obj=None):
@@ -75,17 +73,13 @@ class ConnectorLogEntryInline(admin.TabularInline):
     Inline view for connector to list the last log messages received by this
     connector.
     """
+
     model = ConnectorLogEntry
     verbose_name_plural = "Last 10 log entries"
-    fields = (
-        "level",
-        "timestamp_pretty",
-        "emitter",
-        "msg",
-    )
+    fields = ("level", "timestamp_pretty", "emitter", "msg")
     readonly_fields = fields
     can_delete = False
-    classes = ('collapse', )
+    classes = ("collapse",)
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -95,6 +89,7 @@ class ConnectorLogEntryInline(admin.TabularInline):
         Displays a prettier timestamp format.
         """
         return datetime_to_pretty_str(obj.timestamp)
+
     timestamp_pretty.short_description = "Timestamp"
 
     def get_queryset(self, request):
@@ -110,44 +105,46 @@ class ConnectorLogEntryInline(admin.TabularInline):
         # request URL looks like: /admin/api_main/connector/5/change/
         connector_id = request.path_info.split("/")[-3]
         all_log_entries = ConnectorLogEntry.objects.filter(connector=connector_id)
-        ids_of_last_ten_entries = all_log_entries.order_by('-timestamp').values('id')[:10]
+        ids_of_last_ten_entries = all_log_entries.order_by("-timestamp").values("id")[
+            :10
+        ]
         last_ten_entries = all_log_entries.filter(id__in=ids_of_last_ten_entries)
-        return last_ten_entries.order_by('-timestamp')
+        return last_ten_entries.order_by("-timestamp")
 
 
 @admin.register(Connector)
 class ConnectorAdmin(AdminWithoutListsOnDelete):
 
-    list_display = ('name', 'added', 'last_changed', 'alive', )
-    ordering = ('-name', )
-    search_fields = ('name', )
+    list_display = ("name", "added", "last_changed", "alive")
+    ordering = ("-name",)
+    search_fields = ("name",)
 
     readonly_fields = (
-        'added',
-        'last_changed',
-        'last_heartbeat',
-        'next_heartbeat',
-        'alive',
-        'num_available_datapoints',
-        'num_used_datapoints',
-        'mqtt_topic_logs',
-        'mqtt_topic_heartbeat',
-        'mqtt_topic_available_datapoints',
-        'mqtt_topic_datapoint_map',
-        'mqtt_topic_raw_message_to_db',
-        'mqtt_topic_raw_message_reprocess',
-        'mqtt_topic_datapoint_message_wildcard',
+        "added",
+        "last_changed",
+        "last_heartbeat",
+        "next_heartbeat",
+        "alive",
+        "num_available_datapoints",
+        "num_used_datapoints",
+        "mqtt_topic_logs",
+        "mqtt_topic_heartbeat",
+        "mqtt_topic_available_datapoints",
+        "mqtt_topic_datapoint_map",
+        "mqtt_topic_raw_message_to_db",
+        "mqtt_topic_raw_message_reprocess",
+        "mqtt_topic_datapoint_message_wildcard",
     )
 
     # Display wider version of normal TextInput for all text fields, as
     # default forms look ugly.
     formfield_overrides = {
-        db.models.TextField: {'widget': forms.TextInput(attrs={'size': '60'})},
+        db.models.TextField: {"widget": forms.TextInput(attrs={"size": "60"})}
     }
 
     # Adapted change form template to display "Go to available datapoints"
     # button
-    change_form_template = '../templates/api_admin_ui/connector_change_form.html'
+    change_form_template = "../templates/api_admin_ui/connector_change_form.html"
 
     @staticmethod
     def num_available_datapoints(obj):
@@ -158,9 +155,8 @@ class ConnectorAdmin(AdminWithoutListsOnDelete):
         """
         dpo = Datapoint.objects
         return dpo.filter(connector=obj.id).count()
-    num_available_datapoints.short_description = (
-        "Number of available datapoints"
-    )
+
+    num_available_datapoints.short_description = "Number of available datapoints"
 
     @staticmethod
     def num_used_datapoints(obj):
@@ -169,6 +165,7 @@ class ConnectorAdmin(AdminWithoutListsOnDelete):
         """
         dpo = Datapoint.objects
         return dpo.filter(connector=obj.id).filter(is_active=True).count()
+
     num_used_datapoints.short_description = "Number of used datapoints"
 
     @staticmethod
@@ -204,52 +201,62 @@ class ConnectorAdmin(AdminWithoutListsOnDelete):
         current_time = datetime.now(timezone.utc)
         next_hb = obj.connectorheartbeat.next_heartbeat
         return True if current_time <= next_hb else False
+
     alive.boolean = True
 
-    def add_view(self, request, form_url='', extra_context=None):
+    def add_view(self, request, form_url="", extra_context=None):
         """
         Display only name and a hint while adding a new connector. This is as
         most other fields are not populated yet, and will only after the MQTT
         topics have been set.
         """
         self.fieldsets = (
-            (None, {
-                'description': '<h3>After entering the connector name, '
-                               'click "Save and continue editing" to proceed '
-                               'with the connector integration.</h3>',
-                'fields': ('name', )
-            }),
+            (
+                None,
+                {
+                    "description": "<h3>After entering the connector name, "
+                    'click "Save and continue editing" to proceed '
+                    "with the connector integration.</h3>",
+                    "fields": ("name",),
+                },
+            ),
         )
         self.inlines = ()
         return super(ConnectorAdmin, self).add_view(request)
 
-    def change_view(self, request, object_id, form_url='', extra_context=None):
+    def change_view(self, request, object_id, form_url="", extra_context=None):
         """
         Display the full formsets content in change view.
         """
         self.fieldsets = (
-            ('Basic information', {
-                'fields': (
-                    'name',
-                    ('added', 'last_changed'),
-                    ('num_available_datapoints', 'num_used_datapoints'),
-                    ('alive', 'last_heartbeat', 'next_heartbeat'),
-                )
-            }),
-            ('MQTT topics', {
-                'fields': (
-                    'mqtt_topic_logs',
-                    'mqtt_topic_heartbeat',
-                    'mqtt_topic_available_datapoints',
-                    'mqtt_topic_datapoint_map',
-                    'mqtt_topic_raw_message_to_db',
-                    'mqtt_topic_raw_message_reprocess',
-                    'mqtt_topic_datapoint_message_wildcard',
-                ),
-                'classes': ('collapse', )
-            }),
+            (
+                "Basic information",
+                {
+                    "fields": (
+                        "name",
+                        ("added", "last_changed"),
+                        ("num_available_datapoints", "num_used_datapoints"),
+                        ("alive", "last_heartbeat", "next_heartbeat"),
+                    )
+                },
+            ),
+            (
+                "MQTT topics",
+                {
+                    "fields": (
+                        "mqtt_topic_logs",
+                        "mqtt_topic_heartbeat",
+                        "mqtt_topic_available_datapoints",
+                        "mqtt_topic_datapoint_map",
+                        "mqtt_topic_raw_message_to_db",
+                        "mqtt_topic_raw_message_reprocess",
+                        "mqtt_topic_datapoint_message_wildcard",
+                    ),
+                    "classes": ("collapse",),
+                },
+            ),
         )
-        self.inlines = (UsedDatapointsInline, ConnectorLogEntryInline, )
+        self.inlines = (UsedDatapointsInline, ConnectorLogEntryInline)
         return super(ConnectorAdmin, self).change_view(request, object_id)
 
     def response_change(self, request, obj):
@@ -263,8 +270,7 @@ class ConnectorAdmin(AdminWithoutListsOnDelete):
         """
         if "_av_dp" in request.POST:
             return HttpResponseRedirect(
-                "/admin/api_main/datapoint/?connector__id__exact={}"
-                .format(obj.id)
+                "/admin/api_main/datapoint/?connector__id__exact={}".format(obj.id)
             )
         return super().response_change(request, obj)
 
@@ -274,18 +280,10 @@ class ConnectorHeartbeatAdmin(AdminWithoutListsOnDelete):
     """
     Readonly model to search and view heartbeat entries.
     """
-    list_display = (
-        "connector",
-        "last_hb_pretty",
-        "next_hb_pretty",
-    )
-    list_filter = (
-        "connector",
-    )
-    list_display_links = (
-        "last_hb_pretty",
-        "next_hb_pretty"
-    )
+
+    list_display = ("connector", "last_hb_pretty", "next_hb_pretty")
+    list_filter = ("connector",)
+    list_display_links = ("last_hb_pretty", "next_hb_pretty")
     fields = list_display
     readonly_fields = fields
 
@@ -298,6 +296,7 @@ class ConnectorHeartbeatAdmin(AdminWithoutListsOnDelete):
         Displays a prettier timestamp format.
         """
         return datetime_to_pretty_str(obj.last_heartbeat)
+
     last_hb_pretty.admin_order_field = "last_heartbeat"
     last_hb_pretty.short_description = "Last heartbeat"
 
@@ -306,6 +305,7 @@ class ConnectorHeartbeatAdmin(AdminWithoutListsOnDelete):
         Displays a prettier timestamp format.
         """
         return datetime_to_pretty_str(obj.next_heartbeat)
+
     next_hb_pretty.admin_order_field = "next_heartbeat"
     next_hb_pretty.short_description = "Next heartbeat"
 
@@ -327,24 +327,11 @@ class ConnectorLogsAdmin(AdminWithoutListsOnDelete):
     """
     Readonly model to search and view log entries.
     """
-    list_display = (
-        "connector",
-        "level",
-        "timestamp_pretty",
-        "emitter",
-        "msg",
-    )
-    list_filter = (
-        "connector",
-        "level",
-        "emitter",
-    )
-    list_display_links = (
-        "msg",
-    )
-    search_fields = (
-        "msg",
-    )
+
+    list_display = ("connector", "level", "timestamp_pretty", "emitter", "msg")
+    list_filter = ("connector", "level", "emitter")
+    list_display_links = ("msg",)
+    search_fields = ("msg",)
     fields = list_display
     readonly_fields = fields
 
@@ -357,6 +344,7 @@ class ConnectorLogsAdmin(AdminWithoutListsOnDelete):
         Displays a prettier timestamp format.
         """
         return datetime_to_pretty_str(obj.timestamp)
+
     timestamp_pretty.admin_order_field = "timestamp"
     timestamp_pretty.short_description = "Timestamp"
 

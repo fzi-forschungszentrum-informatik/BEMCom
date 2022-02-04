@@ -7,8 +7,8 @@ from api_main.mqtt_integration import ApiMqttIntegration
 from api_main.tests.helpers import connector_factory
 from api_main.tests.fake_mqtt import FakeMQTTBroker, FakeMQTTClient
 
-class TestDatapointSerializer(TransactionTestCase):
 
+class TestDatapointSerializer(TransactionTestCase):
     @classmethod
     def setUpClass(cls):
 
@@ -17,9 +17,7 @@ class TestDatapointSerializer(TransactionTestCase):
         fake_broker = FakeMQTTBroker()
         fake_client_1 = FakeMQTTClient(fake_broker=fake_broker)
         fake_client_2 = FakeMQTTClient(fake_broker=fake_broker)
-        ami = ApiMqttIntegration(
-            mqtt_client=fake_client_1,
-        )
+        ami = ApiMqttIntegration(mqtt_client=fake_client_1)
 
     def setUp(self):
         test_connector = connector_factory()
@@ -33,7 +31,7 @@ class TestDatapointSerializer(TransactionTestCase):
             "min_value": 20.0,
             "max_value": 22.0,
             "allowed_values": None,
-            "unit": "W"
+            "unit": "W",
         }
         self.test_dp = Datapoint(**self.test_dp_fields)
         self.test_dp.save()
@@ -59,7 +57,7 @@ class TestDatapointSerializer(TransactionTestCase):
             "max_value",
             "allowed_values",
             "unit",
-            ]
+        ]
         for expected_field in expected_fields:
             expected_value = self.test_dp_fields[expected_field]
             actual_value = dp_representation[expected_field]

@@ -21,7 +21,7 @@ def datetime_from_timestamp(timestamp, tz_aware=True):
         Corresponding datetime object
     """
     # This returns the local time.
-    dt = datetime.fromtimestamp(timestamp / 1000.)
+    dt = datetime.fromtimestamp(timestamp / 1000.0)
     # So we recompute it to UTC.
     dt = dt.astimezone(timezone.utc)
     if not tz_aware:
@@ -56,5 +56,5 @@ def datetime_to_pretty_str(dt):
     dt_str: string
         The pretty string respresentation of the datetime object.
     """
-    dt_str = dt.strftime('%Y-%m-%d %H:%M:%S')
+    dt_str = dt.strftime("%Y-%m-%d %H:%M:%S")
     return dt_str

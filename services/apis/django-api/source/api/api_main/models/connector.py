@@ -18,70 +18,61 @@ class Connector(models.Model):
     """
 
     name = models.TextField(
-        blank=False,
-        default=None,
-        unique=True,
-        verbose_name="Connector name",
+        blank=False, default=None, unique=True, verbose_name="Connector name"
     )
     mqtt_topic_logs = models.TextField(
         blank=False,
         default=None,
         editable=False,
         unique=True,
-        verbose_name="MQTT topic for logs"
+        verbose_name="MQTT topic for logs",
     )
     mqtt_topic_heartbeat = models.TextField(
         blank=False,
         default=None,
         editable=False,
         unique=True,
-        verbose_name="MQTT topic for heartbeat"
+        verbose_name="MQTT topic for heartbeat",
     )
-    mqtt_topic_available_datapoints =models.TextField(
+    mqtt_topic_available_datapoints = models.TextField(
         blank=False,
         default=None,
         editable=False,
         unique=True,
-        verbose_name="MQTT topic for available datapoints"
+        verbose_name="MQTT topic for available datapoints",
     )
     mqtt_topic_datapoint_map = models.TextField(
         blank=False,
         default=None,
         editable=False,
         unique=True,
-        verbose_name="MQTT topic for datapoint map"
+        verbose_name="MQTT topic for datapoint map",
     )
     mqtt_topic_raw_message_to_db = models.TextField(
         blank=False,
         default=None,
         editable=False,
         unique=True,
-        verbose_name="MQTT topic for raw message to database"
+        verbose_name="MQTT topic for raw message to database",
     )
     mqtt_topic_raw_message_reprocess = models.TextField(
         blank=False,
         default=None,
         editable=False,
         unique=True,
-        verbose_name="MQTT topic for reprocess"
+        verbose_name="MQTT topic for reprocess",
     )
     mqtt_topic_datapoint_message_wildcard = models.TextField(
         blank=False,
         default=None,
         editable=False,
         unique=True,
-        verbose_name="MQTT topic for all datapoint messages (wildcard)"
+        verbose_name="MQTT topic for all datapoint messages (wildcard)",
     )
     # These two are automatically generated. It makes no sense to edit them
     # my hand.
-    added = models.DateTimeField(
-        auto_now_add=True,
-        editable=False,
-    )
-    last_changed = models.DateTimeField(
-        auto_now=True,
-        editable=False,
-    )
+    added = models.DateTimeField(auto_now_add=True, editable=False)
+    last_changed = models.DateTimeField(auto_now=True, editable=False)
 
     def __str__(self):
         return self.name
@@ -93,7 +84,7 @@ class Connector(models.Model):
     # name and connector-specific value
     def get_fields(self):
         connector_fields = {}
-        fields = self._meta.get_fields(include_parents=False)[-len(self.__dict__)+1:]
+        fields = self._meta.get_fields(include_parents=False)[-len(self.__dict__) + 1 :]
         for field in fields:
             connector_fields[field.verbose_name] = getattr(self, field.name)
         return connector_fields
@@ -102,7 +93,7 @@ class Connector(models.Model):
         mqtt_topics = {}
         for attr in self.__dict__:
             if attr.startswith("mqtt_topic"):
-                mqtt_topics[attr] = attr[len("mqtt_topic_"):]
+                mqtt_topics[attr] = attr[len("mqtt_topic_") :]
         return mqtt_topics
 
     def set_mqtt_topics(self):
@@ -115,7 +106,7 @@ class Connector(models.Model):
                 if attr.endswith("datapoint_message_wildcard"):
                     connector_attr[attr] = self.name + "/messages/#"
                 else:
-                    connector_attr[attr] = self.name + "/" + attr[len("mqtt_topic_"):]
+                    connector_attr[attr] = self.name + "/" + attr[len("mqtt_topic_") :]
         return connector_attr
 
     def save(self, *args, **kwargs):
@@ -144,23 +135,10 @@ class ConnectorLogEntry(models.Model):
     class Meta:
         verbose_name_plural = "Connector log entries"
 
-    connector = models.ForeignKey(
-        Connector,
-        on_delete=models.CASCADE,
-        editable=False,
-    )
-    timestamp = models.DateTimeField(
-        editable=False,
-    )
-    msg = models.TextField(
-        default='',
-        verbose_name="Log message",
-        editable=False,
-    )
-    emitter = models.TextField(
-        default='',
-        editable=False,
-    )
+    connector = models.ForeignKey(Connector, on_delete=models.CASCADE, editable=False)
+    timestamp = models.DateTimeField(editable=False)
+    msg = models.TextField(default="", verbose_name="Log message", editable=False)
+    emitter = models.TextField(default="", editable=False)
     LEVEL_CHOICES = [
         (10, "DEBUG"),
         (20, "INFO"),
@@ -168,10 +146,7 @@ class ConnectorLogEntry(models.Model):
         (40, "ERROR"),
         (50, "CRITICAL"),
     ]
-    level = models.SmallIntegerField(
-        choices=LEVEL_CHOICES,
-        editable=False,
-    )
+    level = models.SmallIntegerField(choices=LEVEL_CHOICES, editable=False)
 
 
 class ConnectorHeartbeat(models.Model):
@@ -190,13 +165,7 @@ class ConnectorHeartbeat(models.Model):
         verbose_name_plural = "Connector heartbeats"
 
     connector = models.OneToOneField(
-        Connector,
-        on_delete=models.CASCADE,
-        editable=False,
+        Connector, on_delete=models.CASCADE, editable=False
     )
-    last_heartbeat = models.DateTimeField(
-        editable=False,
-    )
-    next_heartbeat = models.DateTimeField(
-        editable=False,
-    )
+    last_heartbeat = models.DateTimeField(editable=False)
+    next_heartbeat = models.DateTimeField(editable=False)

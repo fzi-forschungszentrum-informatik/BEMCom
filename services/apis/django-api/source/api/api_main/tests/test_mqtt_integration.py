@@ -15,7 +15,7 @@ from api_main.tests.helpers import connector_factory, datapoint_factory
 from ems_utils.timestamp import datetime_from_timestamp
 
 
-@pytest.fixture(scope='class')
+@pytest.fixture(scope="class")
 def mqtt_to_db_setup(request, django_db_setup, django_db_blocker):
     """
     Set up fake MQTT Broker and Mqtt2DB for all tests in
@@ -35,15 +35,12 @@ def mqtt_to_db_setup(request, django_db_setup, django_db_blocker):
 
     # Setup Broker and Integration.
     mqtt_client = fake_client_1()
-    mqtt_client.connect('localhost', 1883)
+    mqtt_client.connect("localhost", 1883)
     mqtt_client.loop_start()
 
     test_connector = connector_factory("test_connector_0")
 
-    mtd = MqttToDb(
-        mqtt_client=fake_client_2,
-        n_mtd_write_threads_overload=1,
-    )
+    mtd = MqttToDb(mqtt_client=fake_client_2, n_mtd_write_threads_overload=1)
 
     # Inject objects into test class.
     request.cls.mqtt_client = mqtt_client
@@ -64,8 +61,8 @@ def mqtt_to_db_setup(request, django_db_setup, django_db_blocker):
     django_db_blocker.restore()
 
 
-@pytest.mark.usefixtures('mqtt_to_db_setup')
-class TestMqttToDb():
+@pytest.mark.usefixtures("mqtt_to_db_setup")
+class TestMqttToDb:
     """
     Verifies that MqttToDb provides the expected functionality.
     """
@@ -87,7 +84,7 @@ class TestMqttToDb():
             "timestamp": 1571843907448,
             "msg": "TEest 112233",
             "emitter": "cd54c61d.3064d8",
-            "level": 20
+            "level": 20,
         }
         payload = json.dumps(test_log_msg)
         topic = self.test_connector.mqtt_topic_logs
@@ -100,19 +97,17 @@ class TestMqttToDb():
             waited_seconds += 0.005
 
             if waited_seconds >= 3:
-                raise RuntimeError('Expected Log Entry has not reached DB.')
+                raise RuntimeError("Expected Log Entry has not reached DB.")
 
         # Compare expected and stored data.
         log_msg_db = ConnectorLogEntry.objects.first()
 
         # DB stores timestamp as datetime objects, convert here accordingly.
-        timestamp_as_datetime = datetime_from_timestamp(
-            test_log_msg['timestamp']
-        )
+        timestamp_as_datetime = datetime_from_timestamp(test_log_msg["timestamp"])
         assert log_msg_db.timestamp == timestamp_as_datetime
-        assert log_msg_db.msg == test_log_msg['msg']
-        assert log_msg_db.emitter == test_log_msg['emitter']
-        assert log_msg_db.level == test_log_msg['level']
+        assert log_msg_db.msg == test_log_msg["msg"]
+        assert log_msg_db.emitter == test_log_msg["emitter"]
+        assert log_msg_db.level == test_log_msg["level"]
 
         # Clean up.
         log_msg_db.delete()
@@ -144,17 +139,17 @@ class TestMqttToDb():
             waited_seconds += 0.005
 
             if waited_seconds >= 3:
-                raise RuntimeError('Expected heartbeat has not reached DB.')
+                raise RuntimeError("Expected heartbeat has not reached DB.")
 
         # Compare expected and stored data.
         heartbeat_db = ConnectorHeartbeat.objects.first()
 
         # DB stores timestamp as datetime objects, convert here accordingly.
         last_heartbeat_as_datetime = datetime_from_timestamp(
-            test_heartbeat['this_heartbeats_timestamp']
+            test_heartbeat["this_heartbeats_timestamp"]
         )
         next_heartbeat_as_datetime = datetime_from_timestamp(
-            test_heartbeat['next_heartbeats_timestamp']
+            test_heartbeat["next_heartbeats_timestamp"]
         )
         assert heartbeat_db.last_heartbeat == last_heartbeat_as_datetime
         assert heartbeat_db.next_heartbeat == next_heartbeat_as_datetime
@@ -179,13 +174,8 @@ class TestMqttToDb():
         # back by json.loads. Hence use all strings here to prevent type errors
         # while asserting below.
         test_available_datapoints = {
-            "sensor": {
-                "Channel__P__value__0": 0.122,
-                "Channel__P__unit__0": "kW",
-            },
-            "actuator": {
-                "Channel__P__setpoint__0": True,
-            },
+            "sensor": {"Channel__P__value__0": 0.122, "Channel__P__unit__0": "kW"},
+            "actuator": {"Channel__P__setpoint__0": True},
         }
 
         payload = json.dumps(test_available_datapoints)
@@ -201,30 +191,21 @@ class TestMqttToDb():
 
             if waited_seconds >= 3:
                 raise RuntimeError(
-                    'Expected message on available datapoints has not reached '
-                    ' DB.'
+                    "Expected message on available datapoints has not reached " " DB."
                 )
 
         # Expected rows in DB as tuples of values
         expected_rows = []
         for datapoint_type, d in test_available_datapoints.items():
             for datapoint_key, datapoint_example in d.items():
-                expected_row = (
-                    datapoint_type,
-                    datapoint_key,
-                    datapoint_example,
-                )
+                expected_row = (datapoint_type, datapoint_key, datapoint_example)
                 expected_rows.append(expected_row)
 
         # Actual rows in DB:
         ad_db = Datapoint.objects.all()
         actual_rows = []
         for item in ad_db:
-            actual_row = (
-                item.type,
-                item.key_in_connector,
-                item.example_value,
-            )
+            actual_row = (item.type, item.key_in_connector, item.example_value)
             actual_rows.append(actual_row)
 
         # Finnaly check if the rows are identical.
@@ -251,13 +232,8 @@ class TestMqttToDb():
         # back by json.loads. Hence use all strings here to prevent type errors
         # while asserting below.
         test_available_datapoints = {
-            "sensor": {
-                "Channel__P__value__0": "0.122",
-                "Channel__P__unit__0": "kW",
-            },
-            "actuator": {
-                "Channel__P__setpoint__0": "0.4",
-            },
+            "sensor": {"Channel__P__value__0": "0.122", "Channel__P__unit__0": "kW"},
+            "actuator": {"Channel__P__setpoint__0": "0.4"},
         }
 
         payload = json.dumps(test_available_datapoints)
@@ -266,13 +242,10 @@ class TestMqttToDb():
 
         # Here comes the update message.
         test_available_datapoints_update = {
-            "sensor": {
-                "Channel__P__value__0": "0.222",
-                "Channel__P__unit__0": "W",
-            },
+            "sensor": {"Channel__P__value__0": "0.222", "Channel__P__unit__0": "W"},
             "actuator": {
                 "Channel__P__setpoint__0": "0.5",
-                "Channel__M__setpoint__1": "OK"
+                "Channel__M__setpoint__1": "OK",
             },
         }
 
@@ -289,30 +262,21 @@ class TestMqttToDb():
 
             if waited_seconds >= 3:
                 raise RuntimeError(
-                    'Expected message on available datapoints has not reached '
-                    ' DB.'
+                    "Expected message on available datapoints has not reached " " DB."
                 )
 
         # Expected rows in DB as tuples of values
         expected_rows = []
         for datapoint_type, d in test_available_datapoints_update.items():
             for datapoint_key, datapoint_example in d.items():
-                expected_row = (
-                    datapoint_type,
-                    datapoint_key,
-                    datapoint_example,
-                )
+                expected_row = (datapoint_type, datapoint_key, datapoint_example)
                 expected_rows.append(expected_row)
 
         # Actual rows in DB:
         ad_db = Datapoint.objects.all()
         actual_rows = []
         for item in ad_db:
-            actual_row = (
-                item.type,
-                item.key_in_connector,
-                item.example_value,
-            )
+            actual_row = (item.type, item.key_in_connector, item.example_value)
             actual_rows.append(actual_row)
 
         # Finnaly check if the rows are identical.
@@ -346,10 +310,7 @@ class TestMqttToDb():
         self.mtd.update_subscriptions()
 
         # Define test data and send to mqtt integration.
-        update_msg = {
-            "timestamp": 1585092224000,
-            "value": "An update value"
-        }
+        update_msg = {"timestamp": 1585092224000, "value": "An update value"}
         payload = json.dumps(update_msg)
         topic = dp.get_mqtt_topics()["value"]
         self.mqtt_client.publish(topic, payload, qos=2)
@@ -398,21 +359,10 @@ class TestMqttToDb():
 
         # Define test data and send to mqtt integration.
         update_schedule = [
-            {
-                'from_timestamp': None,
-                'to_timestamp': 1564489613495,
-                'value': "23"
-            },
-            {
-                'from_timestamp': 1564489613495,
-                'to_timestamp': None,
-                'value': "22"
-            }
+            {"from_timestamp": None, "to_timestamp": 1564489613495, "value": "23"},
+            {"from_timestamp": 1564489613495, "to_timestamp": None, "value": "22"},
         ]
-        update_msg = {
-            "timestamp": 1564489613491,
-            "schedule": update_schedule,
-        }
+        update_msg = {"timestamp": 1564489613491, "schedule": update_schedule}
         payload = json.dumps(update_msg)
         topic = dp.get_mqtt_topics()["schedule"]
         self.mqtt_client.publish(topic, payload, qos=2)
@@ -462,20 +412,17 @@ class TestMqttToDb():
         # Define test data and send to mqtt integration.
         update_setpoint = [
             {
-                'from_timestamp': None,
-                'to_timestamp': 1564489613495,
-                'preferred_value': "23"
+                "from_timestamp": None,
+                "to_timestamp": 1564489613495,
+                "preferred_value": "23",
             },
             {
-                'from_timestamp': 1564489613495,
-                'to_timestamp': None,
-                'preferred_value': "22"
-            }
+                "from_timestamp": 1564489613495,
+                "to_timestamp": None,
+                "preferred_value": "22",
+            },
         ]
-        update_msg = {
-            "timestamp": 1564489613491,
-            "setpoint": update_setpoint,
-        }
+        update_msg = {"timestamp": 1564489613491, "setpoint": update_setpoint}
         payload = json.dumps(update_msg)
         topic = dp.get_mqtt_topics()["setpoint"]
         self.mqtt_client.publish(topic, payload, qos=2)
@@ -573,7 +520,7 @@ class TestMqttToDb():
             "timestamp": 1571843907449,
             "msg": "TEest 11223344",
             "emitter": "cd54c61d.3064d8",
-            "level": 20
+            "level": 20,
         }
         payload = json.dumps(test_log_msg)
         topic = test_connector.mqtt_topic_logs
@@ -586,19 +533,17 @@ class TestMqttToDb():
             waited_seconds += 0.005
 
             if waited_seconds >= 1:
-                raise RuntimeError('Expected Log Entry has not reached DB.')
+                raise RuntimeError("Expected Log Entry has not reached DB.")
 
         # Compare expected and stored data.
         log_msg_db = ConnectorLogEntry.objects.first()
 
         # DB stores timestamp as datetime objects, convert here accordingly.
-        timestamp_as_datetime = datetime_from_timestamp(
-            test_log_msg['timestamp']
-        )
+        timestamp_as_datetime = datetime_from_timestamp(test_log_msg["timestamp"])
         assert log_msg_db.timestamp == timestamp_as_datetime
-        assert log_msg_db.msg == test_log_msg['msg']
-        assert log_msg_db.emitter == test_log_msg['emitter']
-        assert log_msg_db.level == test_log_msg['level']
+        assert log_msg_db.msg == test_log_msg["msg"]
+        assert log_msg_db.emitter == test_log_msg["emitter"]
+        assert log_msg_db.level == test_log_msg["level"]
 
         # Clean up.
         log_msg_db.delete()
@@ -628,17 +573,17 @@ class TestMqttToDb():
             waited_seconds += 0.005
 
             if waited_seconds >= 3:
-                raise RuntimeError('Expected heartbeat has not reached DB.')
+                raise RuntimeError("Expected heartbeat has not reached DB.")
 
         # Compare expected and stored data.
         heartbeat_db = ConnectorHeartbeat.objects.first()
 
         # DB stores timestamp as datetime objects, convert here accordingly.
         last_heartbeat_as_datetime = datetime_from_timestamp(
-            test_heartbeat['this_heartbeats_timestamp']
+            test_heartbeat["this_heartbeats_timestamp"]
         )
         next_heartbeat_as_datetime = datetime_from_timestamp(
-            test_heartbeat['next_heartbeats_timestamp']
+            test_heartbeat["next_heartbeats_timestamp"]
         )
         assert heartbeat_db.last_heartbeat == last_heartbeat_as_datetime
         assert heartbeat_db.next_heartbeat == next_heartbeat_as_datetime
@@ -661,13 +606,8 @@ class TestMqttToDb():
         # back by json.loads. Hence use all strings here to prevent type errors
         # while asserting below.
         test_available_datapoints = {
-            "sensor": {
-                "Channel__P__value__0": "0.522",
-                "Channel__P__unit__0": "kW",
-            },
-            "actuator": {
-                "Channel__P__setpoint__0": "0.5",
-            },
+            "sensor": {"Channel__P__value__0": "0.522", "Channel__P__unit__0": "kW"},
+            "actuator": {"Channel__P__setpoint__0": "0.5"},
         }
 
         payload = json.dumps(test_available_datapoints)
@@ -684,30 +624,21 @@ class TestMqttToDb():
 
             if waited_seconds >= 1:
                 raise RuntimeError(
-                    'Expected message on available datapoints has not reached '
-                    ' DB.'
+                    "Expected message on available datapoints has not reached " " DB."
                 )
 
         # Expected rows in DB as tuples of values
         expected_rows = []
         for datapoint_type, d in test_available_datapoints.items():
             for datapoint_key, datapoint_example in d.items():
-                expected_row = (
-                    datapoint_type,
-                    datapoint_key,
-                    datapoint_example,
-                )
+                expected_row = (datapoint_type, datapoint_key, datapoint_example)
                 expected_rows.append(expected_row)
 
         # Actual rows in DB:
         ad_db = dpos.filter(connector=test_connector)
         actual_rows = []
         for item in ad_db:
-            actual_row = (
-                item.type,
-                item.key_in_connector,
-                item.example_value,
-            )
+            actual_row = (item.type, item.key_in_connector, item.example_value)
             actual_rows.append(actual_row)
 
         # Finnaly check if the rows are identical.
@@ -729,24 +660,12 @@ class TestMqttToDb():
         # Create new connector and datapoints and make these known to MqttToDB.
         test_connector = connector_factory("test_connector_7")
 
-        numeric_dp = datapoint_factory(
-            test_connector,
-            data_format="generic_numeric"
-        )
-        text_dp = datapoint_factory(
-            test_connector,
-            data_format="generic_text"
-        )
+        numeric_dp = datapoint_factory(test_connector, data_format="generic_numeric")
+        text_dp = datapoint_factory(test_connector, data_format="generic_text")
         self.mtd.update_topics_and_subscriptions()
 
-        datapoint_message_numeric = {
-            "value": 13.37,
-            "timestamp": 1571927666222,
-        }
-        datapoint_message_text = {
-            "value": "1337 rulez",
-            "timestamp": 1571927666666,
-        }
+        datapoint_message_numeric = {"value": 13.37, "timestamp": 1571927666222}
+        datapoint_message_text = {"value": "1337 rulez", "timestamp": 1571927666666}
 
         payload_numeric = json.dumps(datapoint_message_numeric)
         payload_text = json.dumps(datapoint_message_text)
@@ -776,8 +695,8 @@ class TestMqttToDb():
 
                 if waited_seconds >= 1:
                     raise RuntimeError(
-                        'Expected message on available datapoints has not '
-                        'reached DB.'
+                        "Expected message on available datapoints has not "
+                        "reached DB."
                     )
                 continue
             break
@@ -786,14 +705,10 @@ class TestMqttToDb():
         # as strings for simplicity.
         expected_numeric_value = datapoint_message_numeric["value"]
         expected_numeric_timestamp = datapoint_message_numeric["timestamp"]
-        expected_numeric_datetime = datetime_from_timestamp(
-            expected_numeric_timestamp
-        )
+        expected_numeric_datetime = datetime_from_timestamp(expected_numeric_timestamp)
         expected_text_value = datapoint_message_text["value"]
         expected_text_timestamp = datapoint_message_text["timestamp"]
-        expected_text_datetime = datetime_from_timestamp(
-            expected_text_timestamp
-        )
+        expected_text_datetime = datetime_from_timestamp(expected_text_timestamp)
 
         numeric_dp.refresh_from_db()
         actual_numeric_value = numeric_dp.last_value
@@ -818,11 +733,13 @@ class TestMqttToDb():
         Also tests that Datapoint.get_mqtt_topic returns the right thing.
         """
         self.mqtt_client.userdata = None
+
         def on_message(client, userdata, msg):
             """
             Store the received message so we can test it's correctness later.
             """
             client.userdata = msg
+
         self.mqtt_client.subscribe("test_connector_8/datapoint_map")
         self.mqtt_client.on_message = on_message
 
@@ -832,13 +749,13 @@ class TestMqttToDb():
             connector=test_connector,
             key_in_connector="test_datapoint_map",
             data_format="generic_numeric",
-            type="sensor"
+            type="sensor",
         )
         test_datapoint_2 = datapoint_factory(
             connector=test_connector,
             key_in_connector="test_datapoint_map_2",
             data_format="generic_text",
-            type="actuator"
+            type="actuator",
         )
         self.mtd.create_and_send_datapoint_map()
 
@@ -848,26 +765,18 @@ class TestMqttToDb():
             waited_seconds += 0.005
 
             if waited_seconds >= 1:
-                raise RuntimeError(
-                    'Expected datapoint map not received via MQTT.'
-                )
+                raise RuntimeError("Expected datapoint map not received via MQTT.")
 
         expected_topic = "test_connector_8/datapoint_map"
         actual_topic = self.mqtt_client.userdata.topic
 
-        dp1_topic = ("test_connector_8/messages/%s/value" %
-                     str(test_datapoint_1.id))
-        dp2_topic = ("test_connector_8/messages/%s/value" %
-                     str(test_datapoint_2.id))
+        dp1_topic = "test_connector_8/messages/%s/value" % str(test_datapoint_1.id)
+        dp2_topic = "test_connector_8/messages/%s/value" % str(test_datapoint_2.id)
 
         # Following the datapoint_map format
         expected_payload = {
-            "sensor": {
-                test_datapoint_1.key_in_connector: dp1_topic
-            },
-            "actuator": {
-                dp2_topic: test_datapoint_2.key_in_connector
-            },
+            "sensor": {test_datapoint_1.key_in_connector: dp1_topic},
+            "actuator": {dp2_topic: test_datapoint_2.key_in_connector},
         }
 
         actual_payload = json.loads(self.mqtt_client.userdata.payload)
@@ -881,6 +790,7 @@ class TestMqttToDb():
         Verify that clear_datapoint_map publishes an empty map.
         """
         self.mqtt_client.userdata = None
+
         def on_message(client, userdata, msg):
             """
             Store the received message so we can test it's correctness later.
@@ -896,15 +806,15 @@ class TestMqttToDb():
             connector=test_connector,
             key_in_connector="test_datapoint_map",
             data_format="generic_numeric",
-            type="sensor"
+            type="sensor",
         )
         test_datapoint_2 = datapoint_factory(
             connector=test_connector,
             key_in_connector="test_datapoint_map_2",
             data_format="generic_text",
-            type="actuator"
+            type="actuator",
         )
-        #self.mtd.create_and_send_datapoint_map()
+        # self.mtd.create_and_send_datapoint_map()
 
         # Now send the clearing map afterwards.
         self.mtd.clear_datapoint_map(connector_id=test_connector.id)
@@ -915,14 +825,9 @@ class TestMqttToDb():
             waited_seconds += 0.005
 
             if waited_seconds >= 1:
-                raise RuntimeError(
-                    'Expected datapoint map not received via MQTT.'
-                )
+                raise RuntimeError("Expected datapoint map not received via MQTT.")
 
-        expected_payload = {
-            "sensor": {},
-            "actuator": {},
-        }
+        expected_payload = {"sensor": {}, "actuator": {}}
         actual_payload = json.loads(self.mqtt_client.userdata.payload)
         assert actual_payload == expected_payload
 
@@ -939,9 +844,7 @@ class TestMqttToDb():
             "django_api/mqtt_to_db/rpc/create_and_send_controlled_datapoints",
             "django_api/mqtt_to_db/rpc/clear_datapoint_map",
         ]
-        test_message = {
-            "kwargs": {"foo": "bar"}
-        }
+        test_message = {"kwargs": {"foo": "bar"}}
         payload = json.dumps(test_message)
 
         for topic in rpc_topics:
@@ -962,7 +865,7 @@ class TestMqttToDb():
             assert actual_kwargs == expected_kwargs
 
 
-@pytest.fixture(scope='class')
+@pytest.fixture(scope="class")
 def allow_db_setup(request, django_db_setup, django_db_blocker):
     """
     Allows DB access for test. This is yet required as the __init__ of
@@ -979,8 +882,8 @@ def allow_db_setup(request, django_db_setup, django_db_blocker):
     django_db_blocker.restore()
 
 
-@pytest.mark.usefixtures('allow_db_setup')
-class TestApiMqttIntegration():
+@pytest.mark.usefixtures("allow_db_setup")
+class TestApiMqttIntegration:
     """
     Test that the mechanism of fetching the initialized class instance of
     ConnectorMQTTIntegration from the class object works as expected.
@@ -995,7 +898,7 @@ class TestApiMqttIntegration():
         fake_client_1 = FakeMQTTClient(fake_broker=fake_broker)
         fake_client_2 = FakeMQTTClient(fake_broker=fake_broker)
         mqtt_client = fake_client_1()
-        mqtt_client.connect('localhost', 1883)
+        mqtt_client.connect("localhost", 1883)
         mqtt_client.loop_start()
 
         # Expose to tests.
@@ -1019,9 +922,7 @@ class TestApiMqttIntegration():
         if hasattr(ApiMqttIntegration, "_instance"):
             del ApiMqttIntegration._instance
 
-        initialized_instance = ApiMqttIntegration(
-            mqtt_client=self.fake_client,
-        )
+        initialized_instance = ApiMqttIntegration(mqtt_client=self.fake_client)
 
         retrieved_instance = ApiMqttIntegration.get_instance()
         assert isinstance(retrieved_instance, ApiMqttIntegration)
@@ -1036,18 +937,11 @@ class TestApiMqttIntegration():
         if hasattr(ApiMqttIntegration, "_instance"):
             del ApiMqttIntegration._instance
 
-        first_initialized_instance = ApiMqttIntegration(
-            mqtt_client=self.fake_client,
-        )
+        first_initialized_instance = ApiMqttIntegration(mqtt_client=self.fake_client)
 
-        second_initialized_instance = ApiMqttIntegration(
-            mqtt_client=self.fake_client,
-        )
+        second_initialized_instance = ApiMqttIntegration(mqtt_client=self.fake_client)
 
-        assert (
-            id(first_initialized_instance) ==
-            id(second_initialized_instance)
-        )
+        assert id(first_initialized_instance) == id(second_initialized_instance)
 
     def test_get_instance_returns_none_before_init(self):
         """
@@ -1067,9 +961,7 @@ class TestApiMqttIntegration():
         emits the MQTT message expected by MqttToDb.
         """
         # Prepare the test.
-        ami = ApiMqttIntegration(
-            mqtt_client=self.fake_client,
-        )
+        ami = ApiMqttIntegration(mqtt_client=self.fake_client)
         ami.client = MagicMock()
 
         # Execute the tested method.
@@ -1082,15 +974,11 @@ class TestApiMqttIntegration():
         rcp_call_msg_kwargs = published_messages[0].kwargs
 
         actual_topic = rcp_call_msg_kwargs["topic"]
-        expected_topic = (
-            "django_api/mqtt_to_db/rpc/update_topics_and_subscriptions"
-        )
+        expected_topic = "django_api/mqtt_to_db/rpc/update_topics_and_subscriptions"
         assert actual_topic == expected_topic
 
         actual_payload = json.loads(rcp_call_msg_kwargs["payload"])
-        expected_payload = {
-            "kwargs": {},
-        }
+        expected_payload = {"kwargs": {}}
         assert actual_payload == expected_payload
 
         actual_retain_flag = rcp_call_msg_kwargs["retain"]
@@ -1107,9 +995,7 @@ class TestApiMqttIntegration():
         emits the MQTT message expected by MqttToDb.
         """
         # Prepare the test.
-        ami = ApiMqttIntegration(
-            mqtt_client=self.fake_client,
-        )
+        ami = ApiMqttIntegration(mqtt_client=self.fake_client)
         ami.client = MagicMock()
 
         # Execute the tested method.
@@ -1122,15 +1008,11 @@ class TestApiMqttIntegration():
         rcp_call_msg_kwargs = published_messages[0].kwargs
 
         actual_topic = rcp_call_msg_kwargs["topic"]
-        expected_topic = (
-            "django_api/mqtt_to_db/rpc/create_and_send_datapoint_map"
-        )
+        expected_topic = "django_api/mqtt_to_db/rpc/create_and_send_datapoint_map"
         assert actual_topic == expected_topic
 
         actual_payload = json.loads(rcp_call_msg_kwargs["payload"])
-        expected_payload = {
-            "kwargs": {"connector_id": 1},
-        }
+        expected_payload = {"kwargs": {"connector_id": 1}}
         assert actual_payload == expected_payload
 
         actual_retain_flag = rcp_call_msg_kwargs["retain"]
@@ -1147,9 +1029,7 @@ class TestApiMqttIntegration():
         emits the MQTT message expected by MqttToDb.
         """
         # Prepare the test.
-        ami = ApiMqttIntegration(
-            mqtt_client=self.fake_client,
-        )
+        ami = ApiMqttIntegration(mqtt_client=self.fake_client)
         ami.client = MagicMock()
 
         # Execute the tested method.
@@ -1168,9 +1048,7 @@ class TestApiMqttIntegration():
         assert actual_topic == expected_topic
 
         actual_payload = json.loads(rcp_call_msg_kwargs["payload"])
-        expected_payload = {
-            "kwargs": {"controller_id": 2},
-        }
+        expected_payload = {"kwargs": {"controller_id": 2}}
         assert actual_payload == expected_payload
 
         actual_retain_flag = rcp_call_msg_kwargs["retain"]
@@ -1187,9 +1065,7 @@ class TestApiMqttIntegration():
         emits the MQTT message expected by MqttToDb.
         """
         # Prepare the test.
-        ami = ApiMqttIntegration(
-            mqtt_client=self.fake_client,
-        )
+        ami = ApiMqttIntegration(mqtt_client=self.fake_client)
         ami.client = MagicMock()
 
         # Execute the tested method.
@@ -1206,9 +1082,7 @@ class TestApiMqttIntegration():
         assert actual_topic == expected_topic
 
         actual_payload = json.loads(rcp_call_msg_kwargs["payload"])
-        expected_payload = {
-            "kwargs": {"connector_id": 3},
-        }
+        expected_payload = {"kwargs": {"connector_id": 3}}
         assert actual_payload == expected_payload
 
         actual_retain_flag = rcp_call_msg_kwargs["retain"]

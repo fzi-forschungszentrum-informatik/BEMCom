@@ -2,4 +2,4 @@ from django.apps import AppConfig
 
 
 class ApiRestInterfaceConfig(AppConfig):
-    name = 'api_rest_interface'
+    name = "api_rest_interface"

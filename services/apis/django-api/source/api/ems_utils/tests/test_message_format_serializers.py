@@ -36,7 +36,7 @@ class TestDatapointValueSerializer(TransactionTestCase):
 
             # The datapoint foreign key must be overwritten as it points
             # to the abstract datapoint model by default.
-            datapoint = models.ForeignKey(Datapoint, on_delete=models.CASCADE,)
+            datapoint = models.ForeignKey(Datapoint, on_delete=models.CASCADE)
 
         cls.Datapoint = Datapoint
         cls.DatapointValue = DatapointValue
@@ -162,10 +162,7 @@ class TestDatapointValueSerializer(TransactionTestCase):
         Verify that text datapoints don't accept numeric values or bools.
         """
         dp = self.datapoint
-        text_data_formats = [
-            "generic_text",
-            "discrete_text",
-        ]
+        text_data_formats = ["generic_text", "discrete_text"]
         for data_format in text_data_formats:
             for test_data_value in [1, 2.2, True, False]:
                 dp.data_format = data_format
@@ -374,8 +371,7 @@ class TestDatapointValueSerializer(TransactionTestCase):
                 is_valid = serializer.is_valid(raise_exception=True)
             except Exception:
                 logger.exception(
-                    "test_value_in_allowed_values failed for valid "
-                    "combination %s",
+                    "test_value_in_allowed_values failed for valid " "combination %s",
                     str(valid_combination),
                 )
                 is_valid = False
@@ -387,31 +383,15 @@ class TestDatapointValueSerializer(TransactionTestCase):
                 "data_format": "discrete_numeric",
                 "allowed_values": [1.0, 3.0],
             },
-            {
-                "value": 2,
-                "data_format": "discrete_numeric",
-                "allowed_values": [1, 3],
-            },
-            {
-                "value": 2,
-                "data_format": "discrete_numeric",
-                "allowed_values": [],
-            },
+            {"value": 2, "data_format": "discrete_numeric", "allowed_values": [1, 3]},
+            {"value": 2, "data_format": "discrete_numeric", "allowed_values": []},
             {
                 "value": "OK",
                 "data_format": "discrete_text",
                 "allowed_values": ["NotOK", "OK "],
             },
-            {
-                "value": "",
-                "data_format": "discrete_text",
-                "allowed_values": ["OK"],
-            },
-            {
-                "value": None,
-                "data_format": "discrete_text",
-                "allowed_values": ["OK"],
-            },
+            {"value": "", "data_format": "discrete_text", "allowed_values": ["OK"]},
+            {"value": None, "data_format": "discrete_text", "allowed_values": ["OK"]},
         ]
         for invalid_combination in invalid_combinations:
             dp.data_format = invalid_combination["data_format"]
@@ -432,8 +412,7 @@ class TestDatapointValueSerializer(TransactionTestCase):
 
             if caught_execption is None:
                 logger.exception(
-                    "test_value_in_allowed_values failed for invalid "
-                    "combination %s",
+                    "test_value_in_allowed_values failed for invalid " "combination %s",
                     str(valid_combination),
                 )
 
@@ -454,14 +433,9 @@ class TestDatapointValueSerializer(TransactionTestCase):
 
         for timestamp in wrong_timestamps:
 
-            test_data = {
-                "value": json.dumps(None),
-                "timestamp": timestamp,
-            }
+            test_data = {"value": json.dumps(None), "timestamp": timestamp}
 
-            serializer = DatapointValueSerializer(
-                self.datapoint, data=test_data
-            )
+            serializer = DatapointValueSerializer(self.datapoint, data=test_data)
             try:
                 serializer.is_valid(raise_exception=True)
             except Exception as e:
@@ -488,7 +462,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
 
             # The datapoint foreign key must be overwritten as it points
             # to the abstract datapoint model by default.
-            datapoint = models.ForeignKey(Datapoint, on_delete=models.CASCADE,)
+            datapoint = models.ForeignKey(Datapoint, on_delete=models.CASCADE)
 
         cls.Datapoint = Datapoint
         cls.DatapointSchedule = DatapointSchedule
@@ -603,14 +577,9 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
 
         for timestamp in wrong_timestamps:
 
-            test_data = {
-                "schedule": None,
-                "timestamp": timestamp,
-            }
+            test_data = {"schedule": None, "timestamp": timestamp}
 
-            serializer = DatapointScheduleSerializer(
-                self.datapoint, data=test_data
-            )
+            serializer = DatapointScheduleSerializer(self.datapoint, data=test_data)
             try:
                 serializer.is_valid(raise_exception=True)
             except Exception as e:
@@ -662,10 +631,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
         dp.save()
 
         # This is correct json but not a list of schedule items.
-        test_data = {
-            "schedule": {"Nope": 1},
-            "timestamp": timestamp_utc_now(),
-        }
+        test_data = {"schedule": {"Nope": 1}, "timestamp": timestamp_utc_now()}
         serializer = DatapointScheduleSerializer(dp, data=test_data)
         caught_execption = None
         try:
@@ -686,10 +652,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
         dp.save()
 
         # This is correct json but not a list of schedule items.
-        test_data = {
-            "schedule": ["Nope", 1],
-            "timestamp": timestamp_utc_now(),
-        }
+        test_data = {"schedule": ["Nope", 1], "timestamp": timestamp_utc_now()}
         serializer = DatapointScheduleSerializer(dp, data=test_data)
         caught_execption = None
         try:
@@ -735,9 +698,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
 
         # Missing to_timestamp
         test_data = {
-            "schedule": [
-                {"from_timestamp": None, "value": json.dumps("not a number"),}
-            ],
+            "schedule": [{"from_timestamp": None, "value": json.dumps("not a number")}],
             "timestamp": timestamp_utc_now(),
         }
         serializer = DatapointScheduleSerializer(dp, data=test_data)
@@ -756,10 +717,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
         # Missing value
         test_data = {
             "schedule": [
-                {
-                    "from_timestamp": None,
-                    "to_timestamp": timestamp_utc_now() + 1000,
-                }
+                {"from_timestamp": None, "to_timestamp": timestamp_utc_now() + 1000}
             ],
             "timestamp": timestamp_utc_now(),
         }
@@ -844,10 +802,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
             assert "cannot be parsed to float" in exception_detail
 
         # Also verify the oposite, that text values are not rejected
-        text_data_formats = [
-            "generic_text",
-            "discrete_text",
-        ]
+        text_data_formats = ["generic_text", "discrete_text"]
         for data_format in text_data_formats:
             dp.data_format = data_format
             dp.save()
@@ -931,7 +886,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
                         "from_timestamp": None,
                         "to_timestamp": timestamp_utc_now() + 1000,
                         "value": json.dumps(invalid_combination["value"]),
-                    },
+                    }
                 ],
                 "timestamp": timestamp_utc_now(),
             }
@@ -997,7 +952,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
                         "from_timestamp": None,
                         "to_timestamp": timestamp_utc_now() + 1000,
                         "value": json.dumps(valid_combination["value"]),
-                    },
+                    }
                 ],
                 "timestamp": timestamp_utc_now(),
             }
@@ -1007,8 +962,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
                 is_valid = serializer.is_valid(raise_exception=True)
             except Exception:
                 logger.exception(
-                    "test_value_in_allowed_values failed for valid "
-                    "combination %s",
+                    "test_value_in_allowed_values failed for valid " "combination %s",
                     str(valid_combination),
                 )
                 is_valid = False
@@ -1020,31 +974,15 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
                 "data_format": "discrete_numeric",
                 "allowed_values": [1.0, 3.0],
             },
-            {
-                "value": 2,
-                "data_format": "discrete_numeric",
-                "allowed_values": [1, 3],
-            },
-            {
-                "value": 2,
-                "data_format": "discrete_numeric",
-                "allowed_values": [],
-            },
+            {"value": 2, "data_format": "discrete_numeric", "allowed_values": [1, 3]},
+            {"value": 2, "data_format": "discrete_numeric", "allowed_values": []},
             {
                 "value": "OK",
                 "data_format": "discrete_text",
                 "allowed_values": ["NotOK", "OK "],
             },
-            {
-                "value": "",
-                "data_format": "discrete_text",
-                "allowed_values": ["OK"],
-            },
-            {
-                "value": None,
-                "data_format": "discrete_text",
-                "allowed_values": ["OK"],
-            },
+            {"value": "", "data_format": "discrete_text", "allowed_values": ["OK"]},
+            {"value": None, "data_format": "discrete_text", "allowed_values": ["OK"]},
         ]
         for invalid_combination in invalid_combinations:
             dp.data_format = invalid_combination["data_format"]
@@ -1057,7 +995,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
                         "from_timestamp": None,
                         "to_timestamp": timestamp_utc_now() + 1000,
                         "value": json.dumps(valid_combination["value"]),
-                    },
+                    }
                 ],
                 "timestamp": timestamp_utc_now(),
             }
@@ -1071,8 +1009,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
 
             if caught_execption is None:
                 logger.exception(
-                    "test_value_in_allowed_values failed for invalid "
-                    "combination %s",
+                    "test_value_in_allowed_values failed for invalid " "combination %s",
                     str(valid_combination),
                 )
 
@@ -1289,7 +1226,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
 
             # The datapoint foreign key must be overwritten as it points
             # to the abstract datapoint model by default.
-            datapoint = models.ForeignKey(Datapoint, on_delete=models.CASCADE,)
+            datapoint = models.ForeignKey(Datapoint, on_delete=models.CASCADE)
 
         cls.Datapoint = Datapoint
         cls.DatapointSetpoint = DatapointSetpoint
@@ -1416,14 +1353,9 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
 
         for timestamp in wrong_timestamps:
 
-            test_data = {
-                "setpoint": None,
-                "timestamp": timestamp,
-            }
+            test_data = {"setpoint": None, "timestamp": timestamp}
 
-            serializer = DatapointSetpointSerializer(
-                self.datapoint, data=test_data
-            )
+            serializer = DatapointSetpointSerializer(self.datapoint, data=test_data)
             try:
                 serializer.is_valid(raise_exception=True)
             except Exception as e:
@@ -1446,7 +1378,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
                     "from_timestamp": None,
                     "to_timestamp": timestamp_utc_now() + 1000,
                     "preferred_value": json.dumps("not a number"),
-                },
+                }
             ],
             "timestamp": timestamp_utc_now(),
         }
@@ -1471,10 +1403,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
         dp = self.datapoint
 
         # This is correct json but not a list of setpoint items.
-        test_data = {
-            "setpoint": {"Nope": 1},
-            "timestamp": timestamp_utc_now(),
-        }
+        test_data = {"setpoint": {"Nope": 1}, "timestamp": timestamp_utc_now()}
         serializer = DatapointSetpointSerializer(dp, data=test_data)
         caught_execption = None
         try:
@@ -1493,10 +1422,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
         dp = self.datapoint
 
         # This is correct json but not a list of setpoint items.
-        test_data = {
-            "setpoint": ["Nope", 1],
-            "timestamp": timestamp_utc_now(),
-        }
+        test_data = {"setpoint": ["Nope", 1], "timestamp": timestamp_utc_now()}
         serializer = DatapointSetpointSerializer(dp, data=test_data)
         caught_execption = None
         try:
@@ -1515,11 +1441,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
         """
         dp = self.datapoint
 
-        always_required_keys = [
-            "from_timestamp",
-            "to_timestamp",
-            "preferred_value",
-        ]
+        always_required_keys = ["from_timestamp", "to_timestamp", "preferred_value"]
         only_con_keys = ["min_value", "max_value"]
         only_dis_keys = ["acceptable_values"]
         # Here a listing which keys must be given in a setpoint message per
@@ -1572,10 +1494,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
                         continue
                     setpoint[key] = setpoint_all_fields[key]
 
-                test_data = {
-                    "setpoint": [setpoint],
-                    "timestamp": timestamp_utc_now(),
-                }
+                test_data = {"setpoint": [setpoint], "timestamp": timestamp_utc_now()}
 
                 serializer = DatapointSetpointSerializer(dp, data=test_data)
                 caught_execption = None
@@ -1648,11 +1567,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
 
         # Here a listing which keys must be given in a setpoint message per
         # data_format.
-        always_required_keys = [
-            "from_timestamp",
-            "to_timestamp",
-            "preferred_value",
-        ]
+        always_required_keys = ["from_timestamp", "to_timestamp", "preferred_value"]
         only_con_keys = ["min_value", "max_value"]
         only_dis_keys = ["acceptable_values"]
         required_keys_per_data_format = {
@@ -1686,10 +1601,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
             for key in required_keys:
                 setpoint[key] = setpoint_all_fields[key]
 
-            test_data = {
-                "setpoint": [setpoint],
-                "timestamp": timestamp_utc_now(),
-            }
+            test_data = {"setpoint": [setpoint], "timestamp": timestamp_utc_now()}
 
             serializer = DatapointSetpointSerializer(dp, data=test_data)
             caught_execption = None
@@ -1697,8 +1609,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
                 serializer.is_valid(raise_exception=True)
                 logger.error(
                     "Failed to identify non numeric value while "
-                    "validating setpoint data for data_format (%s)"
-                    % data_format
+                    "validating setpoint data for data_format (%s)" % data_format
                 )
             except Exception as e:
                 caught_execption = e
@@ -1710,10 +1621,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
             assert "cannot be parsed to float" in exception_detail
 
         # Also verify the oposite, that text values are not rejected
-        text_data_formats = [
-            "generic_text",
-            "discrete_text",
-        ]
+        text_data_formats = ["generic_text", "discrete_text"]
         for data_format in text_data_formats:
             dp.data_format = data_format
             dp.save()
@@ -1722,10 +1630,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
             for key in required_keys:
                 setpoint[key] = setpoint_all_fields[key]
 
-            test_data = {
-                "setpoint": [setpoint],
-                "timestamp": timestamp_utc_now(),
-            }
+            test_data = {"setpoint": [setpoint], "timestamp": timestamp_utc_now()}
 
             serializer = DatapointSetpointSerializer(dp, data=test_data)
             caught_execption = None
@@ -1806,7 +1711,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
                         ),
                         "min_value": None,
                         "max_value": None,
-                    },
+                    }
                 ],
                 "timestamp": timestamp_utc_now(),
             }
@@ -1872,9 +1777,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
                         "preferred_value": json.dumps(
                             valid_combination["preferred_value"]
                         ),
-                        "acceptable_values": [
-                            valid_combination["preferred_value"]
-                        ],
+                        "acceptable_values": [valid_combination["preferred_value"]],
                     }
                 ],
                 "timestamp": timestamp_utc_now(),
@@ -1937,9 +1840,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
                         "preferred_value": json.dumps(
                             invalid_combination["preferred_value"]
                         ),
-                        "acceptable_values": [
-                            invalid_combination["preferred_value"]
-                        ],
+                        "acceptable_values": [invalid_combination["preferred_value"]],
                     }
                 ],
                 "timestamp": timestamp_utc_now(),
@@ -1954,8 +1855,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
 
             if caught_execption is None:
                 logger.exception(
-                    "test_value_in_allowed_values failed for invalid "
-                    "combination %s",
+                    "test_value_in_allowed_values failed for invalid " "combination %s",
                     str(valid_combination),
                 )
 
@@ -1979,7 +1879,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
                     "from_timestamp": timestamp_utc_now(),
                     "to_timestamp": timestamp_utc_now() - 1000,
                     "preferred_value": json.dumps("not a number"),
-                },
+                }
             ],
             "timestamp": timestamp_utc_now(),
         }

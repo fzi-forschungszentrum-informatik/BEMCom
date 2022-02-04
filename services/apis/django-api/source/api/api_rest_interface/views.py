@@ -35,7 +35,12 @@ from .filters import DatapointFilter, DatapointValueFilter
 from .filters import DatapointSetpointFilter, DatapointScheduleFilter
 from .models import Metric
 
-from drf_spectacular.utils import extend_schema, inline_serializer, extend_schema_serializer
+from drf_spectacular.utils import (
+    extend_schema,
+    inline_serializer,
+    extend_schema_serializer,
+)
+
 
 class DatapointViewSet(DatapointViewSetTemplate):
     __doc__ = DatapointViewSetTemplate.__doc__
@@ -48,9 +53,7 @@ class DatapointViewSet(DatapointViewSetTemplate):
     unique_together_fields = ("connector", "key_in_connector")
 
     def retrieve(self, request, dp_id):
-        datapoint = get_object_or_404(
-            self.queryset, id=dp_id, is_active=True
-        )
+        datapoint = get_object_or_404(self.queryset, id=dp_id, is_active=True)
         serializer = self.serializer_class(datapoint)
         return Response(serializer.data)
 
@@ -63,6 +66,7 @@ class DatapointViewSet(DatapointViewSetTemplate):
         datapoints = self.filter_queryset(datapoints)
         serializer = self.serializer_class(datapoints, many=True)
         return Response(serializer.data)
+
     list.__doc__ = DatapointViewSetTemplate.list.__doc__
 
     # This extends the generic version from ems_utils such that connectors
@@ -73,7 +77,7 @@ class DatapointViewSet(DatapointViewSetTemplate):
         ## This might help with the broken schema but will introduce some
         ## query parameters which do not make much sense here.
         ##
-        #responses=serializer_class(Datapoint, many=True),
+        # responses=serializer_class(Datapoint, many=True),
         parameters=[],
     )
     def create(self, request):
@@ -105,25 +109,25 @@ class DatapointViewSet(DatapointViewSetTemplate):
                 data["connector"] = cn_qs[0]
             # This should not be possible, but better save..
             else:
-                errors.append({
-                    "connector": (
-                        "Multiple connectors found matching name: %s."
-                        % data["connector"]
-                    )
-                })
+                errors.append(
+                    {
+                        "connector": (
+                            "Multiple connectors found matching name: %s."
+                            % data["connector"]
+                        )
+                    }
+                )
                 continue
 
             q = {k: data[k] for k in self.unique_together_fields if k in data}
             dp_qs = self.datapoint_model.objects.filter(**q)
             if dp_qs.count() == 1:
-                errors.append({
-                    "datapoint": "Datapoint exists already: %s." % q
-                })
+                errors.append({"datapoint": "Datapoint exists already: %s." % q})
                 continue
             elif dp_qs.count() > 1:
-                errors.append({
-                    "datapoint": "Multiple datapoints found matching query: %s." % q
-                })
+                errors.append(
+                    {"datapoint": "Multiple datapoints found matching query: %s." % q}
+                )
                 continue
             else:
                 # Create new datapoint as intended
@@ -135,7 +139,6 @@ class DatapointViewSet(DatapointViewSetTemplate):
 
                 # Keeps errors and input data lists aligned.
                 errors.append({})
-
 
         # All or nothing, either all has gone through or we delete everything.
         # TODO Also create test for the nothing case.
@@ -153,14 +156,13 @@ class DatapointViewSet(DatapointViewSetTemplate):
 
     create.__doc__ = __doc__ + "<br><br>" + create.__doc__.strip()
 
-
     @extend_schema(
         request=serializer_class(Datapoint, many=True),
         ##
         ## This might help with the broken schema but will introduce some
         ## query parameters which do not make much sense here.
         ##
-        #responses=serializer_class(Datapoint, many=True),
+        # responses=serializer_class(Datapoint, many=True),
         parameters=[],
     )
     def update_many(self, request):
@@ -183,21 +185,24 @@ class DatapointViewSet(DatapointViewSetTemplate):
         for data in vd:
             cn_qs = Connector.objects.filter(name=data["connector"]["name"])
             if cn_qs.count() == 0:
-                errors.append({
-                    "connector": (
-                        "No Connector found matching name: %s."
-                        % data["connector"]
-                    )
-                })
+                errors.append(
+                    {
+                        "connector": (
+                            "No Connector found matching name: %s." % data["connector"]
+                        )
+                    }
+                )
                 continue
             # This should not be possible, but better save..
             elif cn_qs.count() > 1:
-                errors.append({
-                    "connector": (
-                        "Multiple connectors found matching name: %s."
-                        % data["connector"]
-                    )
-                })
+                errors.append(
+                    {
+                        "connector": (
+                            "Multiple connectors found matching name: %s."
+                            % data["connector"]
+                        )
+                    }
+                )
                 continue
             else:
                 data["connector"] = cn_qs[0]
@@ -205,14 +210,14 @@ class DatapointViewSet(DatapointViewSetTemplate):
             q = {k: data[k] for k in self.unique_together_fields if k in data}
             dp_qs = self.datapoint_model.objects.filter(**q)
             if dp_qs.count() == 0:
-                errors.append({
-                    "datapoint": "No datapoint found matching query: %s." % q
-                })
+                errors.append(
+                    {"datapoint": "No datapoint found matching query: %s." % q}
+                )
                 continue
             elif dp_qs.count() > 1:
-                errors.append({
-                    "datapoint": "Multiple datapoints found matching query: %s." % q
-                })
+                errors.append(
+                    {"datapoint": "Multiple datapoints found matching query: %s." % q}
+                )
                 continue
             else:
                 errors.append({})
@@ -267,10 +272,7 @@ class DatapointValueViewSet(ViewSetWithDatapointFK):
         # Send the message to the MQTT broker.
         mqtt_topic = datapoint.get_mqtt_topics()["value"]
         ami = ApiMqttIntegration.get_instance()
-        ami.client.publish(
-            topic=mqtt_topic,
-            payload=json.dumps(validated_data)
-        )
+        ami.client.publish(topic=mqtt_topic, payload=json.dumps(validated_data))
         return Response(validated_data, status=status.HTTP_201_CREATED)
 
     # This lives here to make the schema correct.
@@ -315,9 +317,7 @@ class DatapointScheduleViewSet(ViewSetWithDatapointFK):
         mqtt_topic = datapoint.get_mqtt_topics()["schedule"]
         ami = ApiMqttIntegration.get_instance()
         ami.client.publish(
-            topic=mqtt_topic,
-            payload=json.dumps(validated_data),
-            retain=True,
+            topic=mqtt_topic, payload=json.dumps(validated_data), retain=True
         )
         return Response(validated_data, status=status.HTTP_201_CREATED)
 
@@ -362,9 +362,7 @@ class DatapointSetpointViewSet(ViewSetWithDatapointFK):
         mqtt_topic = datapoint.get_mqtt_topics()["setpoint"]
         ami = ApiMqttIntegration.get_instance()
         ami.client.publish(
-            topic=mqtt_topic,
-            payload=json.dumps(validated_data),
-            retain=True,
+            topic=mqtt_topic, payload=json.dumps(validated_data), retain=True
         )
         return Response(validated_data, status=status.HTTP_201_CREATED)
 
@@ -383,8 +381,9 @@ class PlainTextRenderer(renderers.BaseRenderer):
     As seen here:
     https://www.django-rest-framework.org/api-guide/renderers/#example
     """
-    media_type = 'text/plain'
-    format = 'txt'
+
+    media_type = "text/plain"
+    format = "txt"
 
     def render(self, data, media_type=None, renderer_context=None):
         return smart_str(data, encoding=self.charset)
@@ -394,6 +393,7 @@ class PrometheusMetricsViewSet(GenericViewSet):
     """
     Exposes Prometheus metrics.
     """
+
     renderer_classes = [PlainTextRenderer]
     # This is required for automatic permission checking.
     queryset = Metric.objects.all()

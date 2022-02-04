@@ -30,8 +30,6 @@ class ApiMainConfig(AppConfig):
                 ApiMqttIntegration()
             except ValueError:
                 logger.critical("")
-                logger.critical(
-                    "Could not connect to MQTT broker of backend. Exiting"
-                )
+                logger.critical("Could not connect to MQTT broker of backend. Exiting")
                 logger.critical("")
                 sys.exit(1)

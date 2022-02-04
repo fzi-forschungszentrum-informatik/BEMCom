@@ -32,7 +32,7 @@ class DatapointTemplate(models.Model):
             "service, which effectively allows the current service to use"
             "additional datapoints that do not exist in the external service, "
             "which is handy for mocking UIs and stuff."
-        )
+        ),
     )
     short_name = models.TextField(
         null=True,  # Auto generated datapoints will be stored as null.
@@ -43,22 +43,15 @@ class DatapointTemplate(models.Model):
         # empty strings will be stored as Nones. However, we still need
         # to allow blank inputs to prevent validation errors in admin.
         blank=True,
-        help_text=(
-            "A short name to identify the datapoint."
-        )
+        help_text=("A short name to identify the datapoint."),
     )
-    TYPE_CHOICES = [
-        ("sensor", "Sensor"),
-        ("actuator", "Actuator"),
-    ]
+    TYPE_CHOICES = [("sensor", "Sensor"), ("actuator", "Actuator")]
     type = models.CharField(
         max_length=8,
         default=None,
         null=False,
         choices=TYPE_CHOICES,
-        help_text=(
-            "Datapoint type, can be ether sensor or actuator."
-        )
+        help_text=("Datapoint type, can be ether sensor or actuator."),
     )
     # Defines the data format of the datapoint, i.e. which additional metadata
     # we can expect to have reasonable values.
@@ -92,7 +85,7 @@ class DatapointTemplate(models.Model):
         help_text=(
             "Format of the datapoint value. Additionally defines which meta"
             "data is available for it. See documentation in code for details."
-        )
+        ),
     )
     # Don't limit this, people should never need to use abbreviations or
     # shorten their thoughts just b/c the field is too short.
@@ -102,7 +95,7 @@ class DatapointTemplate(models.Model):
         help_text=(
             "A human readable description of the datapoint targeted on "
             "users of the API wihtout knowledge about connector details."
-        )
+        ),
     )
     #
     ##########################################################################
@@ -119,7 +112,7 @@ class DatapointTemplate(models.Model):
         help_text=(
             "Allowed values. Applicable to discrete valued datapoints. "
             "Must be a valid JSON string."
-        )
+        ),
     )
     min_value = models.FloatField(
         blank=True,
@@ -128,7 +121,7 @@ class DatapointTemplate(models.Model):
         help_text=(
             "The minimal expected value of the datapoint. "
             "Applicable to numeric datapoints."
-        )
+        ),
     )
     max_value = models.FloatField(
         blank=True,
@@ -137,7 +130,7 @@ class DatapointTemplate(models.Model):
         help_text=(
             "The maximal expected value of the datapoint. "
             "Applicable to numeric datapoints."
-        )
+        ),
     )
     unit = models.TextField(
         editable=True,
@@ -146,7 +139,7 @@ class DatapointTemplate(models.Model):
         help_text=(
             "The unit in SI notation, e.g.  Mg*m*s^-2 aka. kN. "
             "Applicable to numeric datapoints."
-        )
+        ),
     )
     #
     ##########################################################################
@@ -167,15 +160,13 @@ class DatapointTemplate(models.Model):
             "significantly and prevents unintended side effects, e.g. data "
             "loss if the data format field is changed."
             ""
-        )
+        ),
     )
     last_value_timestamp = models.DateTimeField(
         null=True,
         blank=True,
         default=None,
-        help_text=(
-            "The timestamp of the last value received via MQTT."
-        )
+        help_text=("The timestamp of the last value received via MQTT."),
     )
     last_setpoint = models.JSONField(
         null=True,
@@ -184,7 +175,7 @@ class DatapointTemplate(models.Model):
         help_text=(
             "The last schedule received for the datapoint. "
             "Applicable to actuator datapoints."
-        )
+        ),
     )
     last_setpoint_timestamp = models.DateTimeField(
         null=True,
@@ -193,7 +184,7 @@ class DatapointTemplate(models.Model):
         help_text=(
             "The timestamp of the last value received for the datapoint."
             "Applicable to actuator datapoints."
-        )
+        ),
     )
     last_schedule = models.JSONField(
         null=True,
@@ -202,7 +193,7 @@ class DatapointTemplate(models.Model):
         help_text=(
             "The last schedule received for the datapoint."
             "Applicable to actuator datapoints."
-        )
+        ),
     )
     last_schedule_timestamp = models.DateTimeField(
         null=True,
@@ -211,7 +202,7 @@ class DatapointTemplate(models.Model):
         help_text=(
             "The timestamp of the last value received for the datapoint."
             "Applicable to actuator datapoints."
-        )
+        ),
     )
 
     def save(self, *args, **kwargs):
@@ -229,7 +220,7 @@ class DatapointTemplate(models.Model):
 
     def __str__(self):
         if self.short_name is not None:
-            return (str(self.id) + " - " + self.short_name)
+            return str(self.id) + " - " + self.short_name
         else:
             return str(self.id)
 
@@ -258,7 +249,7 @@ class TimescaleModel(models.Model):
             "For actuator datapoints: The time the message was "
             "created by the external entity.\n"
             "Both in milliseconds since 1970-01-01 UTC."
-        )
+        ),
     )
     # TimescaleDB absolutely requires that the timestamp field is
     # called time. On the other hand a lot of code here expects that the
@@ -321,8 +312,7 @@ class TimescaleModel(models.Model):
             msgs_current_dp = msgs_by_datapoint[datapoint]
             msgs_c_dp_by_time = {msg["time"]: msg for msg in msgs_current_dp}
             existing_msg_objects = model.objects.filter(
-                datapoint=datapoint,
-                time__in=msgs_c_dp_by_time.keys()
+                datapoint=datapoint, time__in=msgs_c_dp_by_time.keys()
             )
 
             # Now start with updating the existing messages by updating
@@ -347,9 +337,7 @@ class TimescaleModel(models.Model):
                 # to prevent the SQL query from becoming too large. See:
                 # https://docs.djangoproject.com/en/3.1/ref/models/querysets/#bulk-update
                 model.objects.bulk_update(
-                    objs=existing_msg_objects,
-                    fields=fields_to_update,
-                    batch_size=1000,
+                    objs=existing_msg_objects, fields=fields_to_update, batch_size=1000
                 )
                 msgs_updated += len(existing_msg_objects)
 
@@ -358,10 +346,7 @@ class TimescaleModel(models.Model):
         # Now that we have updated the existing messages and know which ones
         # are left to create let's to this too.
         objs_to_create = [model(**msg) for msg in msgs_to_create]
-        model.objects.bulk_create(
-            objs=objs_to_create,
-            batch_size=1000,
-        )
+        model.objects.bulk_create(objs=objs_to_create, batch_size=1000)
         msgs_created = len(objs_to_create)
 
         return msgs_created, msgs_updated
@@ -384,18 +369,14 @@ class DatapointValueTemplate(TimescaleModel):
         abstract = True
         constraints = [
             models.UniqueConstraint(
-                fields=['datapoint', 'time'],
-                name='Value msg unique for timestamp',
-            ),
+                fields=["datapoint", "time"], name="Value msg unique for timestamp"
+            )
         ]
-
 
     datapoint = models.ForeignKey(
         DatapointTemplate,
         on_delete=models.CASCADE,
-        help_text=(
-            "The datapoint that the value message belongs to."
-        )
+        help_text=("The datapoint that the value message belongs to."),
     )
     # JSON should be able to store everything as the messages arive
     # packed in a JSON string.
@@ -403,9 +384,7 @@ class DatapointValueTemplate(TimescaleModel):
         null=True,
         blank=True,
         default=None,
-        help_text=(
-            "The value part of the DatapointValue message."
-        )
+        help_text=("The value part of the DatapointValue message."),
     )
     _value_float = models.FloatField(
         null=True,
@@ -414,7 +393,7 @@ class DatapointValueTemplate(TimescaleModel):
         help_text=(
             "Similar to value but an internal float representation "
             "to store numeric values more efficiently."
-        )
+        ),
     )
     _value_bool = models.BooleanField(
         null=True,
@@ -423,9 +402,8 @@ class DatapointValueTemplate(TimescaleModel):
         help_text=(
             "Similar to value but an internal bool representation "
             "to store boolean values more efficiently."
-        )
+        ),
     )
-
 
     def save(self, *args, **kwargs):
         """
@@ -467,12 +445,7 @@ class DatapointValueTemplate(TimescaleModel):
         if existing_ts is None or existing_ts <= self.time:
             self.datapoint.last_value = self.value
             self.datapoint.last_value_timestamp = self.time
-            self.datapoint.save(
-                update_fields=[
-                    "last_value",
-                    "last_value_timestamp",
-                ]
-            )
+            self.datapoint.save(update_fields=["last_value", "last_value_timestamp"])
 
     @classmethod
     def from_db(cls, db, field_names, values):
@@ -533,25 +506,20 @@ class DatapointScheduleTemplate(TimescaleModel):
         abstract = True
         constraints = [
             models.UniqueConstraint(
-                fields=['datapoint', 'time'],
-                name='Schedule msg unique for timestamp',
-            ),
+                fields=["datapoint", "time"], name="Schedule msg unique for timestamp"
+            )
         ]
 
     datapoint = models.ForeignKey(
         DatapointTemplate,
         on_delete=models.CASCADE,
-        help_text=(
-            "The datapoint that the schedule message belongs to."
-        )
+        help_text=("The datapoint that the schedule message belongs to."),
     )
     schedule = models.JSONField(
         null=False,
         blank=True,
         default=list,
-        help_text=(
-            "A JSON array holding zero or more DatapointScheduleItems."
-        )
+        help_text=("A JSON array holding zero or more DatapointScheduleItems."),
     )
 
     def save(self, *args, **kwargs):
@@ -573,10 +541,7 @@ class DatapointScheduleTemplate(TimescaleModel):
             self.datapoint.last_schedule = self.schedule
             self.datapoint.last_schedule_timestamp = self.time
             self.datapoint.save(
-                update_fields=[
-                    "last_schedule",
-                    "last_schedule_timestamp",
-                ]
+                update_fields=["last_schedule", "last_schedule_timestamp"]
             )
 
 
@@ -594,25 +559,20 @@ class DatapointSetpointTemplate(TimescaleModel):
         abstract = True
         constraints = [
             models.UniqueConstraint(
-                fields=['datapoint', 'time'],
-                name='Setpoint msg unique for timestamp',
-            ),
+                fields=["datapoint", "time"], name="Setpoint msg unique for timestamp"
+            )
         ]
 
     datapoint = models.ForeignKey(
         DatapointTemplate,
         on_delete=models.CASCADE,
-        help_text=(
-            "The datapoint that the setpoint message belongs to."
-        )
+        help_text=("The datapoint that the setpoint message belongs to."),
     )
     setpoint = models.JSONField(
         null=False,
         blank=True,
         default=list,
-        help_text=(
-            "A JSON array holding zero or more DatapointSetpointItems."
-        )
+        help_text=("A JSON array holding zero or more DatapointSetpointItems."),
     )
 
     def save(self, *args, **kwargs):
@@ -634,8 +594,5 @@ class DatapointSetpointTemplate(TimescaleModel):
             self.datapoint.last_setpoint = self.setpoint
             self.datapoint.last_setpoint_timestamp = self.time
             self.datapoint.save(
-                update_fields=[
-                    "last_setpoint",
-                    "last_setpoint_timestamp",
-                ]
+                update_fields=["last_setpoint", "last_setpoint_timestamp"]
             )

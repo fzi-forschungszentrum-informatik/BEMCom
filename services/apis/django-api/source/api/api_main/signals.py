@@ -114,7 +114,7 @@ def trigger_create_and_send_controlled_datapoints(sender, instance, **kwargs):
     if sender == Controller:
         controller_id = instance.id
     elif sender == ControlledDatapoint:
-        controller_id=instance.controller.id
+        controller_id = instance.controller.id
 
     ami = ApiMqttIntegration.get_instance()
     if ami is None:
@@ -123,6 +123,4 @@ def trigger_create_and_send_controlled_datapoints(sender, instance, **kwargs):
             "of MqttToDb. ApiMqttIntegration is not running."
         )
         return
-    ami.trigger_create_and_send_controlled_datapoints(
-        controller_id=controller_id
-    )
+    ami.trigger_create_and_send_controlled_datapoints(controller_id=controller_id)

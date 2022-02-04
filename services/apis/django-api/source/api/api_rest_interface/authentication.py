@@ -7,4 +7,5 @@ class TokenAuthenticationBearer(TokenAuthentication):
     Token in the request header, mostly because this is the standard
     implemented in OpenAPI.
     """
+
     keyword = "Bearer"

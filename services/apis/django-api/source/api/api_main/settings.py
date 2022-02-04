@@ -33,10 +33,7 @@ MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT") or 1883)
 N_MTD_WRITE_THREADS = int(os.getenv("N_MTD_WRITE_THREADS") or 1)
 
 # Settings for connection to MQTT broker.
-MQTT_BROKER = {
-    "host": MQTT_BROKER_HOST,
-    "port": MQTT_BROKER_PORT,
-}
+MQTT_BROKER = {"host": MQTT_BROKER_HOST, "port": MQTT_BROKER_PORT}
 
 # ------------------------------------------------------------------------------
 # Here settings that configure Django itself.
@@ -110,9 +107,9 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-            ],
+            ]
         },
-    },
+    }
 ]
 
 ASGI_APPLICATION = "api_main.asgi.application"
@@ -144,7 +141,7 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
-        "simple": {"format": "%(asctime)s-%(name)s-%(levelname)s: %(message)s"},
+        "simple": {"format": "%(asctime)s-%(name)s-%(levelname)s: %(message)s"}
     },
     "handlers": {
         "console": {
@@ -152,10 +149,7 @@ LOGGING = {
             "class": "api_main.loggers.StreamHandlerPlusIPs",
             "formatter": "simple",
         },
-        "prometheus": {
-            "level": "DEBUG",
-            "class": "api_main.loggers.PrometheusHandler",
-        },
+        "prometheus": {"level": "DEBUG", "class": "api_main.loggers.PrometheusHandler"},
     },
     "root": {
         "handlers": ["console", "prometheus"],
@@ -168,15 +162,11 @@ LOGGING = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
     },
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",},
-    {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
-    },
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
 # The default value (1000) prevents us from deleting larger number of items
@@ -229,7 +219,7 @@ REST_FRAMEWORK = {
         "api_rest_interface.authentication.TokenAuthenticationBearer",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
-        "api_rest_interface.permissions.DjangoModelPermissionWithViewRestricted",
+        "api_rest_interface.permissions.DjangoModelPermissionWithViewRestricted"
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
@@ -257,6 +247,6 @@ SPECTACULAR_SETTINGS = {
         "**not** affect the other services of BEMCom in any way, i.e. the "
         "message is **not** deleted on the message broker."
     ),
-    "LICENSE": {"name": "Licensed under MIT",},
+    "LICENSE": {"name": "Licensed under MIT"},
     "VERSION": "0.7.1",
 }
