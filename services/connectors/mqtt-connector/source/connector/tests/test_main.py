@@ -20,6 +20,7 @@ connector_default_kwargs = {
     "RemoteMqttClient": MagicMock(),
 }
 
+
 def apply_environ_defaults():
     """
     Apply sane default values for environment variables for the tests.
@@ -27,22 +28,13 @@ def apply_environ_defaults():
     os.environ["MQTT_BROKER_PORT"] = "1883"
     os.environ["REMOTE_MQTT_BROKER_PORT"] = "1883"
     test_topic_mapping = {
-        "sensor_topics": {
-            "sensor/topic/1": {},
-        },
-        "actuator_topics": {
-            "actuator/topic/1": {
-                "example_value": "22.0"
-            }
-        }
+        "sensor_topics": {"sensor/topic/1": {},},
+        "actuator_topics": {"actuator/topic/1": {"example_value": "22.0"}},
     }
-    os.environ["REMOTE_MQTT_BROKER_TOPIC_MAPPING"] = json.dumps(
-        test_topic_mapping
-    )
+    os.environ["REMOTE_MQTT_BROKER_TOPIC_MAPPING"] = json.dumps(test_topic_mapping)
 
 
 class TestReceiveRawMsg(unittest.TestCase):
-
     def setUp(self):
         apply_environ_defaults()
 
@@ -56,10 +48,7 @@ class TestReceiveRawMsg(unittest.TestCase):
 
         expected_raw_msg = {
             "payload": {
-                "raw_message": {
-                    "topic": "/test/",
-                    "payload": '{"test": "value"}',
-                }
+                "raw_message": {"topic": "/test/", "payload": '{"test": "value"}',}
             }
         }
 
@@ -78,7 +67,6 @@ class TestSendCommand(unittest.TestCase):
 
 
 class TestParseTopicMapping(unittest.TestCase):
-
     def setUp(self):
         apply_environ_defaults()
 
@@ -91,17 +79,11 @@ class TestParseTopicMapping(unittest.TestCase):
             "sensor_topics": {
                 "sensor/topic/1": {},
                 "sensor/topic/with/single/+/wildcard": {},
-                "sensor/topic/with/mulitlevel/wildcard/#": {}
+                "sensor/topic/with/mulitlevel/wildcard/#": {},
             },
-            "actuator_topics": {
-                "actuator/topic/1": {
-                    "example_value": "22.0"
-                }
-            }
+            "actuator_topics": {"actuator/topic/1": {"example_value": "22.0"}},
         }
-        os.environ["REMOTE_MQTT_BROKER_TOPIC_MAPPING"] = json.dumps(
-            test_topic_mapping
-        )
+        os.environ["REMOTE_MQTT_BROKER_TOPIC_MAPPING"] = json.dumps(test_topic_mapping)
         cn = Connector(**connector_default_kwargs)
         actual_topic_mapping = cn.parse_topic_mapping()
 
@@ -124,12 +106,8 @@ class TestParseTopicMapping(unittest.TestCase):
         """
         To prevent typos etc. we always expect this key.
         """
-        test_topic_mapping = {
-            "actuator_topics": {}
-        }
-        os.environ["REMOTE_MQTT_BROKER_TOPIC_MAPPING"] = json.dumps(
-            test_topic_mapping
-        )
+        test_topic_mapping = {"actuator_topics": {}}
+        os.environ["REMOTE_MQTT_BROKER_TOPIC_MAPPING"] = json.dumps(test_topic_mapping)
         with pytest.raises(ValueError):
             # This should already trigger the parsing.
             cn = Connector(**connector_default_kwargs)
@@ -140,12 +118,8 @@ class TestParseTopicMapping(unittest.TestCase):
         """
         To prevent typos etc. we always expect this key.
         """
-        test_topic_mapping = {
-            "sensor_topics": {}
-        }
-        os.environ["REMOTE_MQTT_BROKER_TOPIC_MAPPING"] = json.dumps(
-            test_topic_mapping
-        )
+        test_topic_mapping = {"sensor_topics": {}}
+        os.environ["REMOTE_MQTT_BROKER_TOPIC_MAPPING"] = json.dumps(test_topic_mapping)
         with pytest.raises(ValueError):
             # This should already trigger the parsing.
             cn = Connector(**connector_default_kwargs)
@@ -154,28 +128,21 @@ class TestParseTopicMapping(unittest.TestCase):
 
 
 class TestComputeActuatorDatapoints(unittest.TestCase):
-
     def test_actuator_datapoints_matches_bemcom_format(self):
         """
         Verifies that the output of the compute_actuator_datapoints has the
         the expected content, i.e. that it matches the BEMCom message format.
         """
         test_topic_mapping = {
-            "sensor_topics": {
-                "sensor/topic/1": {},
-            },
+            "sensor_topics": {"sensor/topic/1": {},},
             "actuator_topics": {
-                "actuator/topic/1": {
-                    "example_value": "22.0"
-                },
-                "actuator/topic/2": {
-                    "example_value": "26.0"
-                }
-            }
+                "actuator/topic/1": {"example_value": "22.0"},
+                "actuator/topic/2": {"example_value": "26.0"},
+            },
         }
         expected_actuator_datapoints = {
-            "actuator/topic/1" : "22.0",
-            "actuator/topic/2" : "26.0",
+            "actuator/topic/1": "22.0",
+            "actuator/topic/2": "26.0",
         }
 
         cn = Connector(**connector_default_kwargs)

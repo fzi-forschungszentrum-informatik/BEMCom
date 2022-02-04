@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 """
-__version__="0.5.0"
+__version__ = "0.5.0"
 
 import os
 import json
@@ -119,7 +119,7 @@ class SensorFlow(SFTemplate):
                 # Establish connection to modbus master device.
                 logger.debug(
                     "Connecting to Modbus master %s:%s",
-                    *(self.modbus_master_ip, self.modbus_master_port)
+                    *(self.modbus_master_ip, self.modbus_master_port),
                 )
                 self.modbus_connection = ModbusTcpClient(
                     host=self.modbus_master_ip, port=self.modbus_master_port
@@ -148,7 +148,7 @@ class SensorFlow(SFTemplate):
                             requested_range["address"],
                             requested_range["count"],
                             requested_range["unit"],
-                        )
+                        ),
                     )
                     retry = 0
                     while True:
@@ -157,10 +157,7 @@ class SensorFlow(SFTemplate):
                             count=requested_range["count"],
                             unit=requested_range["unit"],
                         )
-                        if (
-                            isinstance(response, BaseException)
-                            or response.isError()
-                        ):
+                        if isinstance(response, BaseException) or response.isError():
                             # This track here is if the read failed. Then we
                             # wait a bit and retry a few times before we finally
                             #  fail. If we retried to often we raise the
@@ -174,13 +171,11 @@ class SensorFlow(SFTemplate):
                                     requested_range["address"],
                                     self.retry_wait,
                                     str(response),
-                                )
+                                ),
                             )
                             retry += 1
                             if retry >= self.max_retries:
-                                raise RuntimeError(
-                                    "Max number of retries exceeded."
-                                )
+                                raise RuntimeError("Max number of retries exceeded.")
                             sleep(self.retry_wait)
                             continue
                         # Pack the registers/coils into the raw message.
@@ -199,11 +194,7 @@ class SensorFlow(SFTemplate):
                 # This is required so we create a new connection next poll.
                 delattr(self, "modbus_connection")
 
-            msg = {
-                "payload": {
-                    "raw_message": raw_message
-                }
-            }
+            msg = {"payload": {"raw_message": raw_message}}
             return msg
 
     def parse_raw_msg(self, raw_msg):
@@ -275,9 +266,7 @@ class SensorFlow(SFTemplate):
                     # This approach is taken from the pymodbus code, which
                     # does the same but doesn't allow to decode all of the
                     # values at once.
-                    values_b = b''.join(
-                        struct.pack('!H', x) for x in registers
-                    )
+                    values_b = b"".join(struct.pack("!H", x) for x in registers)
                     try:
                         values = struct.unpack(datatypes, values_b)
                     except struct.error:
@@ -288,7 +277,7 @@ class SensorFlow(SFTemplate):
                             "datatypes in MODBUS_CONFIG corresponding to "
                             "a different number of bytes, see struct.error "
                             "below.",
-                            *(len(registers), len(registers)*2)
+                            *(len(registers), len(registers) * 2),
                         )
                         raise
 
@@ -305,8 +294,8 @@ class SensorFlow(SFTemplate):
                 # user would request it.
                 sfs = {}
                 if (
-                    "scaling_factors" in modbus_config_for_method[i] and
-                    "_registers" in read_method_name
+                    "scaling_factors" in modbus_config_for_method[i]
+                    and "_registers" in read_method_name
                 ):
                     sfs = modbus_config_for_method[i]["scaling_factors"]
                 for mba, value in zip(mbas, values):
@@ -398,8 +387,7 @@ class ActuatorFlow(AFTemplate):
         # double check.
         if datapoint_key not in self.write_config_per_datapoint_key:
             logger.warning(
-                "Send command triggered for unknown datapoint_key: %s",
-                datapoint_key
+                "Send command triggered for unknown datapoint_key: %s", datapoint_key
             )
             return
 
@@ -424,22 +412,20 @@ class ActuatorFlow(AFTemplate):
             # As we know that this must be True or False already.
             encoded_value = datapoint_value
             # No special treatment for coils necessary.
-            write_method_kwargs={}
+            write_method_kwargs = {}
         else:
             # OK, this must be a register then.
-            bin = struct.pack(
-                write_config["datatypes"], datapoint_value
-            )
+            bin = struct.pack(write_config["datatypes"], datapoint_value)
             if write_method_name == "write_registers":
                 # However, PyModbus wants to have a list with two bytes
                 # (=1 register) per item.
-                encoded_value = [bin[i:i+2] for i in range(0, len(bin), 2)]
+                encoded_value = [bin[i : i + 2] for i in range(0, len(bin), 2)]
             else:
                 # While the normal write_register takes a single value.
                 encoded_value = bin
             # Tells the write method that it gets binary stuff not registers
             # formatted as unsigned ints.
-            write_method_kwargs={"skip_encode": True}
+            write_method_kwargs = {"skip_encode": True}
 
             # This is an alternative implementation by Hedi.
             # builder = BinaryPayloadBuilder(
@@ -452,13 +438,12 @@ class ActuatorFlow(AFTemplate):
             # builder._payload.append(p_string)
             # values = builder.to_registers()[0]
 
-
         with self.modbus_communication_ongoing:
             if not hasattr(self, "modbus_connection"):
                 # Establish connection to modbus master device.
                 logger.debug(
                     "Connecting to Modbus master %s:%s",
-                    *(self.modbus_master_ip, self.modbus_master_port)
+                    *(self.modbus_master_ip, self.modbus_master_port),
                 )
                 self.modbus_connection = ModbusTcpClient(
                     host=self.modbus_master_ip, port=self.modbus_master_port
@@ -467,13 +452,8 @@ class ActuatorFlow(AFTemplate):
                     raise RuntimeError("Could not connect to Modbus master.")
 
             logger.debug(
-                "Using method %s to push data to address %s with "
-                "for unit %s.",
-                *(
-                    write_method_name,
-                    write_config["address"],
-                    write_config["unit"],
-                )
+                "Using method %s to push data to address %s with " "for unit %s.",
+                *(write_method_name, write_config["address"], write_config["unit"],),
             )
             retry = 0
             while True:
@@ -483,7 +463,7 @@ class ActuatorFlow(AFTemplate):
                     unit=write_config["unit"],
                     **write_method_kwargs,
                 )
-                if (isinstance(response, BaseException) or response.isError()):
+                if isinstance(response, BaseException) or response.isError():
                     # This track here is if the write failed. Then we
                     # wait a bit and retry a few times before we finally
                     #  fail. If we retried to often we raise the
@@ -497,7 +477,7 @@ class ActuatorFlow(AFTemplate):
                             write_config["address"],
                             self.retry_wait,
                             str(response),
-                        )
+                        ),
                     )
                     retry += 1
                     if retry >= self.max_retries:
@@ -506,10 +486,7 @@ class ActuatorFlow(AFTemplate):
                         )
                     sleep(self.retry_wait)
                     continue
-                logger.debug(
-                    "Received response for send_command: %s",
-                    str(response)
-                )
+                logger.debug("Received response for send_command: %s", str(response))
                 break
             # Maybe wait a bit before next request.
             sleep(self.poll_break)
@@ -643,16 +620,14 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
 
         self.modbus_master_ip = os.getenv("MODBUS_MASTER_IP")
         self.modbus_master_port = int(os.getenv("MODBUS_MASTER_PORT"))
-        self.modbus_addresses = self.compute_addresses(
-            modbus_config=self.modbus_config
-        )
-        self.modbus_read_method_names = [
-            k for k in self.modbus_config if "read_" in k
-        ]
+        self.modbus_addresses = self.compute_addresses(modbus_config=self.modbus_config)
+        self.modbus_read_method_names = [k for k in self.modbus_config if "read_" in k]
         self.max_retries = int(os.getenv("MODBUS_MAX_RETRIES") or 3)
         self.retry_wait = int(os.getenv("MODBUS_RETRY_WAIT_SECONDS") or 15)
         self.poll_break = float(os.getenv("MODBUS_POLL_BREAK") or 0)
-        self.disconnect_between_polls = os.getenv("MODBUS_DISCONNECT_BETWEEN_POLLS") == "TRUE"
+        self.disconnect_between_polls = (
+            os.getenv("MODBUS_DISCONNECT_BETWEEN_POLLS") == "TRUE"
+        )
 
         # This lock should prevent that reading and writing operations
         # intervene with each other. Especially if connections are disconnected
@@ -695,7 +670,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
                 logger.warning(
                     "Found unexpected key in MODBUS_CONFIG: %s"
                     "The corresponding values are:\n%s",
-                    *(config_key, json.dumps(config[config_key], indent=2))
+                    *(config_key, json.dumps(config[config_key], indent=2)),
                 )
                 del config[config_key]
 
@@ -711,11 +686,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
                         "implied sending %s registers while write_register "
                         "method can only used to send a single register. "
                         "The respective part of the config is: %s"
-                        % (
-                            datatypes,
-                            data_size // 2,
-                            json.dumps(requested_register)
-                        )
+                        % (datatypes, data_size // 2, json.dumps(requested_register))
                     )
                     logger.error(error_msg)
                     raise ValueError(error_msg)
@@ -752,7 +723,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
                         [
                             modbus_method,
                             str(datapoint_configuration["unit"]),
-                            str(datapoint_configuration["address"])
+                            str(datapoint_configuration["address"]),
                         ]
                     )
                     example_value = datapoint_configuration["example_value"]
@@ -853,7 +824,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
                 for i, requested_range in enumerate(requested_ranges):
                     start = requested_range["address"]
                     count = requested_range["count"]
-                    addresses[method_name][i] = list(range(start, start+count))
+                    addresses[method_name][i] = list(range(start, start + count))
 
         return addresses
 

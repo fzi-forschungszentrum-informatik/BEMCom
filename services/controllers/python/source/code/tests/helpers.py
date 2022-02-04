@@ -20,4 +20,3 @@ class TestClassWithFixtures(unittest.TestCase):
         names = self.fixture_names
         for name in names:
             setattr(self, name, request.getfixturevalue(name))
-

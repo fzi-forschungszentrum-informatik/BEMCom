@@ -4,7 +4,7 @@ broker.
 """
 
 
-class FakeMQTTBroker():
+class FakeMQTTBroker:
     """
     Handles subscriptions to topics and calls the receive_from_broker methods
     of the fake_clients for each msg on a subscribed topic. Does this
@@ -57,8 +57,7 @@ class FakeMQTTBroker():
         """
         if not isinstance(msg.payload, str):
             raise ValueError(
-                'Expected payload as string, got %s instead.' %
-                type(msg.payload)
+                "Expected payload as string, got %s instead." % type(msg.payload)
             )
 
         # Distrubute the message to all subscribed clients.
@@ -71,11 +70,12 @@ class FakeMQTTBroker():
             client_object.receive_from_broker(msg)
 
 
-class FakeMQTTClient():
+class FakeMQTTClient:
     """
     A fake client that behaves similar (at least in the relevant parts)
     like paho.mqtt.client.Client, but requires no real broker for testing.
     """
+
     def __init__(self, fake_broker):
         """
         Init the Client with all setting, especially relevant is setting
@@ -153,9 +153,9 @@ class FakeMQTTClient():
         topics = []
         if isinstance(topic, str):
             topics.append(topic)
-        elif hasattr(topic, '__iter__') and isinstance(topic[0], str):
+        elif hasattr(topic, "__iter__") and isinstance(topic[0], str):
             topics.append(topic[0])
-        elif hasattr(topic, '__iter__'):
+        elif hasattr(topic, "__iter__"):
             for topic_str, qos in topic:
                 topics.append(topic_str)
         for topic_str in topics:
@@ -177,7 +177,7 @@ class FakeMQTTClient():
         topics = []
         if isinstance(topic, str):
             topics.append(topic)
-        elif hasattr(topic, '__iter__'):
+        elif hasattr(topic, "__iter__"):
             for topic_str in topic:
                 topics.append(topic_str)
         for topic_str in topics:
@@ -195,8 +195,9 @@ class FakeMQTTClient():
         Publish message on fake_broker. Similar to paho.mqtt clients method.
         """
         # Set topic and payload as attributes of object.
-        class msg():
+        class msg:
             pass
+
         msg = msg()
         msg.topic = topic
         msg.payload = payload

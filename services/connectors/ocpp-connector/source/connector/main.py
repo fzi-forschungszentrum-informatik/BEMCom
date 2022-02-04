@@ -3,7 +3,7 @@
 """
 """
 
-__version__="0.2.2"
+__version__ = "0.2.2"
 
 import os
 import json
@@ -22,9 +22,10 @@ from pyconnector_template.pyconnector_template import ActuatorFlow as AFTemplate
 from pyconnector_template.pyconnector_template import Connector as CTemplate
 from pyconnector_template.dispatch import DispatchOnce
 
-logger = logging.getLogger('pyconnector')
+logger = logging.getLogger("pyconnector")
 
 logging.getLogger("websockets").propagate = False
+
 
 class SensorFlow(SFTemplate):
     """
@@ -108,11 +109,7 @@ class SensorFlow(SFTemplate):
                     }
                 }
         """
-        msg = {
-            "payload":  {
-                "raw_message": raw_data
-            }
-        }
+        msg = {"payload": {"raw_message": raw_data}}
         return msg
 
     def parse_raw_msg(self, raw_msg):
@@ -166,12 +163,7 @@ class SensorFlow(SFTemplate):
         timestamp = raw_msg["payload"]["timestamp"]
         raw_message = raw_msg["payload"]["raw_message"]
         parsed_message = raw_message
-        msg = {
-            "payload": {
-                "parsed_message": parsed_message,
-                "timestamp": timestamp
-            }
-        }
+        msg = {"payload": {"parsed_message": parsed_message, "timestamp": timestamp}}
         return msg
 
 
@@ -223,10 +215,9 @@ class ActuatorFlow(AFTemplate):
         datapoint_value : string.
             The value that should be sent to the datapoint.
         """
-        if not hasattr(self, 'cp'):
-            logger.warning('Chargepoint is not connected yet. Cannot send command.')
+        if not hasattr(self, "cp"):
+            logger.warning("Chargepoint is not connected yet. Cannot send command.")
             return
-
 
         ocpp_method = datapoint_key.split("__")[0]
         # Call write_method with parsed (aka. decoded)
@@ -234,135 +225,113 @@ class ActuatorFlow(AFTemplate):
         asyncio.run(command_method(datapoint_value))
 
 
-
 class ChargePoint(OCPPChargePoint):
-
     def __init__(self, cp_id, ws, sensor_flow_handler):
         super().__init__(cp_id, ws)
         self.sensor_flow_handler = sensor_flow_handler
 
-    @on('status')
+    @on("status")
     def on_status(self, status):
-        msg = {
-            "status": status
-        }
+        msg = {"status": status}
         self.sensor_flow_handler(msg)
 
-    @on('BootNotification')
+    @on("BootNotification")
     def on_boot_notification(self, charge_point_vendor, charge_point_model, **kwargs):
         message = {
-            "BootNotification" : {
-            "charge_point_vendor": charge_point_vendor,
-            "charge_point_model": charge_point_model
+            "BootNotification": {
+                "charge_point_vendor": charge_point_vendor,
+                "charge_point_model": charge_point_model,
             }
         }
-        logger.debug(f'Charging station sent boot notification. Vendor: {charge_point_vendor}, Model: {charge_point_model}')
+        logger.debug(
+            f"Charging station sent boot notification. Vendor: {charge_point_vendor}, Model: {charge_point_model}"
+        )
         self.sensor_flow_handler(message)
 
         return call_result.BootNotificationPayload(
-            current_time=datetime.utcnow().isoformat(),
-            interval=10,
-            status="Accepted"
+            current_time=datetime.utcnow().isoformat(), interval=10, status="Accepted"
         )
 
-    @on('MeterValues')
+    @on("MeterValues")
     def on_meter_value(self, connector_id, meter_value):
         if type(meter_value) == list:
-            meter_value = meter_value[-1] # if meter values are provided as a list, take only last entry
+            meter_value = meter_value[
+                -1
+            ]  # if meter values are provided as a list, take only last entry
 
-        if 'sampled_value' in meter_value:
-            for m in meter_value['sampled_value']:
-                if 'phase' in m:
-                    msg = {
-                    m['measurand'] : {
-                        m['phase']: {
-                        m['unit'] : m['value']
-                        }
-                    }
-                }
+        if "sampled_value" in meter_value:
+            for m in meter_value["sampled_value"]:
+                if "phase" in m:
+                    msg = {m["measurand"]: {m["phase"]: {m["unit"]: m["value"]}}}
                 else:
-                    msg = {
-                        m['measurand'] : {
-                            m['unit'] : m['value']
-                        }
-                    }
+                    msg = {m["measurand"]: {m["unit"]: m["value"]}}
                 self.sensor_flow_handler(msg)
 
         return call_result.MeterValuesPayload()
 
-    @on('Heartbeat')
+    @on("Heartbeat")
     def on_heartbeat(self):
         self.sensor_flow_handler({"Heartbeat": "alive"})
         return call_result.HeartbeatPayload(
-            current_time=datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S') + "Z"
+            current_time=datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S") + "Z"
         )
 
-    @on('Authorize')
+    @on("Authorize")
     def on_authorize(self, id_tag):
-        return call_result.AuthorizePayload(
-            id_tag_info={
-                "status": 'Accepted'
-            }
-        )
+        return call_result.AuthorizePayload(id_tag_info={"status": "Accepted"})
 
-    @on('StartTransaction')
-    def on_start_transaction(self, connector_id, id_tag, timestamp, meter_start, reservation_id):
+    @on("StartTransaction")
+    def on_start_transaction(
+        self, connector_id, id_tag, timestamp, meter_start, reservation_id
+    ):
         return call_result.StartTransactionPayload(
-            id_tag_info={
-                "status": 'Accepted'
-            },
-            transaction_id=int(1)
+            id_tag_info={"status": "Accepted"}, transaction_id=int(1)
         )
 
-    @on('StopTransaction')
+    @on("StopTransaction")
     def on_stop_transaction(self, transaction_id, id_tag, timestamp, meter_stop):
         return call_result.StopTransactionPayload()
 
-    @on('StatusNotification')
+    @on("StatusNotification")
     def on_status_notification(self, connector_id, error_code, status, timestamp):
         message = {
             "StatusNotification": {
-            "connector_id": connector_id,
-            "error_code": error_code,
-            "status": status
+                "connector_id": connector_id,
+                "error_code": error_code,
+                "status": status,
             }
         }
         self.sensor_flow_handler(message)
 
         return call_result.StatusNotificationPayload()
 
-    @on('LogStatusNotification')
+    @on("LogStatusNotification")
     def on_log_status_notification(self, status, request_id, **kwargs):
         pass
 
-    @on('CompositeSchedule')
+    @on("CompositeSchedule")
     def on_composeite_schedule(self, status, schedule_start, charging_schedule):
         message = {
             "CompositeSchedule": {
                 "status": status,
                 "schedule_start": schedule_start,
-                "charging_schedule": charging_schedule
+                "charging_schedule": charging_schedule,
             }
         }
         self.sensor_flow_handler(message)
-        return call_result.GetCompositeSchedulePayload(status='Accepted')
+        return call_result.GetCompositeSchedulePayload(status="Accepted")
 
     async def execute_unlock_connector(self):
-        request = call.UnlockConnectorPayload(
-            connector_id=1
-        )
+        request = call.UnlockConnectorPayload(connector_id=1)
         loop = asyncio.get_event_loop()
         task = loop.create_task(self.call(request))
 
     async def execute_get_composite_schedule(self):
         request = call.GetCompositeSchedulePayload(
-            connector_id=1,
-            duration=5,
-            charging_rate_unit="W"
+            connector_id=1, duration=5, charging_rate_unit="W"
         )
         loop = asyncio.get_event_loop()
         task = loop.create_task(self.call(request))
-
 
     async def execute_trigger_message(self, value=4):
         switcher = {
@@ -371,40 +340,34 @@ class ChargePoint(OCPPChargePoint):
             2: "FirmwareStatusNotification",
             3: "Heartbeat",
             4: "MeterValues",
-            5: "StatusNotification"
+            5: "StatusNotification",
         }
         requested_message = switcher[value]
 
         if value not in switcher:
-            logger.error(f'Requested trigger is not a valid ocpp message trigger.')
+            logger.error(f"Requested trigger is not a valid ocpp message trigger.")
             return
 
         request = call.TriggerMessagePayload(
-            requested_message=requested_message,
-            connector_id=1
+            requested_message=requested_message, connector_id=1
         )
         loop = asyncio.get_event_loop()
         task = loop.create_task(self.call(request))
 
-
     async def execute_send_charging_profile(self, value):
         charging_profile = {
-            "chargingProfileId":int(time.time()),
-            "stackLevel":0,
+            "chargingProfileId": int(time.time()),
+            "stackLevel": 0,
             "chargingProfilePurpose": "TxDefaultProfile",
             "chargingProfileKind": "Relative",
             "chargingSchedule": {
-            'chargingRateUnit':'W',
-            'chargingSchedulePeriod':  [
-                {
-                'startPeriod': 0,
-                'limit':float(value)
-                },
-                ]
-
-        }}
+                "chargingRateUnit": "W",
+                "chargingSchedulePeriod": [{"startPeriod": 0, "limit": float(value)},],
+            },
+        }
         request = call.SetChargingProfilePayload(
-            connector_id=1, cs_charging_profiles=charging_profile)
+            connector_id=1, cs_charging_profiles=charging_profile
+        )
 
         loop = asyncio.get_event_loop()
         task = loop.create_task(self.call(request))
@@ -477,7 +440,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
     """
 
     def __init__(self, *args, **kwargs):
-        logger.debug('Connector init starts')
+        logger.debug("Connector init starts")
 
         load_dotenv(find_dotenv(), verbose=True, override=False)
         self.ocpp_port = os.getenv("OCPP_PORT")
@@ -499,7 +462,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         # be specified here.
         kwargs["available_datapoints"] = {
             "sensor": {},
-            "actuator": self.compute_actuator_datapoints()
+            "actuator": self.compute_actuator_datapoints(),
         }
 
         CTemplate.__init__(self, *args, **kwargs)
@@ -517,16 +480,12 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         return actuator_temp
 
     def sync_wrapper_run_ocpp_server(self):
-        logger.info('Starting OCPP Server')
+        logger.info("Starting OCPP Server")
         asyncio.run(self.run_ocpp_server())
-
 
     async def run_ocpp_server(self):
         self.server = await websockets.serve(
-            self.on_connect,
-            '0.0.0.0',
-            self.ocpp_port,
-            subprotocols=['ocpp1.6']
+            self.on_connect, "0.0.0.0", self.ocpp_port, subprotocols=["ocpp1.6"]
         )
         logging.info("Server started successfully")
 
@@ -537,17 +496,17 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         """ For every new charge point that connects, create a ChargePoint instance
         and start listening for messages.
         """
-        charge_point_id = path.strip('/')
-        self.cp = ChargePoint(charge_point_id, websocket, sensor_flow_handler=self.run_sensor_flow)
-        logger.info(f'Chargepoint connected. ID: {charge_point_id}')
+        charge_point_id = path.strip("/")
+        self.cp = ChargePoint(
+            charge_point_id, websocket, sensor_flow_handler=self.run_sensor_flow
+        )
+        logger.info(f"Chargepoint connected. ID: {charge_point_id}")
 
         await self.cp.start()
 
-
     def close_server(self):
         logger.info("Closing ocpp server")
-        future = asyncio.run_coroutine_threadsafe(
-            self.server.close(), self.loop_server)
+        future = asyncio.run_coroutine_threadsafe(self.server.close(), self.loop_server)
         result = future.result()
 
 

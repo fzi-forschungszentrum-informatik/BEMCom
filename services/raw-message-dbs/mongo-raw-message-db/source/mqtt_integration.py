@@ -11,6 +11,8 @@ from paho.mqtt.client import Client
 # Trigger graceful shutdown on docker container stop
 def call_sysexit(signal, frame):
     raise SystemExit()
+
+
 signal.signal(signal.SIGTERM, call_sysexit)
 
 
@@ -36,7 +38,7 @@ elif MQTT_INTEGRATION_LOG_LEVEL == "ERROR":
 elif MQTT_INTEGRATION_LOG_LEVEL == "CRITICAL":
     LOGLEVEL = 50
 
-log_format =  "%(asctime)s MQTT-Integration %(name)s %(levelname)s %(message)s"
+log_format = "%(asctime)s MQTT-Integration %(name)s %(levelname)s %(message)s"
 logging.basicConfig(level=LOGLEVEL, format=log_format)
 logger = logging.getLogger(__name__)
 
@@ -44,50 +46,49 @@ logger = logging.getLogger(__name__)
 logger.info("Starting up monog-raw-message-db MQTT integration")
 
 # Connect ot MongoDb, handle potentially given usernames and passwords.
-logger.info('Initiating mongodb client')
+logger.info("Initiating mongodb client")
+
 
 def create_mongo_host_str(username, password, host, port, login_db):
     """
     Build host str, add username and password only if set.
     The full template looks like this: 'mongodb://%s:%s@%s:%s'
     """
-    mongo_host_str = 'mongodb://'
+    mongo_host_str = "mongodb://"
     if username:
-        mongo_host_str += '%s' % quote_plus(username)
+        mongo_host_str += "%s" % quote_plus(username)
         if password:
-            mongo_host_str += ':%s' % quote_plus(password)
-        mongo_host_str += '@'
+            mongo_host_str += ":%s" % quote_plus(password)
+        mongo_host_str += "@"
 
-    mongo_host_str += '%s:%s' % (
-        host,
-        port,
-    )
+    mongo_host_str += "%s:%s" % (host, port,)
     if login_db:
-        mongo_host_str += '/?authSource=%s' % quote_plus(login_db)
+        mongo_host_str += "/?authSource=%s" % quote_plus(login_db)
     return mongo_host_str
+
 
 mongo_host_str = create_mongo_host_str(
     username=MONGO_USERNAME,
     password=MONGO_PASSWORD,
     host=MONGO_HOST,
     port=MONGO_PORT,
-    login_db=MONGO_LOGIN_DB
+    login_db=MONGO_LOGIN_DB,
 )
 
 # Create a version without password for the log.
 password_blinded = MONGO_PASSWORD
 if password_blinded:
-    password_blinded = 'x'*10
+    password_blinded = "x" * 10
 mongo_host_str_blinded = create_mongo_host_str(
     username=MONGO_USERNAME,
     password=password_blinded,
     host=MONGO_HOST,
     port=MONGO_PORT,
-    login_db=MONGO_LOGIN_DB
+    login_db=MONGO_LOGIN_DB,
 )
-logger.debug('Connecting to MongoDB: %s', mongo_host_str_blinded)
+logger.debug("Connecting to MongoDB: %s", mongo_host_str_blinded)
 mc = MongoClient(mongo_host_str)
-logger.info('Connected to MongoDB: %s', mongo_host_str_blinded)
+logger.info("Connected to MongoDB: %s", mongo_host_str_blinded)
 
 if "bemcom_db" not in mc.list_database_names():
     # This should only happen while starting the container, else there
@@ -98,11 +99,12 @@ bemcom_db = mc["bemcom_db"]
 # Define the Callbacks for the MQTT client.nt.
 def on_connect(client, userdata, flags, rc):
     logger.info(
-        'Connected to MQTT broker tcp://%s:%s',
-        userdata['connect_kwargs']['host'],
-        userdata['connect_kwargs']['port'],
+        "Connected to MQTT broker tcp://%s:%s",
+        userdata["connect_kwargs"]["host"],
+        userdata["connect_kwargs"]["port"],
     )
     client.subscribe(MQTT_TOPIC_ALL_RAW_MESSAGES, qos=2)
+
 
 def on_disconnect(client, userdata, rc):
     """
@@ -110,18 +112,15 @@ def on_disconnect(client, userdata, rc):
     client.disconnect().
     """
     if rc != 0:
-        logger.info(
-            'Lost connection to MQTT broker with code %s. Reconnecting',
-            rc
-        )
+        logger.info("Lost connection to MQTT broker with code %s. Reconnecting", rc)
+
 
 def on_message(client, userdata, msg):
     """
     Write incoming message to MongoDB
     """
     logger.debug(
-        "Recieved msg on topic \"%s\" with payload:\n%s",
-        *(msg.topic, msg.payload)
+        'Recieved msg on topic "%s" with payload:\n%s', *(msg.topic, msg.payload)
     )
 
     # Use connector name as collection to keep messages sorted
@@ -133,9 +132,8 @@ def on_message(client, userdata, msg):
     collection = bemcom_db[connector_name]
     collection.insert_one(json.loads(msg.payload))
 
-    logger.debug(
-        "Wrote message for topic \"%s\" to DB.", msg.topic
-    )
+    logger.debug('Wrote message for topic "%s" to DB.', msg.topic)
+
 
 logger.info("Connecting to MQTT broker")
 # MQTT broker settings, used for inital connect and reconnect.

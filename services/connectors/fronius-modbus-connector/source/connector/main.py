@@ -3,7 +3,7 @@
 """
 """
 
-__version__="0.1.0"
+__version__ = "0.1.0"
 
 import os
 import json
@@ -165,8 +165,7 @@ class SensorFlow(SFTemplate):
                         )
                         retry += 1
                         if retry >= self.max_retries:
-                            raise RuntimeError(
-                                "Max number of retries exceeded.")
+                            raise RuntimeError("Max number of retries exceeded.")
                         sleep(self.retry_wait)
                         continue
                     # Pack the registers/coils into the raw message.
@@ -184,11 +183,7 @@ class SensorFlow(SFTemplate):
             # This is required so we create a new connection next poll.
             delattr(self, "modbus_connection")
 
-        msg = {
-            "payload": {
-                "raw_message": raw_message
-            }
-        }
+        msg = {"payload": {"raw_message": raw_message}}
         return msg
 
     def parse_raw_msg(self, raw_msg):
@@ -260,8 +255,7 @@ class SensorFlow(SFTemplate):
                     # This approach is taken from the pymodbus code, which
                     # does the same but doesn't allow to decode all of the
                     # values at once.
-                    values_b = b''.join(struct.pack('!H', x)
-                                        for x in registers)
+                    values_b = b"".join(struct.pack("!H", x) for x in registers)
                     try:
                         values = struct.unpack(datatypes, values_b)
                     except struct.error:
@@ -272,7 +266,7 @@ class SensorFlow(SFTemplate):
                             "datatypes in MODBUS_CONFIG corresponding to "
                             "a different number of bytes, see struct.error "
                             "below.",
-                            *(len(registers), len(registers)*2)
+                            *(len(registers), len(registers) * 2)
                         )
                         raise
 
@@ -292,8 +286,8 @@ class SensorFlow(SFTemplate):
                 # user would request it.
                 sfs = {}
                 if (
-                    "scaling_factors" in modbus_config_for_method[i] and
-                    "_registers" in read_method_name
+                    "scaling_factors" in modbus_config_for_method[i]
+                    and "_registers" in read_method_name
                 ):
                     sfs = modbus_config_for_method[i]["scaling_factors"]
                 for mba, value in zip(mbas, values):
@@ -388,64 +382,67 @@ class ActuatorFlow(AFTemplate):
         modbus_reg = int(datapoint_key.split("__")[1])
         modbus_unit = int(datapoint_key.split("__")[2])
         if "register" in modbus_method:
-            modbus_datatype = self.method_range[modbus_method][str(modbus_reg)]["datatypes"]
-            modbus_scaling_factor = self.method_range[modbus_method][str(modbus_reg)]["scaling_factor"]
+            modbus_datatype = self.method_range[modbus_method][str(modbus_reg)][
+                "datatypes"
+            ]
+            modbus_scaling_factor = self.method_range[modbus_method][str(modbus_reg)][
+                "scaling_factor"
+            ]
         # Apply scaling_factor if provided.
         # Parse datatype for resgisters and pack value as binary.
         # Parse coil values ("0" and "1") as Bools (True/False)
         if "coil" in modbus_method:
             values = False if int(datapoint_value) == 0 else True
         else:
-            builder = BinaryPayloadBuilder(byteorder=modbus_datatype[0], wordorder=Endian.Big)
+            builder = BinaryPayloadBuilder(
+                byteorder=modbus_datatype[0], wordorder=Endian.Big
+            )
             builder.reset()
-            p_string = builder._pack_words(modbus_datatype[1:], fast_real(datapoint_value)*modbus_scaling_factor)
+            p_string = builder._pack_words(
+                modbus_datatype[1:], fast_real(datapoint_value) * modbus_scaling_factor
+            )
             builder._payload.append(p_string)
             values = builder.to_registers()[0]
 
         # Call write_method with parsed (aka. decoded)
         write_method = getattr(self.modbus_connection, modbus_method)
         try:
-            response = write_method(
-                address=modbus_reg,
-                value=values,
-                unit=modbus_unit,
-            )
+            response = write_method(address=modbus_reg, value=values, unit=modbus_unit,)
             logger.debug(
-            "Sent %s to register %s in unit %s",
-            *(values, modbus_reg, modbus_unit )
-            )   
+                "Sent %s to register %s in unit %s", *(values, modbus_reg, modbus_unit)
+            )
             logger.debug("Received response for send_command: %s", response)
 
-
-            register_wmaxlim_pct_env = os.getenv('MODBUS_W_MAX_LIM_PCT')
+            register_wmaxlim_pct_env = os.getenv("MODBUS_W_MAX_LIM_PCT")
             if register_wmaxlim_pct_env:
                 register_wmaxlimpct = int(register_wmaxlim_pct_env)
             else:
                 register_wmaxlimpct = 40242
 
-            register_wmaxlim_ena_env = os.getenv('MODBUS_W_MAX_LIM_ENA')
+            register_wmaxlim_ena_env = os.getenv("MODBUS_W_MAX_LIM_ENA")
             if register_wmaxlim_ena_env:
                 register_wmaxlim_ena = int(register_wmaxlim_ena_env)
             else:
                 register_wmaxlim_ena = 40246
 
-
             if modbus_reg == register_wmaxlimpct:
-                logger.info("Power limit to change (WMaxLimPct). Writing additional register WMaxLim_Ena to ensure power control via Modbus is enabled.")
-                builder = BinaryPayloadBuilder(byteorder=modbus_datatype[0], wordorder=Endian.Big)
+                logger.info(
+                    "Power limit to change (WMaxLimPct). Writing additional register WMaxLim_Ena to ensure power control via Modbus is enabled."
+                )
+                builder = BinaryPayloadBuilder(
+                    byteorder=modbus_datatype[0], wordorder=Endian.Big
+                )
                 builder.reset()
                 p_string = builder._pack_words(modbus_datatype[1:], 1)
                 builder._payload.append(p_string)
                 values = builder.to_registers()[0]
                 response = write_method(
-                    address=register_wmaxlim_ena,
-                    value=values,
-                    unit=modbus_unit,
+                    address=register_wmaxlim_ena, value=values, unit=modbus_unit,
                 )
                 logger.debug(
-                "Sent %s to register %s in unit %s",
-                *(values, modbus_reg, modbus_unit )
-                )   
+                    "Sent %s to register %s in unit %s",
+                    *(values, modbus_reg, modbus_unit)
+                )
                 logger.debug("Received response for send_command: %s", response)
 
         finally:
@@ -554,12 +551,8 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         self.modbus_config = self.parse_modbus_config(
             config_json_str=os.getenv("MODBUS_CONFIG")
         )
-        self.modbus_addresses = self.compute_addresses(
-            modbus_config=self.modbus_config
-        )
-        self.modbus_read_method_names = [
-            k for k in self.modbus_config if "read_" in k
-        ]
+        self.modbus_addresses = self.compute_addresses(modbus_config=self.modbus_config)
+        self.modbus_read_method_names = [k for k in self.modbus_config if "read_" in k]
         # add write methods to connector
         self.modbus_write_method_names = [
             k for k in self.modbus_config if "write_" in k
@@ -567,11 +560,10 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         self.method_range = self.compute_method_ranges()
         kwargs["available_datapoints"] = {
             "sensor": {},
-            "actuator": self.compute_actuator_datapoints()
+            "actuator": self.compute_actuator_datapoints(),
         }
         CTemplate.__init__(self, *args, **kwargs)
 
-        
         self.max_retries = int(os.getenv("MODBUS_MAX_RETRIES") or 3)
         self.retry_wait = int(os.getenv("MODBUS_RETRY_WAIT_SECONDS") or 15)
         self.poll_break = float(os.getenv("MODBUS_POLL_BREAK") or 0)
@@ -584,37 +576,51 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         for write_method in self.modbus_write_method_names:
             for requested_range in self.modbus_config[write_method]:
                 if "_coil" in write_method:
-                    datapoint = write_method + "__" + \
-                        str(requested_range["address"]) + \
-                        "__" + str(requested_range["unit"])
+                    datapoint = (
+                        write_method
+                        + "__"
+                        + str(requested_range["address"])
+                        + "__"
+                        + str(requested_range["unit"])
+                    )
                     actuator_temp.update({datapoint: "0"})
 
                 elif "_register" in write_method:
-                    datapoint = write_method + "__" + \
-                        str(requested_range["address"]) + "__" + str(requested_range["unit"]) 
+                    datapoint = (
+                        write_method
+                        + "__"
+                        + str(requested_range["address"])
+                        + "__"
+                        + str(requested_range["unit"])
+                    )
                     actuator_temp.update({datapoint: "0"})
         return actuator_temp
-        
+
     def compute_method_ranges(self):
         method_range_temp = {}
         for write_method in self.modbus_write_method_names:
             method_range_temp.update({write_method: {}})
             for requested_range in self.modbus_config[write_method]:
                 if "_register" in write_method:
-                    method_range_temp[write_method].update({str(requested_range["address"]): {}})
-                    method_range_temp[write_method][str(requested_range["address"])].update(
-                        {   "unit": requested_range["unit"],
+                    method_range_temp[write_method].update(
+                        {str(requested_range["address"]): {}}
+                    )
+                    method_range_temp[write_method][
+                        str(requested_range["address"])
+                    ].update(
+                        {
+                            "unit": requested_range["unit"],
                             "scaling_factor": requested_range["scaling_factor"],
-                            "datatypes": requested_range["datatypes"] 
+                            "datatypes": requested_range["datatypes"],
                         }
-                    )   
+                    )
                 elif "_coil" in write_method:
-                    method_range_temp[write_method].update({str(requested_range["address"]): {}})
-                    method_range_temp[write_method][str(requested_range["address"])].update(
-                        {   
-                            "unit": requested_range["unit"]
-                        }
-                    ) 
+                    method_range_temp[write_method].update(
+                        {str(requested_range["address"]): {}}
+                    )
+                    method_range_temp[write_method][
+                        str(requested_range["address"])
+                    ].update({"unit": requested_range["unit"]})
         return method_range_temp
 
     @staticmethod
@@ -642,7 +648,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
             "read_holding_registers",
             "read_input_registers",
             "write_register",
-            "write_coil"
+            "write_coil",
         ]
 
         config = json.loads(config_json_str)
@@ -675,7 +681,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
             "read_coils",
             "read_discrete_inputs",
             "read_holding_registers",
-            "read_input_registers"
+            "read_input_registers",
         ]
 
         # These is the mapping from the struct keys to the Modbus
@@ -710,8 +716,8 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
 
             if "register" in method_name:
                 for i, requested_range in enumerate(requested_ranges):
-                     # The first value starts at the start of the
-                     # address range.
+                    # The first value starts at the start of the
+                    # address range.
                     range_addresses = []
                     current_address = requested_range["address"]
                     for datatype_char in requested_range["datatypes"]:
@@ -736,7 +742,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
                 for i, requested_range in enumerate(requested_ranges):
                     start = requested_range["address"]
                     count = requested_range["count"]
-                    addresses[method_name][i] = list(range(start, start+count))
+                    addresses[method_name][i] = list(range(start, start + count))
 
         return addresses
 

@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format=log_format)
 
+
 def timestamp_now():
     """
     Computes the current timestamp in ms since epoch (UTC).
@@ -40,6 +41,7 @@ def sort_schedule_setpoint_items(items):
     to_timestamp = None is the last of the ones with from_timestamp = None, as
     we exepct that this item is then ment to be executed.
     """
+
     def sort_key(item):
         """
         Inspred by:
@@ -48,15 +50,21 @@ def sort_schedule_setpoint_items(items):
         return (
             item["from_timestamp"] is not None,
             item["to_timestamp"] is None,
-            item["from_timestamp"]
+            item["from_timestamp"],
         )
+
     return sorted(items, key=sort_key)
 
 
-class Controller():
-
-    def __init__(self, mqtt_broker_host, mqtt_broker_port, mqtt_config_topic,
-                 mqtt_client=Client, timestamp_now=timestamp_now):
+class Controller:
+    def __init__(
+        self,
+        mqtt_broker_host,
+        mqtt_broker_port,
+        mqtt_config_topic,
+        mqtt_client=Client,
+        timestamp_now=timestamp_now,
+    ):
         """
         Arguments:
         ----------
@@ -115,9 +123,9 @@ class Controller():
     @staticmethod
     def on_connect(client, userdata, flags, rc):
         logger.info(
-            'Connected to MQTT broker tcp://%s:%s',
-            userdata['connect_kwargs']['host'],
-            userdata['connect_kwargs']['port'],
+            "Connected to MQTT broker tcp://%s:%s",
+            userdata["connect_kwargs"]["host"],
+            userdata["connect_kwargs"]["port"],
         )
 
     @staticmethod
@@ -127,11 +135,8 @@ class Controller():
         client.disconnect().
         """
         if rc != 0:
-            logger.info(
-                'Lost connection to MQTT broker with code %s. Reconnecting',
-                rc
-            )
-            client.connect(**userdata['connect_kwargs'])
+            logger.info("Lost connection to MQTT broker with code %s. Reconnecting", rc)
+            client.connect(**userdata["connect_kwargs"])
 
     @staticmethod
     def on_message(client, userdata, msg):
@@ -222,9 +227,7 @@ class Controller():
             # Sensor values are applied immediately.
             if _type == "sensor_value":
                 self.update_current_value(
-                    _id=_id,
-                    _type=_type,
-                    payload=json.loads(msg.payload)["value"]
+                    _id=_id, _type=_type, payload=json.loads(msg.payload)["value"]
                 )
                 return
             # For setpoints and schedules the items are paresed and new timers
@@ -253,20 +256,16 @@ class Controller():
                     continue
                 # if from_timestamp now is None (convention for execute ASAP)
                 # or in the past, exectue immediately
-                if (from_timestamp is None or from_timestamp <= timestamp_now):
-                    self.update_current_value(
-                        _id=_id,
-                        _type=_type,
-                        payload=item
-                    )
+                if from_timestamp is None or from_timestamp <= timestamp_now:
+                    self.update_current_value(_id=_id, _type=_type, payload=item)
                 # from_timestamp is in the future
                 else:
                     # Start up a timer instance that delays the call to
                     # update_current_value until the time has come.
                     # Also store the timer object so we can cancel it if new
                     # data arrives.
-                    delay_ms = (from_timestamp - timestamp_now)
-                    delay_s = delay_ms / 1000.
+                    delay_ms = from_timestamp - timestamp_now
+                    delay_s = delay_ms / 1000.0
                     timer_kwargs = {
                         "_id": _id,
                         "_type": _type,
@@ -275,7 +274,7 @@ class Controller():
                     timer = Timer(
                         interval=delay_s,
                         function=self.update_current_value,
-                        kwargs=timer_kwargs
+                        kwargs=timer_kwargs,
                     )
                     timer.start()
                     self.add_timer(msg.topic, timer)
@@ -290,8 +289,10 @@ class Controller():
                 i = items.index(item)
                 ignore_to_timesamp = False
                 for following_item in items[i:]:
-                    if (following_item["from_timestamp"] is None or
-                            following_item["from_timestamp"] <= to_timestamp):
+                    if (
+                        following_item["from_timestamp"] is None
+                        or following_item["from_timestamp"] <= to_timestamp
+                    ):
                         ignore_to_timesamp = True
                         break
                 if ignore_to_timesamp:
@@ -312,15 +313,11 @@ class Controller():
                         "max_value": None,
                     }
                 elif _type == "actuator_schedule":
-                    kwargs = {
-                        "value": None
-                    }
-                delay_ms = (to_timestamp - timestamp_now)
-                delay_s = delay_ms / 1000.
+                    kwargs = {"value": None}
+                delay_ms = to_timestamp - timestamp_now
+                delay_s = delay_ms / 1000.0
                 timer = Timer(
-                    interval=delay_s,
-                    function=self.update_current_value,
-                    kwargs=kwargs
+                    interval=delay_s, function=self.update_current_value, kwargs=kwargs
                 )
 
         except Exception:
@@ -407,7 +404,7 @@ class Controller():
             if "acceptable_values" in csp:
                 current_acceptable_values = csp["acceptable_values"]
                 discrete_flexibility = True
-            if ("min_value" in csp and "max_value" in csp):
+            if "min_value" in csp and "max_value" in csp:
                 current_min_value = csp["min_value"]
                 current_max_value = csp["max_value"]
                 continuous_flexibilty = True
@@ -477,16 +474,15 @@ class Controller():
 
         # Compare actuator value with last value sent, and send an update
         # if the value has changed.
-        if ("actuator_value" not in self.current_values[_id] or
-                actuator_value != self.current_values[_id]["actuator_value"]):
+        if (
+            "actuator_value" not in self.current_values[_id]
+            or actuator_value != self.current_values[_id]["actuator_value"]
+        ):
             actuator_value_msg = {
                 "value": actuator_value,
-                "timestamp": self.timestamp_now()
+                "timestamp": self.timestamp_now(),
             }
-            self.client.publish(
-                actuator_value_topic,
-                json.dumps(actuator_value_msg)
-            )
+            self.client.publish(actuator_value_topic, json.dumps(actuator_value_msg))
             self.current_values[_id]["actuator_value"] = actuator_value
 
     def add_timer(self, topic, timer):
@@ -526,12 +522,12 @@ if __name__ == "__main__":
     # variables. While developing it should read the .env file located
     # in ../../
     load_dotenv(find_dotenv(), verbose=True)
-    mqtt_broker_host = os.getenv('MQTT_BROKER_HOST')
-    mqtt_broker_port = os.getenv('MQTT_BROKER_PORT')
-    mqtt_config_topic = os.getenv('MQTT_TOPIC_CONTROLLED_DATAPOINTS')
+    mqtt_broker_host = os.getenv("MQTT_BROKER_HOST")
+    mqtt_broker_port = os.getenv("MQTT_BROKER_PORT")
+    mqtt_config_topic = os.getenv("MQTT_TOPIC_CONTROLLED_DATAPOINTS")
 
     controller = Controller(
         mqtt_broker_host=mqtt_broker_host,
         mqtt_broker_port=mqtt_broker_port,
-        mqtt_config_topic=mqtt_config_topic
+        mqtt_config_topic=mqtt_config_topic,
     )

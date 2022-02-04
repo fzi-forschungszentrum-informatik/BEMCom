@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 """
-__version__="0.4.0"
+__version__ = "0.4.0"
 
 import os
 import json
@@ -141,8 +141,7 @@ class SensorFlow(SFTemplate):
                 raw_message[p30_name] = {}
                 for request in ["report 1", "report 2", "report 3"]:
                     self.keba_socket.sendto(
-                        request.encode(),
-                        (p30_ip_addr_or_net_name, 7090)
+                        request.encode(), (p30_ip_addr_or_net_name, 7090)
                     )
                     # Some events like setting ena will trigger the charge
                     # station to automatically send some messages.
@@ -151,10 +150,7 @@ class SensorFlow(SFTemplate):
                         response = self.keba_socket.recv(4096)
                         if b"ID" in response:
                             break
-                        logger.debug(
-                            "Skipping non report response: %s",
-                            response
-                            )
+                        logger.debug("Skipping non report response: %s", response)
                         if i >= 20:
                             raise RuntimeError(
                                 "Received to many non-report responses from "
@@ -162,8 +158,7 @@ class SensorFlow(SFTemplate):
                             )
 
                     logger.debug(
-                        "Request %s yielded response:\n%s",
-                        *(request, response)
+                        "Request %s yielded response:\n%s", *(request, response)
                     )
                     if isinstance(response, bytes):
                         response = response.decode()
@@ -173,10 +168,7 @@ class SensorFlow(SFTemplate):
             except socket.timeout:
                 # This might recover later if the charge station is offline
                 # or network errors have occured.
-                logger.warning(
-                    "No data received from P30 charge station %s.",
-                    p30_name
-                )
+                logger.warning("No data received from P30 charge station %s.", p30_name)
                 continue
 
             except socket.gaierror:
@@ -184,16 +176,12 @@ class SensorFlow(SFTemplate):
                 logging.error(
                     "Failed to send data to P30 charge station %s. "
                     "Is the network name or ip (%s) correct?"
-                    *(p30_name, p30_ip_addr_or_net_name)
+                    * (p30_name, p30_ip_addr_or_net_name)
                 )
                 raise
             p30_lock.release()
 
-        msg = {
-            "payload": {
-                "raw_message": raw_message
-            }
-        }
+        msg = {"payload": {"raw_message": raw_message}}
         return msg
 
     def parse_raw_msg(self, raw_msg):
@@ -247,10 +235,7 @@ class SensorFlow(SFTemplate):
         raw_message = raw_msg["payload"]["raw_message"]
         parsed_message = {}
         for p30_name in raw_message:
-            logger.debug(
-                "Parsing raw data for P30 charge station %s.",
-                p30_name
-            )
+            logger.debug("Parsing raw data for P30 charge station %s.", p30_name)
             parsed_message[p30_name] = {}
             for report in raw_message[p30_name]:
                 parsed_report = raw_message[p30_name][report]
@@ -335,13 +320,8 @@ class ActuatorFlow(AFTemplate):
         try:
             keba_command = datapoint_key.split("__")[1]
             keba_payload = (keba_command + " " + datapoint_value).encode()
-            self.keba_socket.sendto(
-                keba_payload, (p30_ip_addr_or_net_name, 7090)
-            )
-            logger.debug(
-                "Sent %s to %s",
-                *(keba_payload, p30_ip_addr_or_net_name)
-            )
+            self.keba_socket.sendto(keba_payload, (p30_ip_addr_or_net_name, 7090))
+            logger.debug("Sent %s to %s", *(keba_payload, p30_ip_addr_or_net_name))
             response = self.keba_socket.recv(4096)
             logger.debug("Received response for send_command: %s", response)
             # Prevent parallel communication until the required delay is over.
@@ -464,9 +444,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         # KEBA_P30_CHARGE_STATIONS
         kwargs["available_datapoints"] = {
             "sensor": {},
-            "actuator": self.compute_actuator_datapoints(
-                self.keba_p30_charge_stations
-            ),
+            "actuator": self.compute_actuator_datapoints(self.keba_p30_charge_stations),
         }
         CTemplate.__init__(self, *args, **kwargs)
 

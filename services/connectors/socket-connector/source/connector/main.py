@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 """
-__version__="0.4.0"
+__version__ = "0.4.0"
 
 import os
 import json
@@ -175,12 +175,7 @@ class SensorFlow(SFTemplate):
         elif self.parse_as == "YAML":
             parsed_message = yaml.safe_load(decoded_raw_message)
 
-        msg = {
-            "payload": {
-                "parsed_message": parsed_message,
-                "timestamp": timestamp
-            }
-        }
+        msg = {"payload": {"parsed_message": parsed_message, "timestamp": timestamp}}
         return msg
 
 
@@ -341,10 +336,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         # once they are first appear in run_sensor_flow method. It is thus not
         # necessary to specify them here. actuator datapoints in contrast must
         # be specified here.
-        kwargs["available_datapoints"] = {
-            "sensor": {},
-            "actuator": {}
-        }
+        kwargs["available_datapoints"] = {"sensor": {}, "actuator": {}}
         CTemplate.__init__(self, *args, **kwargs)
 
         self.custom_env_var = os.getenv("CUSTOM_ENV_VARR") or "default_value"
@@ -359,10 +351,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         see Readme.md
         """
         logger.info("Connecting to device %s:%s", *(server_ip, server_port))
-        self.socket = socket.socket(
-            family=socket.AF_INET,
-            type=socket.SOCK_STREAM
-        )
+        self.socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
         self.socket.connect((server_ip, server_port))
         while True:
             raw_data = self.socket.recv(recv_bufsize)

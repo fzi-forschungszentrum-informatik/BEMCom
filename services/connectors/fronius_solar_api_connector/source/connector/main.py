@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 """
-__version__="0.4.0"
+__version__ = "0.4.0"
 
 import os
 import json
@@ -111,11 +111,7 @@ class SensorFlow(SFTemplate):
                 }
         """
         raw_msg = requests.get(self.powerflow_url).text
-        msg = {
-            "payload":  {
-                "raw_message": raw_msg
-            }
-        }
+        msg = {"payload": {"raw_message": raw_msg}}
         return msg
 
     def parse_raw_msg(self, raw_msg):
@@ -179,8 +175,8 @@ class SensorFlow(SFTemplate):
 
         msg = {
             "payload": {
-                "parsed_message" : dict_comb,
-                "timestamp": raw_msg["payload"]["timestamp"]
+                "parsed_message": dict_comb,
+                "timestamp": raw_msg["payload"]["timestamp"],
             }
         }
         return msg
@@ -302,6 +298,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         Note thereby that the keys "sensor" and "actuator"" must always be
         present, even if the child dicts are empty.
     """
+
     def __init__(self, *args, **kwargs):
         """
         Init the inherited code from python_connector_template and add
@@ -330,10 +327,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         # once they are first appear in run_sensor_flow method. It is thus not
         # necessary to specify them here. actuator datapoints in contrast must
         # be specified here.
-        kwargs["available_datapoints"] = {
-            "sensor": {},
-            "actuator": {}
-        }
+        kwargs["available_datapoints"] = {"sensor": {}, "actuator": {}}
         CTemplate.__init__(self, *args, **kwargs)
 
         self.powerflow_url = os.getenv("INVERTER_POWERFLOW_URL")

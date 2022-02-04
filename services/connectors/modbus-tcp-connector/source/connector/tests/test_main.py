@@ -17,7 +17,7 @@ from pymodbus.datastore import ModbusSlaveContext, ModbusServerContext
 from ..main import Connector, __version__
 
 
-class ModbusTestServer():
+class ModbusTestServer:
     """
     A simple context manager that allows starting a Modbus Server for
     the tests in a dedicated process.
@@ -27,36 +27,33 @@ class ModbusTestServer():
         self.modbus_slave_context_kwargs = modbus_slave_context_kwargs
 
     def __enter__(self):
-            store = ModbusSlaveContext(**self.modbus_slave_context_kwargs)
-            context = ModbusServerContext(slaves=store, single=True)
-            # This will configure the Modbus server to listen on a random
-            # available port. This is necessary as after using a sepcific
-            # port the os takes 20-30 seconds until this port is marked
-            # as free again. However, we don not want to wait so long
-            # in between our tests.
-            self.modbus_server_process = Process(
-                target=StartTcpServer,
-                kwargs={
-                    "context": context,
-                    "address": ("127.0.0.1", 0),
-                }
-            )
-            self.modbus_server_process.start()
-            # After the server has started we have no clue which port it used.
-            # so lets find out.
-            for i in range(100):
-                # It may take a while after the process has started until
-                # the port is claimed from the OS. Hence we poll a few times.
-                psutil_process = psutil.Process(self.modbus_server_process.pid)
-                if psutil_process.connections():
-                    break
-                time.sleep(0.01)
-            connections = psutil_process.connections()
-            # This should be only one, but some old connections exist with
-            # a different status from previous runs.
-            active_connections = [c for c in connections if c.status=="LISTEN"]
-            used_port = active_connections[0].laddr.port
-            return used_port
+        store = ModbusSlaveContext(**self.modbus_slave_context_kwargs)
+        context = ModbusServerContext(slaves=store, single=True)
+        # This will configure the Modbus server to listen on a random
+        # available port. This is necessary as after using a sepcific
+        # port the os takes 20-30 seconds until this port is marked
+        # as free again. However, we don not want to wait so long
+        # in between our tests.
+        self.modbus_server_process = Process(
+            target=StartTcpServer,
+            kwargs={"context": context, "address": ("127.0.0.1", 0),},
+        )
+        self.modbus_server_process.start()
+        # After the server has started we have no clue which port it used.
+        # so lets find out.
+        for i in range(100):
+            # It may take a while after the process has started until
+            # the port is claimed from the OS. Hence we poll a few times.
+            psutil_process = psutil.Process(self.modbus_server_process.pid)
+            if psutil_process.connections():
+                break
+            time.sleep(0.01)
+        connections = psutil_process.connections()
+        # This should be only one, but some old connections exist with
+        # a different status from previous runs.
+        active_connections = [c for c in connections if c.status == "LISTEN"]
+        used_port = active_connections[0].laddr.port
+        return used_port
 
     def __exit__(self, exception_type, exception_value, traceback):
         # stop the process after we are done.
@@ -111,10 +108,7 @@ class TestReceiveRawMsg(unittest.TestCase):
 
             print("running test case: %s" % test_case)
             # Configure the expected_values for the temporary modbus server.
-            builder = BinaryPayloadBuilder(
-                byteorder=byteorder,
-                wordorder=wordorder,
-            )
+            builder = BinaryPayloadBuilder(byteorder=byteorder, wordorder=wordorder,)
             builder.add_16bit_float(float(expected_values["0"]))
             builder.add_16bit_float(float(expected_values["1"]))
             builder.add_32bit_float(float(expected_values["2"]))
@@ -190,10 +184,7 @@ class TestReceiveRawMsg(unittest.TestCase):
 
             print("running test case: %s" % test_case)
             # Configure the expected_values for the temporary modbus server.
-            builder = BinaryPayloadBuilder(
-                byteorder=byteorder,
-                wordorder=wordorder,
-            )
+            builder = BinaryPayloadBuilder(byteorder=byteorder, wordorder=wordorder,)
             builder.add_8bit_int(0)  # This is a pad byte, which prevents that
             # the following bytes overlap into this register.
             builder.add_8bit_int(int(expected_values["0"]))
@@ -273,16 +264,13 @@ class TestReceiveRawMsg(unittest.TestCase):
 
             print("running test case: %s" % test_case)
             # Configure the expected_values for the temporary modbus server.
-            builder = BinaryPayloadBuilder(
-                byteorder=byteorder,
-                wordorder=wordorder,
-            )
+            builder = BinaryPayloadBuilder(byteorder=byteorder, wordorder=wordorder,)
             bits = []
             for addr in sorted(expected_values):
                 bits.append(int(expected_values[addr]))
             # The bits must be ordered like Bit7, Bit6, ... , Bit0
             # Also add zero padding for the same reason.
-            builder.add_bits((bits+[0, 0, 0])[::-1])
+            builder.add_bits((bits + [0, 0, 0])[::-1])
             msc = {}
             if modbus_function == "read_coils":
                 msc["co"] = ModbusSequentialDataBlock(1, builder.to_coils())
@@ -292,13 +280,7 @@ class TestReceiveRawMsg(unittest.TestCase):
 
             # Compute the matching configuration for the modbus-tcp-connector.
             test_modbus_config = {
-                modbus_function: [
-                    {
-                        "address": 0,
-                        "count": 5,
-                        "unit": 1,
-                    },
-                ],
+                modbus_function: [{"address": 0, "count": 5, "unit": 1,},],
             }
             os.environ["MODBUS_CONFIG"] = json.dumps(test_modbus_config)
 
@@ -318,27 +300,18 @@ class TestReceiveRawMsg(unittest.TestCase):
 
 
 class TestParseRawMsg(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         # Define test config.
         test_modbus_config = {
             "read_input_registers": [
-                {
-                    "address": 19000,
-                    "count": 20,
-                    "unit": 1,
-                    "datatypes": ">ffffffffff",
-                },
+                {"address": 19000, "count": 20, "unit": 1, "datatypes": ">ffffffffff",},
                 {
                     "address": 20000,
                     "count": 4,
                     "unit": 1,
                     "datatypes": ">ff",
-                    "scaling_factors": {
-                        20000: 0.1,
-                        20002: 10,
-                    }
+                    "scaling_factors": {20000: 0.1, 20002: 10,},
                 },
             ],
         }
@@ -379,7 +352,7 @@ class TestParseRawMsg(unittest.TestCase):
                             16405,
                             36910,
                             16087,
-                            18778
+                            18778,
                         ]
                     }
                 }
@@ -417,18 +390,18 @@ class TestParseRawMsg(unittest.TestCase):
                             16406,
                             52624,
                             16096,
-                            45866
+                            45866,
                         ]
                     }
                 },
-                "timestamp": 1612969083914
+                "timestamp": 1612969083914,
             }
         }
         expected_parsed_msg = {
             "payload": {
                 "parsed_message": {
                     "read_input_registers": {
-                        "1" : {
+                        "1": {
                             "19000": 235.0230712890625,
                             "19002": 234.4782257080078,
                             "19004": 235.27565002441406,
@@ -438,11 +411,11 @@ class TestParseRawMsg(unittest.TestCase):
                             "19012": 1.9996864795684814,
                             "19014": 2.5712223052978516,
                             "19016": 2.3562965393066406,
-                            "19018": 0.43886691331863403
+                            "19018": 0.43886691331863403,
                         }
                     }
                 },
-                "timestamp": 1612969083914
+                "timestamp": 1612969083914,
             }
         }
 
@@ -476,29 +449,19 @@ class TestParseRawMsg(unittest.TestCase):
         test_raw_msg = {
             "payload": {
                 "raw_message": {
-                    "read_input_registers": {
-                        1: [
-                            17259,
-                            1512,
-                            17258,
-                            31341,
-                        ]
-                    }
+                    "read_input_registers": {1: [17259, 1512, 17258, 31341,]}
                 },
-                "timestamp": 1612969083914
+                "timestamp": 1612969083914,
             }
         }
         expected_parsed_msg = {
             "payload": {
                 "parsed_message": {
                     "read_input_registers": {
-                        "1" : {
-                            "20000": 23.502307128906253,
-                            "20002": 2344.782257080078,
-                        }
+                        "1": {"20000": 23.502307128906253, "20002": 2344.782257080078,}
                     }
                 },
-                "timestamp": 1612969083914
+                "timestamp": 1612969083914,
             }
         }
 
@@ -506,12 +469,7 @@ class TestParseRawMsg(unittest.TestCase):
         # this test doesn't fail because of errors in the
         # compute_addresses method.
         self.connector.modbus_addresses = {
-            "read_input_registers": {
-                1: [
-                    20000,
-                    20002,
-                ],
-            },
+            "read_input_registers": {1: [20000, 20002,],},
         }
 
         actual_parsed_msg = self.connector.parse_raw_msg(raw_msg=test_raw_msg)
@@ -519,7 +477,6 @@ class TestParseRawMsg(unittest.TestCase):
 
 
 class TestSendCommand(unittest.TestCase):
-
     @pytest.fixture(autouse=True)
     def expose_caplog(self, caplog):
         self.caplog = caplog
@@ -528,38 +485,24 @@ class TestSendCommand(unittest.TestCase):
     def setUpClass(cls):
         # Define test config.
         cls.test_modbus_config = {
-            "write_coil": [
-                {
-                    "address": 19,
-                    "example_value": True,
-                    "unit": 1
-                },
-            ],
+            "write_coil": [{"address": 19, "example_value": True, "unit": 1},],
             "write_register": [
-                {
-                    "address": 21,
-                    "unit": 2,
-                    "example_value": 12,
-                    "datatypes": "<H",
-                },
+                {"address": 21, "unit": 2, "example_value": 12, "datatypes": "<H",},
             ],
             "write_registers": [
-                {
-                    "address": 23,
-                    "unit": 3,
-                    "example_value": 22.1,
-                    "datatypes": ">f",
-                },
+                {"address": 23, "unit": 3, "example_value": 22.1, "datatypes": ">f",},
             ],
         }
 
-        class FakeResponse():
+        class FakeResponse:
             """
             A mock for the response value of the modbus methods that does
             not trigger the retry loop.
             """
+
             def isError(self):
                 return False
+
         cls.fake_response = FakeResponse()
 
         # Prepare everything so we can init the class.
@@ -576,21 +519,13 @@ class TestSendCommand(unittest.TestCase):
         with the appropriate arguments.
         """
         test_value_msgs = [
-            {
-                "datapoint_key": "write_coil__1__19",
-                "datapoint_value": True,
-            },
-            {
-                "datapoint_key": "write_coil__1__19",
-                "datapoint_value": False,
-            },
+            {"datapoint_key": "write_coil__1__19", "datapoint_value": True,},
+            {"datapoint_key": "write_coil__1__19", "datapoint_value": False,},
         ]
 
         cn = Connector(version=__version__)
         cn.modbus_connection = MagicMock()
-        cn.modbus_connection.write_coil = MagicMock(
-            return_value=self.fake_response
-        )
+        cn.modbus_connection.write_coil = MagicMock(return_value=self.fake_response)
         modbus_method_mock = cn.modbus_connection.write_coil
         for test_value_msg in test_value_msgs:
             cn.send_command(**test_value_msg)
@@ -598,7 +533,7 @@ class TestSendCommand(unittest.TestCase):
             expeceted_kwargs = {
                 "address": 19,
                 "value": test_value_msg["datapoint_value"],
-                "unit": 1
+                "unit": 1,
             }
             modbus_method_mock = cn.modbus_connection.write_coil
             actual_kwargs = modbus_method_mock.call_args.kwargs
@@ -611,21 +546,13 @@ class TestSendCommand(unittest.TestCase):
         write_register with the appropriate arguments.
         """
         test_value_msgs = [
-            {
-                "datapoint_key": "write_register__2__21",
-                "datapoint_value": 13,
-            },
-            {
-                "datapoint_key": "write_register__2__21",
-                "datapoint_value": 158,
-            },
+            {"datapoint_key": "write_register__2__21", "datapoint_value": 13,},
+            {"datapoint_key": "write_register__2__21", "datapoint_value": 158,},
         ]
 
         cn = Connector(version=__version__)
         cn.modbus_connection = MagicMock()
-        cn.modbus_connection.write_register = MagicMock(
-            return_value=self.fake_response
-        )
+        cn.modbus_connection.write_register = MagicMock(return_value=self.fake_response)
         modbus_method_mock = cn.modbus_connection.write_register
         for test_value_msg in test_value_msgs:
             cn.send_command(**test_value_msg)
@@ -654,14 +581,8 @@ class TestSendCommand(unittest.TestCase):
         triggers write_registers with the appropriate arguments.
         """
         test_value_msgs = [
-            {
-                "datapoint_key": "write_registers__3__23",
-                "datapoint_value": 12.0,
-            },
-            {
-                "datapoint_key": "write_registers__3__23",
-                "datapoint_value": -999.88,
-            },
+            {"datapoint_key": "write_registers__3__23", "datapoint_value": 12.0,},
+            {"datapoint_key": "write_registers__3__23", "datapoint_value": -999.88,},
         ]
 
         cn = Connector(version=__version__)
@@ -707,10 +628,7 @@ class TestSendCommand(unittest.TestCase):
                 "datapoint_key": "write_register__2__799",
                 "datapoint_value": 12.0,
             },
-            {
-                "datapoint_key": "write_registers__12__1",
-                "datapoint_value": -999.88,
-            },
+            {"datapoint_key": "write_registers__12__1", "datapoint_value": -999.88,},
         ]
 
         cn = Connector(version=__version__)
@@ -722,9 +640,7 @@ class TestSendCommand(unittest.TestCase):
 
             # Verify that nothing has been send out.
             modbus_method_name = test_value_msg["datapoint_key"].split("__")[0]
-            modbus_method_mock = getattr(
-                cn.modbus_connection, modbus_method_name
-            )
+            modbus_method_mock = getattr(cn.modbus_connection, modbus_method_name)
             assert modbus_method_mock.called == False
 
             # Also check that warning messages have been logged.
@@ -770,10 +686,7 @@ class TestSendCommand(unittest.TestCase):
                 "datapoint_key": "write_coil__1__19",
                 "datapoint_value": "1",
             },
-            {
-                "datapoint_key": "write_coil__1__19",
-                "datapoint_value": None,
-            },
+            {"datapoint_key": "write_coil__1__19", "datapoint_value": None,},
         ]
 
         cn = Connector(version=__version__)
@@ -788,31 +701,19 @@ class TestSendCommand(unittest.TestCase):
             assert modbus_method_mock.called == False
 
             # Also check that warning messages have been logged.
-            record =self.caplog.records[-1]
+            record = self.caplog.records[-1]
             assert record.levelname == "WARNING"
             assert test_value_msg["datapoint_key"] in record.message
 
 
 class TestComputeAvailableActuatorDatapoints(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         # Define test config.
         cls.test_modbus_config = {
-            "write_coil": [
-                {
-                    "address": 19,
-                    "example_value": True,
-                    "unit": 1,
-                },
-            ],
+            "write_coil": [{"address": 19, "example_value": True, "unit": 1,},],
             "write_register": [
-                {
-                    "address": 21,
-                    "unit": 2,
-                    "example_value": 21.3,
-                    "datatypes": ">H",
-                },
+                {"address": 21, "unit": 2, "example_value": 21.3, "datatypes": ">H",},
             ],
         }
 
@@ -831,7 +732,7 @@ class TestComputeAvailableActuatorDatapoints(unittest.TestCase):
         """
         expected_available_datapoints = {
             "write_coil__1__19": True,
-            "write_register__2__21": 21.3
+            "write_register__2__21": 21.3,
         }
         expected_write_config_per_dp = {
             "write_coil__1__19": {
@@ -849,7 +750,6 @@ class TestComputeAvailableActuatorDatapoints(unittest.TestCase):
             },
         }
 
-
         cn = Connector(version=__version__)
         rtn = cn.compute_available_actuator_datapoints(
             modbus_config=self.test_modbus_config,
@@ -865,10 +765,7 @@ class TestComputeAvailableActuatorDatapoints(unittest.TestCase):
         """
         expected_available_datapoints = {
             "sensor": {},
-            "actuator":{
-                "write_coil__1__19": True,
-                "write_register__2__21": 21.3
-            }
+            "actuator": {"write_coil__1__19": True, "write_register__2__21": 21.3},
         }
         cn = Connector(version=__version__)
         actual_available_datapoints = cn._initial_available_datapoints
@@ -876,7 +773,6 @@ class TestComputeAvailableActuatorDatapoints(unittest.TestCase):
 
 
 class TestParseModbusConfig(unittest.TestCase):
-
     @pytest.fixture(autouse=True)
     def expose_caplog(self, caplog):
         self.caplog = caplog
@@ -891,12 +787,7 @@ class TestParseModbusConfig(unittest.TestCase):
             "read_discrete_inputs": [],
             "read_holding_registers": [],
             "read_input_registers": [
-                {
-                    "address": 19000,
-                    "count": 20,
-                    "unit": 1,
-                    "datatypes": ">ffffffffff",
-                },
+                {"address": 19000, "count": 20, "unit": 1, "datatypes": ">ffffffffff",},
             ],
             "write_coil": [],
             "write_register": [],
@@ -918,12 +809,7 @@ class TestParseModbusConfig(unittest.TestCase):
             "write_coil": [],
             "write_register": [],
             "write_registers": [],
-            "not_expected_keyword": [
-                {
-                    "address": 19000,
-                    "count": 20,
-                }
-            ],
+            "not_expected_keyword": [{"address": 19000, "count": 20,}],
         }
 
         self.caplog.clear()
@@ -970,7 +856,7 @@ class TestParseModbusConfig(unittest.TestCase):
                     "address": 21,
                     "unit": 2,
                     "example_value": 2.2,
-                    "datatypes": ">f", # this is two registers long.
+                    "datatypes": ">f",  # this is two registers long.
                 },
             ],
         }
@@ -986,25 +872,19 @@ class TestParseModbusConfig(unittest.TestCase):
         record = self.caplog.records[0]
         assert record.levelname == "ERROR"
         assert "Datatype >f implied" in record.message
-        assert "sending 2 registers"  in record.message
+        assert "sending 2 registers" in record.message
         assert '"address": 21' in record.message
         assert '"unit": 2' in record.message
 
 
 class TestComputeAddresses(unittest.TestCase):
-
     def test_for_32bit_floats(self):
         """
         Simple test to begin with, inspired by the data used by the tests above.
         """
         test_config = {
             "read_input_registers": [
-                {
-                    "address": 19000,
-                    "count": 20,
-                    "unit": 1,
-                    "datatypes": ">ffffffffff",
-                },
+                {"address": 19000, "count": 20, "unit": 1, "datatypes": ">ffffffffff",},
             ],
         }
         expected_register_addresses = {
@@ -1043,31 +923,13 @@ class TestComputeAddresses(unittest.TestCase):
                     "address": 1,
                     "count": 34,
                     "unit": 1,
-                    "datatypes": "<cbB?hHiIlLqQefdd"
-
+                    "datatypes": "<cbB?hHiIlLqQefdd",
                 },
             ],
         }
         expected_register_addresses = {
             "read_holding_registers": {
-                0: [
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    9,
-                    11,
-                    13,
-                    15,
-                    19,
-                    23,
-                    24,
-                    26,
-                    30,
-                ],
+                0: [1, 2, 3, 4, 5, 6, 7, 9, 11, 13, 15, 19, 23, 24, 26, 30,],
             },
         }
 
@@ -1084,27 +946,14 @@ class TestComputeAddresses(unittest.TestCase):
         for method_name in ["read_coils", "read_discrete_inputs"]:
             test_config = {
                 method_name: [
-                    {
-                        "address": 1,
-                        "count": 5,
-                        "unit": 1,
-                    },
-                    {
-                        "address": 10,
-                        "count": 6,
-                        "unit": 1,
-                    },
+                    {"address": 1, "count": 5, "unit": 1,},
+                    {"address": 10, "count": 6, "unit": 1,},
                 ],
             }
             expected_addresses = {
-                method_name: {
-                    0: [ 1, 2, 3, 4, 5 ],
-                    1: [ 10, 11, 12, 13, 14, 15 ],
-                },
+                method_name: {0: [1, 2, 3, 4, 5], 1: [10, 11, 12, 13, 14, 15],},
             }
 
-            actual_addresses = Connector.compute_addresses(
-                modbus_config=test_config
-            )
+            actual_addresses = Connector.compute_addresses(modbus_config=test_config)
 
             assert actual_addresses == expected_addresses

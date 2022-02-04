@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 """
-__version__="0.4.0"
+__version__ = "0.4.0"
 
 import os
 import ssl
@@ -356,13 +356,12 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         # remote broker on connector startup. This is very similar to the
         # handling of the internal MQTT client in CTemplate.run
         self.remote_mqtt_client = self.create_remote_mqtt_client(
-            topic_mapping=topic_mapping,
-            RemoteMqttClient=RemoteMqttClient,
+            topic_mapping=topic_mapping, RemoteMqttClient=RemoteMqttClient,
         )
         kwargs["DeviceDispatcher"] = DispatchOnce
         kwargs["device_dispatcher_kwargs"] = {
             "target_func": self.remote_mqtt_worker,
-            "target_kwargs": {"mqtt_client": self.remote_mqtt_client}
+            "target_kwargs": {"mqtt_client": self.remote_mqtt_client},
         }
 
         # Sensor datapoints will be added to available_datapoints automatically
@@ -398,9 +397,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
             does not contain the expected content.
         """
         try:
-            topic_mapping = json.loads(
-                os.getenv("REMOTE_MQTT_BROKER_TOPIC_MAPPING")
-            )
+            topic_mapping = json.loads(os.getenv("REMOTE_MQTT_BROKER_TOPIC_MAPPING"))
         except json.decoder.JSONDecodeError:
             raise ValueError(
                 "REMOTE_MQTT_BROKER_TOPIC_MAPPING is not a valid JSON string. "
@@ -413,14 +410,12 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         if "sensor_topics" not in topic_mapping:
             raise ValueError(
                 "Expected key sensor_topics in REMOTE_MQTT_BROKER_TOPIC_"
-                "MAPPING but got instead:\n%s"
-                % json.dumps(topic_mapping, indent=4)
+                "MAPPING but got instead:\n%s" % json.dumps(topic_mapping, indent=4)
             )
         if "actuator_topics" not in topic_mapping:
             raise ValueError(
                 "Expected key actuator_topics in REMOTE_MQTT_BROKER_TOPIC_"
-                "MAPPING but got instead:\n%s"
-                % json.dumps(topic_mapping, indent=4)
+                "MAPPING but got instead:\n%s" % json.dumps(topic_mapping, indent=4)
             )
 
         return topic_mapping
@@ -441,16 +436,12 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         """
         self = userdata["self"]
         logger.debug(
-            "Handling incoming MQTT message from remote broker on topic: %s",
-            msg.topic
+            "Handling incoming MQTT message from remote broker on topic: %s", msg.topic
         )
         if msg.retain == 0:
             self.run_sensor_flow(raw_data=msg)
         else:
-            logger.debug(
-                "Skipping retained message for topic: %s",
-                msg.topic
-            )
+            logger.debug("Skipping retained message for topic: %s", msg.topic)
 
     @staticmethod
     def on_remote_connect(client, userdata, flags, rc):
@@ -467,17 +458,14 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
                 "Connection to remote MQTT broker (%s:%s) successful",
                 *(
                     os.getenv("REMOTE_MQTT_BROKER_HOST"),
-                    os.getenv("REMOTE_MQTT_BROKER_PORT")
+                    os.getenv("REMOTE_MQTT_BROKER_PORT"),
                 )
             )
             topic_mapping = userdata["topic_mapping"]
             # Subscribe to configured topics with QOS=2, we want to receive
             # all messages exactly once.
             for topic in topic_mapping["sensor_topics"]:
-                logger.info(
-                    "Subscribing to topic on remote broker: %s",
-                    topic
-                )
+                logger.info("Subscribing to topic on remote broker: %s", topic)
                 client.subscribe(topic, qos=2)
 
         else:
@@ -488,7 +476,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
                 % (
                     os.getenv("REMOTE_MQTT_BROKER_HOST"),
                     os.getenv("REMOTE_MQTT_BROKER_PORT"),
-                    connack_string(rc)
+                    connack_string(rc),
                 )
             )
 
@@ -556,7 +544,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
                     ca_file.write(ca_content)
                     ca_file.close()
                 ca_file_fnp = ca_file.name
-                #remote_mqtt_client.tls_set(ca_file.name, cert_reqs=ssl.CERT_NONE)
+                # remote_mqtt_client.tls_set(ca_file.name, cert_reqs=ssl.CERT_NONE)
                 # remote_mqtt_client.tls_set(cert_reqs=ssl.CERT_REQUIRED)
             # This will not verify the server certificate if ca_file_fnp is
             # None. This is insecure but will work with self signed certs.
@@ -568,20 +556,20 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
             password = os.getenv("REMOTE_MQTT_BROKER_PASSWORD")
             if password is not None:
                 logger.info(
-                    "Using password with length %s for remote broker",
-                    len(password)
+                    "Using password with length %s for remote broker", len(password)
                 )
             remote_mqtt_client.username_pw_set(username, password)
 
-        logger.info("Connecting to remote MQTT broker (%s:%s).",
+        logger.info(
+            "Connecting to remote MQTT broker (%s:%s).",
             *(
                 os.getenv("REMOTE_MQTT_BROKER_HOST"),
-                os.getenv("REMOTE_MQTT_BROKER_PORT")
+                os.getenv("REMOTE_MQTT_BROKER_PORT"),
             )
         )
         remote_mqtt_client.connect(
             host=os.getenv("REMOTE_MQTT_BROKER_HOST"),
-            port=int(os.getenv("REMOTE_MQTT_BROKER_PORT"))
+            port=int(os.getenv("REMOTE_MQTT_BROKER_PORT")),
         )
         return remote_mqtt_client
 
