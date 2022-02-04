@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 """
+import os
 import struct
 import logging
 from time import sleep
@@ -80,6 +81,12 @@ class DemoDevice:
         self.current_temperature = 21.0
         self.temperature_setpoint = 24.0
 
+        LOG_VALUES = os.getenv("LOG_VALUES") or "TRUE"
+        if LOG_VALUES == "TRUE":
+            self.log_values = True
+        else:
+            self.log_values = False
+
         slaves = ModbusSlaveContext(
             ir=DemoDeviceDataBlock(self, "current_temperature"),
             hr=DemoDeviceDataBlock(self, "temperature_setpoint"),
@@ -99,11 +106,12 @@ class DemoDevice:
         try:
             self.modbus_server_thread.start()
             while True:
-                logger.info(
-                    "Current temperature: {:.1f}".format(
-                        self.current_temperature
+                if self.log_values:
+                    logger.info(
+                        "Current temperature: {:.1f}".format(
+                            self.current_temperature
+                        )
                     )
-                )
                 # Slowly move towards the setpoint.
                 delta = self.temperature_setpoint - self.current_temperature
                 self.current_temperature += delta * 0.1

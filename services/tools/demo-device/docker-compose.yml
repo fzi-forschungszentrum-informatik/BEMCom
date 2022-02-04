@@ -6,6 +6,8 @@ services:
             context: ./source
         restart: unless-stopped
         user: "${USER_ID}:${GROUP_ID}"
+        environment:
+            - LOG_VALUES=
 
     bemcom-demo-modbus-tcp-connector:
         container_name: bemcom-demo-modbus-tcp-connector
