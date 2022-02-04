@@ -1,0 +1,60 @@
+version: '3'
+
+services:
+    bemcom-demo-device:
+        build:
+            context: ./source
+        restart: unless-stopped
+        user: "${USER_ID}:${GROUP_ID}"
+
+    bemcom-demo-modbus-tcp-connector:
+        container_name: bemcom-demo-modbus-tcp-connector
+        image: bemcom/modbus-tcp-connector:0.5.0
+        restart: unless-stopped
+        user: "${USER_ID}:${GROUP_ID}"
+        depends_on:
+            - bemcom-demo-device
+        environment:
+            - CONNECTOR_NAME=modbus-tcp-connector
+            - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}
+            - MQTT_BROKER_PORT=${MQTT_BROKER_PORT}
+            - SEND_RAW_MESSAGE_TO_DB=${SEND_RAW_MESSAGE_TO_DB}
+            - DEBUG=${DEBUG}
+            - POLL_SECONDS=${POLL_SECONDS}
+            - MODBUS_MASTER_IP=${MODBUS_MASTER_IP}
+            - MODBUS_MASTER_PORT=${MODBUS_MASTER_PORT}
+            - MODBUS_CONFIG=${MODBUS_CONFIG}
+            - MODBUS_POLL_BREAK=${MODBUS_POLL_BREAK}
+            - MODBUS_DISCONNECT_BETWEEN_POLLS=${MODBUS_DISCONNECT_BETWEEN_POLLS}
+
+    bemcom-demo-mqtt-broker:
+        container_name: bemcom-demo-mqtt-broker
+        image: bemcom/mosquitto-mqtt-broker:0.1.0
+        restart: unless-stopped
+        user: "${USER_ID}:${GROUP_ID}"
+
+    bemcom-demo-django-api:
+        container_name: bemcom-demo-django-api
+        image: bemcom/django-api:0.6.10
+        restart: unless-stopped
+        user: "${USER_ID}:${GROUP_ID}"
+        ports:
+            - "8080:8080"
+        environment:
+            - "MQTT_BROKER_HOST=${MQTT_BROKER_HOST}"
+            - "MQTT_BROKER_PORT=${MQTT_BROKER_PORT}"
+            - "LOGLEVEL=${LOGLEVEL}"
+            - "DJANGO_DEBUG=${DJANGO_DEBUG}"
+            - "DJANGO_ADMINS=${DJANGO_ADMINS}"
+            - "DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}"
+            - "DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}"
+            - "DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME}"
+            - "DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD}"
+            - "DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL}"
+            - "DJANGOAPIDB_HOST=${DJANGOAPIDB_HOST}"
+            - "DJANGOAPIDB_PORT=${DJANGOAPIDB_PORT}"
+            - "DJANGOAPIDB_USER=${DJANGOAPIDB_USER}"
+            - "DJANGOAPIDB_PASSWORD=${DJANGOAPIDB_PASSWORD}"
+            - "DJANGOAPIDB_DBNAME=${DJANGOAPIDB_DBNAME}"
+            - "N_CMI_WRITE_THREADS=${N_CMI_WRITE_THREADS}"
+            - "N_WORKER_PROCESSES=${N_WORKER_PROCESSES}"
