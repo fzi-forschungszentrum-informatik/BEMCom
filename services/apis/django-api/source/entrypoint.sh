@@ -44,7 +44,7 @@ if  [[ "${DJANGO_DEBUG:-FALSE}" == "TRUE" ]]
 then
     # --noreload prevents duplicate entries in DB.
     printf "\n\nStarting up Django development server.\n\n\n"
-    python3 /source/api/manage.py runserver --noreload 0.0.0.0:8080 &
+    python3 /source/api/manage.py runserver 0.0.0.0:8080 &
 else
     printf "\n\nCollecting static files."
     python3 /source/api/manage.py collectstatic --no-input

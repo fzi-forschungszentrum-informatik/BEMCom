@@ -7,53 +7,82 @@ volumes:
 
 services:
 
-    django-api:
-        container_name: django-api
+    django-api-devl:
+        container_name: django-api-devl
         build:
             context: ./source
-        restart: always
-        user: "${USER_ID}:${GROUP_ID}"
+        restart: unless-stopped
+        user: ${USER_ID}:${GROUP_ID}
+        depends_on:
+            - django-api-devl-broker
         ports:
-            - "8080:8080"
+            - 8080:8080
+
         volumes:
             - ./source/api:/source/api
         environment:
-            - "MQTT_BROKER_HOST=${MQTT_BROKER_HOST}"
-            - "MQTT_BROKER_PORT=${MQTT_BROKER_PORT}"
-            - "LOGLEVEL=${LOGLEVEL}"
-            - "DJANGO_DEBUG=${DJANGO_DEBUG}"
-            - "DJANGO_ADMINS=${DJANGO_ADMINS}"
-            - "DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}"
-            - "DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}"
-            - "DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME}"
-            - "DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD}"
-            - "DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL}"
-            - "DJANGOAPIDB_HOST=${DJANGOAPIDB_HOST}"
-            - "DJANGOAPIDB_PORT=${DJANGOAPIDB_PORT}"
-            - "DJANGOAPIDB_USER=${DJANGOAPIDB_USER}"
-            - "DJANGOAPIDB_PASSWORD=${DJANGOAPIDB_PASSWORD}"
-            - "DJANGOAPIDB_DBNAME=${DJANGOAPIDB_DBNAME}"
-            - "N_CMI_WRITE_THREADS=${N_CMI_WRITE_THREADS}"
-            - "N_WORKER_PROCESSES=${N_WORKER_PROCESSES}"
+            - MQTT_BROKER_HOST=django-api-devl-broker
+            - MQTT_BROKER_PORT=1883
+            - LOGLEVEL=INFO
+            - DJANGO_DEBUG=TRUE
+            - DJANGO_ADMINS=
+            - DJANGO_SECRET_KEY=
+            - DJANGO_ALLOWED_HOSTS=
+            - DJANGO_SUPERUSER_USERNAME=bemcom
+            - DJANGO_SUPERUSER_PASSWORD=bemcom
+            - DJANGO_SUPERUSER_EMAIL=bemcom@example.com
+            - DJANGOAPIDB_HOST=django-api-devl-db
+            - DJANGOAPIDB_PORT=5432
+            - DJANGOAPIDB_USER=bemcom
+            - DJANGOAPIDB_PASSWORD=bemcom
+            - DJANGOAPIDB_DBNAME=bemcom
+            - N_CMI_WRITE_THREADS=4
+            - N_WORKER_PROCESSES=4
 
     # Allows local testing.
     django-api-devl-broker:
-        container_name: "django-api-devl-broker"
+        container_name: django-api-devl-broker
         image: bemcom/mosquitto-mqtt-broker:0.1.0
-        restart: always
-        user: "${USER_ID}:${GROUP_ID}"
+        restart: unless-stopped
         ports:
-            - "1883:1883"
+            - 1883:1883
 
     django-api-devl-db:
-        container_name: "django-api-devl-db"
+        container_name: django-api-devl-db
         image: timescale/timescaledb:2.4.1-pg13
-        restart: always
+        restart: unless-stopped
         ports:
-            - "5432:5432"
+            - 5432:5432
         volumes:
-            - "django-api-devl-db-pgdata:/var/lib/postgresql/data"
+            - django-api-devl-db-pgdata:/var/lib/postgresql/data
         environment:
-            - "POSTGRES_USER=bemcom"
-            - "POSTGRES_PASSWORD=bemcom"
-            - "POSTGRES_DB=bemcom"
+            - POSTGRES_USER=bemcom
+            - POSTGRES_PASSWORD=bemcom
+            - POSTGRES_DB=bemcom
+
+    django-api-devl-device:
+        container_name: django-api-devl-device
+        image: bemcom/demo-device-tool:0.1.0
+        restart: unless-stopped
+        environment:
+            - LOG_VALUES=FALSE
+
+    django-api-devl-connector:
+        container_name: django-api-devl-connector
+        image: bemcom/modbus-tcp-connector:0.5.0
+        restart: unless-stopped
+        depends_on:
+            - django-api-devl-device
+            - django-api-devl-broker
+        environment:
+            - CONNECTOR_NAME=django-api-devl-connector
+            - MQTT_BROKER_HOST=django-api-devl-broker
+            - MQTT_BROKER_PORT=1883
+            - SEND_RAW_MESSAGE_TO_DB=
+            - DEBUG=
+            - POLL_SECONDS=5
+            - MODBUS_MASTER_IP=django-api-devl-device
+            - MODBUS_MASTER_PORT=502
+            - 'MODBUS_CONFIG={"read_input_registers":[{"address":1,"count":1,"unit":1,"datatypes":"<e"}],"read_holding_registers":[{"address":1,"count":1,"unit":1,"datatypes":"<e"}],"write_register":[{"address":1,"unit":1,"datatypes":"<e","example_value":22.0}]}'
+            - MODBUS_POLL_BREAK=
+            - MODBUS_DISCONNECT_BETWEEN_POLLS=
