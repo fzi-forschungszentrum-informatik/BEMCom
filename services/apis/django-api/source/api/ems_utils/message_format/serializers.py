@@ -19,13 +19,15 @@ try:
     @extend_schema_field(OpenApiTypes.INT64)
     class Int64Field(serializers.IntegerField):
         pass
+
+
 except ModuleNotFoundError:
     # Fallback to normal int field if drf_spectacular is not installed.
     class Int64Field(serializers.IntegerField):
         pass
 
 
-class GenericValidators():
+class GenericValidators:
     """
     Generic functions to validate the fields during deserialization.
 
@@ -76,15 +78,15 @@ class GenericValidators():
                 if value < datapoint.min_value:
                     raise serializers.ValidationError(
                         "Value (%s) for numeric datapoint is smaller then "
-                        "minimum allowed value (%s)." %
-                        (value, datapoint.min_value)
+                        "minimum allowed value (%s)."
+                        % (value, datapoint.min_value)
                     )
             if datapoint.max_value is not None and value is not None:
                 if value > datapoint.max_value:
                     raise serializers.ValidationError(
                         "Value (%s) for numeric datapoint is larger then "
-                        "maximum allowed value (%s)." %
-                        (value, datapoint.max_value)
+                        "maximum allowed value (%s)."
+                        % (value, datapoint.max_value)
                     )
         if "_text" in datapoint.data_format:
             if type(value) not in [str, type(None)]:
@@ -94,7 +96,7 @@ class GenericValidators():
         if "bool" in datapoint.data_format:
             if type(value) not in [bool]:
                 raise serializers.ValidationError(
-                    "Value (%s) for boolean datapoint is no bool."  % value
+                    "Value (%s) for boolean datapoint is no bool." % value
                 )
         if "discrete_" in datapoint.data_format:
             # Could be None or emptry string, both should be handled no values
@@ -106,8 +108,7 @@ class GenericValidators():
             if value not in allowed_values:
                 raise serializers.ValidationError(
                     "Value (%s) for discrete datapoint in list of "
-                    "allowed_values (%s)." %
-                    (value, datapoint.allowed_values)
+                    "allowed_values (%s)." % (value, datapoint.allowed_values)
                 )
 
         return value
@@ -122,8 +123,8 @@ class GenericValidators():
             timestamp = int(timestamp)
         except Exception:
             raise serializers.ValidationError(
-                "Timestamp (%s) could not be parsed to integer." %
-                str(timestamp)
+                "Timestamp (%s) could not be parsed to integer."
+                % str(timestamp)
             )
 
         # Check that the timestamp is within a reasonable range for
@@ -134,15 +135,13 @@ class GenericValidators():
             raise serializers.ValidationError(
                 "Timestamp (%s) seems unreasonably high. Check if it is "
                 "in milliseconds and contact your adminstrator if this is the "
-                "case." %
-                str(timestamp)
+                "case." % str(timestamp)
             )
         if timestamp < now - 1e11:
             raise serializers.ValidationError(
                 "Timestamp (%s) seems unreasonably low. Check if it is "
                 "in milliseconds and contact your adminstrator if this is the "
-                "case." %
-                str(timestamp)
+                "case." % str(timestamp)
             )
 
         return timestamp
@@ -154,38 +153,38 @@ class GenericValidators():
 
         if not isinstance(schedule, list):
             raise serializers.ValidationError(
-                "Schedule (%s) is not a list of schedule items." %
-                json.dumps(schedule)
+                "Schedule (%s) is not a list of schedule items."
+                % json.dumps(schedule)
             )
 
         validated_schedule_items = []
         for schedule_item in schedule:
             if not isinstance(schedule_item, dict):
                 raise serializers.ValidationError(
-                    "Schedule Item (%s) is not a Dict." %
-                    json.dumps(schedule_item)
+                    "Schedule Item (%s) is not a Dict."
+                    % json.dumps(schedule_item)
                 )
 
             # Verify that only the expected keys are given in schedule item.
             if "from_timestamp" not in schedule_item:
                 raise serializers.ValidationError(
-                    "Key 'from_timestamp' is missing Schedule Item (%s)." %
-                    json.dumps(schedule_item)
+                    "Key 'from_timestamp' is missing Schedule Item (%s)."
+                    % json.dumps(schedule_item)
                 )
             if "to_timestamp" not in schedule_item:
                 raise serializers.ValidationError(
-                    "Key 'to_timestamp' is missing Schedule Item (%s)." %
-                    json.dumps(schedule_item)
+                    "Key 'to_timestamp' is missing Schedule Item (%s)."
+                    % json.dumps(schedule_item)
                 )
             if "value" not in schedule_item:
                 raise serializers.ValidationError(
-                    "Key 'value' is missing Schedule Item (%s)." %
-                    json.dumps(schedule_item)
+                    "Key 'value' is missing Schedule Item (%s)."
+                    % json.dumps(schedule_item)
                 )
             if len(schedule_item.keys()) > 3:
                 raise serializers.ValidationError(
-                    "Found unexpected key in Schedule Item (%s)." %
-                    json.dumps(schedule_item)
+                    "Found unexpected key in Schedule Item (%s)."
+                    % json.dumps(schedule_item)
                 )
 
             # Now that we are sure that the message format itself is correct
@@ -200,16 +199,15 @@ class GenericValidators():
             except serializers.ValidationError as ve:
                 raise serializers.ValidationError(
                     "Validation of value of Schedule Item (%s) failed. The "
-                    "error was: %s" %
-                    (json.dumps(schedule_item), str(ve.detail))
+                    "error was: %s"
+                    % (json.dumps(schedule_item), str(ve.detail))
                 )
             if si_from_ts is not None and si_to_ts is not None:
                 if si_from_ts >= si_to_ts:
                     raise serializers.ValidationError(
                         "Validation of timestamps of Schedule Item (%s) "
                         "failed. to_timestamp must be larger then "
-                        "from_timestamp" %
-                        json.dumps(schedule_item)
+                        "from_timestamp" % json.dumps(schedule_item)
                     )
             try:
                 schedule_item["from_timestamp"] = self.validate_timestamp(
@@ -218,8 +216,8 @@ class GenericValidators():
             except serializers.ValidationError as ve:
                 raise serializers.ValidationError(
                     "Validation of from_timestamp of Schedule Item (%s) "
-                    "failed. The error was: %s" %
-                    (json.dumps(schedule_item), str(ve.detail))
+                    "failed. The error was: %s"
+                    % (json.dumps(schedule_item), str(ve.detail))
                 )
 
             try:
@@ -229,8 +227,8 @@ class GenericValidators():
             except serializers.ValidationError as ve:
                 raise serializers.ValidationError(
                     "Validation of to_timestamp of Schedule Item (%s) "
-                    "failed. The error was: %s" %
-                    (json.dumps(schedule_item), str(ve.detail))
+                    "failed. The error was: %s"
+                    % (json.dumps(schedule_item), str(ve.detail))
                 )
             validated_schedule_items.append(schedule_item)
         return validated_schedule_items
@@ -242,34 +240,34 @@ class GenericValidators():
 
         if not isinstance(setpoint, list):
             raise serializers.ValidationError(
-                "Setpoint (%s) is not a list of setpoint items." %
-                json.dumps(setpoint)
+                "Setpoint (%s) is not a list of setpoint items."
+                % json.dumps(setpoint)
             )
 
         validated_setpoint_items = []
         for setpoint_item in setpoint:
             if not isinstance(setpoint_item, dict):
                 raise serializers.ValidationError(
-                    "Setpoint Item (%s) is not a Dict." %
-                    json.dumps(setpoint_item)
+                    "Setpoint Item (%s) is not a Dict."
+                    % json.dumps(setpoint_item)
                 )
 
             # Verify that only the expected keys are given in setpoint item.
             expected_setpoint_item_len = 3
             if "from_timestamp" not in setpoint_item:
                 raise serializers.ValidationError(
-                    "Key 'from_timestamp' is missing in Setpoint Item (%s)." %
-                    json.dumps(setpoint_item)
+                    "Key 'from_timestamp' is missing in Setpoint Item (%s)."
+                    % json.dumps(setpoint_item)
                 )
             if "to_timestamp" not in setpoint_item:
                 raise serializers.ValidationError(
-                    "Key 'to_timestamp' is missing in Setpoint Item (%s)." %
-                    json.dumps(setpoint_item)
+                    "Key 'to_timestamp' is missing in Setpoint Item (%s)."
+                    % json.dumps(setpoint_item)
                 )
             if "preferred_value" not in setpoint_item:
                 raise serializers.ValidationError(
-                    "Key 'preferred_value' is missing in Setpoint Item (%s)." %
-                    json.dumps(setpoint_item)
+                    "Key 'preferred_value' is missing in Setpoint Item (%s)."
+                    % json.dumps(setpoint_item)
                 )
                 expected_setpoint_item_len = 3
 
@@ -296,8 +294,8 @@ class GenericValidators():
 
             if len(setpoint_item.keys()) > expected_setpoint_item_len:
                 raise serializers.ValidationError(
-                    "Found unexpected key in Setpoint Item (%s)." %
-                    json.dumps(setpoint_item)
+                    "Found unexpected key in Setpoint Item (%s)."
+                    % json.dumps(setpoint_item)
                 )
 
             # Now that we are sure that the message format itself is correct
@@ -316,16 +314,15 @@ class GenericValidators():
             except serializers.ValidationError as ve:
                 raise serializers.ValidationError(
                     "Validation of preferred_value of Setpoint Item (%s) "
-                    "failed. The error was: %s" %
-                    (json.dumps(setpoint_item), str(ve.detail))
+                    "failed. The error was: %s"
+                    % (json.dumps(setpoint_item), str(ve.detail))
                 )
             if si_from_ts is not None and si_to_ts is not None:
                 if si_from_ts >= si_to_ts:
                     raise serializers.ValidationError(
                         "Validation of timestamps of Setpoint Item (%s) "
                         "failed. to_timestamp must be larger then "
-                        "from_timestamp" %
-                        json.dumps(setpoint_item)
+                        "from_timestamp" % json.dumps(setpoint_item)
                     )
             try:
                 setpoint_item["from_timestamp"] = self.validate_timestamp(
@@ -334,8 +331,8 @@ class GenericValidators():
             except serializers.ValidationError as ve:
                 raise serializers.ValidationError(
                     "Validation of from_timestamp of Setpoint Item (%s) "
-                    "failed. The error was: %s" %
-                    (json.dumps(setpoint_item), str(ve.detail))
+                    "failed. The error was: %s"
+                    % (json.dumps(setpoint_item), str(ve.detail))
                 )
 
             try:
@@ -345,8 +342,8 @@ class GenericValidators():
             except serializers.ValidationError as ve:
                 raise serializers.ValidationError(
                     "Validation of to_timestamp of Setpoint Item (%s) "
-                    "failed. The error was: %s" %
-                    (json.dumps(setpoint_item), str(ve.detail))
+                    "failed. The error was: %s"
+                    % (json.dumps(setpoint_item), str(ve.detail))
                 )
             validated_setpoint_items.append(setpoint_item)
         return setpoint
@@ -371,17 +368,13 @@ class DatapointSerializer(serializers.ModelSerializer):
             "max_value",
             "allowed_values",
             "unit",
-            ]
+        ]
         read_only_fields = [
             "id",
         ]
         # Disable the unqieness check for datapoint. We just update
         # for simplicity.
-        extra_kwargs = {
-            'origin_id': {
-                'validators': [],
-            }
-        }
+        extra_kwargs = {"origin_id": {"validators": [],}}
 
 
 class DatapointValueSerializer(serializers.Serializer):
@@ -393,17 +386,16 @@ class DatapointValueSerializer(serializers.Serializer):
     Explicitly reusue the help text defined in the models to expose it
     in the API schema.
     """
+
     # Deactive docstring being pushed to schema, it's not relevant for
     # an API user.
     __doc__ = None
     #
     value = serializers.CharField(
-        allow_null=True,
-        help_text=DatapointValueTemplate.value.field.help_text,
+        allow_null=True, help_text=DatapointValueTemplate.value.field.help_text,
     )
     timestamp = Int64Field(
-        allow_null=False,
-        help_text=DatapointValueTemplate.time.field.help_text,
+        allow_null=False, help_text=DatapointValueTemplate.time.field.help_text,
     )
 
     def to_representation(self, instance):
@@ -433,6 +425,7 @@ class DatapointScheduleItemSerializer(serializers.Serializer):
     """
     Represents the optimized actuator value for one interval in time.
     """
+
     from_timestamp = Int64Field(
         allow_null=True,
         help_text=(
@@ -464,7 +457,7 @@ class DatapointScheduleItemSerializer(serializers.Serializer):
             "The value must be in the list of acceptable_values (as listed "
             "in the datapoint metadata) if the datapoints data format is "
             "discrete."
-        )
+        ),
     )
 
 
@@ -477,6 +470,7 @@ class DatapointScheduleSerializer(serializers.Serializer):
     Explicitly reusue the help text defined in the models to expose it
     in the API schema.
     """
+
     # Deactive docstring being pushed to schema, it's not relevant for
     # an API user.
     __doc__ = None
@@ -516,10 +510,12 @@ class DatapointScheduleSerializer(serializers.Serializer):
         gv = GenericValidators()
         return gv.validate_schedule(datapoint, value)
 
+
 class DatapointSetpointItemSerializer(serializers.Serializer):
     """
     Represents the user demand for one interval in time.
     """
+
     from_timestamp = Int64Field(
         allow_null=True,
         help_text=(
@@ -555,10 +551,7 @@ class DatapointSetpointItemSerializer(serializers.Serializer):
         ),
     )
     acceptable_values = serializers.ListField(
-        child=serializers.CharField(
-            allow_null=True,
-            allow_blank=True,
-        ),
+        child=serializers.CharField(allow_null=True, allow_blank=True,),
         allow_null=True,
         required=False,
         help_text=(
@@ -600,6 +593,7 @@ class DatapointSetpointSerializer(serializers.Serializer):
     Explicitly reusue the help text defined in the models to expose it
     in the API schema.
     """
+
     # Deactive docstring being pushed to schema, it's not relevant for
     # an API user.
     __doc__ = None
@@ -641,15 +635,75 @@ class DatapointSetpointSerializer(serializers.Serializer):
         return gv.validate_setpoint(datapoint, value)
 
 
+class DatapointLastValueSerializer(serializers.Serializer):
+    """
+    Takes the datapoint instance as input, extracts the last_value and
+    last_value_timestamp fields and feeds those into the correct
+    serializer for this message type. (i.e. DatapointValueSerializer).
+
+    This is read_only here, as there is yet no usecase to update the last_*
+    fields with external data.
+    """
+
+    class Msg:
+        pass
+
+    def to_representation(self, instance):
+        msg = self.Msg()
+        msg.value = instance.last_value
+        msg.time = instance.last_value_timestamp
+
+        return DatapointValueSerializer(msg).data
+
+
+class DatapointLastScheduleSerializer(serializers.Serializer):
+    """
+    Takes the datapoint instance as input, extracts the last_schedule and
+    last_schedule_timestamp fields and feeds those into the correct
+    serializer for this message type. (i.e. DatapointScheduleSerializer).
+
+    This is read_only here, as there is yet no usecase to update the last_*
+    fields with external data.
+    """
+
+    class Msg:
+        pass
+
+    def to_representation(self, instance):
+        msg = self.Msg()
+        msg.schedule = instance.last_schedule
+        msg.time = instance.last_schedule_timestamp
+
+        return DatapointScheduleSerializer(msg).data
+
+
+class DatapointLastSetpointSerializer(serializers.Serializer):
+    """
+    Takes the datapoint instance as input, extracts the last_setpoint and
+    last_setpoint_timestamp fields and feeds those into the correct
+    serializer for this message type. (i.e. DatapointSetpointSerializer).
+
+    This is read_only here, as there is yet no usecase to update the last_*
+    fields with external data.
+    """
+
+    class Msg:
+        pass
+
+    def to_representation(self, instance):
+        msg = self.Msg()
+        msg.setpoint = instance.last_setpoint
+        msg.time = instance.last_setpoint_timestamp
+
+        return DatapointSetpointSerializer(msg).data
+
+
 @extend_schema_serializer(
-    examples = [
-        OpenApiExample (
+    examples=[
+        OpenApiExample(
             "Put msg summary example",
             response_only=True,
-            value={
-                "msgs_created": 10,
-                "msgs_updated": 1
-            }
+            value={"msgs_created": 10, "msgs_updated": 1},
         )
     ]
 )
@@ -657,15 +711,12 @@ class PutMsgSummary(serializers.Serializer):
     """
     A response that contains a summary of the PUT operations outcome.
     """
+
     msgs_created = serializers.IntegerField(
         required=True,
-        help_text=(
-            "Specifies how many messages have been created."
-        ),
+        help_text=("Specifies how many messages have been created."),
     )
     msgs_updated = serializers.IntegerField(
         required=True,
-        help_text=(
-            "Specifies how many messages have been updated."
-        ),
+        help_text=("Specifies how many messages have been updated."),
     )
