@@ -116,7 +116,7 @@ class TestRESTEndpoint(TestCase):
 
         p = Permission.objects.get(codename="view_datapoint")
         self.user.user_permissions.add(p)
-        request = self.client.get("/datapoint/%s/" % dp.id)
+        request = self.client.get("/datapoint/?id__in=%s" % dp.id)
         expected_data = {
             "id": dp.id,
             "type": dp.type,
@@ -130,7 +130,7 @@ class TestRESTEndpoint(TestCase):
             "connector": {"name": dp.connector.name},
             "key_in_connector": dp.key_in_connector,
         }
-        assert request.data == expected_data
+        assert request.data == [expected_data]
 
     def test_create_datapoint_creates_new_datapoint_and_connector(self):
         """
@@ -430,7 +430,10 @@ class TestRESTEndpoint(TestCase):
         fields are delivered.
         """
         test_value = "last_value!"
-        expected_data = {"value": json.dumps(test_value), "timestamp": 1585092224000}
+        expected_data = {
+            "value": json.dumps(test_value),
+            "timestamp": 1585092224000,
+        }
 
         dp = datapoint_factory(self.test_connector)
         dp.save()
@@ -444,10 +447,11 @@ class TestRESTEndpoint(TestCase):
         p = Permission.objects.get(codename="view_datapointvalue")
         self.user.user_permissions.add(p)
         request = self.client.get(
-            "/datapoint/%s/value/%s/" % (dp.id, expected_data["timestamp"])
+            "/datapoint/%s/value/?timestamp__gte=%s&timestamp__lte=%s"
+            % (dp.id, expected_data["timestamp"], expected_data["timestamp"])
         )
 
-        assert request.data == expected_data
+        assert request.data == [expected_data]
 
     def test_post_datapoint_value_detail_rejected_for_sensor(self):
         """
@@ -463,7 +467,10 @@ class TestRESTEndpoint(TestCase):
         self.user.user_permissions.add(p)
         # Now put an update for the datapoint and check that the put was
         # denied as expected.
-        update_msg = {"value": json.dumps("last_value!"), "timestamp": 1585092224000}
+        update_msg = {
+            "value": json.dumps("last_value!"),
+            "timestamp": 1585092224000,
+        }
         request = self.client.post(
             "/datapoint/%s/value/" % dp.id, update_msg, format="json"
         )
@@ -505,7 +512,10 @@ class TestRESTEndpoint(TestCase):
             "value": json.dumps("updated_value!"),
             "timestamp": 1585092224000,
         }
-        expected_msg_mqtt = {"value": "updated_value!", "timestamp": 1585092224000}
+        expected_msg_mqtt = {
+            "value": "updated_value!",
+            "timestamp": 1585092224000,
+        }
         request = self.client.post(
             "/datapoint/%s/value/" % dp.id, expected_msg, format="json"
         )
@@ -527,7 +537,9 @@ class TestRESTEndpoint(TestCase):
 
         # Now that we know the message has been published on the broker,
         # verify it holds the expected information.
-        assert self.mqtt_client.userdata[dp_mqtt_value_topic] == expected_msg_mqtt
+        assert (
+            self.mqtt_client.userdata[dp_mqtt_value_topic] == expected_msg_mqtt
+        )
 
         # After the MQTT message has now arrived the updated value should now
         # be available on the REST interface. As above this might happen async,
@@ -546,9 +558,10 @@ class TestRESTEndpoint(TestCase):
                 )
 
         request = self.client.get(
-            "/datapoint/%s/value/%s/" % (dp.id, expected_msg["timestamp"])
+            "/datapoint/%s/value/?timestamp__gte=%s&timestamp__lte=%s"
+            % (dp.id, expected_msg["timestamp"], expected_msg["timestamp"])
         )
-        assert request.data == expected_msg
+        assert request.data == [expected_msg]
 
     def test_post_datapoint_schedule_detail_rejected_for_sensor(self):
         """
@@ -586,8 +599,16 @@ class TestRESTEndpoint(TestCase):
         """
         test_data = {
             "schedule": [
-                {"from_timestamp": None, "to_timestamp": 1564489613491, "value": 21},
-                {"from_timestamp": 1564489613491, "to_timestamp": None, "value": None},
+                {
+                    "from_timestamp": None,
+                    "to_timestamp": 1564489613491,
+                    "value": 21,
+                },
+                {
+                    "from_timestamp": 1564489613491,
+                    "to_timestamp": None,
+                    "value": None,
+                },
             ],
             "timestamp": datetime_from_timestamp(1564489613491),
         }
@@ -611,7 +632,9 @@ class TestRESTEndpoint(TestCase):
         dp.save()
 
         dp_schedule = DatapointSchedule(
-            datapoint=dp, schedule=test_data["schedule"], time=test_data["timestamp"]
+            datapoint=dp,
+            schedule=test_data["schedule"],
+            time=test_data["timestamp"],
         )
         dp_schedule.save()
 
@@ -619,10 +642,11 @@ class TestRESTEndpoint(TestCase):
         self.user.user_permissions.add(p)
 
         request = self.client.get(
-            "/datapoint/%s/schedule/%s/" % (dp.id, expected_data["timestamp"])
+            "/datapoint/%s/schedule/?timestamp__gte=%s&timestamp__lte=%s"
+            % (dp.id, expected_data["timestamp"], expected_data["timestamp"])
         )
 
-        assert request.data == expected_data
+        assert request.data == [expected_data]
 
     def test_post_datapoint_schedule_detail_actuator(self):
         """
@@ -670,8 +694,16 @@ class TestRESTEndpoint(TestCase):
         }
         expected_msg_mqtt = {
             "schedule": [
-                {"from_timestamp": None, "to_timestamp": 1564489613491, "value": 21},
-                {"from_timestamp": 1564489613491, "to_timestamp": None, "value": None},
+                {
+                    "from_timestamp": None,
+                    "to_timestamp": 1564489613491,
+                    "value": 21,
+                },
+                {
+                    "from_timestamp": 1564489613491,
+                    "to_timestamp": None,
+                    "value": None,
+                },
             ],
             "timestamp": 1585092224000,
         }
@@ -712,13 +744,15 @@ class TestRESTEndpoint(TestCase):
             waited_seconds += 0.005
             if waited_seconds >= 3:
                 raise RuntimeError(
-                    "Expected datapoint schedule message has not reached the " "DB."
+                    "Expected datapoint schedule message has not reached the "
+                    "DB."
                 )
 
         request = self.client.get(
-            "/datapoint/%s/schedule/%s/" % (dp.id, expected_msg["timestamp"])
+            "/datapoint/%s/schedule/?timestamp__gte=%s&timestamp__lte=%s"
+            % (dp.id, expected_msg["timestamp"], expected_msg["timestamp"])
         )
-        assert request.data == expected_msg
+        assert request.data == [expected_msg]
 
     def test_post_datapoint_setpoint_detail_rejected_for_sensor(self):
         """
@@ -784,7 +818,9 @@ class TestRESTEndpoint(TestCase):
         dp.save()
 
         dp_setpoint = DatapointSetpoint(
-            datapoint=dp, setpoint=test_data["setpoint"], time=test_data["timestamp"]
+            datapoint=dp,
+            setpoint=test_data["setpoint"],
+            time=test_data["timestamp"],
         )
         dp_setpoint.save()
 
@@ -792,10 +828,11 @@ class TestRESTEndpoint(TestCase):
         self.user.user_permissions.add(p)
 
         request = self.client.get(
-            "/datapoint/%s/setpoint/%s/" % (dp.id, expected_data["timestamp"])
+            "/datapoint/%s/setpoint/?timestamp__gte=%s&timestamp__lte=%s"
+            % (dp.id, expected_data["timestamp"], expected_data["timestamp"])
         )
 
-        assert request.data == expected_data
+        assert request.data == [expected_data]
 
     def test_post_datapoint_setpoint_detail_for_actuator(self):
         """
@@ -883,18 +920,20 @@ class TestRESTEndpoint(TestCase):
             waited_seconds += 0.005
             if waited_seconds >= 3:
                 raise RuntimeError(
-                    "Expected datapoint setpoint message has not reached the " "DB."
+                    "Expected datapoint setpoint message has not reached the "
+                    "DB."
                 )
         request = self.client.get(
-            "/datapoint/%s/setpoint/%s/" % (dp.id, expected_msg["timestamp"])
+            "/datapoint/%s/setpoint/?timestamp__gte=%s&timestamp__lte=%s"
+            % (dp.id, expected_msg["timestamp"], expected_msg["timestamp"])
         )
-        assert request.data == expected_msg
+        assert request.data == [expected_msg]
 
     def test_retrieve_datapoint_forbidden_without_permissions(self):
         dp = datapoint_factory(self.test_connector)
         dp.save()
 
-        request = self.client.get("/datapoint/%s/" % dp.id)
+        request = self.client.get("/datapoint/?id__in=%s" % dp.id)
 
         assert request.status_code == 403
 
@@ -904,7 +943,7 @@ class TestRESTEndpoint(TestCase):
 
         p = Permission.objects.get(codename="view_datapoint")
         self.user.user_permissions.add(p)
-        request = self.client.get("/datapoint/%s/" % dp.id)
+        request = self.client.get("/datapoint/?id__in=%s" % dp.id)
 
         assert request.status_code == 200
 

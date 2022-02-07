@@ -91,8 +91,7 @@ class DatapointViewSetTemplate(GenericViewSet):
         """
         This methods allows to retrieve the data of multiple datapoints.
         """
-        datapoints = self.queryset.all()
-        datapoints = self.filter_queryset(datapoints)
+        datapoints = self.filter_queryset(self.queryset)
         serializer = self.serializer_class(datapoints, many=True)
         return Response(serializer.data)
 
@@ -171,7 +170,10 @@ class DatapointViewSetTemplate(GenericViewSet):
                 )
             elif dp_qs.count() > 1:
                 errors.append(
-                    {"datapoint": "Multiple datapoints found matching query: %s." % q}
+                    {
+                        "datapoint": "Multiple datapoints found matching query: %s."
+                        % q
+                    }
                 )
             else:
                 errors.append({})
@@ -319,7 +321,9 @@ class ViewSetWithDatapointFK(GenericViewSet):
             raise ValidationError(
                 "This message can only be written for an actuator datapoint."
             )
-        object, created = self.model.objects.get_or_create(datapoint=datapoint, time=dt)
+        object, created = self.model.objects.get_or_create(
+            datapoint=datapoint, time=dt
+        )
         if not created:
             raise ValidationError(
                 {
@@ -351,7 +355,9 @@ class ViewSetWithDatapointFK(GenericViewSet):
         validated_data = serializer.validated_data
 
         dt = datetime_from_timestamp(validated_data["timestamp"])
-        object, created = self.model.objects.get_or_create(datapoint=datapoint, time=dt)
+        object, created = self.model.objects.get_or_create(
+            datapoint=datapoint, time=dt
+        )
         for field in validated_data:
             if field == "timestamp":
                 continue
@@ -373,7 +379,9 @@ class ViewSetWithDatapointFK(GenericViewSet):
         datapoint = get_object_or_404(self.datapoint_model, id=dp_id)
 
         # Returns HTTP 400 (by exception) if sent data is not valid.
-        serializer = self.serializer_class(datapoint, data=request.data, many=True)
+        serializer = self.serializer_class(
+            datapoint, data=request.data, many=True
+        )
         serializer.is_valid(raise_exception=True)
         validated_data = serializer.validated_data
 
@@ -390,10 +398,15 @@ class ViewSetWithDatapointFK(GenericViewSet):
             msg["time"] = datetime_from_timestamp(msg.pop("timestamp"))
             msgs.append(msg)
 
-        msg_stats = self.model.bulk_update_or_create(model=self.model, msgs=msgs)
+        msg_stats = self.model.bulk_update_or_create(
+            model=self.model, msgs=msgs
+        )
 
         put_msg_summary = PutMsgSummary().to_representation(
-            instance={"msgs_created": msg_stats[0], "msgs_updated": msg_stats[1]}
+            instance={
+                "msgs_created": msg_stats[0],
+                "msgs_updated": msg_stats[1],
+            }
         )
         return Response(put_msg_summary, status=status.HTTP_200_OK)
 

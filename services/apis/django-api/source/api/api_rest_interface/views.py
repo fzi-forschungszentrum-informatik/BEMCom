@@ -46,28 +46,11 @@ class DatapointViewSet(DatapointViewSetTemplate):
     __doc__ = DatapointViewSetTemplate.__doc__
     datapoint_model = Datapoint
     serializer_class = DatapointSerializer
-    queryset = Datapoint.objects.all()
+    queryset = Datapoint.objects.filter(is_active=True)
     filterset_class = DatapointFilter
     # Ids might change in between instances. The combinations of
     # these too fields in contrast should be unique even if the ID changed.
     unique_together_fields = ("connector", "key_in_connector")
-
-    def retrieve(self, request, dp_id):
-        datapoint = get_object_or_404(self.queryset, id=dp_id, is_active=True)
-        serializer = self.serializer_class(datapoint)
-        return Response(serializer.data)
-
-    def list(self, request):
-        """
-        Similar to the version DatapointViewSetTemplate but only returns
-        active Datapoints.
-        """
-        datapoints = self.queryset.filter(is_active=True)
-        datapoints = self.filter_queryset(datapoints)
-        serializer = self.serializer_class(datapoints, many=True)
-        return Response(serializer.data)
-
-    list.__doc__ = DatapointViewSetTemplate.list.__doc__
 
     # This extends the generic version from ems_utils such that connectors
     # are generated automatically too.
@@ -122,11 +105,16 @@ class DatapointViewSet(DatapointViewSetTemplate):
             q = {k: data[k] for k in self.unique_together_fields if k in data}
             dp_qs = self.datapoint_model.objects.filter(**q)
             if dp_qs.count() == 1:
-                errors.append({"datapoint": "Datapoint exists already: %s." % q})
+                errors.append(
+                    {"datapoint": "Datapoint exists already: %s." % q}
+                )
                 continue
             elif dp_qs.count() > 1:
                 errors.append(
-                    {"datapoint": "Multiple datapoints found matching query: %s." % q}
+                    {
+                        "datapoint": "Multiple datapoints found matching query: %s."
+                        % q
+                    }
                 )
                 continue
             else:
@@ -188,7 +176,8 @@ class DatapointViewSet(DatapointViewSetTemplate):
                 errors.append(
                     {
                         "connector": (
-                            "No Connector found matching name: %s." % data["connector"]
+                            "No Connector found matching name: %s."
+                            % data["connector"]
                         )
                     }
                 )
@@ -216,7 +205,10 @@ class DatapointViewSet(DatapointViewSetTemplate):
                 continue
             elif dp_qs.count() > 1:
                 errors.append(
-                    {"datapoint": "Multiple datapoints found matching query: %s." % q}
+                    {
+                        "datapoint": "Multiple datapoints found matching query: %s."
+                        % q
+                    }
                 )
                 continue
             else:

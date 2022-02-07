@@ -16,7 +16,7 @@ class DatapointFilter(FilterSet):
     class Meta:
         model = Datapoint
         fields = {
-            "id": ["exact", "in"],
+            "id": ["in"],
             "connector__name": ["exact", "icontains"],
             "key_in_connector": ["exact", "icontains"],
             "short_name": ["exact", "icontains"],
