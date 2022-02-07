@@ -2,7 +2,7 @@
 
 ## Before you start
 
-Please note this library relies heavily on docker and docker-compose. You may wish to familiarize yourself with these tools before using this library. A good starting point are the getting started pages of [docker](https://docs.docker.com/get-started/) and [docker-compose](https://docs.docker.com/compose/gettingstarted/) respectively.
+Please note this library relies heavily on Docker and Docker Compose. You may wish to familiarize yourself with these tools before using this library. A good starting point are the getting started pages of [Docker](https://docs.docker.com/get-started/) and [Docker Compose](https://docs.docker.com/compose/gettingstarted/) respectively.
 
 ## Overview
 

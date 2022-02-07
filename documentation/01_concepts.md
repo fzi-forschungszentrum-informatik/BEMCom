@@ -34,15 +34,15 @@ Reusing existing software, especially mature open source components, is also app
 
 ### Services as Docker containers
 
-Each service is implemented as a docker container. This procedure has the following advantages:
+Each service is implemented as a Docker container. This procedure has the following advantages:
 
 - As the application is distributed over several containers it scales well, and can easily be deployed to a computing cluster (e.g. Kubernetes) if that is necessary for performance reasons.
 - Isolating each service in a container minimizes the possibilities of side effects between services as each container contains the full runtime environment required by the service. It also supports development efficiency as it can be guaranteed that each service behaves exactly the same, regardless if deployed on a development machine, a production server or even a cluster.
-- Utilizing containers, especially in combination with docker-compose, supports the separation of generic runtime logic from configuration, which helps designing services that generalize well. 
+- Utilizing containers, especially in combination with Docker Compose, supports the separation of generic runtime logic from configuration, which helps designing services that generalize well.
 
 # Application Concept
 
-Each created application will consist of several services with different functionalities. Each service is thereby executed as a docker container. The following shows the general flow of data in an application.
+Each created application will consist of several services with different functionalities. Each service is thereby executed as a Docker container. The following shows the general flow of data in an application.
 
 ![service_concept](graphics/service_concept.png)
 
