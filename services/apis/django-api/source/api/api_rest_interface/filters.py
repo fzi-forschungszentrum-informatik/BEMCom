@@ -16,6 +16,7 @@ class DatapointFilter(FilterSet):
     class Meta:
         model = Datapoint
         fields = {
+            "id": ["exact", "in"],
             "connector__name": ["exact", "icontains"],
             "key_in_connector": ["exact", "icontains"],
             "short_name": ["exact", "icontains"],
@@ -67,6 +68,10 @@ class DatapointValueFilter(TimestampFilter):
             The queryset to filter.
         value: string
             A PostgreSQL interval string, e.g. "15 minutes"."
+
+        TODO: Distinguish by datapoints here! E.g. with the following
+        annotation:
+        queryset = queryset.annotate(datapoint__id=models.F("datapoint__id")))
 
         """
         queryset = queryset.time_bucket("time", value)
