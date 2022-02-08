@@ -12,7 +12,7 @@ This is a minimal example showing how a functional BEMCom application can be cre
 
 
 
-In order to demonstrate the full functionality of BEMCom it is certainly necessary to begin with a device to communicate with. To that end we provide a [Demo Device](../services/tools/demo-device/Readme.md) service reflecting a simple Modbus device which can be interpreted as as a single room for which the temperature is measured and an actor (say an AC system that can heat and cool) exists to manipulate the room temperature. However before the first service is started it is necessary to create a Docker network to allow communication between the services.
+In order to demonstrate the full functionality of BEMCom it is certainly necessary to begin with a device to communicate with. To that end we provide a [Demo Device](../services/tools/demo-device/Readme.md) service reflecting a simple Modbus device which can be interpreted as a single room for which the temperature is measured and an actor (say an AC system that can heat and cool) exists to manipulate the room temperature. However, before the first service is started it is necessary to create a Docker network to allow communication between the services.
 
 ```bash
 docker network create bemcom-demo
@@ -24,13 +24,13 @@ After the Docker network exists, it is possible to start the Demo Device with:
 docker run -d --network bemcom-demo --name bemcom-demo-device bemcom/demo-device-tool:0.1.0
 ```
 
-Here the `-d` flag will cause Docker to run the Demo Device in the background, `--network bemcom-demo` will connect the container to the previously created network and  `--name bemcom-demo-device` will assign the network name `bemcom-demo-device` to the container. To confirm that the service has created successfully execute:
+Here the `-d` flag will cause Docker to run the Demo Device in the background, `--network bemcom-demo` will connect the container to the previously created network and  `--name bemcom-demo-device` will assign the network name `bemcom-demo-device` to the container. To confirm that the Demo Device has been started successfully execute:
 
 ```bash
 docker logs bemcom-demo-device
 ```
 
-Which create an output similar to this one:
+Which should create an output similar to this one:
 
 ```
 docker-entrypoint.sh: Starting up
@@ -61,20 +61,20 @@ In order to establish communication between the Demo Device and the message brok
 docker run -d --network bemcom-demo --name bemcom-demo-modbus-tcp-connector -e MQTT_BROKER_HOST=bemcom-demo-mqtt-broker -e MQTT_BROKER_PORT=1883 -e CONNECTOR_NAME=bemcom-demo-modbus-tcp-connector -e MODBUS_MASTER_IP=bemcom-demo-device -e MODBUS_MASTER_PORT=502 -e POLL_SECONDS=5 -e MODBUS_CONFIG='{"read_input_registers": [{"address": 1,"count":1,"unit": 1,"datatypes": "e"}],"write_register": [{"address": 1,"unit": 1,"datatypes": "<e","example_value": "22.0"}]}' bemcom/modbus-tcp-connector:0.5.0
 ```
 
-Albeit this shell command may look far more complex then the ones introduced above, it is actually very similar. The only difference is that the connector service is additionally configured via environment variables, that is what follows `-e`, to account for specific settings of the device and the application. In particular these variables can be interpreted as:
+Albeit this shell command may look far more complex then the ones introduced above, it is actually very similar. The only difference is that the connector service is additionally configured via environment variables, that is what follows `-e`, to account for specific settings of the device and the application. In particular, these variables can be interpreted as:
 
-* `MQTT_BROKER_HOST=bemcom-demo-mqtt-broker`: Configures that the connector should connect to the MQTT broker with the network name `bemcom-demo-mqtt-broker`, i.e. the name that is been configured in the command above.
+* `MQTT_BROKER_HOST=bemcom-demo-mqtt-broker`: Configures that the connector should connect to the MQTT broker with the network name `bemcom-demo-mqtt-broker`, i.e. the name that has been given in the command above.
 * `MQTT_BROKER_PORT=1883`: Specifies that the MQTT broker expects a connection on port `1883`, that is the default value for MQTT.
 * `CONNECTOR_NAME=bemcom-demo-modbus-tcp-connector`: Defines the internal name (i.e. the root topic) as  `bemcom-demo-modbus-tcp-connector` for the information exchange on the broker between the connector and other services.
-* `MODBUS_MASTER_IP=bemcom-demo-device`: Specifies the network name or IP address of the Modbus/TCP device that the connector will attempt to communicate with to `bemcom-demo-device`, i.e. the name that is been configured in the command above.
-*  `MODBUS_MASTER_PORT=502`: Defines that the demo device expects connections on port `502`, that is the default value for Modbus/TCP.
+* `MODBUS_MASTER_IP=bemcom-demo-device`: Specifies the network name or IP address of the Modbus/TCP device that the connector will attempt to communicate with to `bemcom-demo-device`, i.e. the name that has been given in the command above.
+*  `MODBUS_MASTER_PORT=502`: Defines that the demo device expects connections on port `502`, which is the default value for Modbus/TCP.
 * `POLL_SECONDS=5`: Declares that the connector should request the configured sensor values (see below) every five seconds by polling the device.
-* `MODBUS_CONFIG='{"read_input_registers": ... }'`: Configures the Modbus registers which the connector will attempt to read from or write to. In particular, the connector is set up to handle a single sensor datapoint from input register one and can write a single actuator datapoint to holding register one. It is worth noting here that the concept of registers is specific to Modbus and that the information which information is exposed on which register is device specific and usually described in the documentation belonging to the device.
+* `MODBUS_CONFIG='{"read_input_registers": ... }'`: Configures the Modbus registers which the connector will attempt to read from or write to. In particular, the connector is set up to handle a single sensor datapoint for input register `1` and a single actuator datapoint for holding register `1`. It is worth noting here that the concept of registers is specific to Modbus and that the information which information is exposed on which register is device specific and usually described in the documentation belonging to the device.
 
 At this point it is important to highlight two important properties about the configuration of BEMCom services via environment variables:
 
-1. It is solely necessary to change the environment variables to adapted a BEMCom service for a particular application or to a specific device. If one would need to connect a second different Modbus device to the demo application above for example, it is intended to use the same image of the Modbus/TCP connector with adjusted environment variables. It is thus possible to very quickly establish connection to even larger numbers of devices if suitable connectors for those exist.
-2. Which environment variables are available varies per BEMCom service. A documentation about how to configure each service utilizing those variables is provided in the documentation of the services. Regarding the current example, the documentation of the [Modbus/TCP connector](../services/connectors/modbus-tcp-connector/Readme.md) provides additional details for each environment variables including e.g. extensive discussion how to define the `MODBUS_CONFIG` variable correctly.
+1. It is solely necessary to change the environment variables to adapt a BEMCom service for a particular application or to a specific device. If one would need to connect a second different Modbus device to the demo application above for example, it is intended to use the same image of the Modbus/TCP connector with adjusted environment variables. It is thus possible to very quickly establish connection to even larger numbers of devices if suitable connectors for those exist.
+2. Which environment variables are available varies per BEMCom service. A documentation about how to configure each service utilizing those variables is provided in the documentation of the services. Regarding the current example, the documentation of the [Modbus/TCP connector](../services/connectors/modbus-tcp-connector/Readme.md) provides additional details for each environment variable including e.g. extensive discussion how to define the `MODBUS_CONFIG` variable correctly.
 
 Before moving on it is again a good idea to verify the correct operation of the connector by inspecting the logs with `docker logs bemcom-demo-modbus-tcp-connector`, which should yield an output similar to:
 
@@ -113,7 +113,7 @@ This indicates that the API service operates and the REST interface as well as t
 
 ## Creating Applications with Docker Compose
 
-As we have seen in the section above, starting each service manually is a tedious process. In practice it is usually better to write the desired application into a configuration file and execute this. One particular simple way to implement such an approach is to utilize [Docker Compose](https://docs.docker.com/compose/gettingstarted/) . The following `docker-compose.yml` file will lead to the same result as the individual steps above, where more detailed explanation is provided.
+As we have seen in the section above, starting each service manually is a tedious process. In practice it is usually better to write the desired application into a configuration file and execute this. One particularly simple way to implement such an approach is to utilize [Docker Compose](https://docs.docker.com/compose/gettingstarted/) . The following `docker-compose.yml` file will lead to the same result as the individual steps above, where more detailed explanation is provided.
 
 ```yaml
 version: '3'
@@ -168,7 +168,7 @@ Using this file the BEMCom application can be started using a simple `docker-com
 
 ## Configuring and Accessing Datapoints
 
-Once the BEMCom demo application has been started with either one of the two approaches introduced in the previous sections, it is left to configure the datapoints. This can be done utilizing the graphical administration user interface provided by the API service. Assuming that the containers are executed on the local machine, one can access the UI on the following URL:
+Once the BEMCom demo application has been started with either one of the two approaches introduced in the previous sections, it remains to configure the datapoints. This can be done utilizing the graphical administration user interface provided by the API service. Assuming that the containers are executed on the local machine, one can access the UI on the following URL:
 
 ```
 http://localhost:8080/admin/
