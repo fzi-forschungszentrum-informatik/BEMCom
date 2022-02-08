@@ -8,6 +8,9 @@ from ems_utils.message_format.models import DatapointTemplate
 from ems_utils.message_format.models import DatapointValueTemplate
 from ems_utils.message_format.models import DatapointScheduleTemplate
 from ems_utils.message_format.models import DatapointSetpointTemplate
+from ems_utils.message_format.models import DatapointLastValueTemplate
+from ems_utils.message_format.models import DatapointLastScheduleTemplate
+from ems_utils.message_format.models import DatapointLastSetpointTemplate
 from ems_utils.message_format.serializers import DatapointValueSerializer
 from ems_utils.message_format.serializers import DatapointScheduleSerializer
 from ems_utils.message_format.serializers import DatapointSetpointSerializer
@@ -371,7 +374,8 @@ class TestDatapointValueSerializer(TransactionTestCase):
                 is_valid = serializer.is_valid(raise_exception=True)
             except Exception:
                 logger.exception(
-                    "test_value_in_allowed_values failed for valid " "combination %s",
+                    "test_value_in_allowed_values failed for valid "
+                    "combination %s",
                     str(valid_combination),
                 )
                 is_valid = False
@@ -383,15 +387,31 @@ class TestDatapointValueSerializer(TransactionTestCase):
                 "data_format": "discrete_numeric",
                 "allowed_values": [1.0, 3.0],
             },
-            {"value": 2, "data_format": "discrete_numeric", "allowed_values": [1, 3]},
-            {"value": 2, "data_format": "discrete_numeric", "allowed_values": []},
+            {
+                "value": 2,
+                "data_format": "discrete_numeric",
+                "allowed_values": [1, 3],
+            },
+            {
+                "value": 2,
+                "data_format": "discrete_numeric",
+                "allowed_values": [],
+            },
             {
                 "value": "OK",
                 "data_format": "discrete_text",
                 "allowed_values": ["NotOK", "OK "],
             },
-            {"value": "", "data_format": "discrete_text", "allowed_values": ["OK"]},
-            {"value": None, "data_format": "discrete_text", "allowed_values": ["OK"]},
+            {
+                "value": "",
+                "data_format": "discrete_text",
+                "allowed_values": ["OK"],
+            },
+            {
+                "value": None,
+                "data_format": "discrete_text",
+                "allowed_values": ["OK"],
+            },
         ]
         for invalid_combination in invalid_combinations:
             dp.data_format = invalid_combination["data_format"]
@@ -412,7 +432,8 @@ class TestDatapointValueSerializer(TransactionTestCase):
 
             if caught_execption is None:
                 logger.exception(
-                    "test_value_in_allowed_values failed for invalid " "combination %s",
+                    "test_value_in_allowed_values failed for invalid "
+                    "combination %s",
                     str(valid_combination),
                 )
 
@@ -435,7 +456,9 @@ class TestDatapointValueSerializer(TransactionTestCase):
 
             test_data = {"value": json.dumps(None), "timestamp": timestamp}
 
-            serializer = DatapointValueSerializer(self.datapoint, data=test_data)
+            serializer = DatapointValueSerializer(
+                self.datapoint, data=test_data
+            )
             try:
                 serializer.is_valid(raise_exception=True)
             except Exception as e:
@@ -579,7 +602,9 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
 
             test_data = {"schedule": None, "timestamp": timestamp}
 
-            serializer = DatapointScheduleSerializer(self.datapoint, data=test_data)
+            serializer = DatapointScheduleSerializer(
+                self.datapoint, data=test_data
+            )
             try:
                 serializer.is_valid(raise_exception=True)
             except Exception as e:
@@ -698,7 +723,9 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
 
         # Missing to_timestamp
         test_data = {
-            "schedule": [{"from_timestamp": None, "value": json.dumps("not a number")}],
+            "schedule": [
+                {"from_timestamp": None, "value": json.dumps("not a number")}
+            ],
             "timestamp": timestamp_utc_now(),
         }
         serializer = DatapointScheduleSerializer(dp, data=test_data)
@@ -717,7 +744,10 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
         # Missing value
         test_data = {
             "schedule": [
-                {"from_timestamp": None, "to_timestamp": timestamp_utc_now() + 1000}
+                {
+                    "from_timestamp": None,
+                    "to_timestamp": timestamp_utc_now() + 1000,
+                }
             ],
             "timestamp": timestamp_utc_now(),
         }
@@ -962,7 +992,8 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
                 is_valid = serializer.is_valid(raise_exception=True)
             except Exception:
                 logger.exception(
-                    "test_value_in_allowed_values failed for valid " "combination %s",
+                    "test_value_in_allowed_values failed for valid "
+                    "combination %s",
                     str(valid_combination),
                 )
                 is_valid = False
@@ -974,15 +1005,31 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
                 "data_format": "discrete_numeric",
                 "allowed_values": [1.0, 3.0],
             },
-            {"value": 2, "data_format": "discrete_numeric", "allowed_values": [1, 3]},
-            {"value": 2, "data_format": "discrete_numeric", "allowed_values": []},
+            {
+                "value": 2,
+                "data_format": "discrete_numeric",
+                "allowed_values": [1, 3],
+            },
+            {
+                "value": 2,
+                "data_format": "discrete_numeric",
+                "allowed_values": [],
+            },
             {
                 "value": "OK",
                 "data_format": "discrete_text",
                 "allowed_values": ["NotOK", "OK "],
             },
-            {"value": "", "data_format": "discrete_text", "allowed_values": ["OK"]},
-            {"value": None, "data_format": "discrete_text", "allowed_values": ["OK"]},
+            {
+                "value": "",
+                "data_format": "discrete_text",
+                "allowed_values": ["OK"],
+            },
+            {
+                "value": None,
+                "data_format": "discrete_text",
+                "allowed_values": ["OK"],
+            },
         ]
         for invalid_combination in invalid_combinations:
             dp.data_format = invalid_combination["data_format"]
@@ -1009,7 +1056,8 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
 
             if caught_execption is None:
                 logger.exception(
-                    "test_value_in_allowed_values failed for invalid " "combination %s",
+                    "test_value_in_allowed_values failed for invalid "
+                    "combination %s",
                     str(valid_combination),
                 )
 
@@ -1355,7 +1403,9 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
 
             test_data = {"setpoint": None, "timestamp": timestamp}
 
-            serializer = DatapointSetpointSerializer(self.datapoint, data=test_data)
+            serializer = DatapointSetpointSerializer(
+                self.datapoint, data=test_data
+            )
             try:
                 serializer.is_valid(raise_exception=True)
             except Exception as e:
@@ -1441,7 +1491,11 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
         """
         dp = self.datapoint
 
-        always_required_keys = ["from_timestamp", "to_timestamp", "preferred_value"]
+        always_required_keys = [
+            "from_timestamp",
+            "to_timestamp",
+            "preferred_value",
+        ]
         only_con_keys = ["min_value", "max_value"]
         only_dis_keys = ["acceptable_values"]
         # Here a listing which keys must be given in a setpoint message per
@@ -1494,7 +1548,10 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
                         continue
                     setpoint[key] = setpoint_all_fields[key]
 
-                test_data = {"setpoint": [setpoint], "timestamp": timestamp_utc_now()}
+                test_data = {
+                    "setpoint": [setpoint],
+                    "timestamp": timestamp_utc_now(),
+                }
 
                 serializer = DatapointSetpointSerializer(dp, data=test_data)
                 caught_execption = None
@@ -1567,7 +1624,11 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
 
         # Here a listing which keys must be given in a setpoint message per
         # data_format.
-        always_required_keys = ["from_timestamp", "to_timestamp", "preferred_value"]
+        always_required_keys = [
+            "from_timestamp",
+            "to_timestamp",
+            "preferred_value",
+        ]
         only_con_keys = ["min_value", "max_value"]
         only_dis_keys = ["acceptable_values"]
         required_keys_per_data_format = {
@@ -1601,7 +1662,10 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
             for key in required_keys:
                 setpoint[key] = setpoint_all_fields[key]
 
-            test_data = {"setpoint": [setpoint], "timestamp": timestamp_utc_now()}
+            test_data = {
+                "setpoint": [setpoint],
+                "timestamp": timestamp_utc_now(),
+            }
 
             serializer = DatapointSetpointSerializer(dp, data=test_data)
             caught_execption = None
@@ -1609,7 +1673,8 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
                 serializer.is_valid(raise_exception=True)
                 logger.error(
                     "Failed to identify non numeric value while "
-                    "validating setpoint data for data_format (%s)" % data_format
+                    "validating setpoint data for data_format (%s)"
+                    % data_format
                 )
             except Exception as e:
                 caught_execption = e
@@ -1630,7 +1695,10 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
             for key in required_keys:
                 setpoint[key] = setpoint_all_fields[key]
 
-            test_data = {"setpoint": [setpoint], "timestamp": timestamp_utc_now()}
+            test_data = {
+                "setpoint": [setpoint],
+                "timestamp": timestamp_utc_now(),
+            }
 
             serializer = DatapointSetpointSerializer(dp, data=test_data)
             caught_execption = None
@@ -1777,7 +1845,9 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
                         "preferred_value": json.dumps(
                             valid_combination["preferred_value"]
                         ),
-                        "acceptable_values": [valid_combination["preferred_value"]],
+                        "acceptable_values": [
+                            valid_combination["preferred_value"]
+                        ],
                     }
                 ],
                 "timestamp": timestamp_utc_now(),
@@ -1840,7 +1910,9 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
                         "preferred_value": json.dumps(
                             invalid_combination["preferred_value"]
                         ),
-                        "acceptable_values": [invalid_combination["preferred_value"]],
+                        "acceptable_values": [
+                            invalid_combination["preferred_value"]
+                        ],
                     }
                 ],
                 "timestamp": timestamp_utc_now(),
@@ -1855,7 +1927,8 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
 
             if caught_execption is None:
                 logger.exception(
-                    "test_value_in_allowed_values failed for invalid " "combination %s",
+                    "test_value_in_allowed_values failed for invalid "
+                    "combination %s",
                     str(valid_combination),
                 )
 
@@ -2055,7 +2128,7 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
 
 class TestDatapointLastWhateverSerializers(TransactionTestCase):
     """
-    Test all three serializers at once, as all need the same setup.
+    Test all three serializers at once, as all need the similar setup.
     """
 
     @classmethod
@@ -2067,9 +2140,40 @@ class TestDatapointLastWhateverSerializers(TransactionTestCase):
             class Meta:
                 app_label = "test_message_format_models_8"
 
+        class DatapointLastValue(DatapointLastValueTemplate):
+            class Meta:
+                app_label = "test_message_format_models_8"
+
+            datapoint = models.OneToOneField(
+                Datapoint, on_delete=models.CASCADE
+            )
+
+        class DatapointLastSchedule(DatapointLastScheduleTemplate):
+            class Meta:
+                app_label = "test_message_format_models_8"
+
+            datapoint = models.OneToOneField(
+                Datapoint, on_delete=models.CASCADE
+            )
+
+        class DatapointLastSetpoint(DatapointLastSetpointTemplate):
+            class Meta:
+                app_label = "test_message_format_models_8"
+
+            datapoint = models.OneToOneField(
+                Datapoint, on_delete=models.CASCADE
+            )
+
         cls.Datapoint = Datapoint
+        cls.DatapointLastValue = DatapointLastValue
+        cls.DatapointLastSchedule = DatapointLastSchedule
+        cls.DatapointLastSetpoint = DatapointLastSetpoint
+
         with connection.schema_editor() as schema_editor:
             schema_editor.create_model(cls.Datapoint)
+            schema_editor.create_model(cls.DatapointLastValue)
+            schema_editor.create_model(cls.DatapointLastSchedule)
+            schema_editor.create_model(cls.DatapointLastSetpoint)
 
         # Here are the default field values:
         cls.default_field_values = {"type": "sensor"}
@@ -2079,103 +2183,115 @@ class TestDatapointLastWhateverSerializers(TransactionTestCase):
         # Finally, erase the table of the temporary model.
         with connection.schema_editor() as schema_editor:
             schema_editor.delete_model(cls.Datapoint)
+            schema_editor.delete_model(cls.DatapointLastValue)
+            schema_editor.delete_model(cls.DatapointLastSchedule)
+            schema_editor.delete_model(cls.DatapointLastSetpoint)
 
     def tearDown(self):
         """
         Remove the dummy datapoint, so next test starts with empty tables.
         """
+        self.DatapointLastValue.objects.all().delete()
+        self.DatapointLastSchedule.objects.all().delete()
+        self.DatapointLastSetpoint.objects.all().delete()
         self.Datapoint.objects.all().delete()
 
     def test_last_value_to_representation(self):
         """
         Check that a last value message is serialzed as expected.
         """
+        dp = self.Datapoint.objects.create(**self.default_field_values)
+        dp.save()
+
         for test_value in [1, 2.2, "not a number", None, True, False]:
+            expected_timestamp = timestamp_utc_now()
             expected_data = {
-                "value": json.dumps(test_value),
-                "timestamp": timestamp_utc_now(),
+                str(dp.id): {
+                    "value": json.dumps(test_value),
+                    "timestamp": expected_timestamp,
+                }
             }
 
-            field_values = self.default_field_values.copy()
-            field_values.update(
-                {
-                    "last_value": test_value,
-                    "last_value_timestamp": datetime_from_timestamp(
-                        expected_data["timestamp"]
-                    ),
-                }
+            dlv = self.DatapointLastValue.objects.create(
+                datapoint=dp,
+                value=test_value,
+                time=datetime_from_timestamp(expected_timestamp),
             )
-            dp = self.Datapoint.objects.create(**field_values)
 
-            serializer = DatapointLastValueSerializer(dp)
+            serializer = DatapointValueSerializer(dlv)
             assert serializer.data == expected_data
 
     def test_last_schedule_to_representation(self):
         """
         Check that a last schedule message is serialized as expected.
         """
+
+        dp = self.Datapoint.objects.create(**self.default_field_values)
+        dp.save()
+
+        expected_timestamp = timestamp_utc_now()
+        expected_schedule = [
+            {
+                "from_timestamp": None,
+                "to_timestamp": timestamp_utc_now() + 1000,
+                "value": 21,
+            },
+            {
+                "from_timestamp": timestamp_utc_now() + 1000,
+                "to_timestamp": None,
+                "value": None,
+            },
+        ]
         expected_data = {
-            "schedule": [
-                {
-                    "from_timestamp": None,
-                    "to_timestamp": timestamp_utc_now() + 1000,
-                    "value": 21,
-                },
-                {
-                    "from_timestamp": timestamp_utc_now() + 1000,
-                    "to_timestamp": None,
-                    "value": None,
-                },
-            ],
-            "timestamp": timestamp_utc_now(),
+            str(dp.id): {
+                "schedule": expected_schedule,
+                "timestamp": expected_timestamp,
+            }
         }
 
-        field_values = self.default_field_values.copy()
-        field_values.update(
-            {
-                "last_schedule": expected_data["schedule"],
-                "last_schedule_timestamp": datetime_from_timestamp(
-                    expected_data["timestamp"]
-                ),
-            }
+        dls = self.DatapointLastSchedule.objects.create(
+            datapoint=dp,
+            schedule=expected_schedule,
+            time=datetime_from_timestamp(expected_timestamp),
         )
-        dp = self.Datapoint.objects.create(**field_values)
 
-        serializer = DatapointLastScheduleSerializer(dp)
+        serializer = DatapointScheduleSerializer(dls)
         assert serializer.data == expected_data
 
     def test_last_setpoint_to_representation(self):
         """
         Check that a setpoint message is serialized as expected.
         """
+        dp = self.Datapoint.objects.create(**self.default_field_values)
+        dp.save()
+
+        expected_timestamp = timestamp_utc_now()
+        expected_setpoint = [
+            {
+                "from_timestamp": None,
+                "to_timestamp": timestamp_utc_now() + 1000,
+                "preferred_value": json.dumps(21),
+                "acceptable_values": [20.5, 21, 21.5],
+            },
+            {
+                "from_timestamp": timestamp_utc_now() + 1000,
+                "to_timestamp": None,
+                "preferred_value": json.dumps(None),
+                "acceptable_values": [None],
+            },
+        ]
         expected_data = {
-            "setpoint": [
-                {
-                    "from_timestamp": None,
-                    "to_timestamp": timestamp_utc_now() + 1000,
-                    "preferred_value": json.dumps(21),
-                    "acceptable_values": [20.5, 21, 21.5],
-                },
-                {
-                    "from_timestamp": timestamp_utc_now() + 1000,
-                    "to_timestamp": None,
-                    "preferred_value": json.dumps(None),
-                    "acceptable_values": [None],
-                },
-            ],
-            "timestamp": timestamp_utc_now(),
+            str(dp.id): {
+                "setpoint": expected_setpoint,
+                "timestamp": expected_timestamp,
+            }
         }
 
-        field_values = self.default_field_values.copy()
-        field_values.update(
-            {
-                "last_setpoint": expected_data["setpoint"],
-                "last_setpoint_timestamp": datetime_from_timestamp(
-                    expected_data["timestamp"]
-                ),
-            }
+        dls = self.DatapointLastSetpoint.objects.create(
+            datapoint=dp,
+            setpoint=expected_setpoint,
+            time=datetime_from_timestamp(expected_timestamp),
         )
-        dp = self.Datapoint.objects.create(**field_values)
 
-        serializer = DatapointLastSetpointSerializer(dp)
+        serializer = DatapointSetpointSerializer(dls)
         assert serializer.data == expected_data

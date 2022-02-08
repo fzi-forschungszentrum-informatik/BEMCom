@@ -11,9 +11,10 @@ from paho.mqtt.client import Client
 from cachetools.func import ttl_cache
 from prometheus_client import Counter
 
-from .models.datapoint import Datapoint, DatapointValue
+from .models.datapoint import Datapoint, DatapointValue, DatapointLastValue
 from .models.connector import Connector, ConnectorHeartbeat, ConnectorLogEntry
-from .models.datapoint import DatapointSetpoint, DatapointSchedule
+from .models.datapoint import DatapointSchedule, DatapointLastSchedule
+from .models.datapoint import DatapointSetpoint, DatapointLastSetpoint
 from .models.controller import Controller, ControlledDatapoint
 from ems_utils.timestamp import datetime_from_timestamp
 
@@ -112,7 +113,8 @@ class MqttToDb:
             self.client.connect(**connect_kwargs)
         except (socket.gaierror, OSError):
             logger.error(
-                "Cannot connect to MQTT broker: %s. Aborting startup.", connect_kwargs
+                "Cannot connect to MQTT broker: %s. Aborting startup.",
+                connect_kwargs,
             )
             sys.exit(1)
 
@@ -300,7 +302,9 @@ class MqttToDb:
             # Use qos=2 to ensure the message is received by the connector.
             payload = json.dumps(datapoint_map)
             topic = connector.mqtt_topic_datapoint_map
-            self.client.publish(topic=topic, payload=payload, qos=2, retain=True)
+            self.client.publish(
+                topic=topic, payload=payload, qos=2, retain=True
+            )
             self.prom_published_messages_to_connector_counter.labels(
                 topic=topic, connector=connector.name
             ).inc()
@@ -417,7 +421,8 @@ class MqttToDb:
             else:
                 logger.warning(
                     "Message Queue full! Droping message with topic: %s\n"
-                    "Increasing N_MTD_WRITE_THREADS may solve this issue." % msg.topic
+                    "Increasing N_MTD_WRITE_THREADS may solve this issue."
+                    % msg.topic
                 )
 
     @ttl_cache(maxsize=None, ttl=15 * 60)
@@ -428,6 +433,42 @@ class MqttToDb:
         The ttl ensures that we refreash every 15 Minutes from the DB.
         """
         return Datapoint.objects.get(id=id)
+
+    @ttl_cache(maxsize=None, ttl=15 * 60)
+    def get_datapoint_last_value_by_id(self, id):
+        """
+        This is a simple wrapper that acts as a cache.
+
+        The ttl ensures that we refreash every 15 Minutes from the DB.
+        """
+        datapoint = self.get_datapoint_by_id(id)
+        return DatapointLastValue.objects.get_or_create(datapoint=datapoint)[0]
+
+    @ttl_cache(maxsize=None, ttl=15 * 60)
+    def get_datapoint_last_schedule_by_id(self, id):
+        """
+        This is a simple wrapper that acts as a cache.
+
+        The ttl ensures that we refreash every 15 Minutes from the DB.
+        """
+        datapoint = self.get_datapoint_by_id(id)
+        object, _ = DatapointLastSchedule.objects.get_or_create(
+            datapoint=datapoint
+        )
+        return object
+
+    @ttl_cache(maxsize=None, ttl=15 * 60)
+    def get_datapoint_last_setpoint_by_id(self, id):
+        """
+        This is a simple wrapper that acts as a cache.
+
+        The ttl ensures that we refreash every 15 Minutes from the DB.
+        """
+        datapoint = self.get_datapoint_by_id(id)
+        object, _ = DatapointLastSetpoint.objects.get_or_create(
+            datapoint=datapoint
+        )
+        return object
 
     def message_handle_worker(self):
         """
@@ -449,7 +490,8 @@ class MqttToDb:
                 if self.message_queue:
                     msg = self.message_queue.pop(0)
                     logger.debug(
-                        "Current message queue length is: %s" % len(self.message_queue)
+                        "Current message queue length is: %s"
+                        % len(self.message_queue)
                     )
                 else:
                     msg = None
@@ -501,8 +543,7 @@ class MqttToDb:
                     # in most cases. That a message with the same datapoint
                     # and timestamp exists already in the DB is rather a
                     # special case if we retained an old message from the
-                    # broker, or if developing with ./manage.py runserver
-                    # without the --noreload flag.
+                    # broker.
                     # Hence, to increase performance, we just try to create
                     # the new entry as this removes the burden to fetch the
                     # object first. Only if this fails we perform an update.
@@ -529,16 +570,15 @@ class MqttToDb:
                                 "datapoint with id %s and timestamp %s"
                                 % (datapoint.id, timestamp)
                             )
-                    # Once we stored the value also check if this value
-                    # is the most recent one and if so update the
-                    # corresponding fields of Datapoint too.
-                    existing_ts = datapoint.last_value_timestamp
-                    if existing_ts is None or existing_ts <= timestamp:
-                        datapoint.last_value = payload["value"]
-                        datapoint.last_value_timestamp = timestamp
-                        datapoint.save(
-                            update_fields=["last_value", "last_value_timestamp"]
-                        )
+                    # Store this messages as most recent message. We do not
+                    # expect an replay of old messages via MQTT or similar.
+                    # Hence just save should be fine.
+                    last_value = self.get_datapoint_last_value_by_id(
+                        id=datapoint_id
+                    )
+                    last_value.value = payload["value"]
+                    last_value.time = timestamp
+                    last_value.save()
                 except Exception:
                     logger.exception(
                         "Exception while writing datapoint value to DB.\n"
@@ -570,13 +610,12 @@ class MqttToDb:
                                 "datapoint with id %s and timestamp %s"
                                 % (datapoint.id, timestamp)
                             )
-                    existing_ts = datapoint.last_schedule_timestamp
-                    if existing_ts is None or existing_ts <= timestamp:
-                        datapoint.last_schedule = payload["schedule"]
-                        datapoint.last_schedule_timestamp = timestamp
-                        datapoint.save(
-                            update_fields=["last_schedule", "last_schedule_timestamp"]
-                        )
+                    last_schedule = self.get_datapoint_last_schedule_by_id(
+                        id=datapoint_id
+                    )
+                    last_schedule.schedule = payload["schedule"]
+                    last_schedule.time = timestamp
+                    last_schedule.save()
                 except Exception:
                     logger.exception(
                         "Exception while writing datapoint schedule to DB.\n"
@@ -608,13 +647,12 @@ class MqttToDb:
                                 "datapoint with id %s and timestamp %s"
                                 % (datapoint.id, timestamp)
                             )
-                    existing_ts = datapoint.last_setpoint_timestamp
-                    if existing_ts is None or existing_ts <= timestamp:
-                        datapoint.last_setpoint = payload["setpoint"]
-                        datapoint.last_setpoint_timestamp = timestamp
-                        datapoint.save(
-                            update_fields=["last_setpoint", "last_setpoint_timestamp"]
-                        )
+                    last_setpoint = self.get_datapoint_last_setpoint_by_id(
+                        id=datapoint_id
+                    )
+                    last_setpoint.setpoint = payload["setpoint"]
+                    last_setpoint.time = timestamp
+                    last_setpoint.save()
                 except Exception:
                     logger.exception(
                         "Exception while writing datapoint setpoint to DB.\n"
@@ -645,7 +683,9 @@ class MqttToDb:
                     # creating an object with invalid values for the heartbeat
                     # entries (i.e. null or 1.1.1970, etc.) which should be
                     # beneficial for downstream code that relies on valid entries.
-                    if not hb_model.objects.filter(connector=connector).exists():
+                    if not hb_model.objects.filter(
+                        connector=connector
+                    ).exists():
                         _ = hb_model(
                             connector=connector,
                             last_heartbeat=datetime_from_timestamp(
@@ -718,7 +758,8 @@ class MqttToDb:
                                     )
                             except Exception:
                                 logger.exception(
-                                    "Exception while updating available " "datapoint."
+                                    "Exception while updating available "
+                                    "datapoint."
                                 )
             elif message_type == "mqtt_topic_rpc_call":
                 try:
@@ -744,7 +785,9 @@ class MqttToDb:
         client.disconnect().
         """
         if rc != 0:
-            logger.info("Lost connection to MQTT broker with code %s. Reconnecting", rc)
+            logger.info(
+                "Lost connection to MQTT broker with code %s. Reconnecting", rc
+            )
             client.connect(**userdata["connect_kwargs"])
 
     @staticmethod
@@ -818,7 +861,8 @@ class ApiMqttIntegration:
         self.client.on_disconnect = self.on_disconnect
 
         logger.debug(
-            "ApiMqttIntegration attempting initial connection to MQTT " "broker: %s.",
+            "ApiMqttIntegration attempting initial connection to MQTT "
+            "broker: %s.",
             connect_kwargs,
         )
         try:
@@ -900,7 +944,8 @@ class ApiMqttIntegration:
         See the docstring of the called method for details.
         """
         logger.debug(
-            "ApiMqttIntegration entering " "trigger_update_topics_and_subscriptions"
+            "ApiMqttIntegration entering "
+            "trigger_update_topics_and_subscriptions"
         )
         topic = "django_api/mqtt_to_db/rpc/update_topics_and_subscriptions"
         payload = {"kwargs": {}}
@@ -913,7 +958,8 @@ class ApiMqttIntegration:
         See the docstring of the called method for details.
         """
         logger.debug(
-            "ApiMqttIntegration entering " "trigger_create_and_send_datapoint_map"
+            "ApiMqttIntegration entering "
+            "trigger_create_and_send_datapoint_map"
         )
         topic = "django_api/mqtt_to_db/rpc/create_and_send_datapoint_map"
         payload = {"kwargs": {"connector_id": connector_id}}
@@ -930,7 +976,9 @@ class ApiMqttIntegration:
             "ApiMqttIntegration entering "
             "trigger_create_and_send_controlled_datapoints"
         )
-        topic = "django_api/mqtt_to_db/rpc/create_and_send_controlled_datapoints"
+        topic = (
+            "django_api/mqtt_to_db/rpc/create_and_send_controlled_datapoints"
+        )
         payload = {"kwargs": {"controller_id": controller_id}}
         self._publish_trigger_message(topic=topic, payload=payload)
 
@@ -940,7 +988,9 @@ class ApiMqttIntegration:
 
         See the docstring of the called method for details.
         """
-        logger.debug("ApiMqttIntegration entering " "trigger_clear_datapoint_map")
+        logger.debug(
+            "ApiMqttIntegration entering " "trigger_clear_datapoint_map"
+        )
         topic = "django_api/mqtt_to_db/rpc/clear_datapoint_map"
         payload = {"kwargs": {"connector_id": connector_id}}
         self._publish_trigger_message(topic=topic, payload=payload)

@@ -9,8 +9,11 @@ from django.db import models
 from .connector import Connector
 from ems_utils.message_format.models import DatapointTemplate
 from ems_utils.message_format.models import DatapointValueTemplate
+from ems_utils.message_format.models import DatapointLastValueTemplate
 from ems_utils.message_format.models import DatapointSetpointTemplate
+from ems_utils.message_format.models import DatapointLastSetpointTemplate
 from ems_utils.message_format.models import DatapointScheduleTemplate
+from ems_utils.message_format.models import DatapointLastScheduleTemplate
 
 
 class Datapoint(DatapointTemplate):
@@ -37,7 +40,9 @@ class Datapoint(DatapointTemplate):
     connector = models.ForeignKey(Connector, on_delete=models.CASCADE)
     is_active = models.BooleanField(
         default=False,
-        help_text=("Flag if the connector should publish values for this datapoint."),
+        help_text=(
+            "Flag if the connector should publish values for this datapoint."
+        ),
     )
     # This must be unlimeted to prevent errors from cut away keys while
     # using the datapoint map by the connector.
@@ -121,49 +126,24 @@ class DatapointValue(DatapointValueTemplate):
     datapoint = models.ForeignKey(
         Datapoint,
         on_delete=models.CASCADE,
+        related_name="value_messages",
         help_text=("The datapoint that the value message belongs to."),
     )
 
-    def save(self, *args, **kwargs):
-        """
-        Disable the inherited save method from ems_utils.
-        We update the last_* fields of Datapoint directly in
-        MqttToDb for better performance.
-        """
-        original_value = self.value
-        if isinstance(self.value, bool):
-            self._value_bool = self.value
-            # PGSQL should be able to store the null rather efficiently.
-            self.value = None
-        elif self.value is not None:
-            try:
-                value_float = float(self.value)
-                parsable = True
-            except ValueError:
-                parsable = False
 
-            if parsable:
-                self._value_float = value_float
-                self.value = None
+class DatapointLastValue(DatapointLastValueTemplate):
+    """
+    Similar to the generic DatapointLastValue model (see docstring in
+    DatapointLastValueTemplate for more information) but with the correct
+    Datapoint model linked to it.
+    """
 
-        models.Model.save(self, *args, **kwargs)
-
-        # Restore the original values, for any code that continous to work with
-        # the object.
-        self.value = original_value
-        self._value_bool = None
-        self._value_float = None
-
-    @classmethod
-    def from_db(cls, db, field_names, values):
-        instance = super().from_db(db, field_names, values)
-        if instance._value_float is not None:
-            instance.value = instance._value_float
-            instance._value_float = None
-        elif instance._value_bool is not None:
-            instance.value = instance._value_bool
-            instance._value_bool = None
-        return instance
+    datapoint = models.OneToOneField(
+        Datapoint,
+        on_delete=models.CASCADE,
+        related_name="last_value_message",
+        help_text=("The datapoint that the value message belongs to."),
+    )
 
 
 class DatapointSchedule(DatapointScheduleTemplate):
@@ -181,16 +161,24 @@ class DatapointSchedule(DatapointScheduleTemplate):
     datapoint = models.ForeignKey(
         Datapoint,
         on_delete=models.CASCADE,
+        related_name="schedule_messages",
         help_text=("The datapoint that the schedule message belongs to."),
     )
 
-    def save(self, *args, **kwargs):
-        """
-        Disable the inherited save method from ems_utils.
-        We update the last_* fields of Datapoint directly in
-        MqttToDb for better performance.
-        """
-        models.Model.save(self, *args, **kwargs)
+
+class DatapointLastSchedule(DatapointLastScheduleTemplate):
+    """
+    Similar to the generic DatapointLastSchedule model (see docstring in
+    DatapointLastScheduleTemplate for more information) but with the correct
+    Datapoint model linked to it.
+    """
+
+    datapoint = models.OneToOneField(
+        Datapoint,
+        on_delete=models.CASCADE,
+        related_name="last_schedule_message",
+        help_text=("The datapoint that the schedule message belongs to."),
+    )
 
 
 class DatapointSetpoint(DatapointSetpointTemplate):
@@ -208,13 +196,21 @@ class DatapointSetpoint(DatapointSetpointTemplate):
     datapoint = models.ForeignKey(
         Datapoint,
         on_delete=models.CASCADE,
+        related_name="setpoint_messages",
         help_text=("The datapoint that the setpoint message belongs to."),
     )
 
-    def save(self, *args, **kwargs):
-        """
-        Disable the inherited save method from ems_utils.
-        We update the last_* fields of Datapoint directly in
-        MqttToDb for better performance.
-        """
-        models.Model.save(self, *args, **kwargs)
+
+class DatapointLastSetpoint(DatapointLastSetpointTemplate):
+    """
+    Similar to the generic DatapointLastSetpoint model (see docstring in
+    DatapointLastSetpointTemplate for more information) but with the correct
+    Datapoint model linked to it.
+    """
+
+    datapoint = models.OneToOneField(
+        Datapoint,
+        on_delete=models.CASCADE,
+        related_name="last_setpoint_message",
+        help_text=("The datapoint that the setpoint message belongs to."),
+    )

@@ -141,69 +141,6 @@ class DatapointTemplate(models.Model):
             "Applicable to numeric datapoints."
         ),
     )
-    #
-    ##########################################################################
-    #
-    # Store the last value and timestamp for each message type as these are
-    # frequently accessed and we can save a hell lot of DB lockups if we
-    # store them in the datapoint too.
-    #
-    ##########################################################################
-    #
-    last_value = models.JSONField(
-        null=True,
-        blank=True,
-        default=None,
-        help_text=(
-            "The last value received for the datapoint. We store all values "
-            "including numeric as strings as this simplfies the logic "
-            "significantly and prevents unintended side effects, e.g. data "
-            "loss if the data format field is changed."
-            ""
-        ),
-    )
-    last_value_timestamp = models.DateTimeField(
-        null=True,
-        blank=True,
-        default=None,
-        help_text=("The timestamp of the last value received via MQTT."),
-    )
-    last_setpoint = models.JSONField(
-        null=True,
-        blank=True,
-        default=None,
-        help_text=(
-            "The last schedule received for the datapoint. "
-            "Applicable to actuator datapoints."
-        ),
-    )
-    last_setpoint_timestamp = models.DateTimeField(
-        null=True,
-        blank=True,
-        default=None,
-        help_text=(
-            "The timestamp of the last value received for the datapoint."
-            "Applicable to actuator datapoints."
-        ),
-    )
-    last_schedule = models.JSONField(
-        null=True,
-        blank=True,
-        default=None,
-        help_text=(
-            "The last schedule received for the datapoint."
-            "Applicable to actuator datapoints."
-        ),
-    )
-    last_schedule_timestamp = models.DateTimeField(
-        null=True,
-        blank=True,
-        default=None,
-        help_text=(
-            "The timestamp of the last value received for the datapoint."
-            "Applicable to actuator datapoints."
-        ),
-    )
 
     def save(self, *args, **kwargs):
         """
@@ -337,7 +274,9 @@ class TimescaleModel(models.Model):
                 # to prevent the SQL query from becoming too large. See:
                 # https://docs.djangoproject.com/en/3.1/ref/models/querysets/#bulk-update
                 model.objects.bulk_update(
-                    objs=existing_msg_objects, fields=fields_to_update, batch_size=1000
+                    objs=existing_msg_objects,
+                    fields=fields_to_update,
+                    batch_size=1000,
                 )
                 msgs_updated += len(existing_msg_objects)
 
@@ -369,13 +308,15 @@ class DatapointValueTemplate(TimescaleModel):
         abstract = True
         constraints = [
             models.UniqueConstraint(
-                fields=["datapoint", "time"], name="Value msg unique for timestamp"
+                fields=["datapoint", "time"],
+                name="Value msg unique for timestamp",
             )
         ]
 
     datapoint = models.ForeignKey(
         DatapointTemplate,
         on_delete=models.CASCADE,
+        related_name="value_messages",
         help_text=("The datapoint that the value message belongs to."),
     )
     # JSON should be able to store everything as the messages arive
@@ -435,18 +376,6 @@ class DatapointValueTemplate(TimescaleModel):
         self._value_bool = None
         self._value_float = None
 
-        # A message without a timestamp cannot be latest.
-        if self.time is None:
-            return
-
-        self.datapoint.refresh_from_db()
-        existing_ts = self.datapoint.last_value_timestamp
-
-        if existing_ts is None or existing_ts <= self.time:
-            self.datapoint.last_value = self.value
-            self.datapoint.last_value_timestamp = self.time
-            self.datapoint.save(update_fields=["last_value", "last_value_timestamp"])
-
     @classmethod
     def from_db(cls, db, field_names, values):
         instance = super().from_db(db, field_names, values)
@@ -494,6 +423,40 @@ class DatapointValueTemplate(TimescaleModel):
         return TimescaleModel.bulk_update_or_create(model=model, msgs=msgs)
 
 
+class DatapointLastValueTemplate(models.Model):
+    """
+    Intended model to store the last value message of a datapoint.
+
+    Subclass to use. Take care to take over the `OneToOneField` as it ensures
+    that only one message can be stored per datapoint.
+    """
+
+    class Meta:
+        abstract = True
+
+    datapoint = models.OneToOneField(
+        DatapointTemplate,
+        on_delete=models.CASCADE,
+        related_name="last_value_message",
+        help_text=("The datapoint that the value message belongs to."),
+    )
+    # Note that value and time must be nullable and have a default value
+    # to allow any script that handles incoming data the fetch these
+    # get_or_create in cache style fashion.
+    value = models.JSONField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text=("The payload of the last received value message."),
+    )
+    time = models.DateTimeField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text=("The timestamp of the last received value message."),
+    )
+
+
 class DatapointScheduleTemplate(TimescaleModel):
     """
     The schedule is a list of actuator values computed by an optimization
@@ -506,13 +469,15 @@ class DatapointScheduleTemplate(TimescaleModel):
         abstract = True
         constraints = [
             models.UniqueConstraint(
-                fields=["datapoint", "time"], name="Schedule msg unique for timestamp"
+                fields=["datapoint", "time"],
+                name="Schedule msg unique for timestamp",
             )
         ]
 
     datapoint = models.ForeignKey(
         DatapointTemplate,
         on_delete=models.CASCADE,
+        related_name="schedule_messages",
         help_text=("The datapoint that the schedule message belongs to."),
     )
     schedule = models.JSONField(
@@ -522,27 +487,39 @@ class DatapointScheduleTemplate(TimescaleModel):
         help_text=("A JSON array holding zero or more DatapointScheduleItems."),
     )
 
-    def save(self, *args, **kwargs):
-        """
-        Update the last_schedule/last_schedule_timestamp fields in datapoint
-        too.
-        """
-        # But check first that the save for this object goes trough.
-        super().save(*args, **kwargs)
 
-        # A message without a timestamp cannot be latest.
-        if self.time is None:
-            return
+class DatapointLastScheduleTemplate(models.Model):
+    """
+    Intended model to store the last schedule message of a datapoint.
 
-        self.datapoint.refresh_from_db()
-        existing_ts = self.datapoint.last_schedule_timestamp
+    Subclass to use. Take care to take over the `OneToOneField` as it ensures
+    that only one message can be stored per datapoint.
+    """
 
-        if existing_ts is None or existing_ts <= self.time:
-            self.datapoint.last_schedule = self.schedule
-            self.datapoint.last_schedule_timestamp = self.time
-            self.datapoint.save(
-                update_fields=["last_schedule", "last_schedule_timestamp"]
-            )
+    class Meta:
+        abstract = True
+
+    datapoint = models.OneToOneField(
+        DatapointTemplate,
+        on_delete=models.CASCADE,
+        related_name="last_schedule_message",
+        help_text=("The datapoint that the schedule message belongs to."),
+    )
+    # Note that schedule and time must be nullable and have a default value
+    # to allow any script that handles incoming data the fetch these
+    # get_or_create in cache style fashion.
+    schedule = models.JSONField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text=("The payload of the last received schedule message."),
+    )
+    time = models.DateTimeField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text=("The timestamp of the last received schedule message."),
+    )
 
 
 class DatapointSetpointTemplate(TimescaleModel):
@@ -559,13 +536,15 @@ class DatapointSetpointTemplate(TimescaleModel):
         abstract = True
         constraints = [
             models.UniqueConstraint(
-                fields=["datapoint", "time"], name="Setpoint msg unique for timestamp"
+                fields=["datapoint", "time"],
+                name="Setpoint msg unique for timestamp",
             )
         ]
 
     datapoint = models.ForeignKey(
         DatapointTemplate,
         on_delete=models.CASCADE,
+        related_name="setpoint_messages",
         help_text=("The datapoint that the setpoint message belongs to."),
     )
     setpoint = models.JSONField(
@@ -575,24 +554,36 @@ class DatapointSetpointTemplate(TimescaleModel):
         help_text=("A JSON array holding zero or more DatapointSetpointItems."),
     )
 
-    def save(self, *args, **kwargs):
-        """
-        Update the last_setpoint/last_setpoint_timestamp fields in datapoint
-        too.
-        """
-        # But check first that the save for this object goes trough.
-        super().save(*args, **kwargs)
 
-        # A message without a timestamp cannot be latest.
-        if self.time is None:
-            return
+class DatapointLastSetpointTemplate(models.Model):
+    """
+    Intended model to store the last setpoint message of a datapoint.
 
-        self.datapoint.refresh_from_db()
-        existing_ts = self.datapoint.last_setpoint_timestamp
+    Subclass to use. Take care to take over the `OneToOneField` as it ensures
+    that only one message can be stored per datapoint.
+    """
 
-        if existing_ts is None or existing_ts <= self.time:
-            self.datapoint.last_setpoint = self.setpoint
-            self.datapoint.last_setpoint_timestamp = self.time
-            self.datapoint.save(
-                update_fields=["last_setpoint", "last_setpoint_timestamp"]
-            )
+    class Meta:
+        abstract = True
+
+    datapoint = models.OneToOneField(
+        DatapointTemplate,
+        on_delete=models.CASCADE,
+        related_name="last_setpoint_message",
+        help_text=("The datapoint that the setpoint message belongs to."),
+    )
+    # Note that setpoint and time must be nullable and have a default value
+    # to allow any script that handles incoming data the fetch these
+    # get_or_create in cache style fashion.
+    setpoint = models.JSONField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text=("The payload of the last received setpoint message."),
+    )
+    time = models.DateTimeField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text=("The timestamp of the last received setpoint message."),
+    )

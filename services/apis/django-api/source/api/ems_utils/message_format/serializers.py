@@ -78,13 +78,15 @@ class GenericValidators:
                 if value < datapoint.min_value:
                     raise serializers.ValidationError(
                         "Value (%s) for numeric datapoint is smaller then "
-                        "minimum allowed value (%s)." % (value, datapoint.min_value)
+                        "minimum allowed value (%s)."
+                        % (value, datapoint.min_value)
                     )
             if datapoint.max_value is not None and value is not None:
                 if value > datapoint.max_value:
                     raise serializers.ValidationError(
                         "Value (%s) for numeric datapoint is larger then "
-                        "maximum allowed value (%s)." % (value, datapoint.max_value)
+                        "maximum allowed value (%s)."
+                        % (value, datapoint.max_value)
                     )
         if "_text" in datapoint.data_format:
             if type(value) not in [str, type(None)]:
@@ -121,7 +123,8 @@ class GenericValidators:
             timestamp = int(timestamp)
         except Exception:
             raise serializers.ValidationError(
-                "Timestamp (%s) could not be parsed to integer." % str(timestamp)
+                "Timestamp (%s) could not be parsed to integer."
+                % str(timestamp)
             )
 
         # Check that the timestamp is within a reasonable range for
@@ -150,14 +153,16 @@ class GenericValidators:
 
         if not isinstance(schedule, list):
             raise serializers.ValidationError(
-                "Schedule (%s) is not a list of schedule items." % json.dumps(schedule)
+                "Schedule (%s) is not a list of schedule items."
+                % json.dumps(schedule)
             )
 
         validated_schedule_items = []
         for schedule_item in schedule:
             if not isinstance(schedule_item, dict):
                 raise serializers.ValidationError(
-                    "Schedule Item (%s) is not a Dict." % json.dumps(schedule_item)
+                    "Schedule Item (%s) is not a Dict."
+                    % json.dumps(schedule_item)
                 )
 
             # Verify that only the expected keys are given in schedule item.
@@ -188,11 +193,14 @@ class GenericValidators:
             si_from_ts = schedule_item["from_timestamp"]
             si_to_ts = schedule_item["to_timestamp"]
             try:
-                schedule_item["value"] = self.validate_value(datapoint, si_value)
+                schedule_item["value"] = self.validate_value(
+                    datapoint, si_value
+                )
             except serializers.ValidationError as ve:
                 raise serializers.ValidationError(
                     "Validation of value of Schedule Item (%s) failed. The "
-                    "error was: %s" % (json.dumps(schedule_item), str(ve.detail))
+                    "error was: %s"
+                    % (json.dumps(schedule_item), str(ve.detail))
                 )
             if si_from_ts is not None and si_to_ts is not None:
                 if si_from_ts >= si_to_ts:
@@ -232,14 +240,16 @@ class GenericValidators:
 
         if not isinstance(setpoint, list):
             raise serializers.ValidationError(
-                "Setpoint (%s) is not a list of setpoint items." % json.dumps(setpoint)
+                "Setpoint (%s) is not a list of setpoint items."
+                % json.dumps(setpoint)
             )
 
         validated_setpoint_items = []
         for setpoint_item in setpoint:
             if not isinstance(setpoint_item, dict):
                 raise serializers.ValidationError(
-                    "Setpoint Item (%s) is not a Dict." % json.dumps(setpoint_item)
+                    "Setpoint Item (%s) is not a Dict."
+                    % json.dumps(setpoint_item)
                 )
 
             # Verify that only the expected keys are given in setpoint item.
@@ -470,7 +480,8 @@ class DatapointScheduleSerializer(serializers.Serializer):
         help_text=DatapointScheduleTemplate.schedule.field.help_text,
     )
     timestamp = Int64Field(
-        allow_null=False, help_text=DatapointScheduleTemplate.time.field.help_text
+        allow_null=False,
+        help_text=DatapointScheduleTemplate.time.field.help_text,
     )
 
     def to_representation(self, instance):
@@ -591,7 +602,8 @@ class DatapointSetpointSerializer(serializers.Serializer):
         help_text=DatapointSetpointTemplate.setpoint.field.help_text,
     )
     timestamp = Int64Field(
-        allow_null=False, help_text=DatapointSetpointTemplate.time.field.help_text
+        allow_null=False,
+        help_text=DatapointSetpointTemplate.time.field.help_text,
     )
 
     def to_representation(self, instance):
@@ -623,16 +635,12 @@ class DatapointSetpointSerializer(serializers.Serializer):
 
 class DatapointLastValueSerializer(serializers.Serializer):
     """
-    Takes the datapoint instance as input, extracts the last_value and
-    last_value_timestamp fields and feeds those into the correct
-    serializer for this message type. (i.e. DatapointValueSerializer).
-
-    This is read_only here, as there is yet no usecase to update the last_*
-    fields with external data.
+    This is a custom serializer that can handle multiple
     """
 
-    class Msg:
-        pass
+    datapoint_id = serializers.DictField(
+        child=DatapointSerializer(), allow_empty=True
+    )
 
     def to_representation(self, instance):
         msg = self.Msg()
@@ -656,7 +664,7 @@ class DatapointLastScheduleSerializer(serializers.Serializer):
         pass
 
     def to_representation(self, instance):
-        msg = self.Msg()
+
         msg.schedule = instance.last_schedule
         msg.time = instance.last_schedule_timestamp
 
@@ -699,8 +707,10 @@ class PutMsgSummary(serializers.Serializer):
     """
 
     msgs_created = serializers.IntegerField(
-        required=True, help_text=("Specifies how many messages have been created.")
+        required=True,
+        help_text=("Specifies how many messages have been created."),
     )
     msgs_updated = serializers.IntegerField(
-        required=True, help_text=("Specifies how many messages have been updated.")
+        required=True,
+        help_text=("Specifies how many messages have been updated."),
     )

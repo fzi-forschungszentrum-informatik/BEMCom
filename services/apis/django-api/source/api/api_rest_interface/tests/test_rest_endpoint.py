@@ -547,7 +547,7 @@ class TestRESTEndpoint(TestCase):
         waited_seconds = 0
         while True:
             dp.refresh_from_db()
-            if dp.last_value == expected_msg_mqtt["value"]:
+            if dp.last_value_message.value == expected_msg_mqtt["value"]:
                 break
 
             time.sleep(0.005)
@@ -595,7 +595,7 @@ class TestRESTEndpoint(TestCase):
 
     def test_get_datapoint_schedule_detail_for_actuator(self):
         """
-        Check that the schedule of an actuator is returend as expected.
+        Check that the schedule of an actuator is returned as expected.
         """
         test_data = {
             "schedule": [
@@ -737,7 +737,7 @@ class TestRESTEndpoint(TestCase):
         waited_seconds = 0
         while True:
             dp.refresh_from_db()
-            if dp.last_schedule_timestamp is not None:
+            if dp.last_schedule_message.time is not None:
                 break
 
             time.sleep(0.005)
@@ -913,7 +913,7 @@ class TestRESTEndpoint(TestCase):
         waited_seconds = 0
         while True:
             dp.refresh_from_db()
-            if dp.last_setpoint_timestamp is not None:
+            if dp.last_setpoint_message.time is not None:
                 break
 
             time.sleep(0.005)

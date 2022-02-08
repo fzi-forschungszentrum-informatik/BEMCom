@@ -4,12 +4,30 @@ from django.contrib import admin
 from django.utils.safestring import mark_safe
 
 from api_main.models.datapoint import Datapoint
-from api_main.models.datapoint import DatapointValue
-from api_main.models.datapoint import DatapointSetpoint
-from api_main.models.datapoint import DatapointSchedule
+from api_main.models.datapoint import DatapointValue, DatapointLastValue
+from api_main.models.datapoint import DatapointSetpoint, DatapointLastSetpoint
+from api_main.models.datapoint import DatapointSchedule, DatapointLastSchedule
 from ems_utils.timestamp import datetime_to_pretty_str
 from api_main.mqtt_integration import ApiMqttIntegration
 from .connector_admin import AdminWithoutListsOnDelete
+
+
+class DatapointLastValueInline(admin.TabularInline):
+    model = DatapointLastValue
+    verbose_name_plural = "Datapoint Last Value"
+    fields = ("value", "time")
+
+
+class DatapointLastScheduleInline(admin.TabularInline):
+    model = DatapointLastSchedule
+    verbose_name_plural = "Datapoint Last Schedule"
+    fields = ("schedule", "time")
+
+
+class DatapointLastSetpointInline(admin.TabularInline):
+    model = DatapointLastSetpoint
+    verbose_name_plural = "Datapoint Last Setpoint"
+    fields = ("setpoint", "time")
 
 
 @admin.register(Datapoint)
@@ -41,7 +59,13 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         "last_value_timestamp_pretty",
     )
     list_display_links = ("id",)
-    list_editable = ("is_active", "data_format", "short_name", "description", "unit")
+    list_editable = (
+        "is_active",
+        "data_format",
+        "short_name",
+        "description",
+        "unit",
+    )
     list_filter = (
         "type",
         "connector",
@@ -54,7 +78,6 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         "short_name",
         "description",
         "example_value",
-        "last_value",
     )
     readonly_fields = (
         "id",
@@ -62,84 +85,25 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         "key_in_connector",
         "type",
         "example_value",
-        "last_value",
+        "last_value_truncated",
         "last_value_timestamp_pretty",
-        "last_setpoint_pretty",
-        "last_setpoint_timestamp_pretty",
-        "last_schedule_pretty",
-        "last_schedule_timestamp_pretty",
     )
+    inlines = [
+        DatapointLastValueInline,
+    ]
 
     def last_value_timestamp_pretty(self, obj):
         """
         Displays a prettier timestamp format.
         """
-        ts = obj.last_value_timestamp
-        if ts is None:
-            return "-"
-        return datetime_to_pretty_str(ts)
+        if hasattr(obj, "last_value_message"):
+            ts = obj.last_value_message.time
+            if ts is not None:
+                return datetime_to_pretty_str(ts)
+        return "-"
 
     last_value_timestamp_pretty.admin_order_field = "last_value_timestamp"
     last_value_timestamp_pretty.short_description = "Last value timestamp"
-
-    def last_setpoint_timestamp_pretty(self, obj):
-        """
-        Displays a prettier timestamp format.
-        """
-        ts = obj.last_setpoint_timestamp
-        if ts is None:
-            return "-"
-        return datetime_to_pretty_str(ts)
-
-    last_setpoint_timestamp_pretty.admin_order_field = "last_setpoint_timestamp"
-    last_setpoint_timestamp_pretty.short_description = "Last setpoint timestamp"
-
-    def last_schedule_timestamp_pretty(self, obj):
-        """
-        Displays a prettier timestamp format.
-        """
-        ts = obj.last_schedule_timestamp
-        if ts is None:
-            return "-"
-        return datetime_to_pretty_str(ts)
-
-    last_schedule_timestamp_pretty.admin_order_field = "last_schedule_timestamp"
-    last_schedule_timestamp_pretty.short_description = "Last schedule timestamp"
-
-    def last_schedule_pretty(self, obj):
-        """
-        Pretty print json of schedule.
-        """
-        schedule = obj.last_schedule
-        if schedule is None:
-            return "-"
-        try:
-            schedule = json.dumps(json.loads(schedule), indent=4)
-            schedule = mark_safe("<pre>" + schedule + "</pre>")
-
-        except Exception:
-            pass
-        return schedule
-
-    last_schedule_pretty.short_description = "Last schedule"
-
-    def last_setpoint_pretty(self, obj):
-        """
-        Pretty print json of setpoint.
-        """
-        setpoint = obj.last_setpoint
-        if setpoint is None:
-            return "-"
-
-        try:
-            setpoint = json.dumps(json.loads(setpoint), indent=4)
-            setpoint = mark_safe("<pre>" + setpoint + "</pre>")
-
-        except Exception:
-            pass
-        return setpoint
-
-    last_setpoint_pretty.short_description = "Last setpoint"
 
     def example_value_truncated(self, obj):
         """
@@ -147,7 +111,7 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         """
         value = str(obj.example_value)
         truncation_length = 100
-        if value is not None and len(value) >= truncation_length:
+        if len(value) >= truncation_length:
             value = value[:truncation_length] + " [truncated]"
         return value
 
@@ -156,11 +120,15 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
 
     def last_value_truncated(self, obj):
         """
-        Return a possible truncated value if the example value is very long.
+        Return a possible truncated value if the last value is very long.
         """
-        value = str(obj.last_value)
+        value = "-"
+        if hasattr(obj, "last_value_message"):
+            if obj.last_value_message.value is not None:
+                value = str(obj.last_value_message.value)
+
         truncation_length = 100
-        if value is not None and len(value) >= truncation_length:
+        if len(value) >= truncation_length:
             value = value[:truncation_length] + " [truncated]"
         return value
 
@@ -193,17 +161,16 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
             data_format_specific_fields.append("min_value")
             data_format_specific_fields.append("max_value")
 
-        last_datapoint_msg_fields = ["last_value", "last_value_timestamp_pretty"]
         if obj.type == "actuator":
-            last_datapoint_msg_fields.append("last_setpoint_pretty")
-            last_datapoint_msg_fields.append("last_setpoint_timestamp_pretty")
-            last_datapoint_msg_fields.append("last_schedule_pretty")
-            last_datapoint_msg_fields.append("last_schedule_timestamp_pretty")
+            self.inlines.append(DatapointLastScheduleInline)
+            self.inlines.append(DatapointLastSetpointInline)
 
         fieldsets = (
             ("GENERIC METADATA", {"fields": generic_metadata_fields}),
-            ("DATA FORMAT SPECIFIC METADATA", {"fields": data_format_specific_fields}),
-            ("LAST DATAPOINT MESSAGES", {"fields": last_datapoint_msg_fields}),
+            (
+                "DATA FORMAT SPECIFIC METADATA",
+                {"fields": data_format_specific_fields},
+            ),
         )
         return fieldsets
 
