@@ -73,33 +73,27 @@ class DatapointViewSetTemplate(GenericViewSet):
     filter_backends = (filters.DjangoFilterBackend,)
     unique_together_fields = ("origin_id",)
 
-    # Reuse the Docstring of Datapoint of the API schema.
-    __doc__ = DatapointTemplate.__doc__
-
     def retrieve(self, request, dp_id):
         """
-        This methods allows to retrieve the data of a single datapoint identified
-        with the datapoint id.
+        This endpoint allows to retrieve the metadata of a single datapoint
+        identified by the datapoint id.
         """
         datapoint = get_object_or_404(self.queryset, id=dp_id)
         serializer = self.serializer_class(datapoint)
         return Response(serializer.data)
 
-    retrieve.__doc__ = __doc__ + "<br><br>" + retrieve.__doc__.strip()
-
     def list(self, request):
         """
-        This methods allows to retrieve the data of multiple datapoints.
+        This endpoint allows to retrieve the metadata of multiple datapoints
+        in one request.
         """
         datapoints = self.filter_queryset(self.queryset)
         serializer = self.serializer_class(datapoints, many=True)
         return Response(serializer.data)
 
-    list.__doc__ = __doc__ + "<br><br>" + list.__doc__.strip()
-
     def create(self, request):
         """
-        This method allows to create a single datapoint which does not exist
+        This endpoint allows to create a single datapoint which does not exist
         yet.
         """
         data = request.data
@@ -122,11 +116,9 @@ class DatapointViewSetTemplate(GenericViewSet):
         # Return datapoint also with auto generated data like id.
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    create.__doc__ = __doc__ + "<br><br>" + create.__doc__.strip()
-
     def update(self, request):
         """
-        This method allows to update a single datapoint which must exist
+        This endpoint allows to update a single datapoint which must exist
         already.
         """
         data = request.data
@@ -144,11 +136,9 @@ class DatapointViewSetTemplate(GenericViewSet):
         # Return datapoint also with auto generated data like id.
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    update.__doc__ = __doc__ + "<br><br>" + update.__doc__.strip()
-
     def update_many(self, request):
         """
-        This method allows to update a a bunch of datapoints which must exist
+        This endpoint allows to update a a bunch of datapoints which must exist
         already.
         """
         serializer = self.serializer_class(data=request.data, many=True)
@@ -191,8 +181,6 @@ class DatapointViewSetTemplate(GenericViewSet):
         serializer = self.serializer_class(datapoints, many=True)
         # Return datapoint also with auto generated data like id.
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-    update_many.__doc__ = __doc__ + "<br><br>" + update_many.__doc__.strip()
 
 
 class ViewSetWithDatapointFK(GenericViewSet):

@@ -149,7 +149,10 @@ LOGGING = {
             "class": "api_main.loggers.StreamHandlerPlusIPs",
             "formatter": "simple",
         },
-        "prometheus": {"level": "DEBUG", "class": "api_main.loggers.PrometheusHandler"},
+        "prometheus": {
+            "level": "DEBUG",
+            "class": "api_main.loggers.PrometheusHandler",
+        },
     },
     "root": {
         "handlers": ["console", "prometheus"],
@@ -166,7 +169,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"
+    },
 ]
 
 # The default value (1000) prevents us from deleting larger number of items
@@ -228,24 +233,9 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "BEMCom API",
     "DESCRIPTION": (
         "Allows to send/receive data from/to diverse devices. "
-        "Endpoints are provided for <msg_type> in [value, setpoint schedule]. "
-        "For each of these types the followng endpoints are provided: \n"
-        " * **GET /datapoint/{dp_id}/<msg_type>/**: Allows retrieving a list of"
-        " messages from BEMComs message DB.\n"
-        " * **POST /datapoint/{dp_id}/<msg_type>/**: Will send the message to "
-        "the BEMCom message broker, from where the message is forwarded to "
-        "the respective services. Once the message has returned from the "
-        "message broker it is also written to the database.\n"
-        " * **GET /datapoint/{dp_id}/<msg_type>/{timestamp}/**: Allows "
-        "retrieving a single msg object from the database.\n"
-        " * **PUT /datapoint/{dp_id}/<msg_type>/{timestamp}/**: Allows changing"
-        "a single message object in the database. This operation does **not** "
-        "affect the other services of BEMCom in any way, i.e. the updated "
-        "message is **not** published on the message broker.\n"
-        " * **DELETE /datapoint/{dp_id}/<msg_type>/{timestamp}/**: Allows "
-        "deleting a single message object in the database. This operation does "
-        "**not** affect the other services of BEMCom in any way, i.e. the "
-        "message is **not** deleted on the message broker."
+        "Please consult the [official documentation of the BEMCom framework]"
+        "(https://github.com/fzi-forschungszentrum-informatik/"
+        "BEMCom/blob/master/documentation/Readme.md) for more information."
     ),
     "LICENSE": {"name": "Licensed under MIT"},
     "VERSION": "0.7.1",

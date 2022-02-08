@@ -77,13 +77,14 @@ class DatapointViewSet(DatapointViewSetTemplate):
     )
     def create(self, request):
         """
-        This method allows to create a single datapoint which does not exist
-        yet.
+        This method allows to create multiple datapoints which do not exist
+        yet. This operation is all or nothing, if creation of a single item
+        fails, no datapoints are created at all.
 
-        Please note: This endpoint is only used for replaying backups.
+        **Please note: This endpoint is only used for replaying backups.
         Usually, datapoints are created by connector messages. Hence
-        this adding datapoints this way may lead to orphaned datapoints
-        which are unknown to connectors and will receive no data.
+        adding datapoints this way may lead to orphaned datapoints
+        which are unknown to connectors and will receive no data.**
         """
         serializer = self.serializer_class(data=request.data, many=True)
         serializer.is_valid(raise_exception=True)
@@ -124,8 +125,8 @@ class DatapointViewSet(DatapointViewSetTemplate):
             elif dp_qs.count() > 1:
                 errors.append(
                     {
-                        "datapoint": "Multiple datapoints found matching query: %s."
-                        % q
+                        "datapoint": "Multiple datapoints found matching "
+                        "query: %s." % q
                     }
                 )
                 continue
@@ -154,8 +155,6 @@ class DatapointViewSet(DatapointViewSetTemplate):
         serializer = self.serializer_class(new_datapoints, many=True)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    create.__doc__ = __doc__ + "<br><br>" + create.__doc__.strip()
-
     @extend_schema(
         request=serializer_class(Datapoint, many=True),
         ##
@@ -168,7 +167,9 @@ class DatapointViewSet(DatapointViewSetTemplate):
     def update_many(self, request):
         """
         This method allows to update a a bunch of datapoints which must exist
-        already.
+        already. This operation is all or nothing, if update of a single
+        datapoint fails, none are updated.
+
         Method will try to match the input to the existing datapoints.
         This is done by searching for field connector_name and key_in_connector.
         """
@@ -242,8 +243,6 @@ class DatapointViewSet(DatapointViewSetTemplate):
         # Return datapoint also with auto generated data like id.
         serializer = self.serializer_class(datapoints, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-    update_many.__doc__ = __doc__ + "<br><br>" + update_many.__doc__.strip()
 
 
 class DatapointValueViewSet(ViewSetWithDatapointFK):
