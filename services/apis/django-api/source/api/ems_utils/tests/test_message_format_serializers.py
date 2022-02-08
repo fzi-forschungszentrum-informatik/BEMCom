@@ -2202,23 +2202,25 @@ class TestDatapointLastWhateverSerializers(TransactionTestCase):
         """
         dp = self.Datapoint.objects.create(**self.default_field_values)
         dp.save()
+        dlv = self.DatapointLastValue.objects.create(datapoint=dp)
+        dlv.save()
 
         for test_value in [1, 2.2, "not a number", None, True, False]:
             expected_timestamp = timestamp_utc_now()
             expected_data = {
-                str(dp.id): {
-                    "value": json.dumps(test_value),
-                    "timestamp": expected_timestamp,
+                "msgs_by_datapoint_id": {
+                    str(dp.id): {
+                        "value": json.dumps(test_value),
+                        "timestamp": expected_timestamp,
+                    }
                 }
             }
+            dlv.value = test_value
+            dlv.time = datetime_from_timestamp(expected_timestamp)
+            dlv.save()
+            qs = self.DatapointLastValue.objects.filter(id=dlv.id)
 
-            dlv = self.DatapointLastValue.objects.create(
-                datapoint=dp,
-                value=test_value,
-                time=datetime_from_timestamp(expected_timestamp),
-            )
-
-            serializer = DatapointValueSerializer(dlv)
+            serializer = DatapointLastValueSerializer(qs)
             assert serializer.data == expected_data
 
     def test_last_schedule_to_representation(self):
@@ -2243,9 +2245,11 @@ class TestDatapointLastWhateverSerializers(TransactionTestCase):
             },
         ]
         expected_data = {
-            str(dp.id): {
-                "schedule": expected_schedule,
-                "timestamp": expected_timestamp,
+            "msgs_by_datapoint_id": {
+                str(dp.id): {
+                    "schedule": expected_schedule,
+                    "timestamp": expected_timestamp,
+                }
             }
         }
 
@@ -2254,8 +2258,9 @@ class TestDatapointLastWhateverSerializers(TransactionTestCase):
             schedule=expected_schedule,
             time=datetime_from_timestamp(expected_timestamp),
         )
+        qs = self.DatapointLastSchedule.objects.filter(id=dls.id)
 
-        serializer = DatapointScheduleSerializer(dls)
+        serializer = DatapointLastScheduleSerializer(qs)
         assert serializer.data == expected_data
 
     def test_last_setpoint_to_representation(self):
@@ -2281,9 +2286,11 @@ class TestDatapointLastWhateverSerializers(TransactionTestCase):
             },
         ]
         expected_data = {
-            str(dp.id): {
-                "setpoint": expected_setpoint,
-                "timestamp": expected_timestamp,
+            "msgs_by_datapoint_id": {
+                str(dp.id): {
+                    "setpoint": expected_setpoint,
+                    "timestamp": expected_timestamp,
+                }
             }
         }
 
@@ -2292,6 +2299,7 @@ class TestDatapointLastWhateverSerializers(TransactionTestCase):
             setpoint=expected_setpoint,
             time=datetime_from_timestamp(expected_timestamp),
         )
+        qs = self.DatapointLastSetpoint.objects.filter(id=dls.id)
 
-        serializer = DatapointSetpointSerializer(dls)
+        serializer = DatapointLastSetpointSerializer(qs)
         assert serializer.data == expected_data

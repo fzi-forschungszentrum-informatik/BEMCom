@@ -5,6 +5,9 @@ from api_main.models.datapoint import Datapoint
 from api_main.models.datapoint import DatapointValue
 from api_main.models.datapoint import DatapointSetpoint
 from api_main.models.datapoint import DatapointSchedule
+from api_main.models.datapoint import DatapointLastValue
+from api_main.models.datapoint import DatapointLastSetpoint
+from api_main.models.datapoint import DatapointLastSchedule
 from ems_utils.timestamp import datetime_from_timestamp
 
 
@@ -49,7 +52,7 @@ class TimestampFilter(FilterSet):
 
 class DatapointValueFilter(TimestampFilter):
     """
-    Allows selecting values by timestamp ranges.
+    Allows selecting values by timestamp ranges and aggregate over time buckets.
     """
 
     interval = CharFilter(method="apply_timebucket")
@@ -85,19 +88,55 @@ class DatapointValueFilter(TimestampFilter):
 
 class DatapointSetpointFilter(TimestampFilter):
     """
-    Allows selecting values by timestamp ranges.
+    Allows selecting setpoint messages by time.
     """
 
     class Meta:
         model = DatapointSetpoint
-        fields = []  # The custom methods are added automatically.
+        fields = []
 
 
 class DatapointScheduleFilter(TimestampFilter):
     """
-    Allows selecting values by timestamp ranges.
+    Allows selecting schedule messages by time.
     """
 
     class Meta:
         model = DatapointSchedule
-        fields = []  # The custom methods are added automatically.
+        fields = []
+
+
+class DatapointLastValueFilter(TimestampFilter):
+    """
+    Allows filtering of last value message by time and by datapoint id.
+    """
+
+    class Meta:
+        model = DatapointLastValue
+        fields = {
+            "datapoint__id": ["in"],
+        }
+
+
+class DatapointLastSetpointFilter(TimestampFilter):
+    """
+    Allows filtering of last setpoint message by time and by datapoint id.
+    """
+
+    class Meta:
+        model = DatapointLastSetpoint
+        fields = {
+            "datapoint__id": ["in"],
+        }
+
+
+class DatapointLastScheduleFilter(TimestampFilter):
+    """
+    Allows filtering of last schedule message by time and by datapoint id.
+    """
+
+    class Meta:
+        model = DatapointLastSchedule
+        fields = {
+            "datapoint__id": ["in"],
+        }

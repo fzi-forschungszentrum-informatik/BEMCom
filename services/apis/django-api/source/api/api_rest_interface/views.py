@@ -22,17 +22,29 @@ from api_main.models.datapoint import Datapoint
 from api_main.models.datapoint import DatapointValue
 from api_main.models.datapoint import DatapointSchedule
 from api_main.models.datapoint import DatapointSetpoint
+from api_main.models.datapoint import DatapointLastValue
+from api_main.models.datapoint import DatapointLastSchedule
+from api_main.models.datapoint import DatapointLastSetpoint
 from api_main.mqtt_integration import ApiMqttIntegration
 from ems_utils.message_format.views import DatapointViewSetTemplate
 from ems_utils.message_format.views import ViewSetWithDatapointFK
+from ems_utils.message_format.views import ViewSetWithMulitDatapointFK
 
 from ems_utils.message_format.serializers import DatapointValueSerializer
 from ems_utils.message_format.serializers import DatapointScheduleSerializer
 from ems_utils.message_format.serializers import DatapointSetpointSerializer
+from ems_utils.message_format.serializers import DatapointLastValueSerializer
+from ems_utils.message_format.serializers import DatapointLastScheduleSerializer
+from ems_utils.message_format.serializers import DatapointLastSetpointSerializer
 from ems_utils.message_format.serializers import PutMsgSummary
 from .serializers import DatapointSerializer
-from .filters import DatapointFilter, DatapointValueFilter
-from .filters import DatapointSetpointFilter, DatapointScheduleFilter
+from .filters import DatapointFilter
+from .filters import DatapointValueFilter
+from .filters import DatapointSetpointFilter
+from .filters import DatapointScheduleFilter
+from .filters import DatapointLastValueFilter
+from .filters import DatapointLastSetpointFilter
+from .filters import DatapointLastScheduleFilter
 from .models import Metric
 
 from drf_spectacular.utils import (
@@ -277,6 +289,17 @@ class DatapointValueViewSet(ViewSetWithDatapointFK):
         return super().update_many(*args, **kwargs)
 
 
+class DatapointLastValueViewSet(ViewSetWithMulitDatapointFK):
+    """
+    Returns the the latest value message per datapoint.
+    """
+
+    datapoint_queryset = Datapoint.objects.filter(is_active=True)
+    queryset = DatapointLastValue.objects.all()
+    serializer_class = DatapointLastValueSerializer
+    filterset_class = DatapointLastValueFilter
+
+
 class DatapointScheduleViewSet(ViewSetWithDatapointFK):
     __doc__ = DatapointSchedule.__doc__.strip()
     model = DatapointSchedule
@@ -323,6 +346,17 @@ class DatapointScheduleViewSet(ViewSetWithDatapointFK):
         return super().update_many(*args, **kwargs)
 
 
+class DatapointLastScheduleViewSet(ViewSetWithMulitDatapointFK):
+    """
+    Returns the the latest schedule message per datapoint.
+    """
+
+    datapoint_queryset = Datapoint.objects.filter(is_active=True)
+    queryset = DatapointLastSchedule.objects.all()
+    serializer_class = DatapointLastScheduleSerializer
+    filterset_class = DatapointLastScheduleFilter
+
+
 class DatapointSetpointViewSet(ViewSetWithDatapointFK):
     __doc__ = DatapointSetpoint.__doc__.strip()
     model = DatapointSetpoint
@@ -366,6 +400,17 @@ class DatapointSetpointViewSet(ViewSetWithDatapointFK):
         )
         def update_many(self, *args, **kwargs):
             return super().update_many(*args, **kwargs)
+
+
+class DatapointLastSetpointViewSet(ViewSetWithMulitDatapointFK):
+    """
+    Returns the the latest setpoint message per datapoint.
+    """
+
+    datapoint_queryset = Datapoint.objects.filter(is_active=True)
+    queryset = DatapointLastSetpoint.objects.all()
+    serializer_class = DatapointLastSetpointSerializer
+    filterset_class = DatapointLastSetpointFilter
 
 
 class PlainTextRenderer(renderers.BaseRenderer):

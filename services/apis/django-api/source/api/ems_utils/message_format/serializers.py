@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_serializer
 
 from ems_utils.message_format.models import DatapointValueTemplate
 from ems_utils.message_format.models import DatapointSetpointTemplate
@@ -633,63 +634,75 @@ class DatapointSetpointSerializer(serializers.Serializer):
         return gv.validate_setpoint(datapoint, value)
 
 
-class DatapointLastValueSerializer(serializers.Serializer):
+@extend_schema_serializer(many=False)
+class DatapointAsDictKeySerializerTemplate(serializers.Serializer):
     """
-    This is a custom serializer that can handle multiple
+    A template for serializer class that packs multiple messages into a dict
+    using the id of the datapoint as key.
+
+    GOTCHA: This serializer derived from this template should not be
+    initialized with `many=True` as `self.to_representation` expects a queryset and not an instance as argument. This is as many=True will instantiate a list, but we want to pack stuff into a dict.
     """
 
-    datapoint_id = serializers.DictField(
-        child=DatapointSerializer(), allow_empty=True
+    # Define exactly one DictField here which will be used to store the dict
+    # in it. E.g:
+    # class Meta:
+    #     child_serializer = DatapointValueSerializer
+    #
+    # msgs_by_datapoint_id = serializers.DictField(
+    #     child=Meta.child_serializer(), allow_empty=True
+    # )
+
+    def to_representation(self, queryset):
+
+        child_serializer = self.Meta.child_serializer
+        msgs_by_datapoint_id = {}
+        for instance in queryset:
+            # datapoint_id must be str as DictField is only defined
+            # for keys that are strings.
+            datapoint_id = str(instance.datapoint.id)
+            msg = child_serializer(instance).data
+            msgs_by_datapoint_id[datapoint_id] = msg
+        return {"msgs_by_datapoint_id": msgs_by_datapoint_id}
+
+
+class DatapointLastValueSerializer(DatapointAsDictKeySerializerTemplate):
+    """
+    Pack last value messages into a dict of datapoint ids.
+    """
+
+    class Meta:
+        child_serializer = DatapointValueSerializer
+
+    msgs_by_datapoint_id = serializers.DictField(
+        child=Meta.child_serializer(), allow_empty=True
     )
 
-    def to_representation(self, instance):
-        msg = self.Msg()
-        msg.value = instance.last_value
-        msg.time = instance.last_value_timestamp
 
-        return DatapointValueSerializer(msg).data
-
-
-class DatapointLastScheduleSerializer(serializers.Serializer):
+class DatapointLastScheduleSerializer(DatapointAsDictKeySerializerTemplate):
     """
-    Takes the datapoint instance as input, extracts the last_schedule and
-    last_schedule_timestamp fields and feeds those into the correct
-    serializer for this message type. (i.e. DatapointScheduleSerializer).
-
-    This is read_only here, as there is yet no usecase to update the last_*
-    fields with external data.
+    Pack last schedule messages into a dict of datapoint ids.
     """
 
-    class Msg:
-        pass
+    class Meta:
+        child_serializer = DatapointScheduleSerializer
 
-    def to_representation(self, instance):
-
-        msg.schedule = instance.last_schedule
-        msg.time = instance.last_schedule_timestamp
-
-        return DatapointScheduleSerializer(msg).data
+    msgs_by_datapoint_id = serializers.DictField(
+        child=Meta.child_serializer(), allow_empty=True
+    )
 
 
-class DatapointLastSetpointSerializer(serializers.Serializer):
+class DatapointLastSetpointSerializer(DatapointAsDictKeySerializerTemplate):
     """
-    Takes the datapoint instance as input, extracts the last_setpoint and
-    last_setpoint_timestamp fields and feeds those into the correct
-    serializer for this message type. (i.e. DatapointSetpointSerializer).
-
-    This is read_only here, as there is yet no usecase to update the last_*
-    fields with external data.
+    Pack last setpoint messages into a dict of datapoint ids.
     """
 
-    class Msg:
-        pass
+    class Meta:
+        child_serializer = DatapointSetpointSerializer
 
-    def to_representation(self, instance):
-        msg = self.Msg()
-        msg.setpoint = instance.last_setpoint
-        msg.time = instance.last_setpoint_timestamp
-
-        return DatapointSetpointSerializer(msg).data
+    msgs_by_datapoint_id = serializers.DictField(
+        child=Meta.child_serializer(), allow_empty=True
+    )
 
 
 @extend_schema_serializer(

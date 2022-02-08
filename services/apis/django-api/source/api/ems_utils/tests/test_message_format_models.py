@@ -12,6 +12,9 @@ from ems_utils.message_format.models import DatapointTemplate
 from ems_utils.message_format.models import DatapointValueTemplate
 from ems_utils.message_format.models import DatapointScheduleTemplate
 from ems_utils.message_format.models import DatapointSetpointTemplate
+from ems_utils.message_format.models import DatapointLastValueTemplate
+from ems_utils.message_format.models import DatapointLastScheduleTemplate
+from ems_utils.message_format.models import DatapointLastSetpointTemplate
 
 
 class TestDatapoint(TransactionTestCase):
@@ -210,92 +213,6 @@ class TestDatapoint(TransactionTestCase):
 
         self.generic_field_value_test(field_values=field_values)
 
-    def test_field_last_value_exists(self):
-        """
-        This field stores datapoint payload.
-        """
-        field_values = self.default_field_values.copy()
-
-        field_values.update({"last_value": "3.12345"})
-
-        self.generic_field_value_test(field_values=field_values)
-
-    def test_field_last_value_timestamp_exists(self):
-        """
-        This field stores datapoint payload.
-        """
-        field_values = self.default_field_values.copy()
-
-        ts = 1596240000000
-        ts_datetime = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update({"last_value_timestamp": ts_datetime})
-
-        self.generic_field_value_test(field_values=field_values)
-
-    def test_field_last_setpoint_exists(self):
-        """
-        This field stores datapoint payload.
-        """
-        field_values = self.default_field_values.copy()
-
-        last_setpoint = [
-            {
-                "from_timestamp": None,
-                "to_timestamp": 1564489613491,
-                "preferred_value": 21,
-                "min_value": 20,
-                "max_value": 22,
-            },
-            {
-                "from_timestamp": 1564489613491,
-                "to_timestamp": None,
-                "preferred_value": None,
-                "min_value": None,
-                "max_value": None,
-            },
-        ]
-        field_values.update({"last_setpoint": last_setpoint})
-
-        self.generic_field_value_test(field_values=field_values)
-
-    def test_field_last_setpoint_timestamp_exists(self):
-        """
-        This field stores datapoint payload.
-        """
-        field_values = self.default_field_values.copy()
-
-        ts = 1596240000000
-        ts_datetime = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update({"last_setpoint_timestamp": ts_datetime})
-
-        self.generic_field_value_test(field_values=field_values)
-
-    def test_field_last_schedule_exists(self):
-        """
-        This field stores datapoint payload.
-        """
-        field_values = self.default_field_values.copy()
-
-        last_schedule = [
-            {"from_timestamp": None, "to_timestamp": 1564489613491, "value": 21},
-            {"from_timestamp": 1564489613491, "to_timestamp": None, "value": None},
-        ]
-        field_values.update({"last_schedule": last_schedule})
-
-        self.generic_field_value_test(field_values=field_values)
-
-    def test_field_last_schedule_timestamp_exists(self):
-        """
-        This field stores datapoint payload.
-        """
-        field_values = self.default_field_values.copy()
-
-        ts = 1596240000000
-        ts_datetime = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update({"last_schedule_timestamp": ts_datetime})
-
-        self.generic_field_value_test(field_values=field_values)
-
 
 class TestDatapointValue(TransactionTestCase):
     @classmethod
@@ -390,58 +307,6 @@ class TestDatapointValue(TransactionTestCase):
         field_values.update({"time": ts_datetime})
 
         self.generic_field_value_test(field_values=field_values)
-
-    def test_save_stores_as_last_value(self):
-        """
-        The model should save the latest value/timestamp in datapoint too.
-        """
-        field_values = self.default_field_values.copy()
-
-        # Ensure there is no newer msg available that would prevent saving.
-        self.datapoint.last_value = None
-        self.datapoint.last_value_timestamp = None
-        self.datapoint.save()
-
-        expected_value = 3.14159
-        ts = 1596240000000
-        expected_timestamp = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update({"value": expected_value, "time": expected_timestamp})
-
-        self.generic_field_value_test(field_values=field_values)
-        self.datapoint.refresh_from_db()
-        actual_value = self.datapoint.last_value
-        actual_timestamp = self.datapoint.last_value_timestamp
-
-        self.assertEqual(actual_value, expected_value)
-        self.assertEqual(actual_timestamp, expected_timestamp)
-
-    def test_save_wont_overwrite_newer_value(self):
-        """
-        Don't save the value/timestamp to datapoint if it is older then
-        the msg stored there.
-        """
-        field_values = self.default_field_values.copy()
-
-        # Ensure there is a newer msg available that will prevent saving.
-        expected_value = 3.14159
-        self.datapoint.last_value = expected_value
-        ts = 1596240000000
-        expected_timestamp = datetime_from_timestamp(ts, tz_aware=True)
-        self.datapoint.last_value_timestamp = expected_timestamp
-        self.datapoint.save()
-
-        older_value = -2.0
-        ts = 1200000000000
-        older_timestamp = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update({"value": older_value, "time": older_timestamp})
-
-        self.generic_field_value_test(field_values=field_values)
-        self.datapoint.refresh_from_db()
-        actual_value = self.datapoint.last_value
-        actual_timestamp = self.datapoint.last_value_timestamp
-
-        self.assertEqual(actual_value, expected_value)
-        self.assertEqual(actual_timestamp, expected_timestamp)
 
     def get_raw_values_from_db(self, dp_value_id):
         """
@@ -718,6 +583,101 @@ class TestDatapointValue(TransactionTestCase):
         assert all_actual_values == all_expected_values
 
 
+class TestDatapointLastValue(TransactionTestCase):
+    @classmethod
+    def setUpClass(cls):
+        # Datapoint model is abstract, hence no table exists. Here we
+        # create a concrete model as child of datapoint and create a table
+        # on the fly for testing.
+        class Datapoint(DatapointTemplate):
+            class Meta:
+                app_label = "test_message_format_models_2_2"
+
+        class DatapointLastValue(DatapointLastValueTemplate):
+            class Meta:
+                app_label = "test_message_format_models_2_2"
+
+            # The datapoint foreign key must be overwritten as it points
+            # to the abstract datapoint model by default.
+            datapoint = models.ForeignKey(Datapoint, on_delete=models.CASCADE)
+
+        cls.Datapoint = Datapoint
+        cls.DatapointLastValue = DatapointLastValue
+        with connection.schema_editor() as schema_editor:
+            schema_editor.create_model(cls.Datapoint)
+            schema_editor.create_model(cls.DatapointLastValue)
+
+        #  Create a dummy datapoint to be used as foreign key for the msgs.
+        cls.datapoint = cls.Datapoint(type="sensor")
+        cls.datapoint.save()
+        cls.datapoint2 = cls.Datapoint(type="sensor")
+        cls.datapoint2.save()
+
+        # Here are the default field values:
+        cls.default_field_values = {
+            "datapoint": cls.datapoint,
+            "time": datetime_from_timestamp(1612860152000),
+        }
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        # Finally, erase the table of the temporary model.
+        with connection.schema_editor() as schema_editor:
+            schema_editor.delete_model(cls.Datapoint)
+            schema_editor.delete_model(cls.DatapointLastValue)
+
+    def tearDown(self):
+        """
+        Remove the dummy datapoint, so next test starts with empty tables.
+        """
+        self.DatapointLastValue.objects.all().delete()
+
+    def generic_field_value_test(self, field_values):
+        """
+        Create a datapoint value entry with field_values, and check that the
+        value can be restored.
+        """
+        dp_value = self.DatapointLastValue.objects.create(**field_values)
+        dp_value.save()
+        # Ensure that we compare to the value that has been stored in DB.
+        dp_value.refresh_from_db()
+        for field in field_values:
+            expected_value = field_values[field]
+            actual_value = getattr(dp_value, field)
+            self.assertEqual(expected_value, actual_value)
+
+    def test_field_datapoint_exists(self):
+        """
+        Just check that we can create a new msg with foreign key to
+        datapoint.
+        """
+        field_values = self.default_field_values.copy()
+
+        self.generic_field_value_test(field_values=field_values)
+
+    def test_field_value_exists(self):
+        """
+        Verify that we can store a value.
+        """
+        field_values = self.default_field_values.copy()
+
+        field_values.update({"value": 1.0})
+
+        self.generic_field_value_test(field_values=field_values)
+
+    def test_field_timestamp_exists(self):
+        """
+        Verify that we can store the values timestamp.
+        """
+        field_values = self.default_field_values.copy()
+
+        ts = 1596240000000
+        ts_datetime = datetime_from_timestamp(ts, tz_aware=True)
+        field_values.update({"time": ts_datetime})
+
+        self.generic_field_value_test(field_values=field_values)
+
+
 class TestDatapointSchedule(TransactionTestCase):
     @classmethod
     def setUpClass(cls):
@@ -798,8 +758,16 @@ class TestDatapointSchedule(TransactionTestCase):
         field_values = self.default_field_values.copy()
 
         schedule = [
-            {"from_timestamp": None, "to_timestamp": 1564489613491, "value": 21},
-            {"from_timestamp": 1564489613491, "to_timestamp": None, "value": None},
+            {
+                "from_timestamp": None,
+                "to_timestamp": 1564489613491,
+                "value": 21,
+            },
+            {
+                "from_timestamp": 1564489613491,
+                "to_timestamp": None,
+                "value": None,
+            },
         ]
         field_values.update({"schedule": schedule})
 
@@ -816,64 +784,6 @@ class TestDatapointSchedule(TransactionTestCase):
         field_values.update({"time": ts_datetime})
 
         self.generic_field_value_test(field_values=field_values)
-
-    def test_save_stores_as_last_schedule(self):
-        """
-        The model should save the latest schedule/timestamp in datapoint too.
-        """
-        field_values = self.default_field_values.copy()
-
-        # Ensure there is no newer msg available that would prevent saving.
-        self.datapoint.last_schedule = None
-        self.datapoint.last_schedule_timestamp = None
-        self.datapoint.save()
-
-        expected_schedule = [
-            {"from_timestamp": None, "to_timestamp": 1564489613492, "value": 21},
-            {"from_timestamp": 1564489613492, "to_timestamp": None, "value": None},
-        ]
-        ts = 1596230000001
-        expected_timestamp = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update({"schedule": expected_schedule, "time": expected_timestamp})
-
-        self.generic_field_value_test(field_values=field_values)
-        self.datapoint.refresh_from_db()
-        actual_schedule = self.datapoint.last_schedule
-        actual_timestamp = self.datapoint.last_schedule_timestamp
-
-        self.assertEqual(actual_schedule, expected_schedule)
-        self.assertEqual(actual_timestamp, expected_timestamp)
-
-    def test_save_wont_overwrite_newer_schedule(self):
-        """
-        Don't save the value/timestamp to datapoint if it is older then
-        the msg stored there.
-        """
-        field_values = self.default_field_values.copy()
-
-        # Ensure there is a newer msg available that will prevent saving.
-        expected_schedule = [
-            {"from_timestamp": None, "to_timestamp": 1564489613492, "value": 21},
-            {"from_timestamp": 1564489613492, "to_timestamp": None, "value": None},
-        ]
-        self.datapoint.last_schedule = expected_schedule
-        ts = 1596220000000
-        expected_timestamp = datetime_from_timestamp(ts, tz_aware=True)
-        self.datapoint.last_schedule_timestamp = expected_timestamp
-        self.datapoint.save()
-
-        older_schedule = []
-        ts = 1200000000000
-        older_timestamp = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update({"schedule": older_schedule, "time": older_timestamp})
-
-        self.generic_field_value_test(field_values=field_values)
-        self.datapoint.refresh_from_db()
-        actual_schedule = self.datapoint.last_schedule
-        actual_timestamp = self.datapoint.last_schedule_timestamp
-
-        self.assertEqual(actual_schedule, expected_schedule)
-        self.assertEqual(actual_timestamp, expected_timestamp)
 
     def get_raw_values_from_db_by_time_and_dp(self, dp_id, time):
         """
@@ -995,6 +905,114 @@ class TestDatapointSchedule(TransactionTestCase):
         assert all_actual_schedules == all_expected_schedules
 
 
+class TestDatapointDatapointLastSchedule(TransactionTestCase):
+    @classmethod
+    def setUpClass(cls):
+        # Datapoint model is abstract, hence no table exists. Here we
+        # create a concrete model as child of datapoint and create a table
+        # on the fly for testing.
+        class Datapoint(DatapointTemplate):
+            class Meta:
+                app_label = "test_message_format_models_3_2"
+
+        class DatapointLastSchedule(DatapointLastScheduleTemplate):
+            class Meta:
+                app_label = "test_message_format_models_3_2"
+
+            # The datapoint foreign key must be overwritten as it points
+            # to the abstract datapoint model by default.
+            datapoint = models.ForeignKey(Datapoint, on_delete=models.CASCADE)
+
+        cls.Datapoint = Datapoint
+        cls.DatapointLastSchedule = DatapointLastSchedule
+        with connection.schema_editor() as schema_editor:
+            schema_editor.create_model(cls.Datapoint)
+            schema_editor.create_model(cls.DatapointLastSchedule)
+
+        #  Create a dummy datapoint to be used as foreign key for the msgs.
+        cls.datapoint = cls.Datapoint(type="sensor")
+        cls.datapoint.save()
+        cls.datapoint2 = cls.Datapoint(type="sensor")
+        cls.datapoint2.save()
+
+        # Here are the default field values:
+        cls.default_field_values = {
+            "datapoint": cls.datapoint,
+            "time": datetime_from_timestamp(1612860152000),
+            "schedule": [],
+        }
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        # Finally, erase the table of the temporary model.
+        with connection.schema_editor() as schema_editor:
+            schema_editor.delete_model(cls.Datapoint)
+            schema_editor.delete_model(cls.DatapointLastSchedule)
+
+    def tearDown(self):
+        """
+        Remove the dummy datapoint, so next test starts with empty tables.
+        """
+        self.DatapointLastSchedule.objects.all().delete()
+
+    def generic_field_value_test(self, field_values):
+        """
+        Create a datapoint value entry with field_values, and check that the
+        value can be restored.
+        """
+        dp_schedule = self.DatapointLastSchedule.objects.create(**field_values)
+        dp_schedule.save()
+        # Ensure that we compare to the value that has been stored in DB.
+        dp_schedule.refresh_from_db()
+        for field in field_values:
+            expected_value = field_values[field]
+            actual_value = getattr(dp_schedule, field)
+            self.assertEqual(expected_value, actual_value)
+
+    def test_field_datapoint_exists(self):
+        """
+        Just check that we can create a new msg with foreign key to
+        datapoint.
+        """
+        field_values = self.default_field_values.copy()
+
+        self.generic_field_value_test(field_values=field_values)
+
+    def test_field_schedule_exists(self):
+        """
+        Verify that we can store a schedule.
+        """
+        field_values = self.default_field_values.copy()
+
+        schedule = [
+            {
+                "from_timestamp": None,
+                "to_timestamp": 1564489613491,
+                "value": 21,
+            },
+            {
+                "from_timestamp": 1564489613491,
+                "to_timestamp": None,
+                "value": None,
+            },
+        ]
+        field_values.update({"schedule": schedule})
+
+        self.generic_field_value_test(field_values=field_values)
+
+    def test_field_timestamp_exists(self):
+        """
+        Verify that we can store the schedules timestamp.
+        """
+        field_values = self.default_field_values.copy()
+
+        ts = 1596240000000
+        ts_datetime = datetime_from_timestamp(ts, tz_aware=True)
+        field_values.update({"time": ts_datetime})
+
+        self.generic_field_value_test(field_values=field_values)
+
+
 class TestDatapointSetpoint(TransactionTestCase):
     @classmethod
     def setUpClass(cls):
@@ -1075,8 +1093,16 @@ class TestDatapointSetpoint(TransactionTestCase):
         field_values = self.default_field_values.copy()
 
         setpoint = [
-            {"from_timestamp": None, "to_timestamp": 1564489613491, "value": 21},
-            {"from_timestamp": 1564489613491, "to_timestamp": None, "value": None},
+            {
+                "from_timestamp": None,
+                "to_timestamp": 1564489613491,
+                "value": 21,
+            },
+            {
+                "from_timestamp": 1564489613491,
+                "to_timestamp": None,
+                "value": None,
+            },
         ]
         field_values.update({"setpoint": setpoint})
 
@@ -1093,64 +1119,6 @@ class TestDatapointSetpoint(TransactionTestCase):
         field_values.update({"time": ts_datetime})
 
         self.generic_field_value_test(field_values=field_values)
-
-    def test_save_stores_as_last_setpoint(self):
-        """
-        The model should save the latest setpoint/timestamp in datapoint too.
-        """
-        field_values = self.default_field_values.copy()
-
-        # Ensure there is no newer msg available that would prevent saving.
-        self.datapoint.last_setpoint = None
-        self.datapoint.last_setpoint_timestamp = None
-        self.datapoint.save()
-
-        expected_setpoint = [
-            {"from_timestamp": None, "to_timestamp": 1564489613492, "value": 21},
-            {"from_timestamp": 1564489613492, "to_timestamp": None, "value": None},
-        ]
-        ts = 1596220000001
-        expected_timestamp = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update({"setpoint": expected_setpoint, "time": expected_timestamp})
-
-        self.generic_field_value_test(field_values=field_values)
-        self.datapoint.refresh_from_db()
-        actual_setpoint = self.datapoint.last_setpoint
-        actual_timestamp = self.datapoint.last_setpoint_timestamp
-
-        self.assertEqual(actual_setpoint, expected_setpoint)
-        self.assertEqual(actual_timestamp, expected_timestamp)
-
-    def test_save_wont_overwrite_newer_setpoint(self):
-        """
-        Don't save the value/timestamp to datapoint if it is older then
-        the msg stored there.
-        """
-        field_values = self.default_field_values.copy()
-
-        # Ensure there is a newer msg available that will prevent saving.
-        expected_setpoint = [
-            {"from_timestamp": None, "to_timestamp": 1564489613492, "value": 21},
-            {"from_timestamp": 1564489613492, "to_timestamp": None, "value": None},
-        ]
-        self.datapoint.last_setpoint = expected_setpoint
-        ts = 1596220000000
-        expected_timestamp = datetime_from_timestamp(ts, tz_aware=True)
-        self.datapoint.last_setpoint_timestamp = expected_timestamp
-        self.datapoint.save()
-
-        older_setpoint = []
-        ts = 1200000000000
-        older_timestamp = datetime_from_timestamp(ts, tz_aware=True)
-        field_values.update({"setpoint": older_setpoint, "time": older_timestamp})
-
-        self.generic_field_value_test(field_values=field_values)
-        self.datapoint.refresh_from_db()
-        actual_setpoint = self.datapoint.last_setpoint
-        actual_timestamp = self.datapoint.last_setpoint_timestamp
-
-        self.assertEqual(actual_setpoint, expected_setpoint)
-        self.assertEqual(actual_timestamp, expected_timestamp)
 
     def get_raw_values_from_db_by_time_and_dp(self, dp_id, time):
         """
@@ -1269,3 +1237,111 @@ class TestDatapointSetpoint(TransactionTestCase):
             all_actual_setpoints.append(actual_setpoint)
 
         assert all_actual_setpoints == all_expected_setpoints
+
+
+class TestDatapointLastSetpoint(TransactionTestCase):
+    @classmethod
+    def setUpClass(cls):
+        # Datapoint model is abstract, hence no table exists. Here we
+        # create a concrete model as child of datapoint and create a table
+        # on the fly for testing.
+        class Datapoint(DatapointTemplate):
+            class Meta:
+                app_label = "test_message_format_models_4_2"
+
+        class DatapointLastSetpoint(DatapointLastSetpointTemplate):
+            class Meta:
+                app_label = "test_message_format_models_4_2"
+
+            # The datapoint foreign key must be overwritten as it points
+            # to the abstract datapoint model by default.
+            datapoint = models.ForeignKey(Datapoint, on_delete=models.CASCADE)
+
+        cls.Datapoint = Datapoint
+        cls.DatapointLastSetpoint = DatapointLastSetpoint
+        with connection.schema_editor() as schema_editor:
+            schema_editor.create_model(cls.Datapoint)
+            schema_editor.create_model(cls.DatapointLastSetpoint)
+
+        #  Create a dummy datapoint to be used as foreign key for the msgs.
+        cls.datapoint = cls.Datapoint(type="sensor")
+        cls.datapoint.save()
+        cls.datapoint2 = cls.Datapoint(type="sensor")
+        cls.datapoint2.save()
+
+        # Here are the default field values:
+        cls.default_field_values = {
+            "datapoint": cls.datapoint,
+            "time": datetime_from_timestamp(1612860152000),
+            "setpoint": [],
+        }
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        # Finally, erase the table of the temporary model.
+        with connection.schema_editor() as schema_editor:
+            schema_editor.delete_model(cls.Datapoint)
+            schema_editor.delete_model(cls.DatapointLastSetpoint)
+
+    def tearDown(self):
+        """
+        Remove the dummy datapoint, so next test starts with empty tables.
+        """
+        self.DatapointLastSetpoint.objects.all().delete()
+
+    def generic_field_value_test(self, field_values):
+        """
+        Create a datapoint value entry with field_values, and check that the
+        value can be restored.
+        """
+        dp_setpoint = self.DatapointLastSetpoint.objects.create(**field_values)
+        dp_setpoint.save()
+        # Ensure that we compare to the value that has been stored in DB.
+        dp_setpoint.refresh_from_db()
+        for field in field_values:
+            expected_value = field_values[field]
+            actual_value = getattr(dp_setpoint, field)
+            self.assertEqual(expected_value, actual_value)
+
+    def test_field_datapoint_exists(self):
+        """
+        Just check that we can create a new msg with foreign key to
+        datapoint.
+        """
+        field_values = self.default_field_values.copy()
+
+        self.generic_field_value_test(field_values=field_values)
+
+    def test_field_setpoint_exists(self):
+        """
+        Verify that we can store a setpoint.
+        """
+        field_values = self.default_field_values.copy()
+
+        setpoint = [
+            {
+                "from_timestamp": None,
+                "to_timestamp": 1564489613491,
+                "value": 21,
+            },
+            {
+                "from_timestamp": 1564489613491,
+                "to_timestamp": None,
+                "value": None,
+            },
+        ]
+        field_values.update({"setpoint": setpoint})
+
+        self.generic_field_value_test(field_values=field_values)
+
+    def test_field_timestamp_exists(self):
+        """
+        Verify that we can store the setpoints timestamp.
+        """
+        field_values = self.default_field_values.copy()
+
+        ts = 1596240000000
+        ts_datetime = datetime_from_timestamp(ts, tz_aware=True)
+        field_values.update({"time": ts_datetime})
+
+        self.generic_field_value_test(field_values=field_values)

@@ -205,8 +205,6 @@ class ViewSetWithDatapointFK(GenericViewSet):
     Everything else is pretty standard, like desribed here:
     https://www.django-rest-framework.org/api-guide/viewsets/
 
-    TODO: Add some tests here.
-
     Attributes:
     -----------
     model : Django model.
@@ -418,37 +416,52 @@ class ViewSetWithDatapointFK(GenericViewSet):
         return Response(validated_data, status=status.HTTP_204_NO_CONTENT)
 
 
-# XXX:
-# Seems like we do not use these three subclasses any more as we need the
-# serializer_class is required while actually defining the views to extend
-# the schema documentation.
-class DatapointValueViewSetTemplate(ViewSetWithDatapointFK):
+class ViewSetWithMulitDatapointFK(GenericViewSet):
     """
-    Generic code to interact with DatapointValue objects.
+    Generic Code for ViewSets that have a Datapoint associated as ForeignKey.
 
-    Subclass to use. Overload the class attributes with appropriate values
-    """
+    This is very similar to ViewSetWithDatapointFK. The main difference is that
+    this class is intended to return messages from multiple datapoints in one
+    run, while ViewSetWithDatapointFK always operates on message for a single
+    datapoint.
 
-    serializer_class = DatapointValueSerializer
+    Subclass to use. You must overload `model`, `datapoint_model`, `queryset`
+    and `serializer_class` to make the subclass work.
 
+    TODO: Add some tests here.
 
-class DatapointScheduleViewSetTemplate(ViewSetWithDatapointFK):
-    """
-    Generic code to interact with DatapointSchedule objects.
-
-    Subclass to use, ensure to overload `model` and `serializer_class`
-    with appropriate values.
-    """
-
-    serializer_class = DatapointScheduleSerializer
-
-
-class DatapointSetpointViewSetTemplate(ViewSetWithDatapointFK):
-    """
-    Generic code to interact with DatapointSetpoint objects.
-
-    Subclass to use, ensure to overload `model` and `serializer_class`
-    with appropriate values.
+    Attributes:
+    -----------
+    datapoint_queryset : Django queryset.
+        The django queryset of datapoints for which related messages are
+        processed. E.g. DatapointValue.objects.all()
+    queryset : A valid queryset belonging to the model.
+        E.g. DatapointValue.objects.all(). Is used to allow automatic
+        filter generation for the output.
+    serializer_class : DRF serializier class.
+        The serializer used to pack/unpack the objects into JSON.
+    filter_backends : List of filter backends.
+        You should not need to change this. See also:
+        https://www.django-rest-framework.org/api-guide/filtering/
     """
 
-    serializer_class = DatapointSetpointSerializer
+    datapoint_queryset = None
+    queryset = None
+    serializer_class = None
+    filter_backends = (filters.DjangoFilterBackend,)
+
+    def list(self, request):
+        queryset = self.queryset.filter(datapoint__in=self.datapoint_queryset)
+        queryset = self.filter_queryset(queryset)
+        serializer = self.serializer_class(queryset)
+        return Response(serializer.data)
+
+    def destroy(self, request):
+        queryset = self.queryset.filter(datapoint__in=self.datapoint_queryset)
+        queryset = self.filter_queryset(queryset)
+        delete_summary = queryset.delete()
+
+        # TODO Do something sane with delete summary.
+        # It would likely look like this: (3, {'api_main.Datapoint': 3})
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
