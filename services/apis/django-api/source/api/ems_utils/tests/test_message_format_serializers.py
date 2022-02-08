@@ -517,29 +517,41 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
         """
         Check that a schedule message is serialized as expected.
         """
-        expected_data = {
+
+        now = timestamp_utc_now()
+        test_data = {
             "schedule": [
                 {
                     "from_timestamp": None,
-                    "to_timestamp": timestamp_utc_now() + 1000,
+                    "to_timestamp": now + 1000,
                     "value": 21,
                 },
                 {
-                    "from_timestamp": timestamp_utc_now() + 1000,
+                    "from_timestamp": now + 1000,
                     "to_timestamp": None,
                     "value": None,
                 },
             ],
-            "timestamp": timestamp_utc_now(),
+            "time": datetime_from_timestamp(now),
+        }
+        expected_data = {
+            "schedule": [
+                {
+                    "from_timestamp": None,
+                    "to_timestamp": now + 1000,
+                    "value": json.dumps(21),
+                },
+                {
+                    "from_timestamp": now + 1000,
+                    "to_timestamp": None,
+                    "value": json.dumps(None),
+                },
+            ],
+            "timestamp": now,
         }
 
         field_values = self.default_field_values.copy()
-        field_values.update(
-            {
-                "schedule": expected_data["schedule"],
-                "time": datetime_from_timestamp(expected_data["timestamp"]),
-            }
-        )
+        field_values.update(test_data)
         dp_schedule = self.DatapointSchedule.objects.create(**field_values)
 
         serializer = DatapointScheduleSerializer(dp_schedule)
@@ -1315,31 +1327,44 @@ class TestDatapointSetpointSerializer(TransactionTestCase):
         """
         Check that a setpoint message is serialized as expected.
         """
+        now = timestamp_utc_now()
+        test_data = {
+            "setpoint": [
+                {
+                    "from_timestamp": None,
+                    "to_timestamp": now + 1000,
+                    "preferred_value": 21,
+                    "acceptable_values": [20.5, 21, 21.5],
+                },
+                {
+                    "from_timestamp": now + 1000,
+                    "to_timestamp": None,
+                    "preferred_value": None,
+                    "acceptable_values": [None],
+                },
+            ],
+            "time": datetime_from_timestamp(now),
+        }
         expected_data = {
             "setpoint": [
                 {
                     "from_timestamp": None,
-                    "to_timestamp": timestamp_utc_now() + 1000,
+                    "to_timestamp": now + 1000,
                     "preferred_value": json.dumps(21),
                     "acceptable_values": [20.5, 21, 21.5],
                 },
                 {
-                    "from_timestamp": timestamp_utc_now() + 1000,
+                    "from_timestamp": now + 1000,
                     "to_timestamp": None,
                     "preferred_value": json.dumps(None),
                     "acceptable_values": [None],
                 },
             ],
-            "timestamp": timestamp_utc_now(),
+            "timestamp": now,
         }
 
         field_values = self.default_field_values.copy()
-        field_values.update(
-            {
-                "setpoint": expected_data["setpoint"],
-                "time": datetime_from_timestamp(expected_data["timestamp"]),
-            }
-        )
+        field_values.update(test_data)
         dp_schedule = self.DatapointSetpoint.objects.create(**field_values)
 
         serializer = DatapointSetpointSerializer(dp_schedule)
@@ -2231,32 +2256,46 @@ class TestDatapointLastWhateverSerializers(TransactionTestCase):
         dp = self.Datapoint.objects.create(**self.default_field_values)
         dp.save()
 
-        expected_timestamp = timestamp_utc_now()
-        expected_schedule = [
-            {
-                "from_timestamp": None,
-                "to_timestamp": timestamp_utc_now() + 1000,
-                "value": 21,
-            },
-            {
-                "from_timestamp": timestamp_utc_now() + 1000,
-                "to_timestamp": None,
-                "value": None,
-            },
-        ]
+        now = timestamp_utc_now()
+        test_data = {
+            "schedule": [
+                {
+                    "from_timestamp": None,
+                    "to_timestamp": now + 1000,
+                    "value": 21,
+                },
+                {
+                    "from_timestamp": now + 1000,
+                    "to_timestamp": None,
+                    "value": None,
+                },
+            ],
+            "time": datetime_from_timestamp(now),
+        }
         expected_data = {
             "msgs_by_datapoint_id": {
                 str(dp.id): {
-                    "schedule": expected_schedule,
-                    "timestamp": expected_timestamp,
+                    "schedule": [
+                        {
+                            "from_timestamp": None,
+                            "to_timestamp": now + 1000,
+                            "value": json.dumps(21),
+                        },
+                        {
+                            "from_timestamp": now + 1000,
+                            "to_timestamp": None,
+                            "value": json.dumps(None),
+                        },
+                    ],
+                    "timestamp": now,
                 }
             }
         }
 
         dls = self.DatapointLastSchedule.objects.create(
             datapoint=dp,
-            schedule=expected_schedule,
-            time=datetime_from_timestamp(expected_timestamp),
+            schedule=test_data["schedule"],
+            time=test_data["time"],
         )
         qs = self.DatapointLastSchedule.objects.filter(id=dls.id)
 
@@ -2270,34 +2309,50 @@ class TestDatapointLastWhateverSerializers(TransactionTestCase):
         dp = self.Datapoint.objects.create(**self.default_field_values)
         dp.save()
 
-        expected_timestamp = timestamp_utc_now()
-        expected_setpoint = [
-            {
-                "from_timestamp": None,
-                "to_timestamp": timestamp_utc_now() + 1000,
-                "preferred_value": json.dumps(21),
-                "acceptable_values": [20.5, 21, 21.5],
-            },
-            {
-                "from_timestamp": timestamp_utc_now() + 1000,
-                "to_timestamp": None,
-                "preferred_value": json.dumps(None),
-                "acceptable_values": [None],
-            },
-        ]
+        now = timestamp_utc_now()
+        test_data = {
+            "setpoint": [
+                {
+                    "from_timestamp": None,
+                    "to_timestamp": now + 1000,
+                    "preferred_value": 21,
+                    "acceptable_values": [20.5, 21, 21.5],
+                },
+                {
+                    "from_timestamp": now + 1000,
+                    "to_timestamp": None,
+                    "preferred_value": None,
+                    "acceptable_values": [None],
+                },
+            ],
+            "time": datetime_from_timestamp(now),
+        }
         expected_data = {
             "msgs_by_datapoint_id": {
                 str(dp.id): {
-                    "setpoint": expected_setpoint,
-                    "timestamp": expected_timestamp,
+                    "setpoint": [
+                        {
+                            "from_timestamp": None,
+                            "to_timestamp": now + 1000,
+                            "preferred_value": json.dumps(21),
+                            "acceptable_values": [20.5, 21, 21.5],
+                        },
+                        {
+                            "from_timestamp": now + 1000,
+                            "to_timestamp": None,
+                            "preferred_value": json.dumps(None),
+                            "acceptable_values": [None],
+                        },
+                    ],
+                    "timestamp": now,
                 }
             }
         }
 
         dls = self.DatapointLastSetpoint.objects.create(
             datapoint=dp,
-            setpoint=expected_setpoint,
-            time=datetime_from_timestamp(expected_timestamp),
+            setpoint=test_data["setpoint"],
+            time=test_data["time"],
         )
         qs = self.DatapointLastSetpoint.objects.filter(id=dls.id)
 
