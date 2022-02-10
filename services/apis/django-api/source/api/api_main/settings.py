@@ -24,6 +24,18 @@ from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv(), verbose=False, override=True)
 
 # ------------------------------------------------------------------------------
+# Global flags that determine the functionality provided by the API service.
+# ------------------------------------------------------------------------------
+
+ACTIVATE_CONTROL_EXTENSION = False
+if (os.getenv("ACTIVATE_CONTROL_EXTENSION") or "FALSE").lower() == "true":
+    ACTIVATE_CONTROL_EXTENSION = True
+
+ACTIVATE_HISTORY_EXTENSION = False
+if (os.getenv("ACTIVATE_HISTORY_EXTENSION") or "FALSE").lower() == "true":
+    ACTIVATE_HISTORY_EXTENSION = True
+
+# ------------------------------------------------------------------------------
 # Settings for mqtt_integration.py
 # ------------------------------------------------------------------------------
 
