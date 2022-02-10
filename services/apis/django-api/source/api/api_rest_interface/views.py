@@ -54,6 +54,7 @@ from drf_spectacular.utils import (
 )
 
 
+@extend_schema(tags=["Datapoint"],)
 class DatapointViewSet(DatapointViewSetTemplate):
     __doc__ = DatapointViewSetTemplate.__doc__
     datapoint_model = Datapoint
@@ -245,6 +246,7 @@ class DatapointViewSet(DatapointViewSetTemplate):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+@extend_schema(tags=["Datapoint Value"],)
 class DatapointValueViewSet(ViewSetWithDatapointFK):
     __doc__ = DatapointValue.__doc__.strip()
     model = DatapointValue
@@ -288,6 +290,7 @@ class DatapointValueViewSet(ViewSetWithDatapointFK):
         return super().update_many(*args, **kwargs)
 
 
+@extend_schema(tags=["Datapoint Value"],)
 class DatapointLastValueViewSet(ViewSetWithMulitDatapointFK):
     """
     Returns the the latest value message per datapoint.
@@ -299,6 +302,7 @@ class DatapointLastValueViewSet(ViewSetWithMulitDatapointFK):
     filterset_class = DatapointLastValueFilter
 
 
+@extend_schema(tags=["Datapoint Schedule"],)
 class DatapointScheduleViewSet(ViewSetWithDatapointFK):
     __doc__ = DatapointSchedule.__doc__.strip()
     model = DatapointSchedule
@@ -345,6 +349,7 @@ class DatapointScheduleViewSet(ViewSetWithDatapointFK):
         return super().update_many(*args, **kwargs)
 
 
+@extend_schema(tags=["Datapoint Schedule"],)
 class DatapointLastScheduleViewSet(ViewSetWithMulitDatapointFK):
     """
     Returns the the latest schedule message per datapoint.
@@ -356,6 +361,7 @@ class DatapointLastScheduleViewSet(ViewSetWithMulitDatapointFK):
     filterset_class = DatapointLastScheduleFilter
 
 
+@extend_schema(tags=["Datapoint Setpoint"],)
 class DatapointSetpointViewSet(ViewSetWithDatapointFK):
     __doc__ = DatapointSetpoint.__doc__.strip()
     model = DatapointSetpoint
@@ -401,6 +407,7 @@ class DatapointSetpointViewSet(ViewSetWithDatapointFK):
             return super().update_many(*args, **kwargs)
 
 
+@extend_schema(tags=["Datapoint Setpoint"],)
 class DatapointLastSetpointViewSet(ViewSetWithMulitDatapointFK):
     """
     Returns the the latest setpoint message per datapoint.
