@@ -707,7 +707,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         Returns:
         --------
         available_actuator_datapoints : dict
-            See documentation/04_message_format.md -> Available Datapoints
+            See documentation/03_message_format.md -> Available Datapoints
         write_config_per_datapoint_key : dict
             A mapping for actuator datapoints from datapoint_key to the
             corresponding configuration dict of MODBUS_CONFIG.

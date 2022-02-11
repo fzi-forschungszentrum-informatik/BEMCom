@@ -19,7 +19,7 @@ Please open a GitHub issue for any inquiry that relates to the source code. Feel
 
 ## Contributing
 
-Contributions are welcome, especially extensions to the documentation and new services. For the latter please see the documentation on [service development](documentation/03_service_development.md) before you start developing.
+Contributions are welcome! Please see the [documented guidelines](documentation/04_contributing.md) before you start developing.
 
 
 
