@@ -497,11 +497,6 @@ class TestRESTEndpoint(TransactionTestCase):
         dp = datapoint_factory(self.test_connector, type="actuator")
         dp.save()
 
-        # In theory this shouldn't been necessary. However. It seems
-        # that the save method above doesn't fire the signal. No clue why,
-        # but seems to be an issue with the test execution as it works in prod.
-        self.ami.trigger_update_topics_and_subscriptions()
-
         p1 = Permission.objects.get(codename="add_datapointvalue")
         p2 = Permission.objects.get(codename="view_datapointvalue")
         self.user.user_permissions.set([p1, p2])
@@ -677,11 +672,6 @@ class TestRESTEndpoint(TransactionTestCase):
         """
         dp = datapoint_factory(self.test_connector, type="actuator")
         dp.save()
-
-        # In theory this shouldn't been necessary. However. It seems
-        # that the save method above doesn't fire the signal. No clue why,
-        # but seems to be an issue with the test execution as it works in prod.
-        self.ami.trigger_update_topics_and_subscriptions()
 
         p1 = Permission.objects.get(codename="add_datapointschedule")
         p2 = Permission.objects.get(codename="view_datapointschedule")
@@ -875,11 +865,6 @@ class TestRESTEndpoint(TransactionTestCase):
         """
         dp = datapoint_factory(self.test_connector, type="actuator")
         dp.save()
-
-        # In theory this shouldn't been necessary. However. It seems
-        # that the save method above doesn't fire the signal. No clue why,
-        # but seems to be an issue with the test execution as it works in prod.
-        self.ami.trigger_update_topics_and_subscriptions()
 
         p1 = Permission.objects.get(codename="add_datapointsetpoint")
         p2 = Permission.objects.get(codename="view_datapointsetpoint")

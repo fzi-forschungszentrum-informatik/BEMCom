@@ -2,10 +2,23 @@ from django.test import TransactionTestCase
 
 from api_main.models.datapoint import Datapoint
 from api_rest_interface.serializers import DatapointSerializer
+from api_main.mqtt_integration import ApiMqttIntegration
+from api_main.tests.fake_mqtt import FakeMQTTBroker
+from api_main.tests.fake_mqtt import FakeMQTTClient
 from api_main.tests.helpers import connector_factory
 
 
 class TestDatapointSerializer(TransactionTestCase):
+    @classmethod
+    def setUpClass(cls):
+        """
+        This code is necessary to prevent errors triggered by signals
+        on creation or change operations on Datapoints or Connectors.
+        """
+        fake_broker = FakeMQTTBroker()
+        fake_client_1 = FakeMQTTClient(fake_broker=fake_broker)
+        ami = ApiMqttIntegration(mqtt_client=fake_client_1)  # NOQA
+
     def setUp(self):
         test_connector = connector_factory()
         self.test_dp_fields = {

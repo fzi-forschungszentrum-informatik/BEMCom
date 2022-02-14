@@ -13,6 +13,9 @@ class ApiMainConfig(AppConfig):
 
     def ready(self):
 
+        # This is required to make the signals listen to events.
+        import api_main.signals  # NOQA
+
         if "runserver" in sys.argv or "gunicorn" in sys.argv[0]:
             logger.info("Starting up the API main module.")
 
