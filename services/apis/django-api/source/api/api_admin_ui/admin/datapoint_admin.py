@@ -1,7 +1,5 @@
-import json
 from django import forms, db
 from django.contrib import admin
-from django.utils.safestring import mark_safe
 
 from api_main.models.datapoint import Datapoint
 from api_main.models.datapoint import DatapointValue, DatapointLastValue

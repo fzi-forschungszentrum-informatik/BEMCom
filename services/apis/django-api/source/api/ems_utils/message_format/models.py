@@ -164,9 +164,9 @@ class DatapointTemplate(models.Model):
 
 class TimescaleModel(models.Model):
     """
-    A helper class for using Timescale within Django, has the TimescaleManager and
-    TimescaleDateTimeField already present. This is an abstract class it should
-    be inheritted by another class for use.
+    A helper class for using Timescale within Django, has the TimescaleManager
+    and TimescaleDateTimeField already present. This is an abstract class it
+    should be inheritted by another class for use.
     """
 
     class Meta:

@@ -1,23 +1,16 @@
 import logging
 
-from django.conf import settings
 from django.db.utils import DataError
 from django.shortcuts import get_object_or_404
+from django_filters import rest_framework as filters
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError, NotAuthenticated
 from rest_framework.exceptions import PermissionDenied, NotFound
 from rest_framework.viewsets import GenericViewSet
-from drf_spectacular.utils import extend_schema, inline_serializer
-from django_filters import rest_framework as filters
-from timescale.db.models.querysets import TimescaleQuerySet
 
 from ems_utils.timestamp import datetime_from_timestamp
-from .models import DatapointTemplate
-from .serializers import DatapointSerializer
-from .serializers import DatapointValueSerializer
-from .serializers import DatapointScheduleSerializer
-from .serializers import DatapointSetpointSerializer
 from .serializers import PutMsgSummary
 
 
@@ -161,8 +154,8 @@ class DatapointViewSetTemplate(GenericViewSet):
             elif dp_qs.count() > 1:
                 errors.append(
                     {
-                        "datapoint": "Multiple datapoints found matching query: %s."
-                        % q
+                        "datapoint": "Multiple datapoints found matching "
+                        "query: %s." % q
                     }
                 )
             else:
@@ -277,9 +270,9 @@ class ViewSetWithDatapointFK(GenericViewSet):
                     {
                         "frequency": [
                             "Encountered invalid value for frequency. "
-                            "A valid value is something like this: '15 minutes' "
-                            "Check the server logs if you are absolutely sure "
-                            "that your value was valid."
+                            "A valid value is something like this: "
+                            "'15 minutes' Check the server logs if you are "
+                            "absolutely sure that your value was valid."
                         ]
                     }
                 )
@@ -397,11 +390,14 @@ class ViewSetWithDatapointFK(GenericViewSet):
         return Response(put_msg_summary, status=status.HTTP_200_OK)
 
     def destroy(self, request, dp_id, timestamp=None):
+        """
+        TODO: This will likely not work. Should return Summary of deletions.
+        """
         datapoint = get_object_or_404(self.datapoint_model, id=dp_id)
         dt = datetime_from_timestamp(timestamp)
         object = get_object_or_404(self.model, datapoint=datapoint, time=dt)
         object.delete()
-        return Response(validated_data, status=status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ViewSetWithMulitDatapointFK(GenericViewSet):

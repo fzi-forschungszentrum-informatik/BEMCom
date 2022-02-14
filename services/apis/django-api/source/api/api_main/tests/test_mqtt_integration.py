@@ -1,13 +1,11 @@
-import os
 import json
 import time
-import logging
 from unittest.mock import MagicMock
 
 import pytest
 
 from api_main.models.datapoint import Datapoint
-from api_main.models.connector import Connector, ConnectorHeartbeat
+from api_main.models.connector import ConnectorHeartbeat
 from api_main.models.connector import ConnectorLogEntry
 from api_main.mqtt_integration import ApiMqttIntegration, MqttToDb
 from api_main.tests.fake_mqtt import FakeMQTTBroker, FakeMQTTClient
@@ -322,7 +320,6 @@ class TestMqttToDb:
         """
         dp = datapoint_factory(self.test_connector)
         dp.last_value = "The inital value"
-        timestamp = 1585092224000
         dp.save()
 
         # Manually update topics, as this class only tests if
@@ -580,7 +577,7 @@ class TestMqttToDb:
         log_msg_db.delete()
         test_connector.delete()
 
-    def test_heartbeat_received(self):
+    def test_heartbeat_received_after_init(self):
         """
         Test that a heartbeat message received via MQTT is stored in the DB
         for a connector added after initialization of ConnectorMQTTIntegration.
@@ -623,7 +620,7 @@ class TestMqttToDb:
         heartbeat_db.delete()
         test_connector.delete()
 
-    def test_available_datapoints_received(self):
+    def test_available_datapoints_received_after_init(self):
         """
         Test that a available_datapoints message received via MQTT is stored
         correctly in the DB for a connector added after initialization of
@@ -816,6 +813,7 @@ class TestMqttToDb:
 
         expected_topic = "test_connector_8/datapoint_map"
         actual_topic = self.mqtt_client.userdata.topic
+        assert expected_topic == actual_topic
 
         dp1_topic = "test_connector_8/messages/%s/value" % str(
             test_datapoint_1.id
@@ -853,13 +851,13 @@ class TestMqttToDb:
 
         # Add two datapoints that should not occur in the datapoint_map
         test_connector = connector_factory("test_connector_9")
-        test_datapoint_1 = datapoint_factory(
+        _ = datapoint_factory(
             connector=test_connector,
             key_in_connector="test_datapoint_map",
             data_format="generic_numeric",
             type="sensor",
         )
-        test_datapoint_2 = datapoint_factory(
+        _ = datapoint_factory(
             connector=test_connector,
             key_in_connector="test_datapoint_map_2",
             data_format="generic_text",

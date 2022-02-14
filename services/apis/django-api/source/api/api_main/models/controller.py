@@ -43,7 +43,9 @@ class ControlledDatapoint(models.Model):
     This essentially maps a sensor datapoint to an actuator datapoint.
     """
 
-    controller = models.ForeignKey(Controller, on_delete=models.CASCADE, editable=True)
+    controller = models.ForeignKey(
+        Controller, on_delete=models.CASCADE, editable=True
+    )
     sensor_datapoint = models.ForeignKey(
         Datapoint,
         on_delete=models.CASCADE,

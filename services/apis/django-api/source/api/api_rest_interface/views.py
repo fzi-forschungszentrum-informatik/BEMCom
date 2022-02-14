@@ -7,15 +7,17 @@ the generic implementation in ems_utils to display in the API schema.
 """
 import json
 
+from drf_spectacular.utils import extend_schema
+from django.utils.encoding import smart_str
+from django.shortcuts import get_object_or_404
 from prometheus_client import multiprocess
 from prometheus_client import generate_latest
-from prometheus_client import CollectorRegistry, CONTENT_TYPE_LATEST
+from prometheus_client import CollectorRegistry
+from prometheus_client import CONTENT_TYPE_LATEST
 from rest_framework import status, renderers
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.exceptions import ValidationError
-from django.shortcuts import render, get_object_or_404
-from django.utils.encoding import smart_str
 
 from api_main.models.connector import Connector
 from api_main.models.datapoint import Datapoint
@@ -47,12 +49,6 @@ from .filters import DatapointLastSetpointFilter
 from .filters import DatapointLastScheduleFilter
 from .models import Metric
 
-from drf_spectacular.utils import (
-    extend_schema,
-    inline_serializer,
-    extend_schema_serializer,
-)
-
 
 @extend_schema(tags=["Datapoint"],)
 class DatapointViewSet(DatapointViewSetTemplate):
@@ -69,10 +65,10 @@ class DatapointViewSet(DatapointViewSetTemplate):
     # are generated automatically too.
     @extend_schema(
         request=serializer_class(Datapoint, many=True),
-        ##
-        ## This might help with the broken schema but will introduce some
-        ## query parameters which do not make much sense here.
-        ##
+        #
+        # This might help with the broken schema but will introduce some
+        # query parameters which do not make much sense here.
+        #
         # responses=serializer_class(Datapoint, many=True),
         parameters=[],
     )
@@ -158,10 +154,10 @@ class DatapointViewSet(DatapointViewSetTemplate):
 
     @extend_schema(
         request=serializer_class(Datapoint, many=True),
-        ##
-        ## This might help with the broken schema but will introduce some
-        ## query parameters which do not make much sense here.
-        ##
+        #
+        # This might help with the broken schema but will introduce some
+        # query parameters which do not make much sense here.
+        #
         # responses=serializer_class(Datapoint, many=True),
         parameters=[],
     )
@@ -220,8 +216,8 @@ class DatapointViewSet(DatapointViewSetTemplate):
             elif dp_qs.count() > 1:
                 errors.append(
                     {
-                        "datapoint": "Multiple datapoints found matching query: %s."
-                        % q
+                        "datapoint": "Multiple datapoints found matching "
+                        "query: %s." % q
                     }
                 )
                 continue

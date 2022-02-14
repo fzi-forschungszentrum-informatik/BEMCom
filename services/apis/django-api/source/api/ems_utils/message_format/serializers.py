@@ -1,15 +1,15 @@
 import json
 from datetime import datetime
 
-from rest_framework import serializers
 from drf_spectacular.utils import extend_schema_serializer
+from drf_spectacular.utils import OpenApiExample
+from rest_framework import serializers
+
 
 from ems_utils.message_format.models import DatapointValueTemplate
 from ems_utils.message_format.models import DatapointSetpointTemplate
 from ems_utils.message_format.models import DatapointScheduleTemplate
-from ems_utils.timestamp import datetime_from_timestamp, timestamp_utc_now
-
-from drf_spectacular.utils import extend_schema_serializer, OpenApiExample
+from ems_utils.timestamp import timestamp_utc_now
 
 
 try:
@@ -559,10 +559,11 @@ class DatapointSetpointItemSerializer(serializers.Serializer):
             "realized values the user is willing to accept. Consider e.g. the "
             "scenario where a room with a discrete heating control has "
             "currently 16°C. If the user specified this field with [20, 21, 22]"
-            " it means that only these three temperature values are acceptable. "
-            "This situation would cause the controller to immediately send the "
-            "preferred_value to the actuator datapoint, even if the schedule "
-            "would define a value that lays within the acceptable range."
+            " it means that only these three temperature values are "
+            "acceptable. This situation would cause the controller to "
+            "immediately send the preferred_value to the actuator datapoint, "
+            "even if the schedule would define a value that lays within the "
+            "acceptable range."
         ),
     )
     min_value = serializers.FloatField(
@@ -641,7 +642,9 @@ class DatapointAsDictKeySerializerTemplate(serializers.Serializer):
     using the id of the datapoint as key.
 
     GOTCHA: This serializer derived from this template should not be
-    initialized with `many=True` as `self.to_representation` expects a queryset and not an instance as argument. This is as many=True will instantiate a list, but we want to pack stuff into a dict.
+    initialized with `many=True` as `self.to_representation` expects a queryset
+    and not an instance as argument. This is as many=True will instantiate a
+    list, but we want to pack stuff into a dict.
     """
 
     # Define exactly one DictField here which will be used to store the dict

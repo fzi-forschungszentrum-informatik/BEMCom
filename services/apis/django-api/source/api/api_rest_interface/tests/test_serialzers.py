@@ -1,24 +1,11 @@
 from django.test import TransactionTestCase
 
-from api_main.models.connector import Connector
 from api_main.models.datapoint import Datapoint
 from api_rest_interface.serializers import DatapointSerializer
-from api_main.mqtt_integration import ApiMqttIntegration
 from api_main.tests.helpers import connector_factory
-from api_main.tests.fake_mqtt import FakeMQTTBroker, FakeMQTTClient
 
 
 class TestDatapointSerializer(TransactionTestCase):
-    @classmethod
-    def setUpClass(cls):
-
-        # This is basically just necessary to prevent errors on other
-        # parts of the program that expect CMI to be online.
-        fake_broker = FakeMQTTBroker()
-        fake_client_1 = FakeMQTTClient(fake_broker=fake_broker)
-        fake_client_2 = FakeMQTTClient(fake_broker=fake_broker)
-        ami = ApiMqttIntegration(mqtt_client=fake_client_1)
-
     def setUp(self):
         test_connector = connector_factory()
         self.test_dp_fields = {

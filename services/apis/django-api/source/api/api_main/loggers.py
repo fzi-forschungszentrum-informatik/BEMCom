@@ -32,7 +32,9 @@ class PrometheusHandler(logging.StreamHandler):
             The record to publish.
         """
         cls.prom_log_message_counter.labels(
-            function=record.funcName, levelname=record.levelname, loggername=record.name
+            function=record.funcName,
+            levelname=record.levelname,
+            loggername=record.name,
         ).inc()
 
 

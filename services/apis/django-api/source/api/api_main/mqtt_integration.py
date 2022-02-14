@@ -682,7 +682,8 @@ class MqttToDb:
                     # heartbeat message for this connector. This code prevents
                     # creating an object with invalid values for the heartbeat
                     # entries (i.e. null or 1.1.1970, etc.) which should be
-                    # beneficial for downstream code that relies on valid entries.
+                    # beneficial for downstream code that relies on valid
+                    # entries.
                     if not hb_model.objects.filter(
                         connector=connector
                     ).exists():
@@ -740,9 +741,9 @@ class MqttToDb:
                         else:
                             # Update existing datapoint. If we reach this
                             # point it means that nothing of the datapoint can
-                            # have changed from the example value. Thus we trigger
-                            # an update of the example value to present the
-                            # possible more recent information to the admin.
+                            # have changed from the example value. Thus we
+                            # trigger an update of the example value to present
+                            # the possible more recent information to the admin.
                             try:
                                 datapoint = Datapoint.objects.get(
                                     connector=connector,
@@ -752,8 +753,8 @@ class MqttToDb:
                                 if datapoint.example_value != example:
                                     datapoint.example_value = example
                                     datapoint.save(
-                                        # This prevents that the datapoint_map is
-                                        # updated.
+                                        # This prevents that the datapoint_map
+                                        # is updated.
                                         update_fields=["example_value"]
                                     )
                             except Exception:

@@ -84,7 +84,10 @@ class Connector(models.Model):
     # name and connector-specific value
     def get_fields(self):
         connector_fields = {}
-        fields = self._meta.get_fields(include_parents=False)[-len(self.__dict__) + 1 :]
+        fields = self._meta.get_fields(include_parents=False)
+        # fmt: off
+        fields = fields[-len(self.__dict__) + 1:]
+        # fmt: on
         for field in fields:
             connector_fields[field.verbose_name] = getattr(self, field.name)
         return connector_fields
@@ -93,7 +96,9 @@ class Connector(models.Model):
         mqtt_topics = {}
         for attr in self.__dict__:
             if attr.startswith("mqtt_topic"):
-                mqtt_topics[attr] = attr[len("mqtt_topic_") :]
+                # fmt: off
+                mqtt_topics[attr] = attr[len("mqtt_topic_"):]
+                # fmt: on
         return mqtt_topics
 
     def set_mqtt_topics(self):
@@ -106,7 +111,11 @@ class Connector(models.Model):
                 if attr.endswith("datapoint_message_wildcard"):
                     connector_attr[attr] = self.name + "/messages/#"
                 else:
-                    connector_attr[attr] = self.name + "/" + attr[len("mqtt_topic_") :]
+                    connector_attr[attr] = (
+                        # fmt: off
+                        self.name + "/" + attr[len("mqtt_topic_"):]
+                        # fmt: on
+                    )
         return connector_attr
 
     def save(self, *args, **kwargs):
@@ -135,9 +144,13 @@ class ConnectorLogEntry(models.Model):
     class Meta:
         verbose_name_plural = "Connector log entries"
 
-    connector = models.ForeignKey(Connector, on_delete=models.CASCADE, editable=False)
+    connector = models.ForeignKey(
+        Connector, on_delete=models.CASCADE, editable=False
+    )
     timestamp = models.DateTimeField(editable=False)
-    msg = models.TextField(default="", verbose_name="Log message", editable=False)
+    msg = models.TextField(
+        default="", verbose_name="Log message", editable=False
+    )
     emitter = models.TextField(default="", editable=False)
     LEVEL_CHOICES = [
         (10, "DEBUG"),

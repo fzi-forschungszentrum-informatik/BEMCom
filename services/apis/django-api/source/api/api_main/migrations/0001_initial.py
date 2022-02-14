@@ -558,19 +558,22 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="datapointvalue",
             constraint=models.UniqueConstraint(
-                fields=("datapoint", "time"), name="Value msg unique for timestamp"
+                fields=("datapoint", "time"),
+                name="Value msg unique for timestamp",
             ),
         ),
         migrations.AddConstraint(
             model_name="datapointsetpoint",
             constraint=models.UniqueConstraint(
-                fields=("datapoint", "time"), name="Setpoint msg unique for timestamp"
+                fields=("datapoint", "time"),
+                name="Setpoint msg unique for timestamp",
             ),
         ),
         migrations.AddConstraint(
             model_name="datapointschedule",
             constraint=models.UniqueConstraint(
-                fields=("datapoint", "time"), name="Schedule msg unique for timestamp"
+                fields=("datapoint", "time"),
+                name="Schedule msg unique for timestamp",
             ),
         ),
         migrations.AddConstraint(

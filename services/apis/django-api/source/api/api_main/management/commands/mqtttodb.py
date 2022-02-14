@@ -36,12 +36,15 @@ class Command(BaseCommand):
                         break
                     sleep(0.5)
             except Exception:
-                logger.exception("Caught exception in MqttToDb. Restarting in 60s.")
+                logger.exception(
+                    "Caught exception in MqttToDb. Restarting in 60s."
+                )
             except (KeyboardInterrupt, SystemExit):
                 # In theory, this branch should never be executed.
                 # But better safe then sorry, right?
                 logger.info(
-                    "Caught KeyboardInterrupt or SysmteExit. " "Initiating shut down."
+                    "Caught KeyboardInterrupt or SysmteExit. "
+                    "Initiating shut down."
                 )
                 self.initiate_shutdown()
             finally:

@@ -12,7 +12,6 @@ class ApiMainConfig(AppConfig):
     name = "api_main"
 
     def ready(self):
-        import api_main.signals
 
         if "runserver" in sys.argv or "gunicorn" in sys.argv[0]:
             logger.info("Starting up the API main module.")
@@ -30,6 +29,8 @@ class ApiMainConfig(AppConfig):
                 ApiMqttIntegration()
             except ValueError:
                 logger.critical("")
-                logger.critical("Could not connect to MQTT broker of backend. Exiting")
+                logger.critical(
+                    "Could not connect to MQTT broker of backend. Exiting"
+                )
                 logger.critical("")
                 sys.exit(1)

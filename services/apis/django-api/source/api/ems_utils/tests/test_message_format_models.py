@@ -3,7 +3,7 @@ import json
 from datetime import datetime
 
 from django.conf import settings
-from django.db import connection, connections, models
+from django.db import connection, models
 from django.test import TransactionTestCase
 from django.db.utils import IntegrityError
 
@@ -423,8 +423,9 @@ class TestDatapointValue(TransactionTestCase):
         A utility function that fetches the raw data from the DB.
         """
         query = (
-            'SELECT "datapoint_id", "time", "value", "_value_float", "_value_bool"'
-            'FROM "{table_name}" WHERE datapoint_id = %s AND time = %s'
+            'SELECT "datapoint_id", "time", "value", "_value_float", '
+            '"_value_bool" FROM "{table_name}" WHERE datapoint_id = %s '
+            "AND time = %s"
         ).format(table_name=self.DatapointValue.objects.model._meta.db_table)
         with connection.cursor() as cursor:
             cursor.execute(query, [dp_id, time])

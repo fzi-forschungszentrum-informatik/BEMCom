@@ -19,7 +19,8 @@ class AdminWithoutListsOnDelete(admin.ModelAdmin):
 
     def get_deleted_objects(self, objs, request):
         """
-        See: https://github.com/django/django/blob/stable/3.1.x/django/contrib/admin/utils.py#L104
+        See:
+        https://github.com/django/django/blob/stable/3.1.x/django/contrib/admin/utils.py#L104
         """
         orginal_return = super().get_deleted_objects(objs, request)
         to_delete, model_count, perms_needed, protected = orginal_return
@@ -104,11 +105,15 @@ class ConnectorLogEntryInline(admin.TabularInline):
         """
         # request URL looks like: /admin/api_main/connector/5/change/
         connector_id = request.path_info.split("/")[-3]
-        all_log_entries = ConnectorLogEntry.objects.filter(connector=connector_id)
-        ids_of_last_ten_entries = all_log_entries.order_by("-timestamp").values("id")[
-            :10
-        ]
-        last_ten_entries = all_log_entries.filter(id__in=ids_of_last_ten_entries)
+        all_log_entries = ConnectorLogEntry.objects.filter(
+            connector=connector_id
+        )
+        ids_of_last_ten_entries = all_log_entries.order_by("-timestamp").values(
+            "id"
+        )[:10]
+        last_ten_entries = all_log_entries.filter(
+            id__in=ids_of_last_ten_entries
+        )
         return last_ten_entries.order_by("-timestamp")
 
 
@@ -144,7 +149,9 @@ class ConnectorAdmin(AdminWithoutListsOnDelete):
 
     # Adapted change form template to display "Go to available datapoints"
     # button
-    change_form_template = "../templates/api_admin_ui/connector_change_form.html"
+    change_form_template = (
+        "../templates/api_admin_ui/connector_change_form.html"
+    )
 
     @staticmethod
     def num_available_datapoints(obj):
@@ -156,7 +163,9 @@ class ConnectorAdmin(AdminWithoutListsOnDelete):
         dpo = Datapoint.objects
         return dpo.filter(connector=obj.id).count()
 
-    num_available_datapoints.short_description = "Number of available datapoints"
+    num_available_datapoints.short_description = (
+        "Number of available datapoints"
+    )
 
     @staticmethod
     def num_used_datapoints(obj):
@@ -270,7 +279,9 @@ class ConnectorAdmin(AdminWithoutListsOnDelete):
         """
         if "_av_dp" in request.POST:
             return HttpResponseRedirect(
-                "/admin/api_main/datapoint/?connector__id__exact={}".format(obj.id)
+                "/admin/api_main/datapoint/?connector__id__exact={}".format(
+                    obj.id
+                )
             )
         return super().response_change(request, obj)
 

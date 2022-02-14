@@ -34,7 +34,8 @@ import requests
 from tqdm import tqdm
 
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s-%(funcName)s-%(levelname)s: %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s-%(funcName)s-%(levelname)s: %(message)s",
 )
 logger = logging.getLogger()
 
@@ -52,7 +53,7 @@ def date_to_timestamp(_date):
     timestamp : int
         Milliseconds since 1.1.1970 UTC
     """
-    dt = datetime(_date.year, _date.month, _date.day, tzinfo=timezone.utc)  #
+    dt = datetime(_date.year, _date.month, _date.day, tzinfo=timezone.utc)
     timestamp = int(dt.timestamp() * 1000)
     return timestamp
 
@@ -244,7 +245,9 @@ def restore_datapoint_metadata(args, auth):
         "datapoint_metadata_*.json.bz2"
     )
     latest_datapoint_metadata_fnp = sorted(all_datapoint_metadata_fnps)[-1]
-    logger.info("Loading datapoint metadata from: %s", latest_datapoint_metadata_fnp)
+    logger.info(
+        "Loading datapoint metadata from: %s", latest_datapoint_metadata_fnp
+    )
     with bz2.open(latest_datapoint_metadata_fnp, "rb") as f:
         datapoint_metadata_str = f.read().decode()
         all_datapoint_metadata = json.loads(datapoint_metadata_str)
@@ -296,7 +299,9 @@ def restore_datapoint_metadata(args, auth):
                 datapoint_created = True
             else:
                 logger.info(
-                    "Could not create datapoint %s: %s", dp_id_file, response.json()
+                    "Could not create datapoint %s: %s",
+                    dp_id_file,
+                    response.json(),
                 )
                 continue
 
@@ -307,7 +312,9 @@ def restore_datapoint_metadata(args, auth):
                 dp_metadata_url, auth=auth, json=[datapoint_metadata]
             )
             if response.status_code != 200:
-                logger.warning("Error for datapint %s: %s", dp_id_file, response.json())
+                logger.warning(
+                    "Error for datapint %s: %s", dp_id_file, response.json()
+                )
                 continue
 
         dp_id_api = response.json()[0]["id"]
@@ -364,10 +371,14 @@ def write_datapoint_message(cv):
                     value_native = msg["value"]
             msg["value"] = json.dumps(value_native)
     logger.debug("Pushing datapoint data to: %s", cv["dp_data_url"])
-    response = requests.put(cv["dp_data_url"], auth=cv["auth"], json=datapoint_data)
+    response = requests.put(
+        cv["dp_data_url"], auth=cv["auth"], json=datapoint_data
+    )
     # Verify that the request returned OK.
     if response.status_code != 200:
-        logger.error("Request failed (%s): %s", response.status_code, response.json())
+        logger.error(
+            "Request failed (%s): %s", response.status_code, response.json()
+        )
         raise RuntimeError(
             "Could not write datapoint data to url: %s" % cv["dp_data_url"]
         )
@@ -487,11 +498,15 @@ def main(args):
 
     if args.restore:
         dp_id_mapping = restore_datapoint_metadata(args=args, auth=auth)
-        restore_datapoint_messages(args=args, auth=auth, dp_id_mapping=dp_id_mapping)
+        restore_datapoint_messages(
+            args=args, auth=auth, dp_id_mapping=dp_id_mapping
+        )
 
     if args.backup:
         datapoint_ids = backup_datapoint_metadata(args=args, auth=auth)
-        backup_datapoint_messages(args=args, auth=auth, datapoint_ids=datapoint_ids)
+        backup_datapoint_messages(
+            args=args, auth=auth, datapoint_ids=datapoint_ids
+        )
 
 
 if __name__ == "__main__":
@@ -500,10 +515,18 @@ if __name__ == "__main__":
     )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
-        "-b", "--backup", action="store_true", default=False, help="Backup the data."
+        "-b",
+        "--backup",
+        action="store_true",
+        default=False,
+        help="Backup the data.",
     )
     group.add_argument(
-        "-r", "--restore", action="store_true", default=False, help="Restore the data."
+        "-r",
+        "--restore",
+        action="store_true",
+        default=False,
+        help="Restore the data.",
     )
     parser.add_argument(
         "-t",
@@ -589,7 +612,8 @@ if __name__ == "__main__":
         type=int,
         default=4,
         help=(
-            "The number of worker processes to use for interacting with API " "service."
+            "The number of worker processes to use for interacting with API "
+            "service."
         ),
     )
     args = parser.parse_args()

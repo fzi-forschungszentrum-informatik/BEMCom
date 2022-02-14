@@ -4,7 +4,6 @@ functionality provided by the REST Api that a client must request. These
 tests here are end to end. Additional details, like e.g. field checking are
 covered in the tests of the serializers.
 """
-import os
 import json
 import time
 from unittest import TestCase
@@ -13,7 +12,6 @@ import pytest
 from rest_framework.test import APIClient
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User, Permission
-from django.contrib.contenttypes.models import ContentType
 
 from api_main.mqtt_integration import ApiMqttIntegration, MqttToDb
 from api_main.tests.helpers import connector_factory, datapoint_factory
@@ -185,7 +183,7 @@ class TestRESTEndpoint(TestCase):
                 if field == "id":
                     continue
                 expected_value = test_dp_metadata[i][field]
-                expecgted_value = getattr(dp, field)
+                actual_value = getattr(dp, field)
                 assert actual_value == expected_value
 
     def test_create_datapoint_creates_new_datapoint_existing_connector(self):
@@ -234,7 +232,7 @@ class TestRESTEndpoint(TestCase):
                 if field == "id":
                     continue
                 expected_value = test_dp_metadata[i][field]
-                expecgted_value = getattr(dp, field)
+                actual_value = getattr(dp, field)
                 assert actual_value == expected_value
 
     def test_create_datapoint_fails_for_existing_datapoint(self):

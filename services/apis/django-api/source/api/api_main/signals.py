@@ -1,4 +1,3 @@
-import json
 import logging
 
 from django.db.models import signals
@@ -123,4 +122,6 @@ def trigger_create_and_send_controlled_datapoints(sender, instance, **kwargs):
             "of MqttToDb. ApiMqttIntegration is not running."
         )
         return
-    ami.trigger_create_and_send_controlled_datapoints(controller_id=controller_id)
+    ami.trigger_create_and_send_controlled_datapoints(
+        controller_id=controller_id
+    )

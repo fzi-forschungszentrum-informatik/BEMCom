@@ -2,7 +2,6 @@
 Defines models for Datapoint and it's three message types. See the
 documentation in ems_utils.message_format for details.
 """
-import json
 
 from django.db import models
 
@@ -26,7 +25,7 @@ class Datapoint(DatapointTemplate):
     # automatic generation of documentation in schema, as the original
     # docstring contains more general descriptions.
     __doc__ = DatapointTemplate.__doc__.strip()
-    #
+
     class Meta:
         # This should hopefully prevent that datapoints can be inserted
         # multiple times due to race conditions.

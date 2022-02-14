@@ -15,7 +15,7 @@ from ems_utils.message_format.views import DatapointViewSetTemplate
 from ems_utils.message_format.views import ViewSetWithDatapointFK
 from ems_utils.message_format.serializers import DatapointSerializer
 from ems_utils.message_format.serializers import DatapointValueSerializer
-from ems_utils.timestamp import datetime_from_timestamp, timestamp_utc_now
+from ems_utils.timestamp import datetime_from_timestamp
 
 
 logger = logging.getLogger(__name__)
@@ -310,7 +310,7 @@ class TestViewSetWithDatapointFK(TransactionTestCase):
         dpvs.filter_queryset = MagicMock(return_value=ts_qs)
 
         with pytest.raises(ValidationError):
-            response = dpvs.list(request, dp_id=dp_id)
+            _ = dpvs.list(request, dp_id=dp_id)
 
     def test_update_many_writes_to_db(self):
         """
@@ -335,19 +335,26 @@ class TestViewSetWithDatapointFK(TransactionTestCase):
         request = factory.put("/datapoint/1/value/")
         request.data = test_data
 
-        response = self.DatapointValueViewSet().update_many(request, dp_id=dp_id)
+        response = self.DatapointValueViewSet().update_many(
+            request, dp_id=dp_id
+        )
         assert response.status_code == 200
         assert response.data["msgs_created"] == 7
         assert response.data["msgs_updated"] == 0
 
         for ts, v in test_values:
             ts_as_dt = datetime_from_timestamp(ts)
-            dpv = self.DatapointValue.objects.get(datapoint=dp_id, time=ts_as_dt)
+            dpv = self.DatapointValue.objects.get(
+                datapoint=dp_id, time=ts_as_dt
+            )
             assert dpv.value == v
 
         # Now also check that an posting with an existing timestamp and
         # dp_id will lead to an update.
-        test_values = [(1630409948005, "a new string!"), (1630409948006, "update")]
+        test_values = [
+            (1630409948005, "a new string!"),
+            (1630409948006, "update"),
+        ]
         test_data = []
         for ts, v in test_values:
             test_data.append({"timestamp": ts, "value": json.dumps(v)})
@@ -355,14 +362,18 @@ class TestViewSetWithDatapointFK(TransactionTestCase):
         request = factory.put("/datapoint/1/value/")
         request.data = test_data
 
-        response = self.DatapointValueViewSet().update_many(request, dp_id=dp_id)
+        response = self.DatapointValueViewSet().update_many(
+            request, dp_id=dp_id
+        )
         assert response.status_code == 200
         assert response.data["msgs_created"] == 0
         assert response.data["msgs_updated"] == 2
 
         for ts, v in test_values:
             ts_as_dt = datetime_from_timestamp(ts)
-            dpv = self.DatapointValue.objects.get(datapoint=dp_id, time=ts_as_dt)
+            dpv = self.DatapointValue.objects.get(
+                datapoint=dp_id, time=ts_as_dt
+            )
             assert dpv.value == v
 
     def test_update_many_writes_to_db_empty(self):
@@ -371,14 +382,15 @@ class TestViewSetWithDatapointFK(TransactionTestCase):
         This seems to have crashed the function sometime ago.
         """
         dp_id = self.datapoint.id
-        test_values = []
 
         test_data = []
         factory = RequestFactory()
         request = factory.put("/datapoint/1/value/")
         request.data = test_data
 
-        response = self.DatapointValueViewSet().update_many(request, dp_id=dp_id)
+        response = self.DatapointValueViewSet().update_many(
+            request, dp_id=dp_id
+        )
         assert response.status_code == 200
         assert response.data["msgs_created"] == 0
         assert response.data["msgs_updated"] == 0
