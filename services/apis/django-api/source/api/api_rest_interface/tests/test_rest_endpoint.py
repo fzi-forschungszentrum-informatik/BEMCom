@@ -6,81 +6,38 @@ covered in the tests of the serializers.
 """
 import json
 import time
-from unittest import TestCase
 
-import pytest
 from rest_framework.test import APIClient
-from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User, Permission
+from django.test import TransactionTestCase
+import pytest
 
 from api_main.mqtt_integration import ApiMqttIntegration, MqttToDb
-from api_main.tests.helpers import connector_factory, datapoint_factory
-from api_main.tests.fake_mqtt import FakeMQTTBroker, FakeMQTTClient
-from api_main.models.datapoint import DatapointValue, DatapointSchedule
-from api_main.models.datapoint import DatapointSetpoint, Datapoint
+from api_main.models.datapoint import Datapoint
+from api_main.models.datapoint import DatapointValue
+from api_main.models.datapoint import DatapointLastValue
+from api_main.models.datapoint import DatapointSchedule
+from api_main.models.datapoint import DatapointLastSchedule
+from api_main.models.datapoint import DatapointSetpoint
+from api_main.models.datapoint import DatapointLastSetpoint
 from api_main.models.connector import Connector
+from api_main.tests.fake_mqtt import FakeMQTTBroker
+from api_main.tests.fake_mqtt import FakeMQTTClient
+from api_main.tests.helpers import connector_factory
+from api_main.tests.helpers import datapoint_factory
 from ems_utils.timestamp import datetime_from_timestamp
 
 
-@pytest.fixture(scope="class")
-def rest_endpoint_setup(request, django_db_setup, django_db_blocker):
+@pytest.fixture(autouse=True)
+def activate_all_endpoints(settings):
     """
-    SetUp FakeMQTTBroker, MQTT Integration and APIClient for all
-    tests targeting the API endpoints.
-
-    This is significantly faster then using unittest's setUp and tearDown
-    as those are executed for every test function, here only for the class
-    as a whole.
+    This flags will make all endpoints available for testing.
     """
-    # Allow access to the Test DB. See:
-    # https://pytest-django.readthedocs.io/en/latest/database.html#django-db-blocker
-    django_db_blocker.unblock()
-
-    # This is not needed for the tests itself, but just to ensure that
-    # adding datapoints and connectors succeeds.
-    fake_broker = FakeMQTTBroker()
-    fake_client_1 = FakeMQTTClient(fake_broker=fake_broker)
-    fake_client_2 = FakeMQTTClient(fake_broker=fake_broker)
-    fake_client_3 = FakeMQTTClient(fake_broker=fake_broker)
-    # This must be initialized so the api_main component can use a
-    # mqtt client to publish messages.
-    ami = ApiMqttIntegration(mqtt_client=fake_client_1)
-    # This is required to forward published messages to the DB.
-    mqtt_to_db = MqttToDb(mqtt_client=fake_client_2)
-
-    # Setup MQTT client endpoints for test.
-    mqtt_client = fake_client_3(userdata={})
-    mqtt_client.connect("localhost", 1883)
-    mqtt_client.loop_start()
-
-    client = APIClient()
-    user = User.objects.create_user(username="testuser", password="12345")
-    test_connector = connector_factory("test_connector6")
-
-    # Inject objects into test class.
-    request.cls.test_connector = test_connector
-    request.cls.mqtt_client = mqtt_client
-    request.cls.client = client
-    request.cls.user = user
-    yield
-
-    # Remove DB entries, as the restore command below does not seem to work.
-    test_connector.delete()
-    user.delete()
-
-    # Close connections and objects.
-    mqtt_client.disconnect()
-    mqtt_client.loop_stop()
-    ami.disconnect()
-    mqtt_to_db.disconnect()
-
-    # Remove access to DB.
-    django_db_blocker.block()
-    django_db_blocker.restore()
+    settings.ACTIVATE_CONTROL_EXTENSION = True
+    settings.ACTIVATE_HISTORY_EXTENSION = True
 
 
-@pytest.mark.usefixtures("rest_endpoint_setup")
-class TestRESTEndpoint(TestCase):
+class TestRESTEndpoint(TransactionTestCase):
     """
     Here all tests targeting for functionality triggered by the client.
 
@@ -90,13 +47,55 @@ class TestRESTEndpoint(TestCase):
           setting/setup.
     """
 
+    @classmethod
+    def setUpClass(cls):
+        """
+        SetUp FakeMQTTBroker, MQTT Integration and APIClient for all
+        tests targeting the API endpoints.
+        """
+        # This is not needed for the tests itself, but just to ensure that
+        # adding datapoints and connectors succeeds.
+        fake_broker = FakeMQTTBroker()
+        fake_client_1 = FakeMQTTClient(fake_broker=fake_broker)
+        fake_client_2 = FakeMQTTClient(fake_broker=fake_broker)
+        fake_client_3 = FakeMQTTClient(fake_broker=fake_broker)
+        # This must be initialized so the api_main component can use a
+        # mqtt client to publish messages.
+        ami = ApiMqttIntegration(mqtt_client=fake_client_1)
+        # This is required to forward published messages to the DB.
+        mqtt_to_db = MqttToDb(mqtt_client=fake_client_2)
+
+        # Setup MQTT client endpoints for test.
+        mqtt_client = fake_client_3(userdata={})
+        mqtt_client.connect("localhost", 1883)
+        mqtt_client.loop_start()
+
+        # Inject objects into test class.
+        cls.mqtt_client = mqtt_client
+        cls.ami = ami
+        cls.mqtt_to_db = mqtt_to_db
+
+    @classmethod
+    def tearDownClass(cls):
+        """
+        Close connections and objects.
+        """
+        cls.mqtt_client.disconnect()
+        cls.mqtt_client.loop_stop()
+        cls.ami.disconnect()
+        cls.mqtt_to_db.disconnect()
+
     def setUp(self):
         """
         Reset the permissions and the permission cache.
         """
-        self.user.user_permissions.clear()
-        self.user = get_object_or_404(User, pk=self.user.id)
+        super().setUp()
+        self.user = User.objects.create_user(
+            username="testuser", password="12345"
+        )
+        self.client = APIClient()
         self.client.force_authenticate(user=self.user)
+        self.test_connector = connector_factory()
 
     def test_get_datapoint_detail(self):
         """
@@ -182,7 +181,11 @@ class TestRESTEndpoint(TestCase):
             for field, actual_value in dp_metadataset.items():
                 if field == "id":
                     continue
-                expected_value = test_dp_metadata[i][field]
+                if field == "connector":
+                    connector_name = dp_metadataset["connector"]["name"]
+                    expected_value = Connector.objects.get(name=connector_name)
+                else:
+                    expected_value = test_dp_metadata[i][field]
                 actual_value = getattr(dp, field)
                 assert actual_value == expected_value
 
@@ -231,7 +234,11 @@ class TestRESTEndpoint(TestCase):
             for field, actual_value in dp_metadataset.items():
                 if field == "id":
                     continue
-                expected_value = test_dp_metadata[i][field]
+                if field == "connector":
+                    connector_name = dp_metadataset["connector"]["name"]
+                    expected_value = Connector.objects.get(name=connector_name)
+                else:
+                    expected_value = test_dp_metadata[i][field]
                 actual_value = getattr(dp, field)
                 assert actual_value == expected_value
 
@@ -449,6 +456,8 @@ class TestRESTEndpoint(TestCase):
             % (dp.id, expected_data["timestamp"], expected_data["timestamp"])
         )
 
+        # GOTCHA: This will fail without the activate_all_endpoints fixture.
+        assert request.status_code == 200
         assert request.data == [expected_data]
 
     def test_post_datapoint_value_detail_rejected_for_sensor(self):
@@ -487,6 +496,11 @@ class TestRESTEndpoint(TestCase):
         """
         dp = datapoint_factory(self.test_connector, type="actuator")
         dp.save()
+
+        # In theory this shouldn't been necessary. However. It seems
+        # that the save method above doesn't fire the signal. No clue why,
+        # but seems to be an issue with the test execution as it works in prod.
+        self.ami.trigger_update_topics_and_subscriptions()
 
         p1 = Permission.objects.get(codename="add_datapointvalue")
         p2 = Permission.objects.get(codename="view_datapointvalue")
@@ -544,8 +558,10 @@ class TestRESTEndpoint(TestCase):
         # hence we might give the message a bit time to arrive.
         waited_seconds = 0
         while True:
-            dp.refresh_from_db()
-            if dp.last_value_message.value == expected_msg_mqtt["value"]:
+            # Last* should only carry one item per datapoint but `get` would
+            # raise an error.
+            msg = DatapointLastValue.objects.filter(datapoint=dp)
+            if msg and msg[0].value == expected_msg_mqtt["value"]:
                 break
 
             time.sleep(0.005)
@@ -554,11 +570,13 @@ class TestRESTEndpoint(TestCase):
                 raise RuntimeError(
                     "Expected datapoint value message has not reached the DB."
                 )
-
         request = self.client.get(
             "/datapoint/%s/value/?timestamp__gte=%s&timestamp__lte=%s"
             % (dp.id, expected_msg["timestamp"], expected_msg["timestamp"])
         )
+
+        # GOTCHA: This will fail without the activate_all_endpoints fixture.
+        assert request.status_code == 200
         assert request.data == [expected_msg]
 
     def test_post_datapoint_schedule_detail_rejected_for_sensor(self):
@@ -589,6 +607,7 @@ class TestRESTEndpoint(TestCase):
             "/datapoint/%s/schedule/" % dp.id, update_msg, format="json"
         )
 
+        # GOTCHA: This will fail without the activate_all_endpoints fixture.
         assert request.status_code == 400
 
     def test_get_datapoint_schedule_detail_for_actuator(self):
@@ -644,6 +663,8 @@ class TestRESTEndpoint(TestCase):
             % (dp.id, expected_data["timestamp"], expected_data["timestamp"])
         )
 
+        # GOTCHA: This will fail without the activate_all_endpoints fixture.
+        assert request.status_code == 200
         assert request.data == [expected_data]
 
     def test_post_datapoint_schedule_detail_actuator(self):
@@ -656,6 +677,11 @@ class TestRESTEndpoint(TestCase):
         """
         dp = datapoint_factory(self.test_connector, type="actuator")
         dp.save()
+
+        # In theory this shouldn't been necessary. However. It seems
+        # that the save method above doesn't fire the signal. No clue why,
+        # but seems to be an issue with the test execution as it works in prod.
+        self.ami.trigger_update_topics_and_subscriptions()
 
         p1 = Permission.objects.get(codename="add_datapointschedule")
         p2 = Permission.objects.get(codename="view_datapointschedule")
@@ -708,6 +734,7 @@ class TestRESTEndpoint(TestCase):
         request = self.client.post(
             "/datapoint/%s/schedule/" % dp.id, expected_msg, format="json"
         )
+        # GOTCHA: This will fail without the activate_all_endpoints fixture.
         assert request.status_code == 201
 
         # Check if the message has been sent. This might happen in async, so
@@ -734,8 +761,10 @@ class TestRESTEndpoint(TestCase):
         # hence we might give the message a bit time to arrive.
         waited_seconds = 0
         while True:
-            dp.refresh_from_db()
-            if dp.last_schedule_message.time is not None:
+            # Last* should only carry one item per datapoint but `get` would
+            # raise an error.
+            msg = DatapointLastSchedule.objects.filter(datapoint=dp)
+            if msg and msg[0].time is not None:
                 break
 
             time.sleep(0.005)
@@ -750,6 +779,7 @@ class TestRESTEndpoint(TestCase):
             "/datapoint/%s/schedule/?timestamp__gte=%s&timestamp__lte=%s"
             % (dp.id, expected_msg["timestamp"], expected_msg["timestamp"])
         )
+
         assert request.data == [expected_msg]
 
     def test_post_datapoint_setpoint_detail_rejected_for_sensor(self):
@@ -775,6 +805,7 @@ class TestRESTEndpoint(TestCase):
             "/datapoint/%s/setpoint/" % dp.id, update_msg, format="json"
         )
 
+        # GOTCHA: This will fail without the activate_all_endpoints fixture.
         assert request.status_code == 400
 
     def test_get_datapoint_setpoint_detail_for_actuator(self):
@@ -830,6 +861,8 @@ class TestRESTEndpoint(TestCase):
             % (dp.id, expected_data["timestamp"], expected_data["timestamp"])
         )
 
+        # GOTCHA: This will fail without the activate_all_endpoints fixture.
+        assert request.status_code == 200
         assert request.data == [expected_data]
 
     def test_post_datapoint_setpoint_detail_for_actuator(self):
@@ -842,6 +875,11 @@ class TestRESTEndpoint(TestCase):
         """
         dp = datapoint_factory(self.test_connector, type="actuator")
         dp.save()
+
+        # In theory this shouldn't been necessary. However. It seems
+        # that the save method above doesn't fire the signal. No clue why,
+        # but seems to be an issue with the test execution as it works in prod.
+        self.ami.trigger_update_topics_and_subscriptions()
 
         p1 = Permission.objects.get(codename="add_datapointsetpoint")
         p2 = Permission.objects.get(codename="view_datapointsetpoint")
@@ -884,6 +922,7 @@ class TestRESTEndpoint(TestCase):
         request = self.client.post(
             "/datapoint/%s/setpoint/" % dp.id, expected_msg, format="json"
         )
+        # GOTCHA: This will fail without the activate_all_endpoints fixture.
         assert request.status_code == 201
 
         # Check if the message has been sent. This might happen in async, so
@@ -910,8 +949,10 @@ class TestRESTEndpoint(TestCase):
         # hence we might give the message a bit time to arrive.
         waited_seconds = 0
         while True:
-            dp.refresh_from_db()
-            if dp.last_setpoint_message.time is not None:
+            # Last* should only carry one item per datapoint but `get` would
+            # raise an error.
+            msg = DatapointLastSetpoint.objects.filter(datapoint=dp)
+            if msg and msg[0].time is not None:
                 break
 
             time.sleep(0.005)
@@ -951,6 +992,7 @@ class TestRESTEndpoint(TestCase):
 
         for msg_type in ["value", "setpoint", "schedule"]:
             request = self.client.get("/datapoint/%s/%s/" % (dp.id, msg_type))
+            # GOTCHA: This will fail without the activate_all_endpoints fixture.
             assert request.status_code == 403
 
     def test_retrieve_datapoint_value_allowed_with_permissions(self):
@@ -968,6 +1010,7 @@ class TestRESTEndpoint(TestCase):
 
         self.user = User.objects.get(id=self.user.id)
         request = self.client.get("/datapoint/%s/%s/" % (dp.id, msg_type))
+        # GOTCHA: This will fail without the activate_all_endpoints fixture.
         assert request.status_code == 200
 
     def test_retrieve_datapoint_setpoint_allowed_with_permissions(self):
@@ -985,6 +1028,7 @@ class TestRESTEndpoint(TestCase):
 
         self.user = User.objects.get(id=self.user.id)
         request = self.client.get("/datapoint/%s/%s/" % (dp.id, msg_type))
+        # GOTCHA: This will fail without the activate_all_endpoints fixture.
         assert request.status_code == 200
 
     def test_retrieve_datapoint_schedule_allowed_with_permissions(self):
@@ -1002,4 +1046,5 @@ class TestRESTEndpoint(TestCase):
 
         self.user = User.objects.get(id=self.user.id)
         request = self.client.get("/datapoint/%s/%s/" % (dp.id, msg_type))
+        # GOTCHA: This will fail without the activate_all_endpoints fixture.
         assert request.status_code == 200
