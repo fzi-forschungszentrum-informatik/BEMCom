@@ -1,4 +1,5 @@
 from django import forms, db
+from django.conf import settings
 from django.contrib import admin
 
 from api_main.models.datapoint import Datapoint
@@ -159,7 +160,7 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
             data_format_specific_fields.append("min_value")
             data_format_specific_fields.append("max_value")
 
-        if obj.type == "actuator":
+        if obj.type == "actuator" and settings.ACTIVATE_CONTROL_EXTENSION:
             self.inlines.append(DatapointLastScheduleInline)
             self.inlines.append(DatapointLastSetpointInline)
 
@@ -179,11 +180,6 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
     }
     """
     Define list view actions below.
-
-    Actions changing the data format should not call queryset.update, as this
-    will not call the Datapoints save() method, and hence the Datapoint
-    Addition models will not be updated.
-    TODO: This is outdated.
     """
     actions = (
         "mark_active",
@@ -204,11 +200,6 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         ApiMqttIntegration, i.e. that we subscribe to the topics of
         the activated datapoints and send a corrected datatpoint map to the
         connectors.
-
-        TODO: This currently creates an updated datapoint map for call
-              connectors, regardless if these are affected by the changes or
-              not. This could be made more efficient.
-
         """
         queryset.update(is_active=True)
         ami = ApiMqttIntegration.get_instance()
@@ -326,85 +317,88 @@ class DatapointAdmin(AdminWithoutListsOnDelete):
         return formset
 
 
-@admin.register(DatapointValue)
-class DatapointValueAdmin(AdminWithoutListsOnDelete):
+if settings.ACTIVATE_HISTORY_EXTENSION:
 
-    list_display = ("id", "datapoint", "timestamp_pretty", "value")
-    list_filter = ("datapoint",)
-    # This is just to order the fields in the object detail page
-    fields = ("id", "datapoint", "value", "time")
-    readonly_fields = ("id", "datapoint")
-    exclude = ("_value_float", "_value_bool")
+    @admin.register(DatapointValue)
+    class DatapointValueAdmin(AdminWithoutListsOnDelete):
 
-    def timestamp_pretty(self, obj):
-        """
-        Displays a prettier timestamp format.
-        """
-        ts = obj.time
-        if ts is None:
-            return "-"
-        return datetime_to_pretty_str(ts)
+        list_display = ("id", "datapoint", "timestamp_pretty", "value")
+        list_filter = ("datapoint",)
+        # This is just to order the fields in the object detail page
+        fields = ("id", "datapoint", "value", "time")
+        readonly_fields = ("id", "datapoint")
+        exclude = ("_value_float", "_value_bool")
 
-    timestamp_pretty.admin_order_field = "time"
-    timestamp_pretty.short_description = "Timestamp"
+        def timestamp_pretty(self, obj):
+            """
+            Displays a prettier timestamp format.
+            """
+            ts = obj.time
+            if ts is None:
+                return "-"
+            return datetime_to_pretty_str(ts)
 
-    def has_add_permission(cls, request):
-        """
-        Remove `add` and `save and add another` button.
-        """
-        return False
+        timestamp_pretty.admin_order_field = "time"
+        timestamp_pretty.short_description = "Timestamp"
 
-
-@admin.register(DatapointSetpoint)
-class DatapointSetpointAdmin(AdminWithoutListsOnDelete):
-
-    list_display = ("id", "datapoint", "timestamp_pretty", "setpoint")
-    list_filter = ("datapoint",)
-    # This is just to order the fields in the object detail page
-    fields = ("id", "datapoint", "setpoint", "time")
-    readonly_fields = ("id", "datapoint")
-
-    def timestamp_pretty(self, obj):
-        """
-        Displays a prettier timestamp format.
-        """
-        ts = obj.time
-        if ts is None:
-            return "-"
-        return datetime_to_pretty_str(ts)
-
-    timestamp_pretty.admin_order_field = "time"
-    timestamp_pretty.short_description = "Timestamp"
-
-    def has_add_permission(cls, request):
-        """
-        Remove `add` and `save and add another` button.
-        """
-        return False
+        def has_add_permission(cls, request):
+            """
+            Remove `add` and `save and add another` button.
+            """
+            return False
 
 
-@admin.register(DatapointSchedule)
-class DatapointScheduleAdmin(AdminWithoutListsOnDelete):
+if settings.ACTIVATE_CONTROL_EXTENSION and settings.ACTIVATE_HISTORY_EXTENSION:
 
-    list_display = ("id", "datapoint", "timestamp_pretty", "schedule")
-    list_filter = ("datapoint",)
-    fields = ("id", "datapoint", "setpoint", "time")
-    readonly_fields = ("id", "datapoint")
+    @admin.register(DatapointSetpoint)
+    class DatapointSetpointAdmin(AdminWithoutListsOnDelete):
 
-    def timestamp_pretty(self, obj):
-        """
-        Displays a prettier timestamp format.
-        """
-        ts = obj.time
-        if ts is None:
-            return "-"
-        return datetime_to_pretty_str(ts)
+        list_display = ("id", "datapoint", "timestamp_pretty", "setpoint")
+        list_filter = ("datapoint",)
+        # This is just to order the fields in the object detail page
+        fields = ("id", "datapoint", "setpoint", "time")
+        readonly_fields = ("id", "datapoint")
 
-    timestamp_pretty.admin_order_field = "time"
-    timestamp_pretty.short_description = "Timestamp"
+        def timestamp_pretty(self, obj):
+            """
+            Displays a prettier timestamp format.
+            """
+            ts = obj.time
+            if ts is None:
+                return "-"
+            return datetime_to_pretty_str(ts)
 
-    def has_add_permission(cls, request):
-        """
-        Remove `add` and `save and add another` button.
-        """
-        return False
+        timestamp_pretty.admin_order_field = "time"
+        timestamp_pretty.short_description = "Timestamp"
+
+        def has_add_permission(cls, request):
+            """
+            Remove `add` and `save and add another` button.
+            """
+            return False
+
+    @admin.register(DatapointSchedule)
+    class DatapointScheduleAdmin(AdminWithoutListsOnDelete):
+
+        list_display = ("id", "datapoint", "timestamp_pretty", "schedule")
+        list_filter = ("datapoint",)
+        fields = ("id", "datapoint", "setpoint", "time")
+        readonly_fields = ("id", "datapoint")
+
+        def timestamp_pretty(self, obj):
+            """
+            Displays a prettier timestamp format.
+            """
+            ts = obj.time
+            if ts is None:
+                return "-"
+            return datetime_to_pretty_str(ts)
+
+        timestamp_pretty.admin_order_field = "time"
+        timestamp_pretty.short_description = "Timestamp"
+
+        def has_add_permission(cls, request):
+            """
+            Remove `add` and `save and add another` button.
+            """
+            return False

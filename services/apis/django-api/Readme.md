@@ -225,4 +225,5 @@ Follow the following steps while contributing to the connector:
 | 0.5.0 | Transition to TimescaleDB. Datapoint value messages can now be resampled to intervals (operation happens in DB) with REST parameter. Restore function implemented.<br />**Note: this is a breaking update. All data must be backed up manually before upgrading to this version and restored manually afterwards.** |
 | 0.6.0 | Django-API service now exposes Prometheus metrics to support monitoring of BEMCom applications. |
 | 0.7.0 | Django-API service can now be run with multiple worker processes. Added dedicated process to write MQTT messages to DB. Removed support for direct HTTPS endpoint (not supported by Gunicorn). |
+| 0.8.0 | Added ACTIVATE_CONTROL_EXTENSION and ACTIVATE_HISTORY_EXTENSION flags. |
 

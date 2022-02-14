@@ -1,22 +1,22 @@
-import sys
 import json
-import socket
 import logging
+import socket
+import sys
 from time import sleep
 from threading import Thread, Lock, Event
 
+from cachetools.func import ttl_cache
 from django.conf import settings
 from django.db import IntegrityError
 from paho.mqtt.client import Client
-from cachetools.func import ttl_cache
 from prometheus_client import Counter
 
-from .models.datapoint import Datapoint, DatapointValue, DatapointLastValue
+from ems_utils.timestamp import datetime_from_timestamp
 from .models.connector import Connector, ConnectorHeartbeat, ConnectorLogEntry
+from .models.controller import Controller, ControlledDatapoint
+from .models.datapoint import Datapoint, DatapointValue, DatapointLastValue
 from .models.datapoint import DatapointSchedule, DatapointLastSchedule
 from .models.datapoint import DatapointSetpoint, DatapointLastSetpoint
-from .models.controller import Controller, ControlledDatapoint
-from ems_utils.timestamp import datetime_from_timestamp
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,6 @@ class MqttToDb:
     in the DB.
 
     TODO: Use multiprocess prometheus.
-    TODO: Integrate STORE_VALUE_MSGS aka HISTORY_DB flags.
     TOOD: Add a main loop that periodically checks on the health of the worker
           threads and reports exceptions that probably are not caught right now.
     """
@@ -62,8 +61,6 @@ class MqttToDb:
             "port": settings.MQTT_BROKER["port"],
         }
 
-        # TODO Get this from settings in future:
-        self.HISTORY_DB = True
         N_MTD_WRITE_THREADS = settings.N_MTD_WRITE_THREADS
         if n_mtd_write_threads_overload is not None:
             N_MTD_WRITE_THREADS = n_mtd_write_threads_overload
@@ -549,7 +546,7 @@ class MqttToDb:
                     # object first. Only if this fails we perform an update.
                     # Also only do this if the Admin requested that the
                     # history is preserved.
-                    if self.HISTORY_DB:
+                    if settings.ACTIVATE_HISTORY_EXTENSION:
                         try:
                             DatapointValue(
                                 datapoint=datapoint,
@@ -592,7 +589,7 @@ class MqttToDb:
                     with self.get_datapoint_by_id_lock:
                         datapoint = self.get_datapoint_by_id(id=datapoint_id)
                     timestamp = datetime_from_timestamp(payload["timestamp"])
-                    if self.HISTORY_DB:
+                    if settings.ACTIVATE_HISTORY_EXTENSION:
                         try:
                             DatapointSchedule(
                                 datapoint=datapoint,
@@ -629,7 +626,7 @@ class MqttToDb:
                     with self.get_datapoint_by_id_lock:
                         datapoint = self.get_datapoint_by_id(id=datapoint_id)
                     timestamp = datetime_from_timestamp(payload["timestamp"])
-                    if self.HISTORY_DB:
+                    if settings.ACTIVATE_HISTORY_EXTENSION:
                         try:
                             DatapointSetpoint(
                                 datapoint=datapoint,
