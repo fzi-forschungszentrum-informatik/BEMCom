@@ -1,6 +1,6 @@
 # Contributing
 
-Contributions are welcome, especially extensions to the documentation and new services. Please follow the guide provided below to ensure that your work will fit into this repo. Please feel free to open up an issue to discuss your ideas before starting to work on something.
+Contributions are welcome, especially extensions to the documentation and new services. Please follow the guide provided below to ensure that your work will fit into the BEMCom repository. Please feel free to open up an issue to discuss your ideas before starting to work on something.
 
 
 
@@ -8,9 +8,11 @@ Contributions are welcome, especially extensions to the documentation and new se
 
 Any BEMCom application can easily be extended with new services. If you plan to contribute a service to this repository please ensure you have considered the following points:
 
-* [ ] That you have understood the [fundamental concepts](./01_concepts.md) of BEMCom before you start.
-* [ ] That you use one of the [service templates](../service_templates/) if one exists for the service type and programming language. Please also consider to develop a service template if none exists but it would make sense. E.g. consider e.g. that you would like to implement a connector in a programming language for which no template exists. Splitting up the new connector into a template and the connector itself will likely introduce little overhead to the first connector, but will significantly reduce development effort for the second connector using the same programming language.
-* [ ] That you have read and understood the [message format](./04_message_format.md) before you start if you plan to implement a service template or a service that should directly interact with the broker. Also please verify that you will implemented the message format correctly and completely.
+1. That you have understood the [fundamental concepts](./01_concepts.md) of BEMCom before you start.
+
+2. That you use one of the [service templates](../service_templates/) if one exists for the service type and programming language. Please also consider to develop a service template if none exists but it would make sense. E.g. consider e.g. that you would like to implement a connector in a programming language for which no template exists. Splitting up the new connector into a template and the connector itself will likely introduce little overhead to the first connector, but will significantly reduce development effort for the second connector using the same programming language.
+
+3. That you have read and understood the [message format](./04_message_format.md) before you start if you plan to implement a service template or a service that should directly interact with the broker. Also please verify that you will implemented the message format correctly and completely.
 
 
 

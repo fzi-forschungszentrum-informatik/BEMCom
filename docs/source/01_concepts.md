@@ -1,4 +1,6 @@
-# BEMCom Concepts  
+# Fundamental Concepts
+
+This part introduces the general high level concepts of BEMCom. It's a good idea to fully read this up front before checking the remaining documentation.
 
 ## Introduction
 
@@ -40,7 +42,7 @@ Each service is implemented as a Docker container. This procedure has the follow
 - Isolating each service in a container minimizes the possibilities of side effects between services as each container contains the full runtime environment required by the service. It also supports development efficiency as it can be guaranteed that each service behaves exactly the same, regardless if deployed on a development machine, a production server or even a cluster.
 - Utilizing containers, especially in combination with Docker Compose, supports the separation of generic runtime logic from configuration, which helps designing services that generalize well.
 
-# Application Concept
+## Application Concept
 
 Each created application will consist of several services with different functionalities. Each service is thereby executed as a Docker container. The following shows the general flow of data in an application.
 
