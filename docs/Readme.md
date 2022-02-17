@@ -7,19 +7,15 @@ This folder contains all that is necessary to build the HTML documentation of BE
 ## Installing Dependencies
 
 ```bash
-conda install sphinx
-conda install -c conda-forge myst-parser
-pip install sphinx_rtd_theme
+pip install -r  requirements.txt
 ```
 
 
 
-## Building the Docs
+## Building the Docs for Local Inspection
 
 In the this folder execute:
 
 ```bash
 make html
 ```
-
-Don't forget to commit and push.

@@ -10,11 +10,11 @@ Welcome to BEMCom's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   source/Readme.md
-   source/01_concepts.md
-   source/02_application_creation.md
-   source/03_message_format.md
-   source/04_contributing.md
+   Readme.md
+   01_concepts.md
+   02_application_creation.md
+   03_message_format.md
+   04_contributing.md
 
 
 
