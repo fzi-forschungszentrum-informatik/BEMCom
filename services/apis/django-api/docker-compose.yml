@@ -24,7 +24,7 @@ services:
             - MQTT_BROKER_HOST=django-api-devl-broker
             - MQTT_BROKER_PORT=1883
             - ACTIVATE_CONTROL_EXTENSION=FALSE
-            - ACTIVATE_HISTORY_EXTENSION=TRUE
+            - ACTIVATE_HISTORY_EXTENSION=FALSE
             - LOGLEVEL=INFO
             - DJANGO_DEBUG=TRUE
             - DJANGO_ADMINS=
