@@ -1,35 +1,35 @@
 # Django itself plus addon packages. 
-Django==3.1.*
+Django==3.2.*
 channels==3.0.*
-django-guardian==2.3.*
-djangorestframework==3.12.*
-drf-spectacular==0.17.*
-django-filter==2.4.*
+django-guardian==2.4.*
+djangorestframework==3.13.*
+drf-spectacular==0.21.*
+django-filter==21.*
 
 # Required for communication with other services.
-paho-mqtt==1.5.*
+paho-mqtt==1.6.*
 
 # To allow running the tests.
 pytest
 pytest-django
 
 # To parse settings from .env files.
-python-dotenv==0.17.*
+python-dotenv==0.19.*
 
 # Production servers.
 gunicorn==20.1.*
-uvicorn==0.15.*
-whitenoise==5.2.*
+uvicorn==0.17.*
+whitenoise==6.0.*
 
 # To speed up MQTT integration
-cachetools==4.2.*
+cachetools==5.0.*
 
 # Database engines
 psycopg2-binary
-django-timescaledb==0.2.10
+django-timescaledb==0.2.11
 
 # For exposing Prometheus metrics
-django-prometheus==2.1.*
+django-prometheus==2.2.*
 
 # Dependencies of the backup&restore script.
 requests
