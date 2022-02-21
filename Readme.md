@@ -7,19 +7,19 @@ In order to communicate with the devices of a target building, it is common in a
 
 ## Documentation
 
-Extensive documentation is provided provided in the [documentation](documentation/Readme.md) folder, please read the [documentation/Readme.md](documentation/Readme.md) file first. 
+The extensive online documentation can be found on [bemcom.readthedocs.io](https://bemcom.readthedocs.io/en/latest/index.html). 
 
 
 
 ## Contact
 
-Please open a GitHub issue for any inquiry that relates to the source code. Feel free to contact [David Wölfle](https://www.fzi.de/en/about-us/organisation/detail/address/david-woelfle/) directly for all other inquiries.
+Please open a GitHub issue for any inquiry that relates to the source code. Feel free to contact [David Wölfle](https://www.fzi.de/team/david-woelfle/) directly for all other inquiries.
 
 
 
 ## Contributing
 
-Contributions are welcome! Please see the [documented guidelines](documentation/04_contributing.md) before you start developing.
+Contributions are welcome! Please see the [documented guidelines](https://bemcom.readthedocs.io/en/latest/04_contributing.html) before you start developing.
 
 
 
