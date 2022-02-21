@@ -11,7 +11,6 @@
       * [ ] Document return objects and codes for errors of REST interface.
       * [ ] Add Websocket Push Interface.
       * [ ] Fix adding Controller Admin Pages, there seems to be while defining controlled_datapoints.
-      * [ ] Extend documentation on REST and UI Endpoints
   * [ ] Controllers
     * [ ] Python
       * [ ] Rename to something more goal oriented, i.e. that describes rather what the controller does.
