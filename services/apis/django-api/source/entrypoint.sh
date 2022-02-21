@@ -50,7 +50,12 @@ else
     python3 /source/api/manage.py collectstatic --no-input
     cd /source/api && \
     printf "\n\nStarting up Gunicorn/UVicorn production server.\n\n\n"
-    gunicorn api_main.asgi:application --workers ${N_WORKER_PROCESSES:-4} --worker-class uvicorn.workers.UvicornWorker -b 0.0.0.0:8080 &
+    # Note that the default value of `1` is important here, as
+    # api_main/settings.py expects this default value while processing
+    # DJANGO_SECRET_KEY. If you change this to a higher value you will likely
+    # get suspicious session warnings and admins will need to login in very
+    # often during working with the admin UI.
+    gunicorn api_main.asgi:application --workers ${N_WORKER_PROCESSES:-1} --worker-class uvicorn.workers.UvicornWorker -b 0.0.0.0:8080 &
 fi
 
 # Also patch SIGTERM and SIGINT to the django application.

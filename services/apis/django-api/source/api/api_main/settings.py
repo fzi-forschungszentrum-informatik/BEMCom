@@ -55,12 +55,23 @@ MQTT_BROKER = {"host": MQTT_BROKER_HOST, "port": MQTT_BROKER_PORT}
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-# This generates a new random key every time we start the application or
-# run anything from manage.py. This also invalidates all cookies which
-# makes users login again. Thus, it is a good idea to fix the key in
-# production.
 if not os.getenv("DJANGO_SECRET_KEY"):
-    SECRET_KEY = "".join(random.choice(string.ascii_letters) for i in range(64))
+    # This generates a new random key every time we start the application or
+    # run anything from manage.py. This also invalidates all cookies which
+    # makes users login again. Thus, it is a good idea to fix the key in
+    # production.
+    # However, this only works if we have only a single worker. If there are
+    # more then one, each will get a dedicated SECRET_KEY which will cause
+    # permanent suspicious session warnings.
+    if int(os.getenv("N_WORKER_PROCESSES") or 1) == 1:
+        SECRET_KEY = "".join(
+            random.choice(string.ascii_letters) for i in range(64)
+        )
+    else:
+        raise ValueError(
+            "DJANGO_SECRET_KEY must be set explicitly if django-api is "
+            "run with N_WORKER_PROCESSES > 1."
+        )
 else:
     SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 
