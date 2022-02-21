@@ -26,9 +26,9 @@ services:
             - ACTIVATE_CONTROL_EXTENSION=FALSE
             - ACTIVATE_HISTORY_EXTENSION=FALSE
             - LOGLEVEL=INFO
-            - DJANGO_DEBUG=FALSE
+            - DJANGO_DEBUG=TRUE
             - DJANGO_ADMINS=
-            - DJANGO_SECRET_KEY=testSecret123
+            - DJANGO_SECRET_KEY=
             - DJANGO_ALLOWED_HOSTS=
             - DJANGO_SUPERUSER_USERNAME=bemcom
             - DJANGO_SUPERUSER_PASSWORD=bemcom
@@ -39,7 +39,7 @@ services:
             - DJANGOAPIDB_PASSWORD=bemcom
             - DJANGOAPIDB_DBNAME=bemcom
             - N_CMI_WRITE_THREADS=4
-            - N_WORKER_PROCESSES=4
+            - N_WORKER_PROCESSES=1
 
     # Allows local testing.
     django-api-devl-broker:
