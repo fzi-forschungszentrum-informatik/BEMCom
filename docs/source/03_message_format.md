@@ -125,7 +125,7 @@ Here, `${Connector_name}` should be replaced with the name of the connector as c
 
 | Key          | Value description                                            |
 | ------------ | ------------------------------------------------------------ |
-| `"sensor"`   | An object containing one entry for every available sensor datapoint. If no datapoints are known it must be an empty object. The entry should be formated as `${internal_dp_id}: ${example_value}` , where `${internal_dp_id}` is some arbitrary but unique string that the connector defines and uses to identify a particular datapoint. `${example_value}` is an arbitrarily chosen value that the datapoint had at one time. See the [Datapoint Value message definition](#Datapoint Value) for further details on the message format of the value. It should be refrained from sending available datapoint message if only `${example_value}` has been changed, to prevent flooding the API service. |
+| `"sensor"`   | An object containing one entry for every available sensor datapoint. If no datapoints are known it must be an empty object. The entry should be formated as `${internal_dp_id}: ${example_value}` , where `${internal_dp_id}` is some arbitrary but unique string that the connector defines and uses to identify a particular datapoint. `${example_value}` is an arbitrarily chosen value that the datapoint had at one time. See the Datapoint Value message definition for further details on the message format of the value. It should be refrained from sending available datapoint message if only `${example_value}` has been changed, to prevent flooding the API service. |
 | `"actuator"` | Similar to `"sensor"` but for actuator datapoints respectively. |
 
 #### Example:
@@ -272,7 +272,7 @@ Here, `${Connector_name}` should be replaced with the name of the connector as c
 
 ## Extended Message Types for Controllers
 
-The following message types are optional and are only relevant for BEMCom applications that employ controller services. The message types are implemented in the [Django API service](../services/apis/django-api/) and [all Controller services](../services/controllers/) provided in this repository. 
+The following message types are optional and are only relevant for BEMCom applications that employ controller services. The message types are implemented in the [Django API service](https://bemcom.readthedocs.io/en/latest/05_service_reference.html#django-api) and [all Controller services](https://bemcom.readthedocs.io/en/latest/05_service_reference.html#controllers) provided in this repository.
 
 
 
@@ -386,7 +386,7 @@ Here, `${Connector_name}` should be replaced with the name of the connector as c
 
 #### Example:
 
-Here a schedule that could request a setpoint of 19.0 °C for an AC, starting immediately, and lasting until  Tuesday, 30. July 2019 12:26:53. After that time it would request the AC to be switched off. The interpretation of the null for value depends on the datapoint and should be explicitly mentioned in the datapoint description field. 
+Here a schedule that could request a setpoint of 19.0 °C for an AC, starting immediately, and lasting until  Tuesday, 30. July 2019 12:26:53. After that time it would request the AC to be switched off. The interpretation of the null for value depends on the datapoint and should be explicitly mentioned in the datapoint description field.
 
 ```
 {
@@ -473,4 +473,3 @@ See also the definition of the datapoint value, datapoint setpoint and datapoint
     }
 ]
 ```
-
