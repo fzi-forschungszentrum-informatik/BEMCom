@@ -1,2 +1,3 @@
-TAG=$(cat source/connector/main.py | grep "__version__=" | cut -d "=" -f 2 | tr -d '"')
+
+TAG=$(cat source/connector/main.py | grep "__version__ = " | cut -d "=" -f 2 | tr -d '" ' )
 docker build ./source -t bemcom/mqtt-connector:$TAG
