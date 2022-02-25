@@ -177,4 +177,5 @@ Follow the following steps while contributing to the connector:
 | 0.3.0 | Allow disconnecting between polls and breaks between requests in one poll run. |
 | 0.4.0 | Update to python connector template 0.4.0 (Datapoint Value and Available Datapoint messages and a can now contain any JSON data type as value.) |
 | 0.5.0 | Connector can now write to coils and registers. Unit id is now part of the internal datapoint id to prevent collisions while interacting with the same addresses from different devices. |
+| 0.6.0 | Update to python connector template 0.5.0 (It is now possible to stop processing messages in run_sensor_flow.) |
 
