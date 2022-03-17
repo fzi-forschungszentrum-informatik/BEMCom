@@ -63,6 +63,8 @@ djangoApi:
       ports:
         http: 8080
       env:
+        ACTIVATE_CONTROL_EXTENSION: FALSE
+        ACTIVATE_HISTORY_EXTENSION: FALSE
         LOGLEVEL: INFO
         DJANGO_DEBUG: FALSE
         DJANGO_ADMINS: []
@@ -70,6 +72,7 @@ djangoApi:
           - localhost
         N_CMI_WRITE_THREADS: 32
       secrets:
+        DJANGO_SECRET_KEY:
         DJANGO_SUPERUSER_USERNAME: bemcom
         DJANGO_SUPERUSER_PASSWORD: bemcom
         DJANGO_SUPERUSER_EMAIL: bemcom@example.com

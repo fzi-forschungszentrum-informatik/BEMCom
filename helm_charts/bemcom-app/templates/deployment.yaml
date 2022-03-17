@@ -83,6 +83,10 @@ spec:
         - containerPort: {{ .deployment.api.ports.http }}
           name: http
         env:
+        - name: ACTIVATE_CONTROL_EXTENSION
+          value: {{ .deployment.api.env.ACTIVATE_CONTROL_EXTENSION | quote }}
+        - name: ACTIVATE_HISTORY_EXTENSION
+          value: {{ .deployment.api.env.ACTIVATE_HISTORY_EXTENSION | quote }}
         - name: LOGLEVEL
           value: {{ .deployment.api.env.LOGLEVEL | quote }}
         - name: DJANGO_DEBUG
