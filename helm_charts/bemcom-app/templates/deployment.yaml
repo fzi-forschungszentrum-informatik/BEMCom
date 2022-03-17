@@ -128,7 +128,7 @@ spec:
       volumes:
       - name: pgdata
         persistentVolumeClaim:
-          claimName: {{ include "bemcom-app.service.fullname" . }}-pgdata
+          claimName: {{ include "bemcom-app.service.fullname" . }}-pgdata{{ .volumes.pvc.pgdata.nameSuffix }}
       nodeSelector:
         {{- toYaml .deployment.nodeSelector | nindent 8 }}
       affinity:
@@ -188,7 +188,7 @@ spec:
       volumes:
       - name: mongo-data
         persistentVolumeClaim:
-          claimName: {{ include "bemcom-app.service.fullname" . }}-mongo-data
+          claimName: {{ include "bemcom-app.service.fullname" . }}-mongo-data{{ .volumes.pvc.mongoData.nameSuffix }}
       nodeSelector:
         {{- toYaml .deployment.nodeSelector | nindent 8 }}
       affinity:
@@ -242,7 +242,7 @@ spec:
       volumes:
       - name: grafana-data
         persistentVolumeClaim:
-          claimName: {{ include "bemcom-app.service.fullname" . }}-grafana-data
+          claimName: {{ include "bemcom-app.service.fullname" . }}-grafana-data{{ .volumes.pvc.grafanaData.nameSuffix }}
       nodeSelector:
         {{- toYaml .deployment.nodeSelector | nindent 8 }}
       affinity:

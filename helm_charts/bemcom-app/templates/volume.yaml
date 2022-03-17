@@ -11,7 +11,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name:  {{ include "bemcom-app.service.fullname" . }}-pgdata
+  name:  {{ include "bemcom-app.service.fullname" . }}-pgdata{{ .volumes.pvc.pgdata.nameSuffix }}
   namespace: {{ $namespace }}
   labels:
     {{- include "bemcom-app.labels" . | nindent 4 }}
@@ -28,7 +28,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name:  {{ include "bemcom-app.service.fullname" . }}-mongo-data
+  name:  {{ include "bemcom-app.service.fullname" . }}-mongo-data{{ .volumes.pvc.mongoData.nameSuffix }}
   namespace: {{ $namespace }}
   labels:
     {{- include "bemcom-app.labels" . | nindent 4 }}
@@ -46,7 +46,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name:  {{ include "bemcom-app.service.fullname" . }}-grafana-data
+  name:  {{ include "bemcom-app.service.fullname" . }}-grafana-data{{ .volumes.pvc.grafanaData.nameSuffix }}
   namespace: {{ $namespace }}
   labels:
     {{- include "bemcom-app.labels" . | nindent 4 }}

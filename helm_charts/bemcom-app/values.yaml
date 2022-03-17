@@ -114,6 +114,7 @@ djangoApi:
   volumes:
     pvc:
       pgdata:
+        nameSuffix: ""
         spec:
           storageClassName: local
           accessModes:
@@ -162,6 +163,7 @@ mongoRawMessageDb:
   volumes:
     pvc:
       mongoData:
+        nameSuffix: ""
         spec:
           storageClassName: shared
           accessModes:
@@ -200,6 +202,7 @@ grafanaTool:
   volumes:
     pvc:
       grafanaData:
+        nameSuffix: ""
         spec:
           storageClassName: shared
           accessModes:
