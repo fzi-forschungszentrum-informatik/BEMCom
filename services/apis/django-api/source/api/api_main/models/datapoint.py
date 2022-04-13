@@ -31,8 +31,8 @@ class Datapoint(DatapointTemplate):
         # multiple times due to race conditions.
         constraints = [
             models.UniqueConstraint(
-                fields=["connector", "key_in_connector"],
-                name="Datapoint key_in_connector and connector unique together",
+                fields=["connector", "key_in_connector", "type"],
+                name="Datapoint key_in_connector, connector and type unique together",
             )
         ]
 
