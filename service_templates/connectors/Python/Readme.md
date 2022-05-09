@@ -48,4 +48,5 @@ This template allows the the implementation of connectors in Python with maximum
 | 0.3.0 | Added connector version to raw message for raw message DB and make handling of bytes messages more consistent. |
 | 0.4.0 | Datapoint Value and Available Datapoint messages and a can now contain any JSON data type as value. |
 | 0.5.0 | It is now possible to stop processing messages in run_sensor_flow. (Docstrings of receive_raw_msg and parse_raw_msg have been updated.) |
+| 0.6.0 | Update to Python 3.10                                        |
 

@@ -1,4 +1,4 @@
-FROM python:3.8
+FROM python:3.10
 
 # Install the pyconnector package.
 COPY pyconnector_template /source/pyconnector_template/pyconnector_template
