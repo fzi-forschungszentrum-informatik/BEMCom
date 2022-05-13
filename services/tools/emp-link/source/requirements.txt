@@ -1,0 +1,2 @@
+# Add additional dependencies here.
+paho-mqtt==1.6.*

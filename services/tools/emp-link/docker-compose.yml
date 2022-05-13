@@ -1,0 +1,27 @@
+version: '3'
+
+services:
+
+    emp-link:
+        container_name: emp-link
+        build:
+            context: ./source
+        init: true  # Faster shutdown.
+        tty: true  # This must be set to colorize output.
+        
+        volumes:
+            - ./source/:/source/emp-link/
+        restart: unless-stopped
+        environment:
+            - ORIGIN=${ORIGIN}
+            - AUTO_RELOAD=${AUTO_RELOAD}
+            - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}
+            - MQTT_BROKER_PORT=${MQTT_BROKER_PORT}
+            - BEMCOM_API_URL=${BEMCOM_API_URL}
+            - BEMCOM_API_VERIFY_SSL=${BEMCOM_API_VERIFY_SSL}
+            - BEMCOM_API_USERNAME=${BEMCOM_API_USERNAME}
+            - BEMCOM_API_PASSWORD=${BEMCOM_API_PASSWORD}
+            - EMP_API_URL=${EMP_API_URL}
+            - EMP_API_VERIFY_SSL=${EMP_API_VERIFY_SSL}
+            - EMP_API_USERNAME=${EMP_API_USERNAME}
+            - EMP_API_PASSWORD=${EMP_API_PASSWORD}

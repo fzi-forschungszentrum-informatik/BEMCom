@@ -1,0 +1,3 @@
+# This makes the COPY statement in Dockerfile simpler, as it lists
+# files that will not be put into the image.
+Dockerfile
