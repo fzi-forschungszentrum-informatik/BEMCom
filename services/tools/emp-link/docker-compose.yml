@@ -8,8 +8,7 @@ services:
 #            context: ./source
         image: bemcom/emp-link-tool:0.1.0
         init: true  # Faster shutdown.
-        tty: true  # This must be set to colorize output.
-        
+        tty: true  # This must be set to colorize output.       
 #        volumes:
 #            - ./source/:/source/emp-link/
         restart: unless-stopped
