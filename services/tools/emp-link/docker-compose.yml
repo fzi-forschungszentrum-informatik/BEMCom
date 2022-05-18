@@ -4,9 +4,9 @@ services:
 
     emp-link:
         container_name: emp-link
-#        build:
-#            context: ./source
-        image: bemcom/emp-link-tool:0.1.0
+        build:
+            context: ./source
+#        image: bemcom/emp-link-tool:0.1.1
         init: true  # Faster shutdown.
         tty: true  # This must be set to colorize output.       
 #        volumes:

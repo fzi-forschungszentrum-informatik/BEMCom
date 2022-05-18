@@ -221,9 +221,8 @@ class EmpLink:
         # API expects a list of datapoints.
         datapoint_list = DatapointList.parse_obj({"__root__": datapoints})
 
-        # Push to EMP, this returns the datapoint metadata as confirmation
-        # sorted by datapoint IDs.
-        datapoints_by_id = self.emp_client.put_datapoint_metadata_latest(
+        # Push to EMP, this returns the datapoint metadata as confirmation.
+        datapoint_list = self.emp_client.put_datapoint_metadata_latest(
             datapoint_list=datapoint_list
         )
 
@@ -234,8 +233,8 @@ class EmpLink:
 
         # Make a map between internal EMP IDs and EMP IDs.
         datapoint_id_map = {}
-        for emp_id in datapoints_by_id.__root__:
-            datapoint_obj = datapoints_by_id.__root__[emp_id]
+        for datapoint_obj in datapoint_list.__root__:
+            emp_id = datapoint_obj.id
             datapoint_id_map[datapoint_obj.origin_id] = emp_id
 
         self.userdata["datapoint_id_map"] = datapoint_id_map
