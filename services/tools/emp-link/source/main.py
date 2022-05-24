@@ -217,6 +217,10 @@ class EmpLink:
             datapoint["type"] = datapoint["type"].replace("_", " ").title()
             data_format = datapoint["data_format"]
             datapoint["data_format"] = data_format.replace("_", " ").title()
+            # make Bool -> Boolean as the Enum entry looks like this:
+            # bool = "Boolean"
+            if datapoint["data_format"] == "Bool":
+                datapoint["data_format"] = "Boolean"
 
         # API expects a list of datapoints.
         datapoint_list = DatapointList.parse_obj({"__root__": datapoints})
@@ -246,7 +250,7 @@ class EmpLink:
 
         # Compute the topics
         topics = []
-        connector_names = {dp["connector"] for dp in datapoints}
+        connector_names = {dp["connector"]["name"] for dp in datapoints}
         for connector_name in connector_names:
             topic = "{}/messages/#".format(connector_name)
             if topic not in self._subsribed_topics:
