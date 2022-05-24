@@ -38,8 +38,10 @@ services:
             - DJANGOAPIDB_USER=bemcom
             - DJANGOAPIDB_PASSWORD=bemcom
             - DJANGOAPIDB_DBNAME=bemcom
-            - N_CMI_WRITE_THREADS=4
+            - N_MTD_WRITE_THREADS=4
             - N_WORKER_PROCESSES=1
+            - ROOT_PATH=
+            - HTTPS_ONLY=
 
     # Allows local testing.
     django-api-devl-broker:
@@ -51,7 +53,7 @@ services:
 
     django-api-devl-db:
         container_name: django-api-devl-db
-        image: timescale/timescaledb:2.4.1-pg13
+        image: timescale/timescaledb:2.7.0-pg13
         restart: unless-stopped
         ports:
             - 5432:5432

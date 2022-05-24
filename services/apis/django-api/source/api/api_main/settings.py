@@ -225,27 +225,24 @@ USE_L10N = True
 
 USE_TZ = True
 
+# Root path aka. base url. In theory django doesn't need to know the
+# root path and works as expected behind a reverse proxy. Here the
+# main issue is that we use a lot of absolute URLs, which need to be
+# fixed manually.
+# **NOTE**: ROOT_PATH must be without a leading slash but with a trailing
+# slash if not empty, e.g. `bemcom/`
+ROOT_PATH = os.getenv("ROOT_PATH") or ""
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
-STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR.parent / "static"
+STATIC_URL = "/" + ROOT_PATH + "static/"
 
 # Finally some security related stuff, that is only relevant for production
-# where we don't offer a plain HTTP page. The first two are suggested by
-# Django's deployment checklist, the remaining by the check --deploy result.
-#
-# Don't activate SECURE_HSTS_SECONDS and SECURE_SSL_REDIRECT, they will break
-# the tests but don't provide anything useful as the API should not expose a non
-# SSL endpoint in production mode.
-# Don't set SESSION_COOKIE_SECURE = True as this will prevent acces via
-# plain HTTP to the Admin. While you shouldn't access the admin over
-# plain HTTP in general, it may be useful for development.
-if not DEBUG:
+# where we don't offer a plain HTTP page.
+if (os.getenv("HTTPS_ONLY") or "FALSE").lower() == "true":
+    SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-    SECURE_BROWSER_XSS_FILTER = True
-    X_FRAME_OPTIONS = "DENY"
 
 # ------------------------------------------------------------------------------
 # Special settings for REST API
@@ -271,5 +268,5 @@ SPECTACULAR_SETTINGS = {
         "BEMCom/blob/master/documentation/Readme.md) for more information."
     ),
     "LICENSE": {"name": "Licensed under MIT"},
-    "VERSION": "0.8.2",
+    "VERSION": "0.8.3",
 }

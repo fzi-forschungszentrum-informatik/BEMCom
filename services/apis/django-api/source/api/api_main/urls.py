@@ -15,8 +15,13 @@ Including another URLconf
 """
 from django.urls import path, include
 
+from django.conf import settings
+
+ROOT_PATH = settings.ROOT_PATH
 
 urlpatterns = [
     path("", include("api_rest_interface.urls")),
     path("admin/", include("api_admin_ui.urls")),
 ]
+
+urlpatterns = [path(ROOT_PATH, include(urlpatterns))]

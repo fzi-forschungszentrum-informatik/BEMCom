@@ -413,7 +413,7 @@ class MqttToDb:
         # the message way received from MQTT and the time it is written to
         # DB.
         with userdata["message_queue_lock"]:
-            if len(userdata["message_queue"]) < 10000:
+            if len(userdata["message_queue"]) < 100000:
                 userdata["message_queue"].append(msg)
             else:
                 logger.warning(
