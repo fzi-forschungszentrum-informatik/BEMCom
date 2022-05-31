@@ -2,18 +2,22 @@
 # -*- coding: utf-8 -*-
 """
 """
-__version__="0.0.1"
+__version__ = "0.0.1"
 
 import os
+import asyncio
 import json
 import logging
 
 from dotenv import load_dotenv, find_dotenv
-
+from xknx import XKNX
+from xknx.io import ConnectionConfig, ConnectionType
 from pyconnector_template.pyconnector_template import SensorFlow as SFTemplate
 from pyconnector_template.pyconnector_template import ActuatorFlow as AFTemplate
 from pyconnector_template.pyconnector_template import Connector as CTemplate
-from pyconnector_template.dispatch import DispatchInInterval
+from pyconnector_template.dispatch import DispatchOnce
+
+from .transcoder import KnxTranscoder
 
 
 logger = logging.getLogger("pyconnector")
@@ -71,12 +75,10 @@ class SensorFlow(SFTemplate):
 
     def receive_raw_msg(self, raw_data=None):
         """
-        Functionality to receive a raw message from device.
+        Convert KNX telegram from object to dict.
 
-        Poll the device/gateway for data and transforms this raw data
-        into the format expected by run_sensor_flow. If the device/gateway
-        uses some protocol that pushes data, the raw data should be passed
-        as the raw_data argument to the function.
+        This is necessary as the `xknx.telegram.Telegram` is not JSON
+        serializable, but we need it to push it to raw message db.
 
         Parameters
         ----------
@@ -109,7 +111,15 @@ class SensorFlow(SFTemplate):
                     }
                 }
         """
-        raise NotImplementedError("receive_raw_msg has not been implemented.")
+        raw_message = {
+            "destination_address": str(raw_data.destination_address),
+            "direction": str(raw_data.direction.value),
+            "payload_value_value": raw_data.payload.value.value,
+            "source_address": str(raw_data.source_address),
+            "timestamp": raw_data.timestamp.isoformat(),
+        }
+        msg = {"payload": {"raw_message": raw_message}}
+        return msg
 
     def parse_raw_msg(self, raw_msg):
         """
@@ -159,7 +169,26 @@ class SensorFlow(SFTemplate):
                     }
                 }
         """
-        raise NotImplementedError("parse_raw_msg has not been implemented.")
+        group_address = raw_msg["payload"]["raw_message"]["destination_address"]
+        if group_address not in self.knx_datapoints["sensor"]:
+            logger.debug(
+                "Abort `parse_raw_msg` (not in KNX_DATAPOINTS) for message "
+                "with group_id {}".format(group_address)
+            )
+            return
+
+        value_as_knx = raw_msg["payload"]["raw_message"]["payload_value_value"]
+        value_as_python = self.knx_transcoder.decode_sensor_value(
+            value_as_knx=value_as_knx, knx_group_address=group_address,
+        )
+
+        msg = {
+            "payload": {
+                "parsed_message": {group_address: value_as_python},
+                "timestamp": raw_msg["payload"]["timestamp"],
+            }
+        }
+        return msg
 
 
 class ActuatorFlow(AFTemplate):
@@ -291,29 +320,63 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         # have higher priority over ones defined in the .env file.
         load_dotenv(find_dotenv(), verbose=True, override=False)
 
-        # We need to specify a dispatcher that triggers the connection with
-        # the device or gateway. Here we want to poll the device with the
-        # interval set in the POLL_SECONDS environment variable.
-        # At each poll we want to execute the full run_sensor_flow
-        # As this contains all the expected logic the connector should do
-        # with sensor data.
-        kwargs["DeviceDispatcher"] = DispatchInInterval
+        self.knx_datapoints = json.loads(
+            os.getenv("KNX_DATAPOINTS") or '{"sensor": {}, "actuator": {}}'
+        )
+        if "sensor" not in self.knx_datapoints:
+            raise ValueError("`sensor` must be in KNX_DATAPOINTS")
+        if "actuator" not in self.knx_datapoints:
+            raise ValueError("`actuator` must be in KNX_DATAPOINTS")
+        self.knx_transcoder = KnxTranscoder(knx_datapoints=self.knx_datapoints)
+
+        # Connect to the KNX Gateway. `xknx` takes care of the connection
+        # and does reconnecting and stuff. Hence just fire it up once.
+        connection_config = ConnectionConfig(
+            connection_type=ConnectionType.TUNNELING_TCP,
+            gateway_ip=os.getenv("KNX_GATEWAY_HOST"),
+            gateway_port=int(os.getenv("KNX_GATEWAY_PORT") or 3671),
+        )
+        logger.debug(
+            "Creating KNX connection with config: {}".format(
+                connection_config.__dict__
+            )
+        )
+        self.xknx = XKNX(connection_config=connection_config,)
+        # This callback bust be async, hence cannot use `run_sensor_flow`
+        # directly.
+        self.xknx.telegram_queue.register_telegram_received_cb(
+            self.on_knx_telegram_received,
+        )
+        kwargs["DeviceDispatcher"] = DispatchOnce
         kwargs["device_dispatcher_kwargs"] = {
-            "call_interval": float(os.getenv("POLL_SECONDS")),
-            "target_func": self.run_sensor_flow,
+            "target_func": asyncio.run,
+            "target_args": [self.run_knx_connection()],
         }
 
         # Sensor datapoints will be added to available_datapoints automatically
         # once they are first appear in run_sensor_flow method. It is thus not
         # necessary to specify them here. actuator datapoints in contrast must
         # be specified here.
-        kwargs["available_datapoints"] = {
-            "sensor": {},
-            "actuator": {}
-        }
+        kwargs["available_datapoints"] = {"sensor": {}, "actuator": {}}
         CTemplate.__init__(self, *args, **kwargs)
 
         self.custom_env_var = os.getenv("CUSTOM_ENV_VARR") or "default_value"
+
+    async def on_knx_telegram_received(self, telegram):
+        logger.debug("Received telegram from KNX: {}".format(telegram))
+        self.run_sensor_flow(raw_data=telegram)
+
+    async def run_knx_connection(self):
+        """
+        This should run forever or until an exception occures.
+        """
+        try:
+            await self.xknx.start()
+            while True:
+                await asyncio.sleep(1)
+        finally:
+            # Attempt to disconnect gracefully.
+            await self.xknx.stop()
 
 
 if __name__ == "__main__":

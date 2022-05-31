@@ -11,7 +11,17 @@ services:
         user: "${USER_ID}:${GROUP_ID}"
         environment:
             - CONNECTOR_NAME=knx-connector
-            - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}
-            - MQTT_BROKER_PORT=${MQTT_BROKER_PORT}
+            - MQTT_BROKER_HOST=knx-connector-devl-broker
+            - MQTT_BROKER_PORT=1883
             - SEND_RAW_MESSAGE_TO_DB=${SEND_RAW_MESSAGE_TO_DB}
             - DEBUG=${DEBUG}
+            - KNX_GATEWAY_HOST=${KNX_GATEWAY_HOST}
+            - KNX_GATEWAY_PORT=${KNX_GATEWAY_PORT}
+            - KNX_DATAPOINTS=${KNX_DATAPOINTS}
+            
+    knx-connector-devl-broker:
+        container_name: knx-connector-devl-broker
+        image: bemcom/mosquitto-mqtt-broker:0.1.0
+        restart: unless-stopped
+        ports:
+            - 1883:1883

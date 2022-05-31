@@ -41,6 +41,40 @@ Some remarks about the devices or just nothing.
 | MQTT_BROKER_HOST       | 1883                | The port of the MQTT broker.                                 |
 | SEND_RAW_MESSAGE_TO_DB | TRUE                | If set to `TRUE` (that is a string of capital letters) will publish all received raw messages on topic `${CONNECTOR_NAME}/raw_message_to_db` |
 | DEBUG                  | TRUE                | If == "TRUE" (i.e. the string) will set the loglevel of the connector the logging.DEBUG. Else is logging.INFO. |
+| KNX_GATEWAY_HOST       | knx_gw.example.com  | The DNS name or IP address of the KNX gateway to connect to. |
+| KNX_GATEWAY_PORT       | 3672                | The corresponding port for the gateway. Defaults to `3671`   |
+| KNX_DATAPOINTS         | see below           | see below                                                    |
+
+`KNX_DATAPOINTS` is a JSON object mapping from KNX group addresses to KNX datapoint types. It is necessary to tell the connector how to interpret the raw bytes received from the KNX bus.
+
+The `KNX_DATAPOINTS` object must contain a `sensors` and `actuators` entry and could look like follows:
+
+```json
+{
+    "sensor": {
+        "2/3/111": "DPST-3-7",
+        "2/3/112": "DPST-5-1",
+        "2/3/113": "DPST-1-1"
+    },
+    "actuator": {
+        "2/3/113": "DPST-1-1"
+    }
+}
+```
+
+You may want to create the mapping from group address to datapoint type from an ETS CSV export with the following lines:
+
+```python
+import json
+import pandas as pd
+
+knx_datapoints = pd.read_csv(file_name, sep="\t", encoding="latin-1")
+json.dumps({r.Address: r.DatapointType for _, r in knx_datapoints.iterrows()}, indent=4)
+```
+
+
+
+
 
 ##### Volumes
 
@@ -51,11 +85,11 @@ None preferably. You should only add volumes, especially file mounts if it is re
 ### Create TODO from ETS CSV Export
 
 ```python
-from pprint import pprint
+import json
 import pandas as pd
 
 knx_datapoints = pd.read_csv(file_name, sep="\t", encoding="latin-1")
-pprint({r.Address: r.DatapointType for _, r in knx_datapoints.iterrows()})
+json.dumps({r.Address: r.DatapointType for _, r in knx_datapoints.iterrows()})
 ```
 
 
