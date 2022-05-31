@@ -1,0 +1,3 @@
+# Place your dependencies here e.g. 
+xknx==0.21.*
+

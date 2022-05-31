@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+    knx-connector:
+        container_name: knx-connector
+        build:
+            context: ./source
+        restart: unless-stopped
+        volumes:
+            - ./source/connector/:/source/connector/
+        user: "${USER_ID}:${GROUP_ID}"
+        environment:
+            - CONNECTOR_NAME=knx-connector
+            - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}
+            - MQTT_BROKER_PORT=${MQTT_BROKER_PORT}
+            - SEND_RAW_MESSAGE_TO_DB=${SEND_RAW_MESSAGE_TO_DB}
+            - DEBUG=${DEBUG}
