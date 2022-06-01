@@ -9,7 +9,7 @@ from xknx.dpt import DPTArray
 from xknx.dpt import DPTBinary
 from xknx.telegram.apci import GroupValueWrite
 
-from ..transcoder import KnxTranscoder
+from connector.transcoder import KnxTranscoder
 
 
 class TestKnxTransoderDecodeSensorValue(unittest.TestCase):

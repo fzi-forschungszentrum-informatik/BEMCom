@@ -17,7 +17,7 @@ from pyconnector_template.pyconnector_template import ActuatorFlow as AFTemplate
 from pyconnector_template.pyconnector_template import Connector as CTemplate
 from pyconnector_template.dispatch import DispatchOnce
 
-from .transcoder import KnxTranscoder
+from connector.transcoder import KnxTranscoder
 
 
 logger = logging.getLogger("pyconnector")

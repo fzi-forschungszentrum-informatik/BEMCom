@@ -15,7 +15,7 @@ from xknx.telegram import (
 )
 from xknx.telegram.apci import GroupValueWrite
 
-from ..main import Connector, __version__
+from connector.main import Connector, __version__
 
 
 async def run_knx_connection(self):
