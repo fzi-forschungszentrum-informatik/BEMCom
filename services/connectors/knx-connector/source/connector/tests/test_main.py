@@ -125,8 +125,9 @@ class TestParseRawMsg(unittest.TestCase):
         }
 
         actual_msg = connector.parse_raw_msg(raw_msg=test_msg)
+        expected_msg = {"payload": None}
 
-        assert actual_msg is None
+        assert actual_msg == expected_msg
 
 
 class TestSendCommand(unittest.TestCase):

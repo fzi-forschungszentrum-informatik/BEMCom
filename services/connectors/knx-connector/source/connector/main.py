@@ -175,12 +175,15 @@ class SensorFlow(SFTemplate):
                 "Abort `parse_raw_msg` (not in KNX_DATAPOINTS) for message "
                 "with group_id {}".format(group_address)
             )
-            return
+            return {"payload": None}
 
         value_as_knx = raw_msg["payload"]["raw_message"]["payload_value_value"]
-        value_as_python = self.knx_transcoder.decode_sensor_value(
-            value_as_knx=value_as_knx, knx_group_address=group_address,
-        )
+        try:
+            value_as_python = self.knx_transcoder.decode_sensor_value(
+                value_as_knx=value_as_knx, knx_group_address=group_address,
+            )
+        except Exception:
+            logger.exception("Exception while decoding raw KNX value.")
 
         msg = {
             "payload": {
