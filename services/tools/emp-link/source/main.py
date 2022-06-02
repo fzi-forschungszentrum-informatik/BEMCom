@@ -10,13 +10,14 @@ from random import random
 import socket
 from time import sleep
 
-
 from esg.api_client.base import HttpBaseClient
 from esg.api_client.emp import EmpClient
 from esg.models.datapoint import DatapointList
 from esg.models.datapoint import ValueMessage
 from esg.models.datapoint import ValueMessageByDatapointId
 from paho.mqtt.client import Client
+from pyconnector_template.dispatch import DispatchInInterval
+from pyconnector_template.dispatch import DispatchOnce
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s:%(message)s"
@@ -102,9 +103,6 @@ class EmpLink:
                 self.connect_kwargs,
             )
             sys.exit(1)
-
-        # Start MQTT handler in dedicated thread.
-        self.client.loop_start()
 
         # This is the list of topics the client is subscribed to.
         self._subsribed_topics = []
@@ -292,6 +290,20 @@ class EmpLink:
             "".format(put_summary.objects_updated, put_summary.objects_created)
         )
 
+    @staticmethod
+    def mqtt_worker(mqtt_client):
+        """
+        Execute the MQTT main loop in a dedicated thread. This is
+        similar to use loop_start of paho mqtt but allows us to use a
+        unfied concept to check whether all background processes are
+        still alive.
+        """
+        try:
+            mqtt_client.loop_forever()
+        finally:
+            # Gracefully terminate connection once the main program exits.
+            mqtt_client.disconnect()
+
     def main(self):
         """
         Just check for changes in datapoint metadata periodically.
@@ -299,15 +311,71 @@ class EmpLink:
         Everything else is handled by the `on_message` method.
         """
 
+        logger.debug("Starting MQTT dispatcher with client loop.")
+        mqtt_dispatcher = DispatchOnce(
+            target_func=self.mqtt_worker,
+            target_kwargs={"mqtt_client": self.client},
+        )
+        mqtt_dispatcher.start()
+
+        # Trigger a push of the latest datapoint metadata to EMP
+        # every minute.
+        datapoint_update_dispatcher = DispatchInInterval(
+            call_interval=60,
+            target_func=self.update_datapoint_and_subscriptions,
+        )
+        datapoint_update_dispatcher.start()
+
+        # This collects all running dispatchers. These are checked for health
+        # in the main loop below.
+        dispatchers = [mqtt_dispatcher, datapoint_update_dispatcher]
+
+        logger.info("EMP link online. Entering main loop.")
         try:
             while True:
-                self.update_datapoint_and_subscriptions()
-                sleep(60)
+                # Check that all dispatchers are alive, and if this is the
+                # case assume that the connector operations as expected.
+                if not all([d.is_alive() for d in dispatchers]):
+                    # If one is not alive, see if we encountered an exception
+                    # and raise it, as exceptions in threads are not
+                    # automatically forwarded to the main program.
+                    for d in dispatchers:
+                        if d.exception is not None:
+                            raise d.exception
+                    # If no exception is found raise a custom on.
+                    raise RuntimeError(
+                        "At least one dispatcher thread is not alive, but no "
+                        "exception was caught."
+                    )
 
+                    break
+                sleep(1)
+
+        except (KeyboardInterrupt, SystemExit):
+            # This is the normal way to exit the Connector. No need to log the
+            # exception.
+            logger.info(
+                "EMP link received KeyboardInterrupt or SystemExit"
+                ", shuting down."
+            )
+        except Exception:
+            # This is execution when something goes really wrong.
+            logger.exception(
+                "EMP link main loop has caused an unexpected exception. "
+                "Shuting down."
+            )
         finally:
-            logger.info("Shutting down EMP Link.")
-            self.client.disconnect()
-            self.client.loop_stop()
+            for dispatcher in dispatchers:
+                # Ask the dispatcher (i.e. thread) to quit and give it
+                # one second to execute any cleanup. Anything that takes
+                # longer will be killed hard once the main program exits
+                # as the dispatcher thread is expected to be a daemonic
+                # thread.
+                logger.debug("Terminating dispatcher %s", dispatcher)
+                if dispatcher.is_alive():
+                    dispatcher.terminate()
+                dispatcher.join(1)
+            logger.info("EMP link shut down completed. Good bye.")
 
 
 if __name__ == "__main__":
