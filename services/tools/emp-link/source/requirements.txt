@@ -6,3 +6,4 @@ fastapi==0.78.*
 
 # Dependencies of main.py
 paho-mqtt==1.6.*
+websocket-client==1.3.*

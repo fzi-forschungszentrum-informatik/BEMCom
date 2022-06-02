@@ -3,11 +3,10 @@
 """
 import os
 import sys
-from datetime import datetime, timezone
 import json
 import logging
-from random import random
 import socket
+import ssl
 from time import sleep
 
 from esg.api_client.base import HttpBaseClient
@@ -15,9 +14,12 @@ from esg.api_client.emp import EmpClient
 from esg.models.datapoint import DatapointList
 from esg.models.datapoint import ValueMessage
 from esg.models.datapoint import ValueMessageByDatapointId
+from esg.models.datapoint import ScheduleMessageByDatapointId
+from esg.models.datapoint import SetpointMessageByDatapointId
 from paho.mqtt.client import Client
 from pyconnector_template.dispatch import DispatchInInterval
 from pyconnector_template.dispatch import DispatchOnce
+import websocket
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s:%(message)s"
@@ -58,6 +60,25 @@ class EmpLink:
         logger.info("Testing connection to EMP API at {}".format(emp_api_url))
         self.emp_client.test_connection()
 
+        # Compute URL and SSL config for EMP websockets.
+        # TODO: Compute this from URL, however, therefore EMP must remove the
+        #       `ws/` part in the URL as it cannot be computed at which
+        #       position it actually belongs.
+        if "https://" in emp_api_url:
+            ws_proto = "wss://"
+        elif "http://" in emp_api_url:
+            ws_proto = "ws://"
+
+        url_without_proto = emp_api_url.split("://")[1]
+        self.ws_base_url = "{}{}/ws/api/".format(
+            ws_proto, url_without_proto.split("/api/")[0]
+        )
+        if emp_api_verify_ssl:
+            self.ws_sslopt = {}
+        else:
+            self.ws_sslopt = {"cert_reqs": ssl.CERT_NONE}
+
+        # Connet to BEMCom too.
         bemcom_api_url = os.getenv("BEMCOM_API_URL")
         bemcom_api_verify_ssl = True
         if (os.getenv("BEMCOM_API_VERIFY_SSL") or "TRUE").lower() == "false":
@@ -235,9 +256,12 @@ class EmpLink:
 
         # Make a map between internal EMP IDs and EMP IDs.
         datapoint_id_map = {}
+        # Also the reverse for pushing back messages to BEMCom.
+        self.datapoint_emp_to_bemcom_id = {}
         for datapoint_obj in datapoint_list.__root__:
             emp_id = datapoint_obj.id
             datapoint_id_map[datapoint_obj.origin_id] = emp_id
+            self.datapoint_emp_to_bemcom_id[emp_id] = datapoint_obj.origin_id
 
         self.userdata["datapoint_id_map"] = datapoint_id_map
         logger.debug(
@@ -258,38 +282,6 @@ class EmpLink:
 
         return datapoint_id_map, topics
 
-    def update_values(self):
-        """
-        Usually measured values would be received from some device or
-        hardware abstraction component. Here we just compute a random
-        value on every call to simulate activity.
-        """
-
-        value_msg_internal_id = "42"
-        value_message = {
-            "value": round(22 + random() * 3, 1),
-            "time": datetime.utcnow().astimezone(timezone.utc),
-        }
-
-        # get EMP ID if the corresponding datapoint.
-        emp_id = self.datapoint_id_map[value_msg_internal_id]
-
-        # use construct_recursive only if you are sure that the values
-        # are correct and match the message format.
-        value_msgs_by_dp_id = ValueMessageByDatapointId.construct_recursive(
-            __root__={emp_id: value_message}
-        )
-
-        # Push to EMP.
-        put_summary = self.emp_client.put_datapoint_value_latest(
-            value_msgs_by_dp_id=value_msgs_by_dp_id
-        )
-
-        logger.info(
-            "Put value messages latest: {} updated, {} created."
-            "".format(put_summary.objects_updated, put_summary.objects_created)
-        )
-
     @staticmethod
     def mqtt_worker(mqtt_client):
         """
@@ -304,20 +296,57 @@ class EmpLink:
             # Gracefully terminate connection once the main program exits.
             mqtt_client.disconnect()
 
+    def on_ws_open(self, ws):
+        logger.debug("Connected to websocket URL: %s", ws.url)
+
+    def on_ws_message(self, ws, message):
+        if "schedule" in ws.url:
+            msgs_by_id = ScheduleMessageByDatapointId.parse_raw(message)
+            bemcom_url_template = "/datapoint/{}/schedule/"
+        elif "setpoint" in ws.url:
+            msgs_by_id = SetpointMessageByDatapointId.parse_raw(message)
+            bemcom_url_template = "/datapoint/{}/setpoint/"
+
+        for emp_id in msgs_by_id.__root__:
+            msg = msgs_by_id.__root__[emp_id]
+            bemcom_id = self.datapoint_emp_to_bemcom_id[int(emp_id)]
+            bemcom_url = bemcom_url_template.format(bemcom_id)
+            self.bemcom_client.post(bemcom_url, json=msg.jsonable_bemcom())
+
+    def websocket_worker(self, ws_url, sslopt):
+        """
+        Connect to EMP websocket and try to keep connection forever.
+
+        NOTE: This will only fetch data for datapoints that exist at the
+              moment this worker is started.
+        TODO: Find a way to update the websockets if new datapoints have
+              been created or configured.
+
+        Arguments:
+        ----------
+        ws_url : str
+            The URL of the Websocket to connect to.
+        sslopt : dict
+            SSL options for the websocket connection forwarded to
+            to run_forever.
+        """
+        logger.info("Connecting to websocket URL: %s", ws_url)
+        ws = websocket.WebSocketApp(
+            ws_url, on_open=self.on_ws_open, on_message=self.on_ws_message
+        )
+        try:
+            ws.run_forever(sslopt=sslopt)
+        finally:
+            ws.close()
+
     def main(self):
         """
         Just check for changes in datapoint metadata periodically.
 
         Everything else is handled by the `on_message` method.
+
+
         """
-
-        logger.debug("Starting MQTT dispatcher with client loop.")
-        mqtt_dispatcher = DispatchOnce(
-            target_func=self.mqtt_worker,
-            target_kwargs={"mqtt_client": self.client},
-        )
-        mqtt_dispatcher.start()
-
         # Trigger a push of the latest datapoint metadata to EMP
         # every minute.
         datapoint_update_dispatcher = DispatchInInterval(
@@ -326,9 +355,41 @@ class EmpLink:
         )
         datapoint_update_dispatcher.start()
 
+        # This should be started after the datapoint update as
+        # the former populates the ID mapping.
+        logger.debug("Starting MQTT dispatcher with client loop.")
+        mqtt_dispatcher = DispatchOnce(
+            target_func=self.mqtt_worker,
+            target_kwargs={"mqtt_client": self.client},
+        )
+        mqtt_dispatcher.start()
+
         # This collects all running dispatchers. These are checked for health
         # in the main loop below.
         dispatchers = [mqtt_dispatcher, datapoint_update_dispatcher]
+
+        # Give the script up to 30 seconds to process the datapoint
+        # metadata for the first time.
+        for i in range(30):
+            if self._subsribed_topics:
+                break
+            sleep(1)
+
+        # Connect to websockts to receive schedules and setpoints.
+        for msg_type in ["setpoint", "schedule"]:
+            ws_url = self.ws_base_url + "datapoint/{}/latest/".format(msg_type)
+            ws_url += "?datapoint-ids={}".format(
+                list(self.datapoint_emp_to_bemcom_id)
+            )
+            # Remove whitespace between IDs, it causes a 400 error.
+            ws_url = ws_url.replace(", ", ",")
+
+            ws_dispatcher = DispatchOnce(
+                target_func=self.websocket_worker,
+                target_kwargs={"ws_url": ws_url, "sslopt": self.ws_sslopt},
+            )
+            ws_dispatcher.start()
+            dispatchers.append(ws_dispatcher)
 
         logger.info("EMP link online. Entering main loop.")
         try:
