@@ -1,2 +1,8 @@
-# Add additional dependencies here.
+# Dependencies for the relevevant parts of ESG package.
+watchdog==2.1.*
+requests
+pydantic==1.9.*
+fastapi==0.78.*
+
+# Dependencies of main.py
 paho-mqtt==1.6.*

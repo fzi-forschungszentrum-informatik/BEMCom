@@ -1,4 +1,4 @@
-FROM iik-gitlab.fzi.de:5050/dwo/energy-service-generics:0.12.0
+FROM bemcom/python-connector-template:0.6.0
 
 ENV PYTHONUNBUFFERED 1
 
@@ -9,10 +9,19 @@ WORKDIR /source
 
 # Install dependencies first, makes subsequent builds faster.
 COPY ./requirements.txt /source/emp-link/requirements.txt
-RUN /opt/conda/bin/pip install -r /source/emp-link/requirements.txt
+RUN pip install -r /source/emp-link/requirements.txt
+
+# Fetch the latest version of energy-service-generics. Note that we don't use
+# this image directly as base image because:
+# 1. It is rather large and contains a lot of packages we don't need.
+# 2. It depends on an image for which no arm-v7 version is available, 
+#    but this is required to deploy to RaspberryPI.
+# Copy the installed pacakges.
+COPY --from=bemcom/energy-service-generics:0.12.3 /opt/conda/lib/python3.10/site-packages/esg \
+  /usr/local/lib/python3.10/site-packages/esg
 
 # Install source code.
-COPY --chown=$MAMBA_USER:$MAMBA_USER . /source/emp-link/
+COPY . /source/emp-link/
 
 # Start the service by default on container startup.
-ENTRYPOINT ["/usr/local/bin/_entrypoint.sh", "bash", "/source/emp-link/entrypoint.sh"]
+ENTRYPOINT ["bash", "/source/emp-link/entrypoint.sh"]
