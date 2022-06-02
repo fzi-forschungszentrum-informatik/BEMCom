@@ -1,0 +1,16 @@
+# This is not included in environment.yml as pandas with all depedencies is
+# really large and we try to avoid installing if the child serivce will
+# not use it.
+# Here not installing pandas will save roughly 400Mb (over 50%) in image size.
+---
+name: base
+channels:
+  - conda-forge
+dependencies:
+  - pandas=1.*
+  - django=3.2.*
+  - django-timescaledb=0.2.*
+  - psycopg2=2.*
+# This doesn't work, the package is not installed.
+#  - pip:
+#    - django-timescaledb

@@ -1,0 +1,16 @@
+name: base
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip # Don't remove this, we need it to install the esg module later.
+  - pydantic=1.9.*
+  - fastapi=0.78.*
+  - uvicorn=0.17.*
+  - python-dotenv=0.20.*
+  - prometheus-fastapi-instrumentator=5.7.*
+  - pytest
+  - pytest-httpserver=1.0.*
+  - requests
+  - watchdog=2.1.*
+  - pytz
