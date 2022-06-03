@@ -109,3 +109,4 @@ Follow the following steps while contributing to the connector:
 | 0.0.1 | Some work in progress development version.                   |
 | 0.1.0 | First productive version.                                    |
 | 0.4.0 | Update to python connector template 0.4.0 (Datapoint Value and Available Datapoint messages and a can now contain any JSON data type as value.) |
+| 0.6.0 | Update to python connector template 0.6.0                    |
