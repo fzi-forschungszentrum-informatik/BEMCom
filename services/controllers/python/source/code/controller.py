@@ -409,6 +409,10 @@ class Controller:
                 current_max_value = csp["max_value"]
                 continuous_flexibilty = True
 
+        # Don't do anything if neither schedule nor setpoint exist (yet).
+        if current_schedule is None and current_setpoint is None:
+            return
+
         # Directly use preferred value of setpoint if no schedule is present.
         if current_schedule is None:
             actuator_value = setpoint_preferred_value
