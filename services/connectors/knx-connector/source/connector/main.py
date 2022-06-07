@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 """
-__version__ = "0.0.1"
+__version__ = "0.1.0"
 
 import os
 import asyncio
@@ -12,6 +12,7 @@ import logging
 from dotenv import load_dotenv, find_dotenv
 from xknx import XKNX
 from xknx.io import ConnectionConfig, ConnectionType
+from xknx.telegram import GroupAddress, Telegram
 from pyconnector_template.pyconnector_template import SensorFlow as SFTemplate
 from pyconnector_template.pyconnector_template import ActuatorFlow as AFTemplate
 from pyconnector_template.pyconnector_template import Connector as CTemplate
@@ -170,20 +171,27 @@ class SensorFlow(SFTemplate):
                 }
         """
         group_address = raw_msg["payload"]["raw_message"]["destination_address"]
+        value_as_knx = raw_msg["payload"]["raw_message"]["payload_value_value"]
+
         if group_address not in self.knx_datapoints["sensor"]:
-            logger.debug(
+            logger.info(
                 "Abort `parse_raw_msg` (not in KNX_DATAPOINTS) for message "
-                "with group_id {}".format(group_address)
+                "with group_id {}. Raw data is: {}"
+                "".format(group_address, value_as_knx)
             )
             return {"payload": None}
 
-        value_as_knx = raw_msg["payload"]["raw_message"]["payload_value_value"]
         try:
             value_as_python = self.knx_transcoder.decode_sensor_value(
                 value_as_knx=value_as_knx, knx_group_address=group_address,
             )
         except Exception:
-            logger.exception("Exception while decoding raw KNX value.")
+            logger.exception(
+                "Exception while decoding raw KNX value for message "
+                "with group_id {}. Raw data is: {}"
+                "".format(group_address, value_as_knx)
+            )
+            return {"payload": None}
 
         msg = {
             "payload": {
@@ -232,7 +240,10 @@ class ActuatorFlow(AFTemplate):
 
     def send_command(self, datapoint_key, datapoint_value):
         """
-        Send message to target device, via gateway if applicable.
+        Send value as xknx telegram to KNX bus.
+
+        This basically does the same thing as xknx does, see here:
+        https://github.com/XKNX/xknx/blob/4cdbc597e2bc42fdc32bb1a0f8624883386ae61a/xknx/remote_value/remote_value.py#L195
 
         Parameters
         ----------
@@ -242,7 +253,28 @@ class ActuatorFlow(AFTemplate):
         value : string.
             The value that should be sent to the datapoint.
         """
-        raise NotImplementedError("send_command has not been implemented.")
+        knx_group_address = datapoint_key
+        value_as_python = datapoint_value
+
+        try:
+            value_as_group_message = self.knx_transcoder.encode_actuator_value(
+                value_as_python=value_as_python,
+                knx_group_address=knx_group_address,
+            )
+        except Exception:
+            logger.exception(
+                "Exception while encoding value to KNX "
+                "with group_id {}. Valueis: {}"
+                "".format(knx_group_address, value_as_python)
+            )
+            return
+
+        telegram = Telegram(
+            destination_address=GroupAddress(knx_group_address),
+            payload=value_as_group_message,
+            source_address=self.xknx.current_address,
+        )
+        asyncio.run(self.xknx.telegrams.put(telegram))
 
 
 class Connector(CTemplate, SensorFlow, ActuatorFlow):
@@ -360,7 +392,13 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         # once they are first appear in run_sensor_flow method. It is thus not
         # necessary to specify them here. actuator datapoints in contrast must
         # be specified here.
-        kwargs["available_datapoints"] = {"sensor": {}, "actuator": {}}
+        kwargs["available_datapoints"] = {
+            # TODO: Might want to directly populate sensor datapoints from
+            #       KNX_DATAPOINTS?
+            "sensor": {},
+            # TODO: Add example values based on KNX datapoint types?
+            "actuator": {k: None for k in self.knx_datapoints["actuator"]},
+        }
         CTemplate.__init__(self, *args, **kwargs)
 
         self.custom_env_var = os.getenv("CUSTOM_ENV_VARR") or "default_value"

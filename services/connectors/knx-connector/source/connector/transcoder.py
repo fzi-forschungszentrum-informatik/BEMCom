@@ -5,6 +5,8 @@ data from/to knx to/from python representation.
 from xknx.dpt import DPTArray
 from xknx.dpt import DPTBase
 from xknx.dpt import DPTBinary
+from xknx.dpt import DPTDate
+from xknx.dpt import DPTTime
 from xknx.telegram.apci import GroupValueWrite
 
 
@@ -64,12 +66,11 @@ class KnxTranscoder:
                 "DPST-1-8": DPTBool,
                 # TODO: Add classes for these!
                 "DPST-2-1": None,
-                "DPST-10-1": None,
-                "DPST-11-1": None,
+                "DPST-10-1": DPTTime,
+                "DPST-11-1": DPTDate,
                 "DPST-12-1": None,
             }
         )
-        print(sorted(self.transcoder_by_dpt_number))
 
     def decode_sensor_value(self, value_as_knx, knx_group_address):
         """

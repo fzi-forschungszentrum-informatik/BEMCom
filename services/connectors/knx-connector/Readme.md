@@ -1,26 +1,22 @@
 # KNX Connector
 
-This is a connector to integrate KNX devices
+This is a connector to integrate KNX devices.
 
 
 
 ### Supported Gateways
 
-Some remarks about the gateways or just nothing.
+Note that currently only KNX IP gateways are supported that allow a TCP tunnel connection.
 
-| Manufacturer  | Model                | Tested?/Remarks? |
-| ------------- | -------------------- | ---------------- |
-| Hardware Inc. | Precise gateway name | Tested.          |
+| Manufacturer | Model                                                        | Tested?/Remarks? |
+| ------------ | ------------------------------------------------------------ | ---------------- |
+| JUNG         | [KNX Spannungsversorgung 320 mA mit IP-Schnittstelle](https://www.jung.de/at/online-katalog/1009783303/) | Tested.          |
 
 
 
 ### Supported Devices
 
-Some remarks about the devices or just nothing.
-
-| Manufacturer  | Model               | Tested?/Remarks? |
-| ------------- | ------------------- | ---------------- |
-| Hardware Inc. | Precise device name | Tested.          |
+Any KNX device should work in theory. It might happen that some [KNX datapoint types](https://www.knx.org/wAssets/docs/downloads/Certification/Interworking-Datapoint-types/03_07_02-Datapoint-Types-v02.02.01-AS.pdf) are not supported yet. Check the definition of `transcoder_by_dpt_number` in [transcoder.py](source/connector/transcoder.py).
 
 
 
@@ -28,9 +24,7 @@ Some remarks about the devices or just nothing.
 
 ##### Ports
 
-| Port | Usage/Remarks                           |
-| ---- | --------------------------------------- |
-| 1234 | Some port for incoming callbacks maybe? |
+None.
 
 ##### Environment Variables
 
@@ -72,27 +66,9 @@ knx_datapoints = pd.read_csv(file_name, sep="\t", encoding="latin-1")
 json.dumps({r.Address: r.DatapointType for _, r in knx_datapoints.iterrows()}, indent=4)
 ```
 
-
-
-
-
 ##### Volumes
 
 None preferably. You should only add volumes, especially file mounts if it is really necessary. It introduces a lot of trouble with user id and file ownerships stuff.
-
-
-
-### Create TODO from ETS CSV Export
-
-```python
-import json
-import pandas as pd
-
-knx_datapoints = pd.read_csv(file_name, sep="\t", encoding="latin-1")
-json.dumps({r.Address: r.DatapointType for _, r in knx_datapoints.iterrows()})
-```
-
-
 
 
 
@@ -137,7 +113,6 @@ Follow the following steps while contributing to the connector:
 
 ### Changelog
 
-| Tag   | Changes                                    |
-| ----- | ------------------------------------------ |
-| 0.0.1 | Some work in progress development version. |
-| 0.1.0 | First productive version.                  |
+| Tag   | Changes                   |
+| ----- | ------------------------- |
+| 0.1.0 | First productive version. |
