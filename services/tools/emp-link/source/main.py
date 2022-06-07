@@ -274,7 +274,7 @@ class EmpLink:
         topics = []
         connector_names = {dp["connector"]["name"] for dp in datapoints}
         for connector_name in connector_names:
-            topic = "{}/messages/#".format(connector_name)
+            topic = "{}/messages/+/value".format(connector_name)
             if topic not in self._subsribed_topics:
                 logger.info("Subscribing to topic: {}".format(topic))
                 self.client.subscribe(topic)
