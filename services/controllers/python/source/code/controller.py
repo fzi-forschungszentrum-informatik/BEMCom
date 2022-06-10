@@ -15,7 +15,7 @@ from paho.mqtt.client import Client
 
 logger = logging.getLogger(__name__)
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format=log_format)
+logging.basicConfig(stream=sys.stdout, level=os.getenv("LOGLEVEL", "INFO"), format=log_format)
 
 
 def timestamp_now():
@@ -158,8 +158,10 @@ class Controller:
         # exceptions, so we at least write them into the logs.
         try:
             self = userdata["self"]
+            logger.debug("Received message: {}".format(msg.payload))
             if msg.topic == self.config_topic:
                 logger.info("Received new configuration message")
+                
                 payload = json.loads(msg.payload)
 
                 # Build up a topic index, linking from the topic to the topic
@@ -377,6 +379,7 @@ class Controller:
             The id (i.e. mqtt topic for the sensor values
         """
         actuator_value_topic = self.topics_per_id[_id]["actuator"]["value"]
+        logger.debug("([_id: {}] update_actuator_value called for actuator topic: {}".format(_id, actuator_value_topic))
         current_sensor_value = None
         current_schedule = None
         current_setpoint = None
@@ -393,21 +396,33 @@ class Controller:
 
         if "sensor_value" in self.current_values[_id]:
             current_sensor_value = self.current_values[_id]["sensor_value"]
+            logger.debug("[_id: {}] current_sensor_value: {}".format(_id, current_sensor_value))
         if "actuator_schedule" in self.current_values[_id]:
             current_schedule = self.current_values[_id]["actuator_schedule"]
             schedule_value = current_schedule["value"]
+            logger.debug("[_id: {}] current_schedule: {}".format(_id, current_schedule))
+            logger.debug("[_id: {}] schedule_value: {}".format(_id, schedule_value))
         if "actuator_setpoint" in self.current_values[_id]:
             current_setpoint = self.current_values[_id]["actuator_setpoint"]
             setpoint_preferred_value = current_setpoint["preferred_value"]
+            logger.debug("[_id: {}] current_setpoint: {}".format(_id, current_setpoint))
+            logger.debug("[_id: {}] setpoint_preferred_value: {}".format(_id, setpoint_preferred_value))
 
             csp = current_setpoint
             if "acceptable_values" in csp:
                 current_acceptable_values = csp["acceptable_values"]
                 discrete_flexibility = True
+
             if "min_value" in csp and "max_value" in csp:
                 current_min_value = csp["min_value"]
                 current_max_value = csp["max_value"]
                 continuous_flexibilty = True
+
+        logger.debug("[_id: {}] current_acceptable_values: {}".format(_id, current_acceptable_values))
+        logger.debug("[_id: {}] discrete_flexibility: {}".format(_id, discrete_flexibility))
+        logger.debug("[_id: {}] current_min_value: {}".format(_id, current_min_value))
+        logger.debug("[_id: {}] current_max_value: {}".format(_id, current_max_value))
+        logger.debug("[_id: {}] continuous_flexibilty: {}".format(_id, continuous_flexibilty))
 
         # Don't do anything if neither schedule nor setpoint exist (yet).
         if current_schedule is None and current_setpoint is None:
@@ -487,6 +502,7 @@ class Controller:
                 "timestamp": self.timestamp_now(),
             }
             self.client.publish(actuator_value_topic, json.dumps(actuator_value_msg))
+            logger.debug("Published actuator value message with value \"{}\" on topic \"{}\"".format(actuator_value, actuator_value_topic))
             self.current_values[_id]["actuator_value"] = actuator_value
 
     def add_timer(self, topic, timer):
