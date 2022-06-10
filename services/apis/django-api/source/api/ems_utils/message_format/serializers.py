@@ -254,7 +254,7 @@ class GenericValidators:
                 )
 
             # Verify that only the expected keys are given in setpoint item.
-            expected_setpoint_item_len = 3
+            max_setpoint_item_len = 6
             if "from_timestamp" not in setpoint_item:
                 raise serializers.ValidationError(
                     "Key 'from_timestamp' is missing in Setpoint Item (%s)."
@@ -270,10 +270,8 @@ class GenericValidators:
                     "Key 'preferred_value' is missing in Setpoint Item (%s)."
                     % json.dumps(setpoint_item)
                 )
-                expected_setpoint_item_len = 3
 
             if "discrete_" in datapoint.data_format:
-                expected_setpoint_item_len = 4
                 if "acceptable_values" not in setpoint_item:
                     raise serializers.ValidationError(
                         "Key 'acceptable_values' is missing in Setpoint Item "
@@ -281,7 +279,6 @@ class GenericValidators:
                     )
 
             if "continuous_numeric" in datapoint.data_format:
-                expected_setpoint_item_len = 5
                 if "min_value" not in setpoint_item:
                     raise serializers.ValidationError(
                         "Key 'min_value' is missing in Setpoint Item "
@@ -293,7 +290,7 @@ class GenericValidators:
                         "(%s)." % json.dumps(setpoint_item)
                     )
 
-            if len(setpoint_item.keys()) > expected_setpoint_item_len:
+            if len(setpoint_item.keys()) > max_setpoint_item_len:
                 raise serializers.ValidationError(
                     "Found unexpected key in Setpoint Item (%s)."
                     % json.dumps(setpoint_item)
