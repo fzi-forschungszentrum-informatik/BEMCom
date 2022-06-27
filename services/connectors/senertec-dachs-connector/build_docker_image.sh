@@ -1,1 +1,1 @@
-docker build ./source -t bemcom/senertec-dachs-connector:0.3.0
+docker build ./source -t bemcom/senertec-dachs-connector:0.3.1
