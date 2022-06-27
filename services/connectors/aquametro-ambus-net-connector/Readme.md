@@ -64,7 +64,8 @@ Follow the following steps while contributing to the connector:
 
 ### Changelog
 
-| Tag   | Changes          |
-| ----- | ---------------- |
-| 0.1.0 | Initial version. |
-| 0.1.1 | Minor bug fix.   |
+| Tag   | Changes                            |
+| ----- | ---------------------------------- |
+| 0.1.0 | Initial version.                   |
+| 0.1.1 | Minor bug fix.                     |
+| 0.2.0 | Update to connector template 0.3.0 |

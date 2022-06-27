@@ -1,1 +1,1 @@
-docker build ./source -t bemcom/aquametro-ambus-net-connector:0.1.1
+docker build ./source -t bemcom/aquametro-ambus-net-connector:0.2.0
