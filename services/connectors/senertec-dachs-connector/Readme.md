@@ -78,3 +78,4 @@ Follow the following steps while contributing to the connector:
 | ----- | ------------------------------------------------------------ |
 | 0.1.0 | First productive version. Read only yet.                     |
 | 0.2.1 | Added support for requesting Dachs operation via actuator datapoint. |
+| 0.3.0 | Update to connector template 0.3.0                           |
