@@ -20,7 +20,8 @@ This template allows the the implementation of connectors in Node-RED with maxim
 
 ### Changelog
 
-| Tag   | Changes                   |
-| ----- | ------------------------- |
-| 0.1.0 | First productive version. |
+| Tag   | Changes                                            |
+| ----- | -------------------------------------------------- |
+| 0.1.0 | First productive version.                          |
+| 0.3.0 | Add automatic parsing of values from JSON strings. |
 
