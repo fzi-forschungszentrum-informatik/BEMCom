@@ -1,1 +1,1 @@
-docker build ./source -t bemcom/grafana-tool:0.3.1
+docker build ./source -t bemcom/grafana-tool:0.4.0
