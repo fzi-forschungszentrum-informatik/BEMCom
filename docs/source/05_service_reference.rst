@@ -18,6 +18,8 @@ Connectors
    :parser: myst_parser.sphinx_
 .. include:: ../../services/connectors/keba-p30-connector/Readme.md
    :parser: myst_parser.sphinx_
+.. include:: ../../services/connectors/knx-connector/Readme.md
+   :parser: myst_parser.sphinx_
 .. include:: ../../services/connectors/modbus-tcp-connector/Readme.md
    :parser: myst_parser.sphinx_
 .. include:: ../../services/connectors/mqtt-connector/Readme.md
@@ -43,6 +45,8 @@ Raw Message DBs
 Tools
 -----
 .. include:: ../../services/tools/demo-device/Readme.md
+   :parser: myst_parser.sphinx_
+.. include:: ../../services/tools/emp-link/Readme.md
    :parser: myst_parser.sphinx_
 .. include:: ../../services/tools/grafana/Readme.md
    :parser: myst_parser.sphinx_
