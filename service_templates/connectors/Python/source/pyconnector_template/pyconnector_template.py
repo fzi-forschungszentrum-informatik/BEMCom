@@ -74,7 +74,9 @@ class MQTTHandler(logging.StreamHandler):
         }
 
         self.mqtt_client.publish(
-            payload=json.dumps(log_msg), topic=self.log_topic, retain=True,
+            payload=json.dumps(log_msg),
+            topic=self.log_topic,
+            retain=True,
         )
 
 
@@ -426,7 +428,9 @@ class SensorFlow:
                 payload = json.dumps(value_msg)
 
             self.mqtt_client.publish(
-                topic=topic, payload=payload, retain=True,
+                topic=topic,
+                payload=payload,
+                retain=True,
             )
 
 
@@ -483,13 +487,16 @@ class ActuatorFlow:
 
         # Extract the value and load the connector internal key for this msg.
         datapoint_value = value_msg["value"]
+        datapoint_timestamp = value_msg["timestamp"]
         datapoint_key = self.datapoint_map["actuator"][topic]
 
         self.send_command(
-            datapoint_key=datapoint_key, datapoint_value=datapoint_value
+            datapoint_key=datapoint_key,
+            datapoint_value=datapoint_value,
+            datapoint_timestamp=datapoint_timestamp,
         )
 
-    def send_command(self, datapoint_key, datapoint_value):
+    def send_command(self, datapoint_key, datapoint_value, datapoint_timestamp):
         """
         Send message to target device, via gateway if applicable.
 
@@ -703,7 +710,8 @@ class Connector:
         # Add MQTT Log handler if it isn't in there yet.
         if not any([isinstance(h, MQTTHandler) for h in logger.handlers]):
             mqtt_log_handler = MQTTHandler(
-                mqtt_client=self.mqtt_client, log_topic=self.MQTT_TOPIC_LOGS,
+                mqtt_client=self.mqtt_client,
+                log_topic=self.MQTT_TOPIC_LOGS,
             )
             logger.addHandler(mqtt_log_handler)
 

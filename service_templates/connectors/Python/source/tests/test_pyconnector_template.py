@@ -27,6 +27,7 @@ class RecursiveMagicMock(MagicMock):
         _ = super().__call__(*args, **kwargs)
         return self
 
+
 class TestMQTTHandler__Init__(TestClassWithFixtures):
 
     fixture_names = []
@@ -54,14 +55,12 @@ class TestMQTTHandlerEmit(TestClassWithFixtures):
         self.log_topic = MagicMock()
 
         self.mh = MQTTHandler(
-            mqtt_client=self.mqtt_client,
-            log_topic=self.log_topic
+            mqtt_client=self.mqtt_client, log_topic=self.log_topic
         )
 
         self.logger = logging.getLogger("TestMQTTHandler")
         self.logger.setLevel(logging.INFO)
         self.logger.addHandler(self.mh)
-
 
     def test_topic_correct(self):
         """
@@ -80,7 +79,6 @@ class TestMQTTHandlerEmit(TestClassWithFixtures):
         # - 1 in case it rounds up.
         log_ts = round(datetime.now(tz=timezone.utc).timestamp() * 1000) - 1
         self.logger.info("A test")
-
 
         # Check that the message is as expected, but not for the timestamp,
         # as we don't know exactly what timestamp has been used.
@@ -112,7 +110,6 @@ class TestMQTTHandlerEmit(TestClassWithFixtures):
         # - 1 in case it rounds up.
         log_ts = round(datetime.now(tz=timezone.utc).timestamp() * 1000) - 1
         self.logger.info("A test: %s", [1, 2])
-
 
         # Check that the message is as expected, but not for the timestamp,
         # as we don't know exactly what timestamp has been used.
@@ -152,9 +149,7 @@ class TestSensorFlowRun(TestClassWithFixtures):
                 "raw_message": '{"dp_1": 2.1, "dp_2": "ok"}',
             }
         }
-        self.sf.receive_raw_msg = MagicMock(
-            return_value=self.raw_msg_return
-        )
+        self.sf.receive_raw_msg = MagicMock(return_value=self.raw_msg_return)
 
         # There is no control flow after the check for raw message DB that
         # would depend on the content of the message. Just use these
@@ -255,13 +250,9 @@ class TestSensorFlowRun(TestClassWithFixtures):
         """
         self.sf.SEND_RAW_MESSAGE_TO_DB = "TRUE"
         raw_msg_bytes_return = {
-            "payload": {
-                "raw_message": b'some bytes and stuff'
-            }
+            "payload": {"raw_message": b"some bytes and stuff"}
         }
-        self.sf.receive_raw_msg = MagicMock(
-            return_value=raw_msg_bytes_return
-        )
+        self.sf.receive_raw_msg = MagicMock(return_value=raw_msg_bytes_return)
 
         with pytest.raises(TypeError):
             self.sf.run_sensor_flow()
@@ -296,24 +287,22 @@ class TestSensorFlowRun(TestClassWithFixtures):
             "payload": {
                 "flattened_message": {
                     "device_1__sensor_1": "2.12",
-                    "device_1__sensor_2": "3.12"
+                    "device_1__sensor_2": "3.12",
                 },
-                "timestamp": 1573680749000
+                "timestamp": 1573680749000,
             }
         }
-        self.sf._flatten_parsed_msg = MagicMock(
-            return_value=flattened_msg
-        )
+        self.sf._flatten_parsed_msg = MagicMock(return_value=flattened_msg)
 
         self.sf.run_sensor_flow()
 
         expected_available_datapoints = {
-                "sensor": {
-                    "device_1__sensor_1": "2.12",
-                    "device_1__sensor_2": "3.12"
-                },
-                "actuator": {}
-            }
+            "sensor": {
+                "device_1__sensor_1": "2.12",
+                "device_1__sensor_2": "3.12",
+            },
+            "actuator": {},
+        }
         uad_kwargs = self.sf._update_available_datapoints.call_args.kwargs
         actual_available_datapoints = uad_kwargs["available_datapoints"]
         assert expected_available_datapoints == actual_available_datapoints
@@ -330,9 +319,7 @@ class TestSensorFlowRun(TestClassWithFixtures):
         Check that receive_raw_msg has the option to drop an incoming msg,
         by setting the payload to None.
         """
-        self.sf.receive_raw_msg = MagicMock(
-            return_value={"payload": None}
-        )
+        self.sf.receive_raw_msg = MagicMock(return_value={"payload": None})
         self.sf.run_sensor_flow()
         assert not self.sf.parse_raw_msg.called
 
@@ -341,9 +328,7 @@ class TestSensorFlowRun(TestClassWithFixtures):
         Check that parsed_msg has the option to drop an incoming msg,
         by setting the payload to None.
         """
-        self.sf.parse_raw_msg = MagicMock(
-            return_value={"payload": None}
-        )
+        self.sf.parse_raw_msg = MagicMock(return_value={"payload": None})
         self.sf.run_sensor_flow()
         assert not self.sf._flatten_parsed_msg.called
 
@@ -359,29 +344,19 @@ class TestSensorFlowFlattenParsedMsg(TestClassWithFixtures):
         self.parsed_msg = {
             "payload": {
                 "parsed_message": {
-                    "device_1": {
-                        "sensor_1": "2.12",
-                        "sensor_2": "3.12"
-                    }
+                    "device_1": {"sensor_1": "2.12", "sensor_2": "3.12"}
                 },
-                "timestamp": 1573680749000
+                "timestamp": 1573680749000,
             }
         }
 
         self.parsed_msg_deeper = {
             "payload": {
                 "parsed_message": {
-                    "device_1": {
-                        "sensor_1": "2.12",
-                        "sensor_2": "3.12"
-                    },
-                    "device_2": {
-                        "0": {
-                            "sensor_1": "ok"
-                        }
-                    }
+                    "device_1": {"sensor_1": "2.12", "sensor_2": "3.12"},
+                    "device_2": {"0": {"sensor_1": "ok"}},
                 },
-                "timestamp": 1573680749000
+                "timestamp": 1573680749000,
             }
         }
 
@@ -393,9 +368,9 @@ class TestSensorFlowFlattenParsedMsg(TestClassWithFixtures):
             "payload": {
                 "flattened_message": {
                     "device_1__sensor_1": "2.12",
-                    "device_1__sensor_2": "3.12"
+                    "device_1__sensor_2": "3.12",
                 },
-                "timestamp": self.parsed_msg["payload"]["timestamp"]
+                "timestamp": self.parsed_msg["payload"]["timestamp"],
             }
         }
 
@@ -415,7 +390,7 @@ class TestSensorFlowFlattenParsedMsg(TestClassWithFixtures):
                     "device_1__sensor_2": "3.12",
                     "device_2__0__sensor_1": "ok",
                 },
-                "timestamp": self.parsed_msg["payload"]["timestamp"]
+                "timestamp": self.parsed_msg["payload"]["timestamp"],
             }
         }
 
@@ -428,7 +403,7 @@ class TestSensorFlowFlattenParsedMsg(TestClassWithFixtures):
 
 class TestSensorFlowFilterAndPublish(TestClassWithFixtures):
 
-    fixture_names = ("caplog", )
+    fixture_names = ("caplog",)
 
     def setup_method(self, method):
 
@@ -442,7 +417,7 @@ class TestSensorFlowFilterAndPublish(TestClassWithFixtures):
                     "device_1__sensor_2": 2.12,
                     "device_1__sensor_3": True,
                 },
-                "timestamp": 1573680749000
+                "timestamp": 1573680749000,
             }
         }
 
@@ -451,7 +426,7 @@ class TestSensorFlowFilterAndPublish(TestClassWithFixtures):
                 "device_1__sensor_1": "example-connector/msgs/0001",
                 "device_1__sensor_2": "example-connector/msgs/0002",
             },
-            "actuator": {}
+            "actuator": {},
         }
 
         self.logger_name = "pyconnector"
@@ -474,7 +449,7 @@ class TestSensorFlowFilterAndPublish(TestClassWithFixtures):
         for dp_key, dp_value in flattened_message.items():
             expected_value_msg = {
                 "value": dp_value,
-                "timestamp": self.flattened_msg["payload"]["timestamp"]
+                "timestamp": self.flattened_msg["payload"]["timestamp"],
             }
 
             # Verify that not selected datapoints have not been sent.
@@ -508,7 +483,7 @@ class TestSensorFlowFilterAndPublish(TestClassWithFixtures):
                     # binnary data cannot be encoded to json.
                     "device_1__sensor_1": b"binary",
                 },
-                "timestamp": 1573680749000
+                "timestamp": 1573680749000,
             }
         }
 
@@ -525,7 +500,7 @@ class TestSensorFlowFilterAndPublish(TestClassWithFixtures):
         for dp_key, dp_value in flattened_message.items():
             expected_value_msg = {
                 "value": str(dp_value),
-                "timestamp": self.flattened_msg["payload"]["timestamp"]
+                "timestamp": self.flattened_msg["payload"]["timestamp"],
             }
 
             # Verify that all selected datapoints have been sent.
@@ -561,7 +536,7 @@ class TestSensorFlowFilterAndPublish(TestClassWithFixtures):
                     # binnary data cannot be encoded to json.
                     "device_1__sensor_1": b"binary",
                 },
-                "timestamp": 1573680749000
+                "timestamp": 1573680749000,
             }
         }
         self.sf._filter_and_publish_datapoint_values(
@@ -572,6 +547,7 @@ class TestSensorFlowFilterAndPublish(TestClassWithFixtures):
         # Without the topic will not know which message went wrong.
         expected_topic = self.sf.datapoint_map["sensor"]["device_1__sensor_1"]
         assert expected_topic in records[0].message
+
 
 class TestActuatorFlowRun(TestClassWithFixtures):
 
@@ -584,18 +560,21 @@ class TestActuatorFlowRun(TestClassWithFixtures):
         # Prepare the tests by defining the datapoint_map and a matching
         # message with topic and stuff.
         self.test_datapoint_value = "2.1"  # Always a string (message format)
+        self.test_datapoint_timestamp = 1573680749000
         self.test_datapoint_key = "device_1__sensor_2"
         self.test_topic = "example-connector/msgs/0002"
-        self.test_value_msg_json = json.dumps({
-            "value": self.test_datapoint_value,
-            "timestamp": 1573680749000,
-        })
+        self.test_value_msg_json = json.dumps(
+            {
+                "value": self.test_datapoint_value,
+                "timestamp": self.test_datapoint_timestamp,
+            }
+        )
         self.af.datapoint_map = {
             "sensor": {},
             "actuator": {
                 "example-connector/msgs/0001": "device_1__sensor_1",
                 self.test_topic: self.test_datapoint_key,
-            }
+            },
         }
 
     def test_send_command_is_called(self):
@@ -627,6 +606,10 @@ class TestActuatorFlowRun(TestClassWithFixtures):
         actual_datapoint_value = call_args.kwargs["datapoint_value"]
         assert actual_datapoint_value == expected_datapoint_value
 
+        expected_datapoint_timestamp = self.test_datapoint_timestamp
+        actual_datapoint_timestamp = call_args.kwargs["datapoint_timestamp"]
+        assert actual_datapoint_timestamp == expected_datapoint_timestamp
+
 
 class TestConnector__Init__(TestClassWithFixtures):
 
@@ -657,8 +640,7 @@ class TestConnector__Init__(TestClassWithFixtures):
         # These should be loaded as they are defined externally.
         assert self.cn.CONNECTOR_NAME == self.test_CONNECTOR_NAME
         assert (
-            self.cn.SEND_RAW_MESSAGE_TO_DB ==
-            self.test_SEND_RAW_MESSAGE_TO_DB
+            self.cn.SEND_RAW_MESSAGE_TO_DB == self.test_SEND_RAW_MESSAGE_TO_DB
         )
         assert self.cn.DEBUG == self.test_DEBUG
         assert self.cn.MQTT_BROKER_HOST == self.test_MQTT_BROKER_HOST
@@ -669,33 +651,31 @@ class TestConnector__Init__(TestClassWithFixtures):
         expected_MQTT_TOPIC_LOGS = self.test_CONNECTOR_NAME + "/logs"
         assert self.cn.MQTT_TOPIC_LOGS == expected_MQTT_TOPIC_LOGS
 
-        expected_MQTT_TOPIC_HEARTBEAT = (
-            self.test_CONNECTOR_NAME + "/heartbeat"
-        )
+        expected_MQTT_TOPIC_HEARTBEAT = self.test_CONNECTOR_NAME + "/heartbeat"
         assert self.cn.MQTT_TOPIC_HEARTBEAT == expected_MQTT_TOPIC_HEARTBEAT
 
         expected_MQTT_TOPIC_AVAILABLE_DATAPOINTS = (
             self.test_CONNECTOR_NAME + "/available_datapoints"
         )
         assert (
-            self.cn.MQTT_TOPIC_AVAILABLE_DATAPOINTS ==
-            expected_MQTT_TOPIC_AVAILABLE_DATAPOINTS
+            self.cn.MQTT_TOPIC_AVAILABLE_DATAPOINTS
+            == expected_MQTT_TOPIC_AVAILABLE_DATAPOINTS
         )
 
         expected_MQTT_TOPIC_DATAPOINT_MAP = (
             self.test_CONNECTOR_NAME + "/datapoint_map"
         )
         assert (
-            self.cn.MQTT_TOPIC_DATAPOINT_MAP ==
-            expected_MQTT_TOPIC_DATAPOINT_MAP
+            self.cn.MQTT_TOPIC_DATAPOINT_MAP
+            == expected_MQTT_TOPIC_DATAPOINT_MAP
         )
 
         expected_MQTT_TOPIC_RAW_MESSAGE_TO_DB = (
             self.test_CONNECTOR_NAME + "/raw_message_to_db"
         )
         assert (
-            self.cn.MQTT_TOPIC_RAW_MESSAGE_TO_DB ==
-            expected_MQTT_TOPIC_RAW_MESSAGE_TO_DB
+            self.cn.MQTT_TOPIC_RAW_MESSAGE_TO_DB
+            == expected_MQTT_TOPIC_RAW_MESSAGE_TO_DB
         )
 
     def test_args_are_stored(self):
@@ -745,7 +725,7 @@ class TestConnector__Init__(TestClassWithFixtures):
 
 class TestConnectorRun(TestClassWithFixtures):
 
-    fixture_names = ("caplog", )
+    fixture_names = ("caplog",)
 
     def setup_class(self):
         self.test_CONNECTOR_NAME = "tpyco"
@@ -783,7 +763,7 @@ class TestConnectorRun(TestClassWithFixtures):
             "sensor": {},
             "actuator": {
                 "example-connector/msgs/0001": "device_1__sensor_1",
-            }
+            },
         }
         self.cn = Connector(**self.connector_default_kwargs)
         self.cn._initial_datapoint_map = datapoint_map
@@ -823,7 +803,7 @@ class TestConnectorRun(TestClassWithFixtures):
             },
             "actuator": {
                 "Channel__P__setpoint__0": 0.4,
-            }
+            },
         }
         self.cn = Connector(**self.connector_default_kwargs)
         self.cn._initial_available_datapoints = available_datapoints
@@ -959,7 +939,8 @@ class TestConnectorRun(TestClassWithFixtures):
         device_dispatcher_mock.is_alive = MagicMock(return_value=True)
         device_dispatcher_target_func = MagicMock()
         device_dispatcher_kwargs = {
-            "call_interval": 5, "target_func": device_dispatcher_target_func,
+            "call_interval": 5,
+            "target_func": device_dispatcher_target_func,
         }
 
         self.cn = Connector(**self.connector_default_kwargs)
@@ -974,7 +955,8 @@ class TestConnectorRun(TestClassWithFixtures):
         # Don't reuse the dict from above, it has been changed by the
         # connector class.
         expected_dd_kwargs = {
-            "call_interval": 5, "target_func": device_dispatcher_target_func
+            "call_interval": 5,
+            "target_func": device_dispatcher_target_func,
         }
         actual_dd_kwargs = device_dispatcher_mock.call_args.kwargs
         assert actual_dd_kwargs == expected_dd_kwargs
@@ -1009,7 +991,8 @@ class TestConnectorRun(TestClassWithFixtures):
         # Don't reuse the dict from above, it has been changed by the
         # connector class.
         expected_dd_kwargs = {
-            "call_interval": 5, "target_func": run_sensor_flow
+            "call_interval": 5,
+            "target_func": run_sensor_flow,
         }
         actual_dd_kwargs = device_dispatcher_mock.call_args.kwargs
         assert actual_dd_kwargs == expected_dd_kwargs
@@ -1088,7 +1071,7 @@ class TestConnectorRun(TestClassWithFixtures):
 
         records = self.caplog.records
         assert len(records) == 1
-        assert records[0].levelname == 'ERROR'
+        assert records[0].levelname == "ERROR"
         assert "unexpected exception" in records[0].message
         assert "Shuting down." in records[0].message
 
@@ -1126,7 +1109,7 @@ class TestConnectorRun(TestClassWithFixtures):
 
         records = self.caplog.records
         assert len(records) == 1
-        assert records[0].levelname == 'ERROR'
+        assert records[0].levelname == "ERROR"
         assert "unexpected exception" in records[0].message
         assert "Shuting down." in records[0].message
 
@@ -1162,7 +1145,7 @@ class TestConnectorRun(TestClassWithFixtures):
             MqttClient=MagicMock,
             heartbeat_interval=0.1,
             # Without this we would get a warning.
-            device_dispatcher_kwargs={"target_func": MagicMock()}
+            device_dispatcher_kwargs={"target_func": MagicMock()},
         )
         self.cn._DeviceDispatcher = _DeviceDispatcher_mock
         self.cn._MqttClient = _MqttClient_mock
@@ -1172,6 +1155,7 @@ class TestConnectorRun(TestClassWithFixtures):
 
         records = self.caplog.records
         assert len(records) == 0
+
 
 class TestConnectorHandleIncomingMqttMsg(TestClassWithFixtures):
 
@@ -1251,7 +1235,7 @@ class TestConnectorHandleIncomingMqttMsg(TestClassWithFixtures):
         assert self.raf_mock.called
         expected_raf_kwargs = {
             "topic": test_topic,
-            "value_msg_json": test_payload
+            "value_msg_json": test_payload,
         }
         actual_raf_kwargs = self.raf_mock.call_args.kwargs
         assert actual_raf_kwargs == expected_raf_kwargs
@@ -1259,7 +1243,7 @@ class TestConnectorHandleIncomingMqttMsg(TestClassWithFixtures):
 
 class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
 
-    fixture_names = ('caplog', )
+    fixture_names = ("caplog",)
 
     def setup_method(self, method):
 
@@ -1285,7 +1269,6 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
         # Overload some attributes for testing.
         self.cn.mqtt_client = MagicMock()
 
-
     def test_valid_datapoint_map_is_stored(self):
         """
         Verify that valid datapoint_map objects are stored as expected.
@@ -1297,7 +1280,7 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
             },
             "actuator": {
                 "example-connector/msgs/0003": "Channel__P__setpoint__0",
-            }
+            },
         }
 
         self.cn._validate_and_update_datapoint_map(
@@ -1326,7 +1309,7 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
 
         records = self.caplog.records
         assert len(records) == 1
-        assert records[0].levelname == 'ERROR'
+        assert records[0].levelname == "ERROR"
         assert "No sensor key" in records[0].message
 
     def test_datapoint_map_with_missing_actuator_key_fails(self):
@@ -1350,7 +1333,7 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
 
         records = self.caplog.records
         assert len(records) == 1
-        assert records[0].levelname == 'ERROR'
+        assert records[0].levelname == "ERROR"
         assert "No actuator key" in records[0].message
 
     def test_datapoint_map_with_missing_sensor_dict_fails(self):
@@ -1366,7 +1349,7 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
             "sensor": None,
             "actuator": {
                 "example-connector/msgs/0003": "Channel__P__setpoint__0",
-            }
+            },
         }
 
         self.cn._validate_and_update_datapoint_map(
@@ -1375,7 +1358,7 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
 
         records = self.caplog.records
         assert len(records) == 1
-        assert records[0].levelname == 'ERROR'
+        assert records[0].levelname == "ERROR"
         assert "Sensor entry in datapoint_map" in records[0].message
 
     def test_datapoint_map_with_missing_actuator_dict_fails(self):
@@ -1401,7 +1384,7 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
 
         records = self.caplog.records
         assert len(records) == 1
-        assert records[0].levelname == 'ERROR'
+        assert records[0].levelname == "ERROR"
         assert "Actuator entry in datapoint_map" in records[0].message
 
     def test_new_actuator_entry_triggers_subscribe(self):
@@ -1411,11 +1394,11 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
         of the newly selected datapoint.
         """
         # Assume this map has been set up before.
-        datapoint_map_old ={
+        datapoint_map_old = {
             "sensor": {},
             "actuator": {
                 "example-connector/msgs/0003": "Channel__P__setpoint__0",
-            }
+            },
         }
         self.cn.datapoint_map = datapoint_map_old
 
@@ -1424,7 +1407,7 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
             "actuator": {
                 "example-connector/msgs/0003": "Channel__P__setpoint__0",
                 "example-connector/msgs/0004": "Channel__T__setpoint__0",
-            }
+            },
         }
         self.cn._validate_and_update_datapoint_map(
             datapoint_map_json=json.dumps(datapoint_map_update)
@@ -1451,12 +1434,12 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
         messages for that actuator.
         """
         # Assume this map has been set up before.
-        datapoint_map_old ={
+        datapoint_map_old = {
             "sensor": {},
             "actuator": {
                 "example-connector/msgs/0003": "Channel__P__setpoint__0",
                 "example-connector/msgs/0004": "Channel__T__setpoint__0",
-            }
+            },
         }
         self.cn.datapoint_map = datapoint_map_old
 
@@ -1464,7 +1447,7 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
             "sensor": {},
             "actuator": {
                 "example-connector/msgs/0004": "Channel__T__setpoint__0",
-            }
+            },
         }
         self.cn._validate_and_update_datapoint_map(
             datapoint_map_json=json.dumps(datapoint_map_update)
@@ -1477,6 +1460,7 @@ class TestConnectorValidateAndUpdateDatapointMap(TestClassWithFixtures):
         expected_topic = "example-connector/msgs/0003"
         actual_topic = self.cn.mqtt_client.unsubscribe.call_args.kwargs["topic"]
         assert actual_topic == expected_topic
+
 
 class TestConnectorUpdateAvailableDatapoints(TestClassWithFixtures):
 
@@ -1504,7 +1488,6 @@ class TestConnectorUpdateAvailableDatapoints(TestClassWithFixtures):
         self.cn.mqtt_client = MagicMock()
         self.cn.MQTT_TOPIC_AVAILABLE_DATAPOINTS = "tpyco/available_datapoints"
 
-
     def test_update_without_new_keys_publishes_not(self):
         """
         Updateing available_datapoints without new datapoint keys should
@@ -1517,7 +1500,7 @@ class TestConnectorUpdateAvailableDatapoints(TestClassWithFixtures):
             },
             "actuator": {
                 "Channel__P__setpoint__0": 0.4,
-            }
+            },
         }
 
         available_datapoints_update = {
@@ -1527,7 +1510,7 @@ class TestConnectorUpdateAvailableDatapoints(TestClassWithFixtures):
             },
             "actuator": {
                 "Channel__P__setpoint__0": 6.4,
-            }
+            },
         }
         self.cn._update_available_datapoints(
             available_datapoints=available_datapoints_update
@@ -1550,7 +1533,7 @@ class TestConnectorUpdateAvailableDatapoints(TestClassWithFixtures):
             },
             "actuator": {
                 "Channel__P__setpoint__0": 0.4,
-            }
+            },
         }
 
         available_datapoints_update = {
@@ -1559,21 +1542,21 @@ class TestConnectorUpdateAvailableDatapoints(TestClassWithFixtures):
             },
             "actuator": {
                 "Channel__P__setpoint__0": 6.4,
-            }
+            },
         }
         self.cn._update_available_datapoints(
             available_datapoints=available_datapoints_update
         )
 
         expected_available_datapoints = {
-                "sensor": {
-                    "Channel__P__value__0": 9.222,
-                    "Channel__P__unit__0": "kW",
-                },
-                "actuator": {
-                    "Channel__P__setpoint__0": 6.4,
-                }
-            }
+            "sensor": {
+                "Channel__P__value__0": 9.222,
+                "Channel__P__unit__0": "kW",
+            },
+            "actuator": {
+                "Channel__P__setpoint__0": 6.4,
+            },
+        }
         actual_available_datapoints = self.cn.available_datapoints
         assert actual_available_datapoints == expected_available_datapoints
 
@@ -1591,13 +1574,10 @@ class TestConnectorUpdateAvailableDatapoints(TestClassWithFixtures):
                 },
                 "actuator": {
                     "Channel__P__setpoint__0": 0.4,
-                }
+                },
             }
 
-            available_datapoints_update = {
-                "sensor": {},
-                "actuator": {}
-            }
+            available_datapoints_update = {"sensor": {}, "actuator": {}}
             available_datapoints_update[dp_type]["Channel__Q__sp__0"] = 6.4
             self.cn._update_available_datapoints(
                 available_datapoints=available_datapoints_update
@@ -1611,7 +1591,7 @@ class TestConnectorUpdateAvailableDatapoints(TestClassWithFixtures):
                 },
                 "actuator": {
                     "Channel__P__setpoint__0": 0.4,
-                }
+                },
             }
             expected_available_datapoints[dp_type]["Channel__Q__sp__0"] = 6.4
             actual_available_datapoints = self.cn.available_datapoints
@@ -1626,6 +1606,7 @@ class TestConnectorUpdateAvailableDatapoints(TestClassWithFixtures):
             expected_topic = self.cn.MQTT_TOPIC_AVAILABLE_DATAPOINTS
             actual_topic = mqtt_client.publish.call_args.kwargs["topic"]
             assert actual_topic == expected_topic
+
 
 class TestConnectorSendHeartbeat(TestClassWithFixtures):
 
@@ -1673,9 +1654,7 @@ class TestConnectorSendHeartbeat(TestClassWithFixtures):
         """
         self.cn._send_heartbeat()
 
-        actual_hb_topic = (
-            self.cn.mqtt_client.publish.call_args.kwargs["topic"]
-        )
+        actual_hb_topic = self.cn.mqtt_client.publish.call_args.kwargs["topic"]
         expected_hb_topic = self.cn.MQTT_TOPIC_HEARTBEAT
         assert actual_hb_topic == expected_hb_topic
 
