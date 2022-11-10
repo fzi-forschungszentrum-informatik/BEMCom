@@ -268,5 +268,5 @@ SPECTACULAR_SETTINGS = {
         "BEMCom/blob/master/documentation/Readme.md) for more information."
     ),
     "LICENSE": {"name": "Licensed under MIT"},
-    "VERSION": "0.8.5",
+    "VERSION": "0.8.6",
 }

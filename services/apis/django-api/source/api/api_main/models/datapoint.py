@@ -111,7 +111,9 @@ class Datapoint(DatapointTemplate):
             self.short_name = None
 
         # Handle NaN and Inf/-Inf float values as examples.
-        # Python JSON can actually
+        # Python JSON can encode/deocode these values but Postgres
+        # cannot store them. Hence trasform to string, which is basically
+        # the same thing Python does.
         e = self.example_value
         if e is not None and isinstance(e, float):
             if math.isnan(e) or e == float("inf") or e == float("-inf"):
@@ -153,6 +155,23 @@ class DatapointLastValue(DatapointLastValueTemplate):
         related_name="last_value_message",
         help_text=("The datapoint that the value message belongs to."),
     )
+
+    def save(self, *args, **kwargs):
+        """
+        Handle NaN and Inf/-Inf float values as examples.
+
+        Similar to above in `example_value`.
+
+        NOTE: This is only necessary for the last value field as the
+        usual value will store this as a float number anyway.
+        """
+
+        v = self.value
+        if v is not None and isinstance(v, float):
+            if math.isnan(v) or v == float("inf") or v == float("-inf"):
+                self.value = json.dumps(self.value)
+
+        models.Model.save(self, *args, **kwargs)
 
 
 class DatapointSchedule(DatapointScheduleTemplate):
