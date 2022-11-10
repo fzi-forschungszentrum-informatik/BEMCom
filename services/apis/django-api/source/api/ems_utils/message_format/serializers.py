@@ -21,7 +21,6 @@ try:
     class Int64Field(serializers.IntegerField):
         pass
 
-
 except ModuleNotFoundError:
     # Fallback to normal int field if drf_spectacular is not installed.
     class Int64Field(serializers.IntegerField):
@@ -138,7 +137,7 @@ class GenericValidators:
                 "in milliseconds and contact your adminstrator if this is the "
                 "case." % str(timestamp)
             )
-        if timestamp < now - 1e11:
+        if timestamp < now - 5e11:
             raise serializers.ValidationError(
                 "Timestamp (%s) seems unreasonably low. Check if it is "
                 "in milliseconds and contact your adminstrator if this is the "

@@ -448,7 +448,7 @@ class TestDatapointValueSerializer(TransactionTestCase):
         """
         wrong_timestamps = [
             timestamp_utc_now() + 2e11,
-            timestamp_utc_now() - 2e11,
+            timestamp_utc_now() - 6e11,
             "asdkajsdkajs",
         ]
 
@@ -606,7 +606,7 @@ class TestDatapointScheduleSerializer(TransactionTestCase):
         """
         wrong_timestamps = [
             timestamp_utc_now() + 2e11,
-            timestamp_utc_now() - 2e11,
+            timestamp_utc_now() - 6e11,
             "asdkajsdkajs",
         ]
 

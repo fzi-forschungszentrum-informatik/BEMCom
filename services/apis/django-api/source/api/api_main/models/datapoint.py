@@ -2,6 +2,8 @@
 Defines models for Datapoint and it's three message types. See the
 documentation in ems_utils.message_format for details.
 """
+import json
+import math
 
 from django.db import models
 
@@ -107,6 +109,14 @@ class Datapoint(DatapointTemplate):
         """
         if self.short_name == "":
             self.short_name = None
+
+        # Handle NaN and Inf/-Inf float values as examples.
+        # Python JSON can actually
+        e = self.example_value
+        if e is not None and isinstance(e, float):
+            if math.isnan(e) or e == float("inf") or e == float("-inf"):
+                self.example_value = json.dumps(self.example_value)
+
         models.Model.save(self, *args, **kwargs)
 
 
