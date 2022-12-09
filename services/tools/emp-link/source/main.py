@@ -19,6 +19,7 @@ from esg.models.datapoint import SetpointMessageByDatapointId
 from paho.mqtt.client import Client
 from pyconnector_template.dispatch import DispatchInInterval
 from pyconnector_template.dispatch import DispatchOnce
+from requests.exceptions import HTTPError
 import websocket
 
 logging.basicConfig(
@@ -207,9 +208,17 @@ class EmpLink:
         )
 
         # Push to EMP.
-        put_summary = self.emp_client.put_datapoint_value_latest(
-            value_msgs_by_dp_id=value_msgs_by_dp_id
-        )
+        try:
+            put_summary = self.emp_client.put_datapoint_value_latest(
+                value_msgs_by_dp_id=value_msgs_by_dp_id
+            )
+        except HTTPError:
+            logger.warning(
+                "Encountered HTTP Error while pushing the following value "
+                "message ({}) for datapoint with EMP ID {}."
+                "".format(value_msgs_by_dp_id.json(), emp_id)
+            )
+            return
 
         logger.debug(
             "Put value messages latest: {} updated, {} created."
