@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 """
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 import os
 import json
@@ -175,7 +175,12 @@ class SensorFlow(SFTemplate):
         elif self.parse_as == "YAML":
             parsed_message = yaml.safe_load(decoded_raw_message)
 
-        msg = {"payload": {"parsed_message": parsed_message, "timestamp": timestamp}}
+        msg = {
+            "payload": {
+                "parsed_message": parsed_message,
+                "timestamp": timestamp,
+            }
+        }
         return msg
 
 
@@ -312,6 +317,11 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         server_ip = os.getenv("SERVER_IP")
         server_port = int(os.getenv("SERVER_PORT"))
         recv_bufsize = int(os.getenv("RECV_BUFSIZE") or 4096)
+        recv_timeout = float(os.getenv("RECV_TIMEOUT") or "60")
+        if recv_timeout < 0:
+            # Blocking mode, AKA wait forever. See:
+            # https://docs.python.org/3/library/socket.html#socket.socket.settimeout
+            recv_timeout = None
         if os.getenv("PARSE_AS") == "YAML":
             self.parse_as = "YAML"
         else:
@@ -328,6 +338,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
                 "server_ip": server_ip,
                 "server_port": server_port,
                 "recv_bufsize": recv_bufsize,
+                "recv_timeout": recv_timeout,
             },
             "cleanup_func": self.close_socket_client,
         }
@@ -341,7 +352,9 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
 
         self.custom_env_var = os.getenv("CUSTOM_ENV_VARR") or "default_value"
 
-    def run_socket_client(self, server_ip, server_port, recv_bufsize):
+    def run_socket_client(
+        self, server_ip, server_port, recv_bufsize, recv_timeout
+    ):
         """
         Connects to an UDP server, waits for data and calls run_sensor_flow
         for every incoming.
@@ -351,10 +364,17 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         see Readme.md
         """
         logger.info("Connecting to device %s:%s", *(server_ip, server_port))
-        self.socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
+        self.socket = socket.socket(
+            family=socket.AF_INET, type=socket.SOCK_STREAM
+        )
         self.socket.connect((server_ip, server_port))
+        self.socket.settimeout(recv_timeout)
         while True:
-            raw_data = self.socket.recv(recv_bufsize)
+            try:
+                raw_data = self.socket.recv(recv_bufsize)
+            except socket.timeout:
+                logger.error(f"No data received in {recv_timeout} seconds.")
+                raise SystemExit()
             if len(raw_data) == 0:
                 # This should only be the case once the other side has
                 # closed the connection.

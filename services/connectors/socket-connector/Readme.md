@@ -28,6 +28,7 @@ None.
 | SERVER_IP              | 192.168.0.55        | The DNS name or IP address of the target device or gateway.  |
 | SERVER_PORT            | 587                 | The port which the connector should connect to on the target device or gateway. |
 | RECV_BUFSIZE           | 1024                | The buffersize used while receiving information. The data from the device or gateway should not exceed this many bytes as the raw message will else be split up and may end up unreadable. See also the [socket docs](https://docs.python.org/3/library/socket.html) for more information. Defaults to 4096. |
+| RECV_TIMEOUT           | 15                  | Max wait time before a message is expected. Will shutdown connector if no message is received after that time (to allow a restart and reconnection). 0 means we expect a message immediately (non-blocking mode). Negative values wait as long as possible (blocking mode). See [here](https://docs.python.org/3/library/socket.html#socket-timeouts) for details. |
 | PARSE_AS               | YAML                | Defines how the raw data should be parsed as objects. Either YAML or JSON is supported. Defaults to JSON. |
 
 ##### Volumes
@@ -81,3 +82,4 @@ Follow the following steps while contributing to the connector:
 | ----- | ------------------------------------------------------------ |
 | 0.1.0 | First productive version.                                    |
 | 0.4.0 | Update to python connector template 0.4.0 (Datapoint Value and Available Datapoint messages and a can now contain any JSON data type as value.) |
+| 0.5.0 | Add timeout to allow automatic restarts if connection is lost. |
