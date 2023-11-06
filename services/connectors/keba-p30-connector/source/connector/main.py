@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 """
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 import os
 import json
@@ -120,7 +120,7 @@ class SensorFlow(SFTemplate):
             # KEBAs UDP communication manual.
             self.keba_socket.bind(("0.0.0.0", 7090))
             # Configures socket to wait up to five seconds for data.
-            self.keba_socket.settimeout(5)
+            self.keba_socket.settimeout(self.READ_TIMEOUT)
 
         raw_message = {}
         for p30_name in self.keba_p30_charge_stations:
@@ -132,7 +132,7 @@ class SensorFlow(SFTemplate):
             logger.debug(
                 "Requesting data from P30 charge station %s with "
                 " network name or ip: %s",
-                *(p30_name, p30_ip_addr_or_net_name)
+                *(p30_name, p30_ip_addr_or_net_name),
             )
 
             try:
@@ -141,16 +141,21 @@ class SensorFlow(SFTemplate):
                 raw_message[p30_name] = {}
                 for request in ["report 1", "report 2", "report 3"]:
                     self.keba_socket.sendto(
-                        request.encode(), (p30_ip_addr_or_net_name, 7090)
+                        request.encode(),
+                        (p30_ip_addr_or_net_name, self.TARGET_PORT),
                     )
                     # Some events like setting ena will trigger the charge
                     # station to automatically send some messages.
                     response = True
                     for i in range(21):
                         response = self.keba_socket.recv(4096)
-                        if b"ID" in response:
+
+                        expected_id = request.split(" ")[1]
+                        if f'"ID": "{expected_id}"'.encode() in response:
                             break
-                        logger.debug("Skipping non report response: %s", response)
+                        logger.debug(
+                            "Skipping non report response: %s", response
+                        )
                         if i >= 20:
                             raise RuntimeError(
                                 "Received to many non-report responses from "
@@ -165,11 +170,28 @@ class SensorFlow(SFTemplate):
                     raw_message[p30_name][request] = response
                     # This sleep is requested by the KEBA documentation
                     sleep(0.1)
+
+                # If we reach this point it means that communication with
+                # charge station has worked.
+                self.timouts = 0
+
             except socket.timeout:
                 # This might recover later if the charge station is offline
                 # or network errors have occured.
-                logger.warning("No data received from P30 charge station %s.", p30_name)
-                continue
+                self.timeouts += 1
+                if self.timeouts < self.max_timeouts:
+                    logger.warning(
+                        "No data received from P30 charge station %s.", p30_name
+                    )
+                    continue
+                else:
+                    logger.warning(
+                        f"Encountered {self.max_timeouts} timeouts without a "
+                        "valid response in between. Assuming connection "
+                        "to charge station doesn't work any more. "
+                        "Triggering shutdown."
+                    )
+                    raise SystemExit
 
             except socket.gaierror:
                 # This is a permanent error. Log, raise und thus shutdown.
@@ -179,7 +201,8 @@ class SensorFlow(SFTemplate):
                     * (p30_name, p30_ip_addr_or_net_name)
                 )
                 raise
-            p30_lock.release()
+            finally:
+                p30_lock.release()
 
         msg = {"payload": {"raw_message": raw_message}}
         return msg
@@ -235,7 +258,9 @@ class SensorFlow(SFTemplate):
         raw_message = raw_msg["payload"]["raw_message"]
         parsed_message = {}
         for p30_name in raw_message:
-            logger.debug("Parsing raw data for P30 charge station %s.", p30_name)
+            logger.debug(
+                "Parsing raw data for P30 charge station %s.", p30_name
+            )
             parsed_message[p30_name] = {}
             for report in raw_message[p30_name]:
                 parsed_report = raw_message[p30_name][report]
@@ -304,7 +329,7 @@ class ActuatorFlow(AFTemplate):
         """
         logger.debug(
             "Processing actuator value msg for datapoint_key %s with value %s.",
-            *(datapoint_key, datapoint_value)
+            *(datapoint_key, datapoint_value),
         )
 
         # The name is stored in first part of the datapoint_key by
@@ -320,8 +345,12 @@ class ActuatorFlow(AFTemplate):
         try:
             keba_command = datapoint_key.split("__")[1]
             keba_payload = (keba_command + " " + datapoint_value).encode()
-            self.keba_socket.sendto(keba_payload, (p30_ip_addr_or_net_name, 7090))
-            logger.debug("Sent %s to %s", *(keba_payload, p30_ip_addr_or_net_name))
+            self.keba_socket.sendto(
+                keba_payload, (p30_ip_addr_or_net_name, self.TARGET_PORT)
+            )
+            logger.debug(
+                "Sent %s to %s", *(keba_payload, p30_ip_addr_or_net_name)
+            )
             response = self.keba_socket.recv(4096)
             logger.debug("Received response for send_command: %s", response)
             # Prevent parallel communication until the required delay is over.
@@ -411,6 +440,22 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         # have higher priority over ones defined in the .env file.
         load_dotenv(find_dotenv(), verbose=True, override=False)
 
+        # Port the Keba charge station is contacted. The KEBA charge
+        # stations only support port 7090, but you may want to override this
+        # for running tests.
+        self.TARGET_PORT = int(os.getenv("TARGET_PORT") or "7090")
+
+        # Timeout for `socket.recv`. This is here to allow the value
+        # to be overwritten by tests.
+        self.READ_TIMEOUT = float(os.getenv("READ_TIMEOUT") or "5")
+
+        # Timout handling, every time a `receive_raw_msg` fails with a
+        # socket timeout, `timeouts` is incremented. Once reaching
+        # `max_timeouts` the connector is assumed to be disfunctional
+        # and hence shut down.
+        self.timeouts = 0
+        self.max_timeouts = 5
+
         # We need to specify a dispatcher that triggers the connection with
         # the device or gateway. Here we want to poll the device with the
         # interval set in the POLL_SECONDS environment variable.
@@ -444,7 +489,9 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         # KEBA_P30_CHARGE_STATIONS
         kwargs["available_datapoints"] = {
             "sensor": {},
-            "actuator": self.compute_actuator_datapoints(self.keba_p30_charge_stations),
+            "actuator": self.compute_actuator_datapoints(
+                self.keba_p30_charge_stations
+            ),
         }
         CTemplate.__init__(self, *args, **kwargs)
 

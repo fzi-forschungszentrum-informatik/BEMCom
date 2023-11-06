@@ -95,3 +95,4 @@ Follow the following steps while contributing to the connector:
 | 0.2.0 | Switch from Node-RED template to Python template to frequent connection losses due to the charge station ignoring the source port of the UDP message. |
 | 0.3.0 | Add functionality to write actuator values to charge station. |
 | 0.4.0 | Update to python connector template 0.4.0 (Datapoint Value and Available Datapoint messages and a can now contain any JSON data type as value.) |
+| 0.5.0 | Add automatic shutdown of connector if connection to charge station times out 5 times. |

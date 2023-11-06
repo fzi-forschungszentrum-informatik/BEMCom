@@ -5,17 +5,187 @@ Place tests for the connector specific methods here.
 """
 import os
 import json
+import pytest
 import unittest
 from unittest.mock import MagicMock
+import socket
 import threading
 
-import pytest
+
+from pyconnector_template.dispatch import DispatchOnce
 
 from ..main import Connector, __version__
 
+# A real repsonse from the charge station for testing, already decoded.
+RAW_MESSAGES = {
+    "report 1": '{\n"ID": "1",\n"Product": "KC-P30-ES240022-E0R",\n"Serial": "17643683",\n"Firmware":"P30 v 3.9.10 (171113-103030)",\n"COM-module": 0,\n"Backend": 0,\n"timeQ": 2,\n"Sec": 67399365\n}\n',  # NOQA
+    "report 2": '{\n"ID": "2",\n"State": 1,\n"Error1": 0,\n"Error2": 0,\n"Plug": 0,\n"AuthON": 0,\n"Authreq": 0,\n"Enable sys": 0,\n"Enable user": 0,\n"Max curr": 0,\n"Max curr %": 1000,\n"Curr HW": 0,\n"Curr user": 16000,\n"Curr FS": 0,\n"Tmo FS": 0,\n"Curr timer": 0,\n"Tmo CT": 0,\n"Setenergy": 0,\n"Output": 0,\n"Input": 0,\n"Serial": "17643683",\n"Sec": 67399365\n}\n',  # NOQA
+    "report 3": '{\n"ID": "3",\n"U1": 0,\n"U2": 0,\n"U3": 0,\n"I1": 0,\n"I2": 0,\n"I3": 0,\n"P": 0,\n"PF": 0,\n"E pres": 330130,\n"E total": 4781461,\n"Serial": "17643683",\n"Sec": 67399365\n}\n',  # NOQA
+}
+
+# That's who `RAW_MESSAGES` should look like after parsing.
+PARSED_MESSAGES = {
+    "report 1": {
+        "ID": "1",
+        "Product": "KC-P30-ES240022-E0R",
+        "Serial": "17643683",
+        "Firmware": "P30 v 3.9.10 (171113-103030)",
+        "COM-module": 0,
+        "Backend": 0,
+        "timeQ": 2,
+        "Sec": 67399365,
+    },
+    "report 2": {
+        "ID": "2",
+        "State": 1,
+        "Error1": 0,
+        "Error2": 0,
+        "Plug": 0,
+        "AuthON": 0,
+        "Authreq": 0,
+        "Enable sys": 0,
+        "Enable user": 0,
+        "Max curr": 0,
+        "Max curr %": 1000,
+        "Curr HW": 0,
+        "Curr user": 16000,
+        "Curr FS": 0,
+        "Tmo FS": 0,
+        "Curr timer": 0,
+        "Tmo CT": 0,
+        "Setenergy": 0,
+        "Output": 0,
+        "Input": 0,
+        "Serial": "17643683",
+        "Sec": 67399365,
+    },
+    "report 3": {
+        "ID": "3",
+        "U1": 0,
+        "U2": 0,
+        "U3": 0,
+        "I1": 0,
+        "I2": 0,
+        "I3": 0,
+        "P": 0,
+        "PF": 0,
+        "E pres": 330130,
+        "E total": 4781461,
+        "Serial": "17643683",
+        "Sec": 67399365,
+    },
+}
+
 
 class TestReceiveRawMsg(unittest.TestCase):
-    pass
+    @classmethod
+    def setUpClass(cls):
+        cls.charge_stations = {
+            "test_1": "127.0.0.1",
+        }
+        os.environ["KEBA_P30_CHARGE_STATIONS"] = json.dumps(cls.charge_stations)
+
+        # This is required to ensure the connector class can be created:
+        os.environ["POLL_SECONDS"] = "10"
+        os.environ["MQTT_BROKER_HOST"] = "locahost"
+        os.environ["MQTT_BROKER_PORT"] = "1883"
+        os.environ["READ_TIMEOUT"] = "0.1"
+
+    def setUp(self):
+        self.test_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    def tearDown(self):
+        self.test_socket.close()
+        self.connector.keba_socket.close()
+
+    def test_data_received(self):
+        """
+        Verify that the socket connection is established and the data is
+        received and returned.
+        """
+
+        self.test_socket.bind(("0.0.0.0", 7091))
+        os.environ["TARGET_PORT"] = "7091"
+        self.connector = Connector(version=__version__)
+
+        # A dummy for what the charge station returns.
+        def respond():
+            while True:
+                request = self.test_socket.recv(4096).decode()
+                print(request)
+                response_bytes = RAW_MESSAGES[request].encode()
+                self.test_socket.sendto(response_bytes, ("127.0.0.1", 7090))
+
+        respond_thread = DispatchOnce(target_func=respond)
+        respond_thread.start()
+
+        actual_raw_message = self.connector.receive_raw_msg()
+
+        if respond_thread.is_alive():
+            respond_thread.terminate()
+        respond_thread.join(1)
+
+        expected_raw_message = {
+            "payload": {
+                "raw_message": {"test_1": RAW_MESSAGES},
+            }
+        }
+
+        assert actual_raw_message == expected_raw_message
+
+    def test_read_works_after_connection_loss(self):
+        """
+        Verify even if one read request times out, the next should return as
+        usual.
+        """
+        self.test_socket.bind(("0.0.0.0", 7092))
+        os.environ["TARGET_PORT"] = "7092"
+        self.connector = Connector(version=__version__)
+
+        # This should return an empty raw message and log a warning that a
+        # timeout occured.
+        _ = self.connector.receive_raw_msg()
+
+        # A dummy for what the charge station returns.
+        def respond():
+            while True:
+                request = self.test_socket.recv(4096).decode()
+                print(request)
+                response_bytes = RAW_MESSAGES[request].encode()
+                self.test_socket.sendto(response_bytes, ("127.0.0.1", 7090))
+
+        respond_thread = DispatchOnce(target_func=respond)
+        respond_thread.start()
+
+        actual_raw_message = self.connector.receive_raw_msg()
+
+        if respond_thread.is_alive():
+            respond_thread.terminate()
+        respond_thread.join(1)
+
+        expected_raw_message = {
+            "payload": {
+                "raw_message": {"test_1": RAW_MESSAGES},
+            }
+        }
+
+        assert actual_raw_message == expected_raw_message
+
+    def test_raises_if_timed_out_too_often(self):
+        """
+        Check that the connector is shut down after max. number of timeouts
+        has been recorded.
+        """
+        self.test_socket.bind(("0.0.0.0", 7093))
+        os.environ["TARGET_PORT"] = "7093"
+        self.connector = Connector(version=__version__)
+
+        # This should work as expected.
+        for i in range(self.connector.max_timeouts - 1):
+            _ = self.connector.receive_raw_msg()
+
+        with pytest.raises(SystemExit):
+            _ = self.connector.receive_raw_msg()
 
 
 class TestParseRawMsg(unittest.TestCase):
@@ -39,72 +209,14 @@ class TestParseRawMsg(unittest.TestCase):
         """
         test_raw_msg = {
             "payload": {
-                "raw_message": {
-                    "p30_aussen": {
-                        "report 1": '{\n"ID": "1",\n"Product": "KC-P30-ES240022-E0R",\n"Serial": "17643683",\n"Firmware":"P30 v 3.9.10 (171113-103030)",\n"COM-module": 0,\n"Backend": 0,\n"timeQ": 2,\n"Sec": 67399365\n}\n',
-                        "report 2": '{\n"ID": "2",\n"State": 1,\n"Error1": 0,\n"Error2": 0,\n"Plug": 0,\n"AuthON": 0,\n"Authreq": 0,\n"Enable sys": 0,\n"Enable user": 0,\n"Max curr": 0,\n"Max curr %": 1000,\n"Curr HW": 0,\n"Curr user": 16000,\n"Curr FS": 0,\n"Tmo FS": 0,\n"Curr timer": 0,\n"Tmo CT": 0,\n"Setenergy": 0,\n"Output": 0,\n"Input": 0,\n"Serial": "17643683",\n"Sec": 67399365\n}\n',
-                        "report 3": '{\n"ID": "3",\n"U1": 0,\n"U2": 0,\n"U3": 0,\n"I1": 0,\n"I2": 0,\n"I3": 0,\n"P": 0,\n"PF": 0,\n"E pres": 330130,\n"E total": 4781461,\n"Serial": "17643683",\n"Sec": 67399365\n}\n',
-                    }
-                },
+                "raw_message": {"p30_aussen": RAW_MESSAGES},
                 "timestamp": 1628238571551,
             }
         }
 
         expected_parsed_msg = {
             "payload": {
-                "parsed_message": {
-                    "p30_aussen": {
-                        "report 1": {
-                            "ID": "1",
-                            "Product": "KC-P30-ES240022-E0R",
-                            "Serial": "17643683",
-                            "Firmware": "P30 v 3.9.10 (171113-103030)",
-                            "COM-module": 0,
-                            "Backend": 0,
-                            "timeQ": 2,
-                            "Sec": 67399365,
-                        },
-                        "report 2": {
-                            "ID": "2",
-                            "State": 1,
-                            "Error1": 0,
-                            "Error2": 0,
-                            "Plug": 0,
-                            "AuthON": 0,
-                            "Authreq": 0,
-                            "Enable sys": 0,
-                            "Enable user": 0,
-                            "Max curr": 0,
-                            "Max curr %": 1000,
-                            "Curr HW": 0,
-                            "Curr user": 16000,
-                            "Curr FS": 0,
-                            "Tmo FS": 0,
-                            "Curr timer": 0,
-                            "Tmo CT": 0,
-                            "Setenergy": 0,
-                            "Output": 0,
-                            "Input": 0,
-                            "Serial": "17643683",
-                            "Sec": 67399365,
-                        },
-                        "report 3": {
-                            "ID": "3",
-                            "U1": 0,
-                            "U2": 0,
-                            "U3": 0,
-                            "I1": 0,
-                            "I2": 0,
-                            "I3": 0,
-                            "P": 0,
-                            "PF": 0,
-                            "E pres": 330130,
-                            "E total": 4781461,
-                            "Serial": "17643683",
-                            "Sec": 67399365,
-                        },
-                    }
-                },
+                "parsed_message": {"p30_aussen": PARSED_MESSAGES},
                 "timestamp": 1628238571551,
             }
         }
@@ -127,6 +239,7 @@ class TestSendCommand(unittest.TestCase):
         os.environ["POLL_SECONDS"] = "10"
         os.environ["MQTT_BROKER_HOST"] = "locahost"
         os.environ["MQTT_BROKER_PORT"] = "1883"
+        os.environ["TARGET_PORT"] = "7091"
 
     def test_valid_commands_are_send(self):
         """
@@ -152,7 +265,7 @@ class TestSendCommand(unittest.TestCase):
             keba_command = datapoint_key.split("__")[-1]
             expected_send_to_args = (
                 (keba_command + " " + datapoint_value).encode(),
-                (self.charge_stations["test_1"], 7090),
+                (self.charge_stations["test_1"], 7091),
             )
             assert cn.keba_socket.sendto.called
             actual_send_to_args = cn.keba_socket.sendto.mock_calls[-1].args
