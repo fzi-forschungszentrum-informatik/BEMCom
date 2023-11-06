@@ -716,9 +716,9 @@ class TestConnector__Init__(TestClassWithFixtures):
         """
         self.cn = Connector(version="0.0.1")
 
-        assert self.cn._initial_datapoint_map == None
-        assert self.cn._initial_available_datapoints == None
-        assert self.cn._DeviceDispatcher == None
+        assert self.cn._initial_datapoint_map is None
+        assert self.cn._initial_available_datapoints is None
+        assert self.cn._DeviceDispatcher is None
         assert self.cn._device_dispatcher_kwargs == {}  # See class docstring.
         assert self.cn._MqttClient == Client
 

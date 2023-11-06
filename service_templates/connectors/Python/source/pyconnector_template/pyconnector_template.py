@@ -747,7 +747,7 @@ class Connector:
         else:
             logger.debug("Starting device dispatcher")
             device_dispatcher_kwargs = self._device_dispatcher_kwargs
-            if not "target_func" in device_dispatcher_kwargs:
+            if "target_func" not in device_dispatcher_kwargs:
                 logger.warning(
                     "Did not find a target function (the target_func argument) "
                     "in device_dispatcher_kwargs. Without it the connector "
@@ -791,7 +791,7 @@ class Connector:
                 "Connector received KeyboardInterrupt or SystemExit"
                 ", shuting down."
             )
-        except:
+        except:  # NOQA
             # This is execution when something goes really wrong.
             logger.exception(
                 "Connector main loop has caused an unexpected exception. "
@@ -863,10 +863,10 @@ class Connector:
         """
         logger.debug("Started _validate_and_update_datapoint_map")
         datapoint_map = json.loads(datapoint_map_json)
-        if not "sensor" in datapoint_map:
+        if "sensor" not in datapoint_map:
             logger.error("No sensor key in datapoint_map. Cancel update.")
             return
-        if not "actuator" in datapoint_map:
+        if "actuator" not in datapoint_map:
             logger.error("No actuator key in datapoint_map. Cancel update.")
             return
         if not isinstance(datapoint_map["sensor"], dict):
