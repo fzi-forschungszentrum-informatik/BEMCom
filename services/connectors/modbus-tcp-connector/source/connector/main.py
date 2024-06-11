@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 """
-__version__ = "0.6.0"
+__version__ = "0.6.1"
 
 import os
 import json
@@ -157,7 +157,10 @@ class SensorFlow(SFTemplate):
                             count=requested_range["count"],
                             unit=requested_range["unit"],
                         )
-                        if isinstance(response, BaseException) or response.isError():
+                        if (
+                            isinstance(response, BaseException)
+                            or response.isError()
+                        ):
                             # This track here is if the read failed. Then we
                             # wait a bit and retry a few times before we finally
                             #  fail. If we retried to often we raise the
@@ -175,7 +178,9 @@ class SensorFlow(SFTemplate):
                             )
                             retry += 1
                             if retry >= self.max_retries:
-                                raise RuntimeError("Max number of retries exceeded.")
+                                raise RuntimeError(
+                                    "Max number of retries exceeded."
+                                )
                             sleep(self.retry_wait)
                             continue
                         # Pack the registers/coils into the raw message.
@@ -387,7 +392,8 @@ class ActuatorFlow(AFTemplate):
         # double check.
         if datapoint_key not in self.write_config_per_datapoint_key:
             logger.warning(
-                "Send command triggered for unknown datapoint_key: %s", datapoint_key
+                "Send command triggered for unknown datapoint_key: %s",
+                datapoint_key,
             )
             return
 
@@ -412,20 +418,24 @@ class ActuatorFlow(AFTemplate):
             # As we know that this must be True or False already.
             encoded_value = datapoint_value
             # No special treatment for coils necessary.
-            write_method_kwargs = {}
+            write_method_kwargs = {"value": encoded_value}
         else:
             # OK, this must be a register then.
+            #
+            # Tells the write method that it gets binary stuff not registers
+            # formatted as unsigned ints.
+            write_method_kwargs = {"skip_encode": True}
+
             bin = struct.pack(write_config["datatypes"], datapoint_value)
             if write_method_name == "write_registers":
                 # However, PyModbus wants to have a list with two bytes
                 # (=1 register) per item.
                 encoded_value = [bin[i : i + 2] for i in range(0, len(bin), 2)]
+                write_method_kwargs["values"] = encoded_value
             else:
                 # While the normal write_register takes a single value.
                 encoded_value = bin
-            # Tells the write method that it gets binary stuff not registers
-            # formatted as unsigned ints.
-            write_method_kwargs = {"skip_encode": True}
+                write_method_kwargs["value"] = encoded_value
 
             # This is an alternative implementation by Hedi.
             # builder = BinaryPayloadBuilder(
@@ -452,14 +462,18 @@ class ActuatorFlow(AFTemplate):
                     raise RuntimeError("Could not connect to Modbus master.")
 
             logger.debug(
-                "Using method %s to push data to address %s with " "for unit %s.",
-                *(write_method_name, write_config["address"], write_config["unit"],),
+                "Using method %s to push data to address %s with "
+                "for unit %s.",
+                *(
+                    write_method_name,
+                    write_config["address"],
+                    write_config["unit"],
+                ),
             )
             retry = 0
             while True:
                 response = write_method(
                     address=write_config["address"],
-                    value=encoded_value,
                     unit=write_config["unit"],
                     **write_method_kwargs,
                 )
@@ -486,7 +500,9 @@ class ActuatorFlow(AFTemplate):
                         )
                     sleep(self.retry_wait)
                     continue
-                logger.debug("Received response for send_command: %s", str(response))
+                logger.debug(
+                    "Received response for send_command: %s", str(response)
+                )
                 break
             # Maybe wait a bit before next request.
             sleep(self.poll_break)
@@ -620,8 +636,12 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
 
         self.modbus_master_ip = os.getenv("MODBUS_MASTER_IP")
         self.modbus_master_port = int(os.getenv("MODBUS_MASTER_PORT"))
-        self.modbus_addresses = self.compute_addresses(modbus_config=self.modbus_config)
-        self.modbus_read_method_names = [k for k in self.modbus_config if "read_" in k]
+        self.modbus_addresses = self.compute_addresses(
+            modbus_config=self.modbus_config
+        )
+        self.modbus_read_method_names = [
+            k for k in self.modbus_config if "read_" in k
+        ]
         self.max_retries = int(os.getenv("MODBUS_MAX_RETRIES") or 3)
         self.retry_wait = int(os.getenv("MODBUS_RETRY_WAIT_SECONDS") or 15)
         self.poll_break = float(os.getenv("MODBUS_POLL_BREAK") or 0)
@@ -686,7 +706,11 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
                         "implied sending %s registers while write_register "
                         "method can only used to send a single register. "
                         "The respective part of the config is: %s"
-                        % (datatypes, data_size // 2, json.dumps(requested_register))
+                        % (
+                            datatypes,
+                            data_size // 2,
+                            json.dumps(requested_register),
+                        )
                     )
                     logger.error(error_msg)
                     raise ValueError(error_msg)
@@ -824,7 +848,9 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
                 for i, requested_range in enumerate(requested_ranges):
                     start = requested_range["address"]
                     count = requested_range["count"]
-                    addresses[method_name][i] = list(range(start, start + count))
+                    addresses[method_name][i] = list(
+                        range(start, start + count)
+                    )
 
         return addresses
 
