@@ -147,7 +147,11 @@ class EmpLink:
             logger.info(
                 "Lost connection to MQTT broker with code %s. Reconnecting", rc
             )
-            # This is the list of topics the client is subscribed to.
+            # It seems that the EMP link looses it's subscriptions in some
+            # cases if a connection to the broker is interrupted. Hence
+            # we empty the list here to allow the next execution of
+            # `update_datapoint_and_subscriptions` (which is due in a minute
+            # or less) to resubscribe.
             userdata["self"]._subsribed_topics = []
             client.connect(**userdata["connect_kwargs"])
 
