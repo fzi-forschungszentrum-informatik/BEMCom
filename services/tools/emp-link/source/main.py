@@ -147,6 +147,8 @@ class EmpLink:
             logger.info(
                 "Lost connection to MQTT broker with code %s. Reconnecting", rc
             )
+            # This is the list of topics the client is subscribed to.
+            userdata["self"]._subsribed_topics = []
             client.connect(**userdata["connect_kwargs"])
 
     @staticmethod
@@ -154,6 +156,7 @@ class EmpLink:
         """
         Push the message forward to the EMP.
         """
+
         self = userdata["self"]
 
         logger.debug("on_message received msg with topic %s" % msg.topic)
