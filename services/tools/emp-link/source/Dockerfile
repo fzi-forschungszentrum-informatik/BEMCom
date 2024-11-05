@@ -1,6 +1,6 @@
-FROM bemcom/python-connector-template:0.6.0
+ FROM bemcom/python-connector-template:0.6.0
 
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONUNBUFFERED=1
 
 # Create the required folder structure.
 RUN mkdir -p /source/emp-link

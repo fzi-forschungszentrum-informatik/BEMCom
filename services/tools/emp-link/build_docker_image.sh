@@ -1,1 +1,1 @@
-docker build ./source -t bemcom/emp-link-tool:0.1.5
+docker build ./source -t bemcom/emp-link-tool:0.1.6
