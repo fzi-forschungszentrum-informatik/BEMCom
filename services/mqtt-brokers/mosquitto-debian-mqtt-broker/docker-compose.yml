@@ -1,0 +1,11 @@
+version: '3'
+
+services:
+    mosquitto-mqtt-broker:
+        container_name: "${MQTT_BROKER_HOST:-mosquitto-debian-mqtt-broker}"
+        build:
+            context: ./source
+        restart: always
+        ports:
+            - "${MQTT_BROKER_PORT:-1883}:1883"
+        user: "1000:1000"
