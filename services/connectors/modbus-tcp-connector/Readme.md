@@ -178,4 +178,5 @@ Follow the following steps while contributing to the connector:
 | 0.4.0 | Update to python connector template 0.4.0 (Datapoint Value and Available Datapoint messages and a can now contain any JSON data type as value.) |
 | 0.5.0 | Connector can now write to coils and registers. Unit id is now part of the internal datapoint id to prevent collisions while interacting with the same addresses from different devices. |
 | 0.6.0 | Update to python connector template 0.5.0 (It is now possible to stop processing messages in run_sensor_flow.) |
+| 0.7.0 | Update to python connector template 0.8.0 with reduced image size and enabled ARM builds. |
 
