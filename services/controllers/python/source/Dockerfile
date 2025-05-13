@@ -21,4 +21,4 @@ RUN chmod a+rwx -R /bemcom/code
 
 # Add entrypoint script for container init.
 COPY ./entrypoint.sh /bemcom/
-CMD ["bash","/bemcom/entrypoint.sh"]
+ENTRYPOINT ["bash", "/bemcom/entrypoint.sh"]
