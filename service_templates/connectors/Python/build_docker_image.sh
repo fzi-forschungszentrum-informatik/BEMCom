@@ -1,1 +1,2 @@
-docker build ./source -t bemcom/python-connector-template:0.7.0
+VERSION=$(pdm show -p source --version)
+docker build ./source -t bemcom/python-connector-template:$VERSION

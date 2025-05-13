@@ -1,9 +1,9 @@
-FROM python:3.10
+FROM python:3.12-slim
 
 # Install the pyconnector package.
 COPY pyconnector_template /source/pyconnector_template/pyconnector_template
 COPY tests /source/pyconnector_template/tests
-COPY setup.py /source/pyconnector_template/setup.py
+COPY pyproject.toml /source/pyconnector_template/pyproject.toml
 
 # Install (-e preserves a bit of file size).
 RUN pip install -e /source/pyconnector_template

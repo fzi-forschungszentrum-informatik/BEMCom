@@ -1,0 +1,27 @@
+[build-system]
+requires = ["pdm-backend >= 2.4.0"]
+build-backend = "pdm.backend"
+
+[project]
+name = "bemcom_pyconnector_template"
+version = "0.8.0"
+dependencies = [
+  "python-dotenv==0.15.*",
+  "paho-mqtt==1.5.*",
+  "pytest"
+]
+authors = [
+  { name="David Wölfle", email="woelfle@fzi.de" },
+]
+#description = "Should be fetched dynamically from README."
+#readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "MIT"
+#license-files = ["LICEN[CS]E*"]
+
+[project.urls]
+Homepage = "https://github.com/fzi-forschungszentrum-informatik/BEMCom/tree/master/service_templates/connectors/Python"
+Issues = "https://github.com/fzi-forschungszentrum-informatik/BEMCom/issues"

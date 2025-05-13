@@ -50,4 +50,5 @@ This template allows the the implementation of connectors in Python with maximum
 | 0.5.0 | It is now possible to stop processing messages in run_sensor_flow. (Docstrings of receive_raw_msg and parse_raw_msg have been updated.) |
 | 0.6.0 | Update to Python 3.10                                        |
 | 0.7.0 | Add timestamp to `send_method`.                              |
+| 0.8.0 | Update to Python 3.12, reduce image size and add multi platform support. |
 
