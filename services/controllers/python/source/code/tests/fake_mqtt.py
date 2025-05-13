@@ -57,7 +57,8 @@ class FakeMQTTBroker:
         """
         if not isinstance(msg.payload, str):
             raise ValueError(
-                "Expected payload as string, got %s instead." % type(msg.payload)
+                "Expected payload as string, got %s instead."
+                % type(msg.payload)
             )
 
         # Distrubute the message to all subscribed clients.
@@ -194,6 +195,7 @@ class FakeMQTTClient:
         """
         Publish message on fake_broker. Similar to paho.mqtt clients method.
         """
+
         # Set topic and payload as attributes of object.
         class msg:
             pass

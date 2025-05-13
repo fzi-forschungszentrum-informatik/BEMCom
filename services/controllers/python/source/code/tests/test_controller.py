@@ -83,7 +83,9 @@ class TestController:
         """
         config_msg = [
             {
-                "sensor": {"value": "test_connector/messages/1/value",},
+                "sensor": {
+                    "value": "test_connector/messages/1/value",
+                },
                 "actuator": {
                     "value": "test_connector/messages/2/value",
                     "setpoint": "test_connector/messages/2/setpoint",
@@ -94,7 +96,8 @@ class TestController:
 
         # Send the config msg.
         self.mqtt_client.publish(
-            self.mqtt_config_topic, json.dumps(config_msg),
+            self.mqtt_config_topic,
+            json.dumps(config_msg),
         )
 
         # Finally verify that the controller has subscribed to all topics
@@ -117,7 +120,9 @@ class TestController:
         """
         config_msg = [
             {
-                "sensor": {"value": "test_connector/messages/1/value",},
+                "sensor": {
+                    "value": "test_connector/messages/1/value",
+                },
                 "actuator": {
                     "value": "test_connector/messages/2/value",
                     "setpoint": "test_connector/messages/2/setpoint",
@@ -128,12 +133,15 @@ class TestController:
 
         # Send the config msg.
         self.mqtt_client.publish(
-            self.mqtt_config_topic, json.dumps(config_msg),
+            self.mqtt_config_topic,
+            json.dumps(config_msg),
         )
 
         config_msg_2 = [
             {
-                "sensor": {"value": "test_connector/messages/3/value",},
+                "sensor": {
+                    "value": "test_connector/messages/3/value",
+                },
                 "actuator": {
                     "value": "test_connector/messages/4/value",
                     "setpoint": "test_connector/messages/4/setpoint",
@@ -144,7 +152,8 @@ class TestController:
 
         # Send the config msg.
         self.mqtt_client.publish(
-            self.mqtt_config_topic, json.dumps(config_msg_2),
+            self.mqtt_config_topic,
+            json.dumps(config_msg_2),
         )
 
         # Finally verify that the controller has subscribed to all topics
@@ -177,7 +186,9 @@ class TestController:
         # Configure the controller to listen to the topics above.
         config_msg = [
             {
-                "sensor": {"value": sensor_value_topic,},
+                "sensor": {
+                    "value": sensor_value_topic,
+                },
                 "actuator": {
                     "value": actuator_value_topic,
                     "setpoint": actuator_setpoint_topic,
@@ -186,7 +197,8 @@ class TestController:
             },
         ]
         self.mqtt_client.publish(
-            self.mqtt_config_topic, json.dumps(config_msg),
+            self.mqtt_config_topic,
+            json.dumps(config_msg),
         )
 
         # Check that if from_timestamp is None the message is sent asap to the
@@ -340,7 +352,9 @@ class TestController:
         # Configure the controller to listen to the topics above.
         config_msg = [
             {
-                "sensor": {"value": sensor_value_topic,},
+                "sensor": {
+                    "value": sensor_value_topic,
+                },
                 "actuator": {
                     "value": actuator_value_topic,
                     "setpoint": actuator_setpoint_topic,
@@ -349,7 +363,8 @@ class TestController:
             },
         ]
         self.mqtt_client.publish(
-            self.mqtt_config_topic, json.dumps(config_msg),
+            self.mqtt_config_topic,
+            json.dumps(config_msg),
         )
 
         # Check that if from_timestamp is None the message is sent asap to the
@@ -359,7 +374,11 @@ class TestController:
         test_msg = {
             "timestamp": self.timestamp_now,
             "schedule": [
-                {"from_timestamp": None, "to_timestamp": None, "value": expected_value}
+                {
+                    "from_timestamp": None,
+                    "to_timestamp": None,
+                    "value": expected_value,
+                }
             ],
         }
         self.mqtt_client.subscribe(actuator_value_topic)
@@ -499,7 +518,9 @@ class TestController:
         # Configure the controller to listen to the topics above.
         config_msg = [
             {
-                "sensor": {"value": sensor_value_topic,},
+                "sensor": {
+                    "value": sensor_value_topic,
+                },
                 "actuator": {
                     "value": actuator_value_topic,
                     "setpoint": actuator_setpoint_topic,
@@ -508,7 +529,8 @@ class TestController:
             },
         ]
         self.mqtt_client.publish(
-            self.mqtt_config_topic, json.dumps(config_msg),
+            self.mqtt_config_topic,
+            json.dumps(config_msg),
         )
 
         value_setpoint = 21.0
@@ -539,8 +561,12 @@ class TestController:
             ],
         }
         self.mqtt_client.subscribe(actuator_value_topic)
-        self.mqtt_client.publish(actuator_setpoint_topic, json.dumps(test_msg_setpoint))
-        self.mqtt_client.publish(actuator_schedule_topic, json.dumps(test_msg_schedule))
+        self.mqtt_client.publish(
+            actuator_setpoint_topic, json.dumps(test_msg_setpoint)
+        )
+        self.mqtt_client.publish(
+            actuator_schedule_topic, json.dumps(test_msg_schedule)
+        )
         time.sleep(expected_delay)
         assert actuator_value_topic in self.last_msgs
         assert self.last_msgs[actuator_value_topic]["value"] == expected_value
@@ -558,7 +584,9 @@ class TestController:
         # Configure the controller to listen to the topics above.
         config_msg = [
             {
-                "sensor": {"value": sensor_value_topic,},
+                "sensor": {
+                    "value": sensor_value_topic,
+                },
                 "actuator": {
                     "value": actuator_value_topic,
                     "setpoint": actuator_setpoint_topic,
@@ -567,7 +595,8 @@ class TestController:
             },
         ]
         self.mqtt_client.publish(
-            self.mqtt_config_topic, json.dumps(config_msg),
+            self.mqtt_config_topic,
+            json.dumps(config_msg),
         )
 
         # acceptable_values will only allow schedule value to be sent if the
@@ -599,8 +628,12 @@ class TestController:
             ],
         }
         self.mqtt_client.subscribe(actuator_value_topic)
-        self.mqtt_client.publish(actuator_setpoint_topic, json.dumps(test_msg_setpoint))
-        self.mqtt_client.publish(actuator_schedule_topic, json.dumps(test_msg_schedule))
+        self.mqtt_client.publish(
+            actuator_setpoint_topic, json.dumps(test_msg_setpoint)
+        )
+        self.mqtt_client.publish(
+            actuator_schedule_topic, json.dumps(test_msg_schedule)
+        )
         time.sleep(expected_delay)
         assert actuator_value_topic in self.last_msgs
         assert self.last_msgs[actuator_value_topic]["value"] == expected_value
@@ -635,9 +668,15 @@ class TestController:
             ],
         }
         self.mqtt_client.subscribe(actuator_value_topic)
-        self.mqtt_client.publish(actuator_setpoint_topic, json.dumps(test_msg_setpoint))
-        self.mqtt_client.publish(sensor_value_topic, json.dumps(test_msg_sensor))
-        self.mqtt_client.publish(actuator_schedule_topic, json.dumps(test_msg_schedule))
+        self.mqtt_client.publish(
+            actuator_setpoint_topic, json.dumps(test_msg_setpoint)
+        )
+        self.mqtt_client.publish(
+            sensor_value_topic, json.dumps(test_msg_sensor)
+        )
+        self.mqtt_client.publish(
+            actuator_schedule_topic, json.dumps(test_msg_schedule)
+        )
         time.sleep(expected_delay)
         assert actuator_value_topic in self.last_msgs
         assert self.last_msgs[actuator_value_topic]["value"] == expected_value
@@ -672,9 +711,15 @@ class TestController:
             ],
         }
         self.mqtt_client.subscribe(actuator_value_topic)
-        self.mqtt_client.publish(actuator_setpoint_topic, json.dumps(test_msg_setpoint))
-        self.mqtt_client.publish(sensor_value_topic, json.dumps(test_msg_sensor))
-        self.mqtt_client.publish(actuator_schedule_topic, json.dumps(test_msg_schedule))
+        self.mqtt_client.publish(
+            actuator_setpoint_topic, json.dumps(test_msg_setpoint)
+        )
+        self.mqtt_client.publish(
+            sensor_value_topic, json.dumps(test_msg_sensor)
+        )
+        self.mqtt_client.publish(
+            actuator_schedule_topic, json.dumps(test_msg_schedule)
+        )
         time.sleep(expected_delay)
         assert actuator_value_topic in self.last_msgs
         assert self.last_msgs[actuator_value_topic]["value"] == expected_value
@@ -710,9 +755,15 @@ class TestController:
             ],
         }
         self.mqtt_client.subscribe(actuator_value_topic)
-        self.mqtt_client.publish(actuator_setpoint_topic, json.dumps(test_msg_setpoint))
-        self.mqtt_client.publish(sensor_value_topic, json.dumps(test_msg_sensor))
-        self.mqtt_client.publish(actuator_schedule_topic, json.dumps(test_msg_schedule))
+        self.mqtt_client.publish(
+            actuator_setpoint_topic, json.dumps(test_msg_setpoint)
+        )
+        self.mqtt_client.publish(
+            sensor_value_topic, json.dumps(test_msg_sensor)
+        )
+        self.mqtt_client.publish(
+            actuator_schedule_topic, json.dumps(test_msg_schedule)
+        )
         time.sleep(expected_delay)
         assert actuator_value_topic in self.last_msgs
         assert self.last_msgs[actuator_value_topic]["value"] == expected_value
@@ -730,7 +781,9 @@ class TestController:
         # Configure the controller to listen to the topics above.
         config_msg = [
             {
-                "sensor": {"value": sensor_value_topic,},
+                "sensor": {
+                    "value": sensor_value_topic,
+                },
                 "actuator": {
                     "value": actuator_value_topic,
                     "setpoint": actuator_setpoint_topic,
@@ -739,7 +792,8 @@ class TestController:
             },
         ]
         self.mqtt_client.publish(
-            self.mqtt_config_topic, json.dumps(config_msg),
+            self.mqtt_config_topic,
+            json.dumps(config_msg),
         )
 
         # min_values and max_values  will only allow schedule value to be sent
@@ -772,8 +826,12 @@ class TestController:
             ],
         }
         self.mqtt_client.subscribe(actuator_value_topic)
-        self.mqtt_client.publish(actuator_setpoint_topic, json.dumps(test_msg_setpoint))
-        self.mqtt_client.publish(actuator_schedule_topic, json.dumps(test_msg_schedule))
+        self.mqtt_client.publish(
+            actuator_setpoint_topic, json.dumps(test_msg_setpoint)
+        )
+        self.mqtt_client.publish(
+            actuator_schedule_topic, json.dumps(test_msg_schedule)
+        )
         time.sleep(expected_delay)
         assert actuator_value_topic in self.last_msgs
         assert self.last_msgs[actuator_value_topic]["value"] == expected_value
@@ -810,9 +868,15 @@ class TestController:
             ],
         }
         self.mqtt_client.subscribe(actuator_value_topic)
-        self.mqtt_client.publish(actuator_setpoint_topic, json.dumps(test_msg_setpoint))
-        self.mqtt_client.publish(sensor_value_topic, json.dumps(test_msg_sensor))
-        self.mqtt_client.publish(actuator_schedule_topic, json.dumps(test_msg_schedule))
+        self.mqtt_client.publish(
+            actuator_setpoint_topic, json.dumps(test_msg_setpoint)
+        )
+        self.mqtt_client.publish(
+            sensor_value_topic, json.dumps(test_msg_sensor)
+        )
+        self.mqtt_client.publish(
+            actuator_schedule_topic, json.dumps(test_msg_schedule)
+        )
         time.sleep(expected_delay)
         assert actuator_value_topic in self.last_msgs
         assert self.last_msgs[actuator_value_topic]["value"] == expected_value
@@ -849,9 +913,15 @@ class TestController:
             ],
         }
         self.mqtt_client.subscribe(actuator_value_topic)
-        self.mqtt_client.publish(actuator_setpoint_topic, json.dumps(test_msg_setpoint))
-        self.mqtt_client.publish(sensor_value_topic, json.dumps(test_msg_sensor))
-        self.mqtt_client.publish(actuator_schedule_topic, json.dumps(test_msg_schedule))
+        self.mqtt_client.publish(
+            actuator_setpoint_topic, json.dumps(test_msg_setpoint)
+        )
+        self.mqtt_client.publish(
+            sensor_value_topic, json.dumps(test_msg_sensor)
+        )
+        self.mqtt_client.publish(
+            actuator_schedule_topic, json.dumps(test_msg_schedule)
+        )
         time.sleep(expected_delay)
         assert actuator_value_topic in self.last_msgs
         assert self.last_msgs[actuator_value_topic]["value"] == expected_value
@@ -859,8 +929,12 @@ class TestController:
         # Extend test for checking sensor values above range. Resend the
         # schedule to trigger a new timer.
         test_msg_sensor = {"timestamp": self.timestamp_now, "value": 26.0}
-        self.mqtt_client.publish(actuator_schedule_topic, json.dumps(test_msg_schedule))
-        self.mqtt_client.publish(sensor_value_topic, json.dumps(test_msg_sensor))
+        self.mqtt_client.publish(
+            actuator_schedule_topic, json.dumps(test_msg_schedule)
+        )
+        self.mqtt_client.publish(
+            sensor_value_topic, json.dumps(test_msg_sensor)
+        )
         time.sleep(expected_delay)
         assert actuator_value_topic in self.last_msgs
         assert self.last_msgs[actuator_value_topic]["value"] == expected_value
@@ -897,9 +971,15 @@ class TestController:
             ],
         }
         self.mqtt_client.subscribe(actuator_value_topic)
-        self.mqtt_client.publish(actuator_setpoint_topic, json.dumps(test_msg_setpoint))
-        self.mqtt_client.publish(sensor_value_topic, json.dumps(test_msg_sensor))
-        self.mqtt_client.publish(actuator_schedule_topic, json.dumps(test_msg_schedule))
+        self.mqtt_client.publish(
+            actuator_setpoint_topic, json.dumps(test_msg_setpoint)
+        )
+        self.mqtt_client.publish(
+            sensor_value_topic, json.dumps(test_msg_sensor)
+        )
+        self.mqtt_client.publish(
+            actuator_schedule_topic, json.dumps(test_msg_schedule)
+        )
         time.sleep(expected_delay)
         assert actuator_value_topic in self.last_msgs
         assert self.last_msgs[actuator_value_topic]["value"] == expected_value
@@ -907,8 +987,12 @@ class TestController:
         # Now with a sensor value within range.
         expected_value = value_schedule
         test_msg_sensor = {"timestamp": self.timestamp_now, "value": -10e8}
-        self.mqtt_client.publish(actuator_schedule_topic, json.dumps(test_msg_schedule))
-        self.mqtt_client.publish(sensor_value_topic, json.dumps(test_msg_sensor))
+        self.mqtt_client.publish(
+            actuator_schedule_topic, json.dumps(test_msg_schedule)
+        )
+        self.mqtt_client.publish(
+            sensor_value_topic, json.dumps(test_msg_sensor)
+        )
         time.sleep(expected_delay)
         assert actuator_value_topic in self.last_msgs
         assert self.last_msgs[actuator_value_topic]["value"] == expected_value
@@ -945,9 +1029,15 @@ class TestController:
             ],
         }
         self.mqtt_client.subscribe(actuator_value_topic)
-        self.mqtt_client.publish(actuator_setpoint_topic, json.dumps(test_msg_setpoint))
-        self.mqtt_client.publish(sensor_value_topic, json.dumps(test_msg_sensor))
-        self.mqtt_client.publish(actuator_schedule_topic, json.dumps(test_msg_schedule))
+        self.mqtt_client.publish(
+            actuator_setpoint_topic, json.dumps(test_msg_setpoint)
+        )
+        self.mqtt_client.publish(
+            sensor_value_topic, json.dumps(test_msg_sensor)
+        )
+        self.mqtt_client.publish(
+            actuator_schedule_topic, json.dumps(test_msg_schedule)
+        )
         time.sleep(expected_delay)
         assert actuator_value_topic in self.last_msgs
         assert self.last_msgs[actuator_value_topic]["value"] == expected_value
@@ -955,8 +1045,12 @@ class TestController:
         # Now with a sensor value within range.
         expected_value = value_schedule
         test_msg_sensor = {"timestamp": self.timestamp_now, "value": 10e8}
-        self.mqtt_client.publish(actuator_schedule_topic, json.dumps(test_msg_schedule))
-        self.mqtt_client.publish(sensor_value_topic, json.dumps(test_msg_sensor))
+        self.mqtt_client.publish(
+            actuator_schedule_topic, json.dumps(test_msg_schedule)
+        )
+        self.mqtt_client.publish(
+            sensor_value_topic, json.dumps(test_msg_sensor)
+        )
         time.sleep(expected_delay)
         assert actuator_value_topic in self.last_msgs
         assert self.last_msgs[actuator_value_topic]["value"] == expected_value
@@ -973,7 +1067,9 @@ class TestController:
         # Configure the controller to listen to the topics above.
         config_msg = [
             {
-                "sensor": {"value": sensor_value_topic,},
+                "sensor": {
+                    "value": sensor_value_topic,
+                },
                 "actuator": {
                     "value": actuator_value_topic,
                     "setpoint": actuator_setpoint_topic,
@@ -982,7 +1078,8 @@ class TestController:
             },
         ]
         self.mqtt_client.publish(
-            self.mqtt_config_topic, json.dumps(config_msg),
+            self.mqtt_config_topic,
+            json.dumps(config_msg),
         )
 
         # A schedule with two identical values. The second value should not

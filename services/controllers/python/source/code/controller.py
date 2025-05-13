@@ -15,7 +15,9 @@ from paho.mqtt.client import Client
 
 logger = logging.getLogger(__name__)
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-logging.basicConfig(stream=sys.stdout, level=os.getenv("LOGLEVEL", "INFO"), format=log_format)
+logging.basicConfig(
+    stream=sys.stdout, level=os.getenv("LOGLEVEL", "INFO"), format=log_format
+)
 
 
 def timestamp_now():
@@ -135,7 +137,9 @@ class Controller:
         client.disconnect().
         """
         if rc != 0:
-            logger.info("Lost connection to MQTT broker with code %s. Reconnecting", rc)
+            logger.info(
+                "Lost connection to MQTT broker with code %s. Reconnecting", rc
+            )
             client.connect(**userdata["connect_kwargs"])
 
     @staticmethod
@@ -161,7 +165,7 @@ class Controller:
             logger.debug("Received message: {}".format(msg.payload))
             if msg.topic == self.config_topic:
                 logger.info("Received new configuration message")
-                
+
                 payload = json.loads(msg.payload)
 
                 # Build up a topic index, linking from the topic to the topic
@@ -229,7 +233,9 @@ class Controller:
             # Sensor values are applied immediately.
             if _type == "sensor_value":
                 self.update_current_value(
-                    _id=_id, _type=_type, payload=json.loads(msg.payload)["value"]
+                    _id=_id,
+                    _type=_type,
+                    payload=json.loads(msg.payload)["value"],
                 )
                 return
             # For setpoints and schedules the items are paresed and new timers
@@ -259,7 +265,9 @@ class Controller:
                 # if from_timestamp now is None (convention for execute ASAP)
                 # or in the past, exectue immediately
                 if from_timestamp is None or from_timestamp <= timestamp_now:
-                    self.update_current_value(_id=_id, _type=_type, payload=item)
+                    self.update_current_value(
+                        _id=_id, _type=_type, payload=item
+                    )
                 # from_timestamp is in the future
                 else:
                     # Start up a timer instance that delays the call to
@@ -319,7 +327,9 @@ class Controller:
                 delay_ms = to_timestamp - timestamp_now
                 delay_s = delay_ms / 1000.0
                 timer = Timer(
-                    interval=delay_s, function=self.update_current_value, kwargs=kwargs
+                    interval=delay_s,
+                    function=self.update_current_value,
+                    kwargs=kwargs,
                 )
 
         except Exception:
@@ -379,7 +389,11 @@ class Controller:
             The id (i.e. mqtt topic for the sensor values
         """
         actuator_value_topic = self.topics_per_id[_id]["actuator"]["value"]
-        logger.debug("([_id: {}] update_actuator_value called for actuator topic: {}".format(_id, actuator_value_topic))
+        logger.debug(
+            "([_id: {}] update_actuator_value called for actuator topic: {}".format(
+                _id, actuator_value_topic
+            )
+        )
         current_sensor_value = None
         current_schedule = None
         current_setpoint = None
@@ -396,17 +410,31 @@ class Controller:
 
         if "sensor_value" in self.current_values[_id]:
             current_sensor_value = self.current_values[_id]["sensor_value"]
-            logger.debug("[_id: {}] current_sensor_value: {}".format(_id, current_sensor_value))
+            logger.debug(
+                "[_id: {}] current_sensor_value: {}".format(
+                    _id, current_sensor_value
+                )
+            )
         if "actuator_schedule" in self.current_values[_id]:
             current_schedule = self.current_values[_id]["actuator_schedule"]
             schedule_value = current_schedule["value"]
-            logger.debug("[_id: {}] current_schedule: {}".format(_id, current_schedule))
-            logger.debug("[_id: {}] schedule_value: {}".format(_id, schedule_value))
+            logger.debug(
+                "[_id: {}] current_schedule: {}".format(_id, current_schedule)
+            )
+            logger.debug(
+                "[_id: {}] schedule_value: {}".format(_id, schedule_value)
+            )
         if "actuator_setpoint" in self.current_values[_id]:
             current_setpoint = self.current_values[_id]["actuator_setpoint"]
             setpoint_preferred_value = current_setpoint["preferred_value"]
-            logger.debug("[_id: {}] current_setpoint: {}".format(_id, current_setpoint))
-            logger.debug("[_id: {}] setpoint_preferred_value: {}".format(_id, setpoint_preferred_value))
+            logger.debug(
+                "[_id: {}] current_setpoint: {}".format(_id, current_setpoint)
+            )
+            logger.debug(
+                "[_id: {}] setpoint_preferred_value: {}".format(
+                    _id, setpoint_preferred_value
+                )
+            )
 
             csp = current_setpoint
             if "acceptable_values" in csp:
@@ -418,11 +446,27 @@ class Controller:
                 current_max_value = csp["max_value"]
                 continuous_flexibilty = True
 
-        logger.debug("[_id: {}] current_acceptable_values: {}".format(_id, current_acceptable_values))
-        logger.debug("[_id: {}] discrete_flexibility: {}".format(_id, discrete_flexibility))
-        logger.debug("[_id: {}] current_min_value: {}".format(_id, current_min_value))
-        logger.debug("[_id: {}] current_max_value: {}".format(_id, current_max_value))
-        logger.debug("[_id: {}] continuous_flexibilty: {}".format(_id, continuous_flexibilty))
+        logger.debug(
+            "[_id: {}] current_acceptable_values: {}".format(
+                _id, current_acceptable_values
+            )
+        )
+        logger.debug(
+            "[_id: {}] discrete_flexibility: {}".format(
+                _id, discrete_flexibility
+            )
+        )
+        logger.debug(
+            "[_id: {}] current_min_value: {}".format(_id, current_min_value)
+        )
+        logger.debug(
+            "[_id: {}] current_max_value: {}".format(_id, current_max_value)
+        )
+        logger.debug(
+            "[_id: {}] continuous_flexibilty: {}".format(
+                _id, continuous_flexibilty
+            )
+        )
 
         # Don't do anything if neither schedule nor setpoint exist (yet).
         if current_schedule is None and current_setpoint is None:
@@ -501,8 +545,14 @@ class Controller:
                 "value": actuator_value,
                 "timestamp": self.timestamp_now(),
             }
-            self.client.publish(actuator_value_topic, json.dumps(actuator_value_msg))
-            logger.debug("Published actuator value message with value \"{}\" on topic \"{}\"".format(actuator_value, actuator_value_topic))
+            self.client.publish(
+                actuator_value_topic, json.dumps(actuator_value_msg)
+            )
+            logger.debug(
+                'Published actuator value message with value "{}" on topic "{}"'.format(
+                    actuator_value, actuator_value_topic
+                )
+            )
             self.current_values[_id]["actuator_value"] = actuator_value
 
     def add_timer(self, topic, timer):
