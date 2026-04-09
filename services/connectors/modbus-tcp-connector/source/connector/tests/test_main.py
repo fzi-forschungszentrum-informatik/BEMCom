@@ -3,7 +3,7 @@ import json
 import time
 import logging
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from multiprocessing import Process
 
 import psutil
@@ -339,6 +339,12 @@ class TestParseRawMsg(unittest.TestCase):
                         20002: 10,
                     },
                 },
+                {
+                    "address": 21000,
+                    "count": 7,
+                    "unit": 1,
+                    "datatypes": ">hfhfh",
+                },
             ],
         }
 
@@ -516,6 +522,71 @@ class TestParseRawMsg(unittest.TestCase):
         actual_parsed_msg = self.connector.parse_raw_msg(raw_msg=test_raw_msg)
         assert actual_parsed_msg == expected_parsed_msg
 
+    def test_lsrf_word_order_parsed_correctly(self):
+        """
+        Verify that the output is parsed correctly for data in the format of
+        Least Significant Register First (LSBF).
+
+        NOTE: For now, this test only checks for floats (2 registers long)
+              as other types have not been encountered yet.
+        """
+        test_raw_msg = {
+            "payload": {
+                "raw_message": {
+                    "read_input_registers": {
+                        2: [
+                            1,
+                            1512,
+                            17259,
+                            2,
+                            31341,
+                            17258,
+                            3,
+                        ]
+                    }
+                },
+                "timestamp": 1612969083914,
+            }
+        }
+        expected_parsed_msg = {
+            "payload": {
+                "parsed_message": {
+                    "read_input_registers": {
+                        "1": {
+                            "21000": 1,
+                            "21001": 235.0230712890625,
+                            "21003": 2,
+                            "21004": 234.4782257080078,
+                            "21006": 3,
+                        }
+                    }
+                },
+                "timestamp": 1612969083914,
+            }
+        }
+
+        # Overload the modbus_addresses attribute to ensure that
+        # this test doesn't fail because of errors in the
+        # compute_addresses method.
+        self.connector.modbus_addresses = {
+            "read_input_registers": {
+                2: [
+                    21000,
+                    21001,
+                    21003,
+                    21004,
+                    21006,
+                ],
+            },
+        }
+
+        # Set the lsrf parsing only for this test.
+        with patch.object(self.connector, "lsrf_word_order", True):
+            actual_parsed_msg = self.connector.parse_raw_msg(
+                raw_msg=test_raw_msg
+            )
+        assert actual_parsed_msg == expected_parsed_msg
+
 
 class TestSendCommand(unittest.TestCase):
     @pytest.fixture(autouse=True)
@@ -672,6 +743,50 @@ class TestSendCommand(unittest.TestCase):
             # Build the binary representation using the PyModbus
             # provided tools, assuming these are correct.
             builder = BinaryPayloadBuilder(byteorder=">", wordorder=">")
+            # 16bit_uint corresponds to struct type 'f'
+            builder.add_32bit_float(test_value_msg["datapoint_value"])
+            registers = builder.build()
+
+            expeceted_kwargs = {
+                "address": 23,
+                "values": registers,
+                "unit": 3,
+                "skip_encode": True,
+            }
+
+            actual_kwargs = modbus_method_mock.call_args.kwargs
+
+            assert actual_kwargs == expeceted_kwargs
+
+    def test_lsrf_adjustment_carried_out(self):
+        """
+        If the `MODBUS_LSRF_WORD_ORDER` flag is the byte order needs to be
+        reversed. Test this is done.
+        """
+        test_value_msgs = [
+            {
+                "datapoint_key": "write_registers__3__23",
+                "datapoint_value": 12.0,
+            },
+            {
+                "datapoint_key": "write_registers__3__23",
+                "datapoint_value": -999.88,
+            },
+        ]
+
+        cn = Connector(version=__version__)
+        cn.modbus_connection = MagicMock()
+        cn.modbus_connection.write_registers = MagicMock(
+            return_value=self.fake_response
+        )
+        cn.lsrf_word_order = True
+        modbus_method_mock = cn.modbus_connection.write_registers
+        for test_value_msg in test_value_msgs:
+            cn.send_command(**test_value_msg)
+
+            # Build the binary representation using the PyModbus
+            # provided tools, assuming these are correct.
+            builder = BinaryPayloadBuilder(byteorder=">", wordorder="<")
             # 16bit_uint corresponds to struct type 'f'
             builder.add_32bit_float(test_value_msg["datapoint_value"])
             registers = builder.build()

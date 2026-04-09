@@ -45,6 +45,7 @@ This connector should be able to communicate with any Modbus Device or Gateway. 
 | MODBUS_RETRY_WAIT_SECONDS       | 15                               | Wait time in seconds after a failed read/write operation before trying again. Defaults to 15 seconds. |
 | MODBUS_POLL_BREAK               | 0.1                              | Wait time in seconds between two consecutive requests. Some devices react with errors if getting polled too often. Defaults to 0.0 |
 | MODBUS_DISCONNECT_BETWEEN_POLLS | TRUE                             | If == "TRUE" (i.e. the string) will disconnect from Modbus master device between polls. This is useful for devices that can only handle a single connection or that react with errors if POLL_SECONDS is larger then a few seconds. Defaults to FALSE. |
+| MODBUS_LSRF_WORD_ORDER          | TRUE                             | If == "TRUE" (i.e. the string) will swap the registers of floats before parsing. This allows data exchange with systems that follow the least significant register first convention. |
 
 The MODBUS_CONFIG allows to specify which registers should be read out or written to by the connector as well as how to parse the values.
 
@@ -179,4 +180,5 @@ Follow the following steps while contributing to the connector:
 | 0.5.0 | Connector can now write to coils and registers. Unit id is now part of the internal datapoint id to prevent collisions while interacting with the same addresses from different devices. |
 | 0.6.0 | Update to python connector template 0.5.0 (It is now possible to stop processing messages in run_sensor_flow.) |
 | 0.7.0 | Update to python connector template 0.8.0 with reduced image size and enabled ARM builds. |
+| 0.8.0 | Add option for handling the least significant register first convention for floats. |
 

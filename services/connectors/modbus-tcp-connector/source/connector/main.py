@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-"""
-__version__ = "0.7.0"
+""" """
+__version__ = "0.8.0"
 
 import os
 import json
@@ -13,7 +12,6 @@ from threading import Lock
 
 from dotenv import load_dotenv, find_dotenv
 from pymodbus.client.sync import ModbusTcpClient
-from pymodbus.exceptions import ModbusException
 
 from pyconnector_template.pyconnector_template import SensorFlow as SFTemplate
 from pyconnector_template.pyconnector_template import ActuatorFlow as AFTemplate
@@ -22,6 +20,28 @@ from pyconnector_template.dispatch import DispatchInInterval
 
 
 logger = logging.getLogger("pyconnector")
+
+# These is the mapping from the struct keys to the Modbus
+# register count, that is how many registers are filled with that
+# variable. See also:
+# https://docs.python.org/3/library/struct.html#format-characters
+CHAR_REGISTER_SIZE = {
+    "c": 1,
+    "b": 1,
+    "B": 1,
+    "?": 1,
+    "h": 1,
+    "H": 1,
+    "i": 2,
+    "I": 2,
+    "l": 2,
+    "L": 2,
+    "q": 4,
+    "Q": 4,
+    "e": 1,
+    "f": 2,
+    "d": 4,
+}
 
 
 class SensorFlow(SFTemplate):
@@ -265,6 +285,29 @@ class SensorFlow(SFTemplate):
                     registers = raw_message[read_method_name][i]
                     datatypes = modbus_config_for_method[i]["datatypes"]
 
+                    # Swap the registers if required to account for the least
+                    # significant register first word order.
+                    if self.lsrf_word_order:
+                        registers_lsrf_corrected = []
+                        i_char = 0  # start index of the current register.
+                        for datatype_char in datatypes:
+                            if datatype_char not in CHAR_REGISTER_SIZE:
+                                # Ignore chars defining endianess or padding.
+                                continue
+
+                            # Select one or more registers (depends on the size
+                            # of the registers size of the char) and reverse
+                            # the order in one trip.
+                            j_char = i_char + CHAR_REGISTER_SIZE[datatype_char]
+                            registers_lsrf_corrected.extend(
+                                registers[i_char:j_char][::-1]
+                            )
+
+                            # Start with next register in the next round.
+                            i_char = j_char
+
+                        registers = registers_lsrf_corrected
+
                     # Now we going to to encode the registers (which are
                     # currently represented as 16bit int values) to bytes so
                     # we can decode the data back with the correct datatype.
@@ -431,6 +474,10 @@ class ActuatorFlow(AFTemplate):
                 # However, PyModbus wants to have a list with two bytes
                 # (=1 register) per item.
                 encoded_value = [bin[i : i + 2] for i in range(0, len(bin), 2)]
+                # Least significant word order means we need to flip the
+                # registers.
+                if self.lsrf_word_order:
+                    encoded_value = encoded_value[::-1]
                 write_method_kwargs["values"] = encoded_value
             else:
                 # While the normal write_register takes a single value.
@@ -648,6 +695,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
         self.disconnect_between_polls = (
             os.getenv("MODBUS_DISCONNECT_BETWEEN_POLLS") == "TRUE"
         )
+        self.lsrf_word_order = os.getenv("MODBUS_LSRF_WORD_ORDER") == "TRUE"
 
         # This lock should prevent that reading and writing operations
         # intervene with each other. Especially if connections are disconnected
@@ -790,28 +838,6 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
             "read_input_registers",
         ]
 
-        # These is the mapping from the struct keys to the Modbus
-        # register count, that is how many registers are filled with that
-        # variable. See also:
-        # https://docs.python.org/3/library/struct.html#format-characters
-        char_register_size = {
-            "c": 1,
-            "b": 1,
-            "B": 1,
-            "?": 1,
-            "h": 1,
-            "H": 1,
-            "i": 2,
-            "I": 2,
-            "l": 2,
-            "L": 2,
-            "q": 4,
-            "Q": 4,
-            "e": 1,
-            "f": 2,
-            "d": 4,
-        }
-
         addresses = {}
         for method_name in method_names:
             if method_name not in modbus_config:
@@ -827,7 +853,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
                     range_addresses = []
                     current_address = requested_range["address"]
                     for datatype_char in requested_range["datatypes"]:
-                        if datatype_char not in char_register_size:
+                        if datatype_char not in CHAR_REGISTER_SIZE:
                             # Ignore chars defining endianess or padding.
                             continue
 
@@ -835,7 +861,7 @@ class Connector(CTemplate, SensorFlow, ActuatorFlow):
                         # length so we get the starting address of the next
                         # value.
                         range_addresses.append(current_address)
-                        current_address += char_register_size[datatype_char]
+                        current_address += CHAR_REGISTER_SIZE[datatype_char]
 
                     # Finally store the addresses of this range under the
                     # index the range has in the config.
