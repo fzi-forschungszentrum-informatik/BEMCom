@@ -6,6 +6,7 @@
 {{- $globalVars := dict "fullname" $fullname "chart" $chart "appVersion" $appVersion "managedBy" $managedBy }}
 ---
 # Django API DB volume.
+{{- if .Values.djangoApi.enabled }}
 {{- $serviceVars := (merge .Values.djangoApi $globalVars ) }}
 {{- with $serviceVars }}
 apiVersion: v1
@@ -19,6 +20,7 @@ metadata:
     helm.sh/resource-policy: retain
 spec:
   {{- .volumes.pvc.pgdata.spec | toYaml | nindent 4 }}
+{{- end }}
 {{- end }}
 ---
 # Mongo raw message DB volume.

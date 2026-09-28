@@ -28,6 +28,7 @@ spec:
 {{- end }}
 ---
 # Django API service.
+{{- if .Values.djangoApi.enabled }}
 {{- $serviceVars := (merge .Values.djangoApi $globalVars ) }}
 {{- with $serviceVars }}
 apiVersion: v1
@@ -70,6 +71,7 @@ spec:
     targetPort: http
   selector:
     {{- include "bemcom-app.selectorLabels" . | nindent 4 }}
+{{- end }}
 {{- end }}
 {{- end }}
 ---

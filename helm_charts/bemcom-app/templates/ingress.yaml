@@ -6,6 +6,7 @@
 {{- $globalVars := dict "fullname" $fullname "chart" $chart "appVersion" $appVersion "managedBy" $managedBy }}
 ---
 # Django API ingress.
+{{- if .Values.djangoApi.enabled }}
 {{- $serviceVars := (merge .Values.djangoApi $globalVars ) }}
 {{- with $serviceVars }}
 {{- $serviceFullname := include "bemcom-app.service.fullname" . }}
@@ -49,6 +50,7 @@ spec:
                   name: http
           {{- end }}
     {{- end }}
+{{- end }}
 {{- end }}
 ---
 # Grafana tool ingress.

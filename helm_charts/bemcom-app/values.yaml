@@ -51,6 +51,7 @@ messageBroker:
       mqttTcp: 1883
 
 djangoApi:
+  enabled: true
   serviceName: django-api
   deployment:
     api:
