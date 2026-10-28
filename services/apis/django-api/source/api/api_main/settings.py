@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/3.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.1/ref/settings/
 """
+
 import os
 import json
 import random
@@ -268,5 +269,5 @@ SPECTACULAR_SETTINGS = {
         "BEMCom/blob/master/documentation/Readme.md) for more information."
     ),
     "LICENSE": {"name": "Licensed under MIT"},
-    "VERSION": "0.8.6",
+    "VERSION": "0.8.7",
 }

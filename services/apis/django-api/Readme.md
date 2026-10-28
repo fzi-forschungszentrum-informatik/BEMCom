@@ -169,7 +169,7 @@ Follow the following steps while contributing to the connector:
   * Start the container with:
 
     ```bash
-    docker-compose up
+    docker compose up
     ```
 
   * Implement your changes as well all tests to cover your changes.
@@ -177,13 +177,13 @@ Follow the following steps while contributing to the connector:
   * To run the tests use the following line in a second terminal (check the [pytest docs](https://docs.pytest.org/en/stable/contents.html) for more information):
 
     ```bash
-    docker exec django-api pytest /source/api/
+    docker exec django-api-devl pytest /source/api/
     ```
 
 * After everything is ready check that service also works in production mode by executing:
 
   ```bash
-  DJANGO_DEBUG=FALSE docker-compose up --build
+  DJANGO_DEBUG=FALSE docker compose up --build
   ```
 
 * Update the tag (version) in [source/api/api_main/settings.py](source/api/api_main/settings.py) and execute the shell script to build an updated image.
@@ -210,4 +210,3 @@ Follow the following steps while contributing to the connector:
 | 0.6.0 | Django-API service now exposes Prometheus metrics to support monitoring of BEMCom applications. |
 | 0.7.0 | Django-API service can now be run with multiple worker processes. Added dedicated process to write MQTT messages to DB. Removed support for direct HTTPS endpoint (not supported by Gunicorn). |
 | 0.8.0 | Added ACTIVATE_CONTROL_EXTENSION and ACTIVATE_HISTORY_EXTENSION flags. |
-

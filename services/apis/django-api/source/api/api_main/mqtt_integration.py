@@ -554,19 +554,36 @@ class MqttToDb:
                                 value=payload["value"],
                             ).save()
                         except IntegrityError:
-                            # TODO: Investigate error. After the IntegrityError
-                            # above it takes 5-7 minutes for the DB to return
-                            # the correct dp_value here on DB startup.
-                            dp_value = DatapointValue.objects.get(
-                                datapoint=datapoint, time=timestamp
-                            )
-                            dp_value.value = payload["value"]
-                            dp_value.save()
-                            logger.info(
-                                "Overwrote existing datapoint value msg for "
-                                "datapoint with id %s and timestamp %s"
+                            # GOTCHA: The code commented out below causes a
+                            #         full table scan as it is an update by id
+                            #         and id is not indexed. This update can
+                            #         thus take up to to several hours for
+                            #         finding the relevant data item. If several
+                            #         of these updates run in parallel it might
+                            #         block all data ingestion completely as all
+                            #         workers are blocked by the update.
+                            # dp_value = DatapointValue.objects.get(
+                            #     datapoint=datapoint, time=timestamp
+                            # )
+                            # dp_value.value = payload["value"]
+                            # dp_value.save()
+                            # logger.info(
+                            #     "Overwrote existing datapoint value msg for "
+                            #     "datapoint with id %s and timestamp %s"
+                            #     % (datapoint.id, timestamp)
+                            # )
+                            #
+                            # Hence just the sane workaround. Assume that the
+                            # value has not changed and the value message is
+                            # just a reply, which often happens on reconnection
+                            # to the MQTT broker.
+                            logger.warning(
+                                "Dropped value message as a message with "
+                                "this combination of datapoint id (%s) "
+                                "and timestamp (%s) already exists in DB."
                                 % (datapoint.id, timestamp)
                             )
+
                     # Store this messages as most recent message. We do not
                     # expect an replay of old messages via MQTT or similar.
                     # Hence just save should be fine.
