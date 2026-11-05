@@ -163,7 +163,7 @@ else:
 # This is just here to silence some warnings and make explicit what
 # django < 3.2 has always done. See:
 # https://docs.djangoproject.com/en/3.2/ref/settings/#std:setting-DEFAULT_AUTO_FIELD
-DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 LOGGING = {
     "version": 1,
@@ -269,5 +269,5 @@ SPECTACULAR_SETTINGS = {
         "BEMCom/blob/master/documentation/Readme.md) for more information."
     ),
     "LICENSE": {"name": "Licensed under MIT"},
-    "VERSION": "0.8.7",
+    "VERSION": "0.8.8",
 }
